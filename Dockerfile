@@ -1,27 +1,16 @@
-FROM node:22-alpine AS builder
+FROM denoland/deno:2.3.3 AS runtime
 
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci --include=dev
 
-COPY tsconfig.json ./
+COPY deno.json ./
+COPY deno.lock ./
 COPY src ./src
-RUN npm run build
 
-# ── Runtime stage ──────────────────────────────────────────────────────────
-FROM node:22-alpine AS runtime
-
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
-
-COPY --from=builder /app/dist ./dist
+RUN deno install && chown -R deno:deno /app
 
 # Non-root user for security
-RUN addgroup -S mcp && adduser -S mcp -G mcp
-USER mcp
+USER deno
 
-ENV MCP_TRANSPORT=http
 ENV PORT=3000
 
 EXPOSE 3000
@@ -29,4 +18,4 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget -qO- http://localhost:3000/health || exit 1
 
-ENTRYPOINT ["node", "dist/index.js"]
+ENTRYPOINT ["deno", "task", "start"]
