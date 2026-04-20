@@ -21,7 +21,7 @@ import type {
   ProjectV2Item,
 } from "../types.ts";
 
-export function registerItemTools(server: McpServer): void {
+export const registerItemTools = (server: McpServer): void => {
   // ── List Items ─────────────────────────────────────────────────────────────
 
   server.registerTool(

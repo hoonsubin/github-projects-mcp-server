@@ -74,7 +74,7 @@ export const ITEM_FIELD_VALUES_FRAGMENT = `
 
 // ── Markdown formatters ──────────────────────────────────────────────────────
 
-export function formatProject(p: ProjectV2): string {
+export const formatProject = (p: ProjectV2): string => {
   const lines: string[] = [
     `## ${p.title} (#${p.number})`,
     `**Owner**: ${p.owner.login} (${p.owner.__typename})`,
@@ -101,7 +101,7 @@ export function formatProject(p: ProjectV2): string {
   return lines.join("\n");
 }
 
-export function formatItem(item: ProjectV2Item): string {
+export const formatItem = (item: ProjectV2Item): string => {
   const lines: string[] = [`### Item \`${item.id}\``];
   lines.push(`**Type**: ${item.type} | **Archived**: ${item.isArchived}`);
 
@@ -144,7 +144,7 @@ export function formatItem(item: ProjectV2Item): string {
   return lines.join("\n");
 }
 
-export function formatField(f: ProjectV2Field): string {
+export const formatField = (f: ProjectV2Field): string => {
   let line = `- **${f.name}** | type: \`${f.dataType}\` | id: \`${f.id}\``;
   if (f.options) {
     line +=

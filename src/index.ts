@@ -1,19 +1,13 @@
 #!/usr/bin/env -S deno run --allow-env --allow-net
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp";
-import {
-  createServer,
-  type IncomingMessage,
-  type ServerResponse,
-} from "node:http";
-import { Buffer } from "node:buffer";
+import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp";
 import { registerProjectTools } from "./tools/projects.ts";
 import { registerItemTools } from "./tools/items.ts";
 
 // ── Server factory ───────────────────────────────────────────────────────────
 
-function createMcpServer(): McpServer {
+const createMcpServer= (): McpServer => {
   const server = new McpServer({
     name: "github-projects-mcp-server",
     version: "1.0.0",
@@ -27,7 +21,7 @@ function createMcpServer(): McpServer {
 
 // ── Stdio transport (default — used by Claude Desktop, Claude Code, etc.) ────
 
-async function runStdio(): Promise<void> {
+const runStdio = async (): Promise<void> => {
   const server = createMcpServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
@@ -35,54 +29,40 @@ async function runStdio(): Promise<void> {
 }
 
 // ── Streamable HTTP transport (for remote/multi-client scenarios) ─────────────
-// node:http is kept here because StreamableHTTPServerTransport requires IncomingMessage/ServerResponse.
 
-async function runHttp() {
+const runHttp = async (): Promise<void> => {
   const port = parseInt(Deno.env.get("PORT") ?? "3000", 10);
 
-  const httpServer = createServer(
-    async (req: IncomingMessage, res: ServerResponse) => {
-      if (req.method === "GET" && req.url === "/health") {
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(
-          JSON.stringify({
-            status: "ok",
-            server: "github-projects-mcp-server",
-          }),
-        );
-        return;
+  const server = Deno.serve(
+    {
+      port,
+      onListen({ hostname, port: p }) {
+        console.error(`github-projects-mcp-server listening on http://${hostname}:${p}/mcp`);
+      },
+    },
+    async (req: Request): Promise<Response> => {
+      const { pathname } = new URL(req.url);
+
+      if (req.method === "GET" && pathname === "/health") {
+        return Response.json({ status: "ok", server: "github-projects-mcp-server" });
       }
 
-      if (req.method !== "POST" || req.url !== "/mcp") {
-        res.writeHead(404);
-        res.end("Not found");
-        return;
+      if (pathname !== "/mcp") {
+        return new Response("Not found", { status: 404 });
       }
 
-      const chunks: Buffer[] = [];
-      for await (const chunk of req) chunks.push(chunk as Buffer);
-      const body: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-
-      const transport = new StreamableHTTPServerTransport({
+      const transport = new WebStandardStreamableHTTPServerTransport({
         sessionIdGenerator: undefined,
         enableJsonResponse: true,
       });
 
-      res.on("close", () => {
-        void transport.close();
-      });
-
-      const server = createMcpServer();
-      await server.connect(transport);
-      await transport.handleRequest(req, res, body);
+      const mcpServer = createMcpServer();
+      await mcpServer.connect(transport);
+      return transport.handleRequest(req);
     },
   );
 
-  httpServer.listen(port, () => {
-    console.error(
-      `github-projects-mcp-server listening on http://0.0.0.0:${port}/mcp`,
-    );
-  });
+  await server.finished;
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────

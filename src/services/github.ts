@@ -14,7 +14,7 @@ export class GitHubApiError extends Error {
   }
 }
 
-function getToken(): string {
+const getToken = (): string => {
   const token = Deno.env.get("GITHUB_TOKEN");
   if (!token) {
     throw new GitHubApiError(
@@ -26,10 +26,10 @@ function getToken(): string {
   return token;
 }
 
-export async function graphql<T>(
+export const graphql = async <T>(
   query: string,
   variables: Record<string, unknown> = {}
-): Promise<T> {
+): Promise<T> => {
   const token = getToken();
 
   const controller = new AbortController();
@@ -101,7 +101,7 @@ export async function graphql<T>(
 }
 
 /** Format a GitHubApiError into a human-readable MCP tool error string. */
-export function formatError(err: unknown): string {
+export const formatError = (err: unknown): string => {
   if (err instanceof GitHubApiError) {
     return `Error: ${err.message}`;
   }

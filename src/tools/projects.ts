@@ -19,7 +19,7 @@ import type {
   ProjectV2Field,
 } from "../types.ts";
 
-export function registerProjectTools(server: McpServer): void {
+export const registerProjectTools = (server: McpServer): void => {
   // ── List Projects ──────────────────────────────────────────────────────────
 
   server.registerTool(
