@@ -1,0 +1,28 @@
+services:
+  github-projects-mcp:
+    build: .
+    container_name: github-projects-mcp
+    restart: unless-stopped
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - MCP_TRANSPORT=http
+      - PORT=3000
+    ports:
+      - "127.0.0.1:3456:3000"   # bind to loopback; expose via reverse proxy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    # Resource limits — this is a lightweight process
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+
+  # Optional: add to your existing Open WebUI compose file instead
+  # open-webui:
+  #   ...
+  #   environment:
+  #     - MCP_SERVER_URL=http://github-projects-mcp:3000/mcp
