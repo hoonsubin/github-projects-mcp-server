@@ -3,10 +3,8 @@ services:
     build: .
     container_name: github-projects-mcp
     restart: unless-stopped
-    environment:
-      - GITHUB_TOKEN=${GITHUB_TOKEN}
-      - MCP_TRANSPORT=http
-      - PORT=3000
+    env_file:
+      - .env
     ports:
       - "127.0.0.1:3456:3000"   # bind to loopback; expose via reverse proxy
     healthcheck:

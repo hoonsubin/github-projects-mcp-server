@@ -2,6 +2,10 @@
 
 A local MCP (Model Context Protocol) server for interacting with **GitHub Projects v2** via the GitHub GraphQL API. Connect it to Claude Desktop, Claude Code, Open WebUI, or any MCP-compatible client.
 
+## Related Documentation
+
+- GitHub Projects API: https://docs.github.com/en/issues/planning-and-tracking-with-projects/
+
 ## Tools
 
 | Tool | Description |
@@ -22,6 +26,7 @@ A local MCP (Model Context Protocol) server for interacting with **GitHub Projec
 ## Prerequisites
 
 - Node.js ≥ 20
+- Deno.js
 - A GitHub Personal Access Token (classic or fine-grained)
 
 ### Token Scopes
@@ -34,41 +39,14 @@ A local MCP (Model Context Protocol) server for interacting with **GitHub Projec
 
 Generate at: **GitHub → Settings → Developer Settings → Personal access tokens**
 
-## Quickstart (stdio — Claude Desktop / Claude Code)
+## Quickstart
 
 ```bash
-npm install
-npm run build
-GITHUB_TOKEN=ghp_xxx npm start
-```
-
-### Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`)
-
-```json
-{
-  "mcpServers": {
-    "github-projects": {
-      "command": "node",
-      "args": ["/path/to/github-projects-mcp-server/dist/index.js"],
-      "env": {
-        "GITHUB_TOKEN": "ghp_yourtoken"
-      }
-    }
-  }
-}
-```
-
-### Claude Code
-
-```bash
-claude mcp add github-projects \
-  -e GITHUB_TOKEN=ghp_yourtoken \
-  -- node /path/to/dist/index.js
+deno install
+deno task start
 ```
 
 ## HTTP Mode (Home Lab / Docker)
-
-For your Proxmox LXC or Docker setup:
 
 ```bash
 # .env file
@@ -83,7 +61,8 @@ The server listens on `http://127.0.0.1:3456/mcp`. Expose through your existing 
 
 ### Open WebUI MCP Integration
 
-In your Open WebUI environment, set:
+In Open WebUI environment, set:
+
 ```
 MCP_SERVER_URL=http://github-projects-mcp:3000/mcp
 ```
@@ -93,8 +72,8 @@ Or via the UI: **Admin Panel → Settings → Tools → MCP Servers**.
 ## Development
 
 ```bash
-npm run dev          # watch mode TypeScript compilation
-npm run inspector    # MCP Inspector UI for interactive testing
+deno task dev          # watch mode TypeScript compilation
+deno task inspector    # MCP Inspector UI for interactive testing
 ```
 
 ## Typical Workflows
