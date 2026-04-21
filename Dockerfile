@@ -4,7 +4,6 @@ WORKDIR /app
 
 COPY deno.json ./
 COPY deno.lock ./
-COPY package.json ./
 COPY src ./src
 
 RUN deno install && chown -R deno:deno /app

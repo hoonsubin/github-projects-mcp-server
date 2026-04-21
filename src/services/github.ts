@@ -25,7 +25,7 @@ const getToken = (): string => {
   }
   return token;
 }
-
+// documentation: https://docs.github.com/en/graphql/guides/forming-calls-with-graphql#about-queries
 export const graphql = async <T>(
   query: string,
   variables: Record<string, unknown> = {}
