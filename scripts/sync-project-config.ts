@@ -155,11 +155,11 @@ interface GhProjectResponse {
 // GraphQL query
 // ---------------------------------------------------------------------------
 
-function buildQuery(
+const buildQuery = (
   ownerType: "user" | "org",
   owner: string,
   projectNumber: number,
-): string {
+): string => {
   // Both user and organisation expose projectV2 under the same field name;
   // owner_type "org" maps to the "organization" root field.
   const ownerField = ownerType === "user" ? "user" : "organization";
@@ -216,13 +216,13 @@ function buildQuery(
       }
     }
   `;
-}
+};
 
 // ---------------------------------------------------------------------------
 // GitHub GraphQL client
 // ---------------------------------------------------------------------------
 
-async function fetchProjectFields(
+const fetchProjectFields = async (
   token: string,
   owner: string,
   ownerType: "user" | "org",
@@ -232,7 +232,7 @@ async function fetchProjectFields(
   title: string;
   url: string;
   fields: { nodes: GhField[] };
-}> {
+}> => {
   const query = buildQuery(ownerType, owner, projectNumber);
 
   const res = await fetch("https://api.github.com/graphql", {
@@ -266,38 +266,46 @@ async function fetchProjectFields(
   }
 
   return ownerData.projectV2;
-}
+};
 
 // ---------------------------------------------------------------------------
 // Field helpers
 // ---------------------------------------------------------------------------
 
-function findField(fields: GhField[], mappedName: string): GhField | undefined {
+const findField = (
+  fields: GhField[],
+  mappedName: string,
+): GhField | undefined => {
   return fields.find((f) => f.name === mappedName);
-}
+};
 
-function isSingleSelect(f: GhField): f is GhSingleSelectField {
+const isSingleSelect = (f: GhField): f is GhSingleSelectField => {
   return f.__typename === "ProjectV2SingleSelectField";
-}
+};
 
-function isIteration(f: GhField): f is GhIterationField {
+const isIteration = (f: GhField): f is GhIterationField => {
   return f.__typename === "ProjectV2IterationField";
-}
+};
 
-function extractOptions(
+const extractOptions = (
   field: GhSingleSelectField,
-): Array<{ id: string; name: string; color: string; description: string }> {
-  return field.options.map(({ id, name, color, description }) => ({ id, name, color, description }));
-}
+): Array<{ id: string; name: string; color: string; description: string }> => {
+  return field.options.map(({ id, name, color, description }) => ({
+    id,
+    name,
+    color,
+    description,
+  }));
+};
 
 /**
  * Warn when a field_names entry does not match any field returned by GitHub.
  * This catches typos and stale config early.
  */
-function warnMissingFields(
+const warnMissingFields = (
   fieldNames: Record<string, string>,
   fields: GhField[],
-): void {
+): void => {
   const knownNames = new Set(fields.map((f) => f.name));
   for (const [key, name] of Object.entries(fieldNames)) {
     if (key === "_comment") continue;
@@ -308,17 +316,17 @@ function warnMissingFields(
       );
     }
   }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Board config builder
 // ---------------------------------------------------------------------------
 
-function buildBoardConfig(
+const buildBoardConfig = (
   humanConfig: ScrumConfigYml,
   projectMeta: { id: string; title: string; url: string },
   fields: GhField[],
-): BoardConfig {
+): BoardConfig => {
   const fn = humanConfig.field_names;
 
   // Warn about any field_names entries that don't resolve to a real board field
@@ -468,23 +476,23 @@ function buildBoardConfig(
     _epic_field: epicField,
     _assignee_field: assigneeBoard,
   };
-}
+};
 
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
-async function main() {
+const main = async () => {
   const args = parseArgs(Deno.args, {
     boolean: ["dry-run"],
     string: ["config", "board-config"],
   });
   const isDryRun = args["dry-run"] as boolean;
   const humanConfigPath =
-    (args["config"] as string | undefined) ?? "./scrum.config.yml";
+    (args["config"] as string | undefined) ?? "./config/scrum.config.yml";
   const boardConfigPath =
     (args["board-config"] as string | undefined) ??
-    "./project-board.config.json";
+    "./config/project-board.config.json";
 
   const token = Deno.env.get("GITHUB_TOKEN");
   if (!token) {
@@ -528,7 +536,7 @@ async function main() {
     console.log(`\n💾  Board config written to: ${boardConfigPath}`);
     console.log(`    Last synced: ${boardConfig._last_synced}`);
   }
-}
+};
 
 main().catch((err) => {
   console.error("❌  Sync failed:", err.message);
