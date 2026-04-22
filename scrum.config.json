@@ -1,0 +1,199 @@
+{
+  "_comment": "MesseBuddy SCRUM configuration. Edit this file to adapt field names, status values, and agent behaviour to your project. The agent reads this at runtime — changes take effect immediately without restarting the server.",
+  "project": {
+    "owner": "hoonsubin",
+    "owner_type": "user",
+    "project_number": 4
+  },
+  "product": {
+    "name": "MesseBuddy",
+    "vision": "Help new Messe München employees integrate quickly by connecting them with experienced mentors.",
+    "product_goal": "Enable any new employee to find and communicate with a buddy within their first week."
+  },
+  "team": {
+    "product_owner": {
+      "name": "Peter Tubak",
+      "contact": "peter.tubak@messe-muenchen.de"
+    },
+    "members": [
+      {
+        "login": "alisa-diakova",
+        "name": "Alisa Diakova",
+        "scrum_master_sprint": 1
+      },
+      {
+        "login": "hoonsubin",
+        "name": "Hoon Kim",
+        "scrum_master_sprint": 2
+      },
+      {
+        "login": "kseniya-tsiabus",
+        "name": "Kseniya Tsiabus",
+        "scrum_master_sprint": 3
+      },
+      {
+        "login": "luis-mueller",
+        "name": "Luis Müller",
+        "scrum_master_sprint": 4
+      }
+    ],
+    "supervisor": {
+      "name": "Jannis Kolb",
+      "contact": "j.kolb@lmu.de",
+      "report_recipient": true
+    }
+  },
+  "sprint_goal": {
+    "_comment": "One sentence describing the outcome this sprint delivers. Set during Sprint Planning. Used to evaluate sprint success at Sprint Review.",
+    "field_name": "Sprint Goal",
+    "required": true,
+    "format": "outcome_based"
+  },
+  "field_names": {
+    "_comment": "Exact names of GitHub Projects v2 custom fields. Case-sensitive. Must match what is visible in the GitHub UI.",
+    "sprint": "Sprint",
+    "status": "Status",
+    "story_points": "Story Points",
+    "priority": "Priority",
+    "epic": "Epic",
+    "item_type": "Type",
+    "assignee": "Assignee",
+    "impediment": "Impediment"
+  },
+  "status_values": {
+    "_comment": "Exact option names for the Status single-select field. Case-sensitive.",
+    "backlog": "Backlog",
+    "ready": "Ready",
+    "in_progress": "In Progress",
+    "in_review": "In Review",
+    "done": "Done",
+    "blocked": "Blocked"
+  },
+  "priority": {
+    "_comment": "Priority uses MoSCoW — a single-select field, not a numeric one. Options are ordered from highest to lowest priority. The agent uses array index as rank (index 0 = highest).",
+    "type": "single_select",
+    "options_ordered": [
+      "Must Have",
+      "Should Have",
+      "Could Have",
+      "Won't Have"
+    ]
+  },
+  "item_types": {
+    "_comment": "Valid values for the Type single-select field.",
+    "options": [
+      "User Story",
+      "Task",
+      "Bug",
+      "Spike"
+    ]
+  },
+  "item_id": {
+    "_comment": "Tasks use a flat T-prefix to remain sprint-agnostic. Sprint association is tracked via the Sprint field, not the ID.",
+    "user_story_prefix": "US",
+    "task_prefix": "T",
+    "commit_format": "[{id}] Short description"
+  },
+  "sprint": {
+    "_comment": "duration_days: set to null to derive sprint length from the actual GitHub iteration dates (recommended for variable-length sprints like this project). Set to a number only if all sprints are the same length.",
+    "duration_days": null,
+    "velocity_window": 4,
+    "carry_over_threshold_days": 3,
+    "report_submit_time": "23:59",
+    "report_recipient": "j.kolb@lmu.de"
+  },
+  "autonomy": {
+    "_comment": "Controls how aggressively the agent acts on ambiguous input. 'conservative' = confirm everything. 'standard' = confirm bulk and natural-language-triggered writes. 'full' = autonomous for unambiguous single-item writes.",
+    "level": "standard",
+    "require_confirmation_above_n_items": 3
+  },
+  "definition_of_ready": {
+    "version": "1.0",
+    "last_updated": "2026-04-22",
+    "criteria": [
+      "Written in user story format with a clear who / what / why",
+      "Acceptance criteria clearly defined and agreed by PO + team",
+      "Estimated by the development team (story points agreed via Planning Poker)",
+      "Dependencies identified and either resolved or de-risked",
+      "UI/UX approach noted (wireframe, sketch, or written description)",
+      "Technical approach understood at a high level by the whole team",
+      "Item is small enough to be completed within a single sprint"
+    ]
+  },
+  "definition_of_done": {
+    "version": "1.0",
+    "last_updated": "2026-04-22",
+    "criteria": [
+      "Code written and self-reviewed by the author",
+      "Code reviewed and approved by at least one other team member",
+      "No new linting or static analysis warnings introduced",
+      "Feature branch merged into the main/develop branch",
+      "Feature functions as described in all acceptance criteria",
+      "Basic smoke test passed in the shared staging environment",
+      "No critical bugs introduced (checked against existing features)",
+      "Inline code comments added where logic is non-obvious",
+      "Any new API endpoint documented in the README or API doc file",
+      "Decision log updated if a significant architectural choice was made",
+      "Feature deployed to the shared staging environment",
+      "Team has verified it runs correctly in staging (not just locally)",
+      "Acceptance criteria verified by Peter Tubak (or designated team member) in Sprint Review",
+      "Code committed to the shared GitHub repository",
+      "No uncommitted changes left on developer machines",
+      "Commit message follows agreed format: [US-XX] Short description"
+    ]
+  },
+  "epics": [
+    {
+      "id": "E-01",
+      "title": "User Management",
+      "priority": "Must Have"
+    },
+    {
+      "id": "E-02",
+      "title": "Buddy/Mentor Matching",
+      "priority": "Must Have"
+    },
+    {
+      "id": "E-03",
+      "title": "Communication",
+      "priority": "Should Have"
+    },
+    {
+      "id": "E-04",
+      "title": "Progress Tracking",
+      "priority": "Should Have"
+    },
+    {
+      "id": "E-05",
+      "title": "Admin / HR Dashboard",
+      "priority": "Could Have"
+    },
+    {
+      "id": "E-06",
+      "title": "Notifications",
+      "priority": "Could Have"
+    }
+  ],
+  "story_points": {
+    "_comment": "Items estimated above max_points_per_item should be split before entering a sprint.",
+    "method": "planning_poker",
+    "scale": [
+      1,
+      2,
+      3,
+      5,
+      8,
+      13
+    ],
+    "max_points_per_item": 8
+  },
+  "impediment": {
+    "_comment": "Any impediment open beyond threshold is escalated to Scrum Master and flagged in the daily report.",
+    "statuses": [
+      "Open",
+      "In Progress",
+      "Resolved"
+    ],
+    "escalation_threshold_days": 2
+  }
+}

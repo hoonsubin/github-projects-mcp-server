@@ -19,7 +19,7 @@ Supports two transports: **stdio** (Claude Desktop / Claude Code / LM Studio) an
 ### High-Level: MCP Clients → Server → GitHub
 
 ```mermaid
-flowchart LR
+flowchart TD
     subgraph Clients["MCP Clients"]
         CC["Claude Desktop\n/ Claude Code"]
         LM["LM Studio\n/ Open WebUI"]
@@ -66,41 +66,41 @@ flowchart LR
 ### Internal Module Architecture
 
 ```mermaid
-flowchart TD
+flowchart LR
+    classDef planned stroke-dasharray:5 5,stroke:#888,color:#888
+
     subgraph Entry["src/index.ts"]
         FACTORY["createMcpServer()"]
         STDIO_T["runStdio()"]
-        HTTP_T["runHttp()\nExpress + session store"]
+        HTTP_T["runHttp()"]
     end
 
     subgraph Tools["src/tools/"]
-        PT["projects.ts\ngithub_list_projects\ngithub_get_project\ngithub_get_project_fields\ngithub_update_project"]
-        IT["items.ts\ngithub_list_project_items\ngithub_add_item_to_project\ngithub_add_draft_issue\ngithub_update_item_field\ngithub_archive_project_item\ngithub_delete_project_item\ngithub_get_issue_node_id\ngithub_get_user_node_id"]
-        ST["sprints.ts  ⟵ planned\ngithub_get_sprint_status\ngithub_get_velocity\ngithub_get_backlog_items\ngithub_bulk_update_item_field\ngithub_close_sprint\ngithub_generate_sprint_report"]
+        PT["projects.ts"]
+        IT["items.ts"]
+        ST["sprints.ts"]:::planned
     end
 
-    subgraph Schemas["src/schemas/inputs.ts"]
-        ZOD["Zod schemas\nper tool (strict)"]
+    subgraph Schemas["src/schemas/"]
+        ZOD["inputs.ts\nZod schemas"]
     end
 
     subgraph Services["src/services/"]
-        GH["github.ts\ngraphql&lt;T&gt;()\nGitHubApiError\nformatError()"]
-        FMTS["formatters.ts\nPROJECT_CORE_FRAGMENT\nITEM_CONTENT_FRAGMENT\nITEM_FIELD_VALUES_FRAGMENT\nformatProject()\nformatItem()\nformatField()"]
-        SCRUM["scrum.ts  ⟵ planned\ncalculateVelocity()\nbuildBurndown()\naggregateSprintPoints()\nformatSprintReport()"]
+        GH["github.ts"]
+        FMTS["formatters.ts"]
+        SCRUM["scrum.ts"]:::planned
     end
 
     subgraph Types["src/types.ts"]
-        TY["ProjectV2\nProjectV2Field\nProjectV2Item\nProjectV2ItemFieldValue\nPageInfo\nGraphQLResponse"]
+        TY["ProjectV2 types"]
     end
 
-    FACTORY --> PT & IT & ST
-    PT & IT & ST --> ZOD
-    PT & IT & ST --> GH
-    PT & IT & ST --> FMTS
-    ST --> SCRUM
-    GH --> TY
-    FMTS --> TY
-    SCRUM --> TY
+    FACTORY -->|registers| PT & IT & ST
+    PT & IT & ST -->|validates input| ZOD
+    PT & IT & ST -->|calls API| GH
+    PT & IT & ST -->|formats output| FMTS
+    ST -->|sprint logic| SCRUM
+    GH & FMTS & SCRUM -->|uses| TY
 ```
 
 ---
