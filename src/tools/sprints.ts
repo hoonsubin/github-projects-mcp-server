@@ -41,7 +41,7 @@ import {
   BulkUpdateItemFieldSchema,
   CloseSprintSchema,
   GenerateSprintReportSchema,
-  FieldValueUnion,
+  resolveFieldValue,
 } from "../schemas/inputs.ts";
 import type {
   ProjectV2Item,
@@ -50,7 +50,6 @@ import type {
   BulkUpdateResult,
   IterationVelocity,
 } from "../types.ts";
-import { z } from "zod";
 
 // ---------------------------------------------------------------------------
 // Shared mutation helpers
@@ -78,48 +77,28 @@ const ARCHIVE_ITEM_MUTATION = `
   }`;
 
 /**
- * Build the `value` object expected by UpdateProjectV2ItemFieldValueInput.
- * Mirrors the switch in items.ts.
- */
-const buildFieldValue = (
-  value: z.infer<typeof FieldValueUnion>,
-): Record<string, unknown> | null => {
-  switch (value.type) {
-    case "text":
-      return { text: value.value };
-    case "number":
-      return { number: value.value };
-    case "date":
-      return { date: value.value };
-    case "single_select":
-      return { singleSelectOptionId: value.option_id };
-    case "iteration":
-      return { iterationId: value.iteration_id };
-    case "clear":
-      return null; // signals clearProjectV2ItemFieldValue
-  }
-};
-
-/**
  * Execute a single field value update or clear.
  * Returns null on success, or an error message string on failure.
+ * Uses resolveFieldValue() from schemas/inputs.ts to handle the flat FieldValueUnion.
  */
 const executeFieldUpdate = async (
   projectId: string,
   itemId: string,
   fieldId: string,
-  value: z.infer<typeof FieldValueUnion>,
+  value: Parameters<typeof resolveFieldValue>[0],
 ): Promise<string | null> => {
+  const resolved = resolveFieldValue(value);
+  if (typeof resolved === "string") return resolved; // validation error
+
   try {
-    if (value.type === "clear") {
+    if (resolved.isClear) {
       await graphql<{ clearProjectV2ItemFieldValue: { projectV2Item: { id: string } } }>(
         CLEAR_FIELD_MUTATION,
         { input: { projectId, itemId, fieldId } },
       );
     } else {
-      const fieldValue = buildFieldValue(value);
       await graphql<UpdateProjectItemFieldData>(UPDATE_FIELD_MUTATION, {
-        input: { projectId, itemId, fieldId, value: fieldValue },
+        input: { projectId, itemId, fieldId, value: resolved.fieldValue },
       });
     }
     return null;

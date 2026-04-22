@@ -10,6 +10,7 @@ import {
   UpdateFieldValueSchema,
   GetIssueNodeIdSchema,
   GetUserNodeIdSchema,
+  resolveFieldValue,
 } from "../schemas/inputs.ts";
 import { loadScrumConfig, resolveFields, getIterationValue } from "../services/scrum.ts";
 import type {
@@ -316,13 +317,13 @@ Workflow:
   3. Get item IDs: github_list_project_items
   4. Call this tool with the resolved IDs
 
-Supported field types and their value format:
+Supported field types — always set \`type\`, then set the matching companion key:
   - text:          { type: 'text', value: 'string' }
-  - number:        { type: 'number', value: 123 }
+  - number:        { type: 'number', number_value: 123 }
   - date:          { type: 'date', value: 'YYYY-MM-DD' }
   - single_select: { type: 'single_select', option_id: 'abc123' }
   - iteration:     { type: 'iteration', iteration_id: 'abc123' }
-  - clear:         { type: 'clear' } — removes any current value
+  - clear:         { type: 'clear' }  — removes any current value, no other key needed
 
 Args:
   - project_id (string): Project node ID (PVT_kwDO…) — read scrum://config or call github_get_project.
@@ -342,8 +343,12 @@ Returns: Confirmation with item ID.`,
     },
     async (params) => {
       try {
-        // Handle 'clear' by using clearProjectV2ItemFieldValue mutation
-        if (params.value.type === "clear") {
+        const resolved = resolveFieldValue(params.value);
+        if (typeof resolved === "string") {
+          return { content: [{ type: "text", text: resolved }] };
+        }
+
+        if (resolved.isClear) {
           const mutation = `
             mutation($input: ClearProjectV2ItemFieldValueInput!) {
               clearProjectV2ItemFieldValue(input: $input) {
@@ -362,26 +367,6 @@ Returns: Confirmation with item ID.`,
           };
         }
 
-        // Build the value object for updateProjectV2ItemFieldValue
-        let fieldValue: Record<string, unknown>;
-        switch (params.value.type) {
-          case "text":
-            fieldValue = { text: params.value.value };
-            break;
-          case "number":
-            fieldValue = { number: params.value.value };
-            break;
-          case "date":
-            fieldValue = { date: params.value.value };
-            break;
-          case "single_select":
-            fieldValue = { singleSelectOptionId: params.value.option_id };
-            break;
-          case "iteration":
-            fieldValue = { iterationId: params.value.iteration_id };
-            break;
-        }
-
         const mutation = `
           mutation($input: UpdateProjectV2ItemFieldValueInput!) {
             updateProjectV2ItemFieldValue(input: $input) {
@@ -394,7 +379,7 @@ Returns: Confirmation with item ID.`,
             projectId: params.project_id,
             itemId: params.item_id,
             fieldId: params.field_id,
-            value: fieldValue,
+            value: resolved.fieldValue,
           },
         });
 

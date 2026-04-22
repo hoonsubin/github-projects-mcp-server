@@ -520,3 +520,29 @@ github-projects-mcp-server/
 - [ ] Implement GitHub repository API function
 - [ ] Refactor the config type system to make it dynamic based on the fetched json file instead of manual coding
 - [ ] Improve tool calling descriptions and fail safes. Right now, the tool invocation would fail or be very inconsistent
+
+### ✅ 1. Fix `FieldValueUnion` Schema Structure (Highest Impact)
+
+- [ ] **Refactor `FieldValueUnion`**: Replace `z.discriminatedUnion("anyOf", ...)` with a single flat object schema.
+  - [ ] Define all variant keys (`value`, `number_value`, `option_id`, `iteration_id`) as optional fields within one object.
+  - [ ] Keep `type` field as an `enum` discriminator.
+- [ ] **Update Validation Logic**: Move per-type required-field checks from Schema to Handler (switch statement with explicit error messages).
+- [ ] **Verify Compatibility**: Ensure Zod validation passes for local models without hallucinating sibling keys.
+
+### ✅ 2. Implement Missing `github_update_draft_issue` Tool
+
+- [ ] **Add Tool Definition**: Create `github_update_draft_issue` in `src/tools/items.ts`.
+  - [ ] Signature: `(draft_issue_id, title?, body?, assignee_ids?)`.
+- [ ] **Handle ID Mapping**: Ensure tool accepts the _content node ID_ (not Project Item ID).
+  - [ ] Implement lookup logic if necessary to resolve content node ID from `github_add_draft_issue` return values.
+- [ ] **Prevent Hallucination**: Verify model no longer invents tool names for draft issue edits.
+
+### ✅ 3. Clean Up `ListItemsSchema` Enum
+
+- [ ] **Remove Placeholder**: Delete `"REDACTED"` from `filter_type: z.enum(...)`.
+- [ ] **Document Intent**: If the slot is reserved for future types, add a code comment instead of using a placeholder value.
+
+### ✅ 4. Fix Transport Label Logging (`http:undefined`)
+
+- [ ] **Refactor Wrapper**: Update `wrapTransportLogging` to avoid capturing `transport.sessionId` at wrap time.
+- [ ] **Implement Lazy Capture**: Use a helper (e.g., `getLabel()`) inside the closure to read `sessionId` at log-call time, not initialization time.
