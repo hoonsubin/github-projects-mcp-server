@@ -65,7 +65,7 @@ const EMPTY_BOARD_CONFIG: BoardConfig = {
  * defaults so the server starts without error; resolveFields() will use the live
  * field fallback path in that case.
  */
-export const loadScrumConfig = async (): Promise<MergedScrumConfig> => {
+export const loadScrumConfig = async () => {
   const humanRaw = await Deno.readTextFile(SCRUM_CONFIG_PATH);
   const human = parseYaml(humanRaw) as Omit<MergedScrumConfig, "_board">;
 
@@ -78,7 +78,7 @@ export const loadScrumConfig = async (): Promise<MergedScrumConfig> => {
     // instructing them to run `deno task sync-config`.
   }
 
-  return { ...human, _board: board };
+  return { ...human, _board: board } as MergedScrumConfig;
 };
 
 // ---------------------------------------------------------------------------
@@ -126,7 +126,12 @@ const resolveBlockedOptionId = (config: MergedScrumConfig): string | null => {
  */
 export const resolveFields = (
   config: MergedScrumConfig,
-  liveFields?: Array<{ id: string; name: string; dataType: string; __typename: string }>,
+  liveFields?: Array<{
+    id: string;
+    name: string;
+    dataType: string;
+    __typename: string;
+  }>,
 ): ResolvedScrumFields => {
   const registry = config._board._fields_registry;
   const fn = config.field_names;
@@ -207,8 +212,8 @@ export const fetchAllItems = async (
   const items: ProjectV2Item[] = [];
   let cursor: string | null = null;
 
-  for (;;) {
-    const data = await graphql<ProjectItemsData>(query, {
+  while (true) {
+    const data: ProjectItemsData = await graphql<ProjectItemsData>(query, {
       login: owner,
       number: projectNumber,
       first: 100,
@@ -216,7 +221,9 @@ export const fetchAllItems = async (
     });
 
     const projectData =
-      ownerType === "user" ? data.user?.projectV2 : data.organization?.projectV2;
+      ownerType === "user"
+        ? data.user?.projectV2
+        : data.organization?.projectV2;
 
     if (!projectData) break;
 
@@ -372,7 +379,8 @@ export const extractPriorityValue = (
 export const isBacklogItem = (
   item: ProjectV2Item,
   sprintFieldId: string,
-): boolean => !item.isArchived && getIterationValue(item, sprintFieldId) === null;
+): boolean =>
+  !item.isArchived && getIterationValue(item, sprintFieldId) === null;
 
 /** Extract a display title from any item content type. */
 export const getItemTitle = (item: ProjectV2Item): string =>
@@ -389,9 +397,7 @@ export const getItemUrl = (item: ProjectV2Item): string | null =>
 /** Extract the logins of all assignees for an item. */
 export const getItemAssignees = (item: ProjectV2Item): string[] =>
   (
-    item.content as
-      | { assignees?: { nodes: Array<{ login: string }> } }
-      | null
+    item.content as { assignees?: { nodes: Array<{ login: string }> } } | null
   )?.assignees?.nodes.map((a) => a.login) ?? [];
 
 // ---------------------------------------------------------------------------
@@ -428,7 +434,10 @@ export const decodeCursor = (cursor: string): number => {
  * Compute the inclusive end date of an iteration.
  * A 14-day sprint starting on April 27 ends on May 10 (27 + 14 - 1 = 40 → May 10).
  */
-export const computeEndDate = (startDate: string, durationDays: number): string => {
+export const computeEndDate = (
+  startDate: string,
+  durationDays: number,
+): string => {
   const d = new Date(startDate);
   d.setDate(d.getDate() + durationDays - 1);
   return d.toISOString().slice(0, 10);

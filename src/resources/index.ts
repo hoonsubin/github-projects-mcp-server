@@ -108,10 +108,9 @@ export const registerScrumResources = (server: McpServer): void => {
   // config/sprint-archive-{n}.md after each sprint close. The agent reads these
   // when writing velocity commentary or retrospective context.
 
-  const archiveTemplate = new ResourceTemplate(
-    "scrum://sprint/archive/{n}",
-    { list: undefined },
-  );
+  const archiveTemplate = new ResourceTemplate("scrum://sprint/archive/{n}", {
+    list: undefined,
+  });
 
   server.registerResource(
     "sprint-archive",

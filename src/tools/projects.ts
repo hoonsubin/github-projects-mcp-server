@@ -50,8 +50,6 @@ Returns: Markdown list of projects with IDs, numbers, URLs, and field summaries.
     },
     async (params) => {
       try {
-        let projects: InstanceType<typeof Array<ReturnType<typeof Array>>>;
-
         if (params.owner_type === "org") {
           const query = `
             query($login: String!, $first: Int!, $after: String) {
@@ -69,13 +67,25 @@ Returns: Markdown list of projects with IDs, numbers, URLs, and field summaries.
             after: params.after ?? null,
           });
           const projectsV2 = data.organization?.projectsV2;
-          if (!projectsV2) return { content: [{ type: "text", text: `Organization '${params.owner}' not found.` }] };
+          if (!projectsV2)
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `Organization '${params.owner}' not found.`,
+                },
+              ],
+            };
 
           const { nodes, totalCount, pageInfo } = projectsV2;
-          const filtered = params.include_closed ? nodes : nodes.filter((p) => !p.closed);
+          const filtered = params.include_closed
+            ? nodes
+            : nodes.filter((p) => !p.closed);
           const text = [
             `## Projects for org: ${params.owner} (${totalCount} total)`,
-            pageInfo.hasNextPage ? `_Next page cursor: \`${pageInfo.endCursor}\`_` : "",
+            pageInfo.hasNextPage
+              ? `_Next page cursor: \`${pageInfo.endCursor}\`_`
+              : "",
             "",
             ...filtered.map(formatProject),
           ].join("\n");
@@ -97,13 +107,22 @@ Returns: Markdown list of projects with IDs, numbers, URLs, and field summaries.
             after: params.after ?? null,
           });
           const projectsV2 = data.user?.projectsV2;
-          if (!projectsV2) return { content: [{ type: "text", text: `User '${params.owner}' not found.` }] };
+          if (!projectsV2)
+            return {
+              content: [
+                { type: "text", text: `User '${params.owner}' not found.` },
+              ],
+            };
 
           const { nodes, totalCount, pageInfo } = projectsV2;
-          const filtered = params.include_closed ? nodes : nodes.filter((p) => !p.closed);
+          const filtered = params.include_closed
+            ? nodes
+            : nodes.filter((p) => !p.closed);
           const text = [
             `## Projects for user: ${params.owner} (${totalCount} total)`,
-            pageInfo.hasNextPage ? `_Next page cursor: \`${pageInfo.endCursor}\`_` : "",
+            pageInfo.hasNextPage
+              ? `_Next page cursor: \`${pageInfo.endCursor}\`_`
+              : "",
             "",
             ...filtered.map(formatProject),
           ].join("\n");
@@ -112,7 +131,7 @@ Returns: Markdown list of projects with IDs, numbers, URLs, and field summaries.
       } catch (err) {
         return { content: [{ type: "text", text: formatError(err) }] };
       }
-    }
+    },
   );
 
   // ── Get Project ────────────────────────────────────────────────────────────
@@ -167,10 +186,12 @@ Returns: Full project details including fields, options, and node IDs.`,
 
         if (!project) {
           return {
-            content: [{
-              type: "text",
-              text: `Project #${params.project_number} not found for ${params.owner}.`,
-            }],
+            content: [
+              {
+                type: "text",
+                text: `Project #${params.project_number} not found for ${params.owner}.`,
+              },
+            ],
           };
         }
 
@@ -183,7 +204,7 @@ Returns: Full project details including fields, options, and node IDs.`,
       } catch (err) {
         return { content: [{ type: "text", text: formatError(err) }] };
       }
-    }
+    },
   );
 
   // ── Get Project Fields ─────────────────────────────────────────────────────
@@ -266,8 +287,20 @@ Returns: Each field's name, dataType, node ID, and (for single-select) all optio
               }`;
 
         const data = await graphql<{
-          user?: { projectV2: { title: string; number: number; fields: { nodes: ProjectV2Field[] } } | null };
-          organization?: { projectV2: { title: string; number: number; fields: { nodes: ProjectV2Field[] } } | null };
+          user?: {
+            projectV2: {
+              title: string;
+              number: number;
+              fields: { nodes: ProjectV2Field[] };
+            } | null;
+          };
+          organization?: {
+            projectV2: {
+              title: string;
+              number: number;
+              fields: { nodes: ProjectV2Field[] };
+            } | null;
+          };
         }>(query, { login: params.owner, number: params.project_number });
 
         const project =
@@ -276,7 +309,14 @@ Returns: Each field's name, dataType, node ID, and (for single-select) all optio
             : data.user?.projectV2;
 
         if (!project) {
-          return { content: [{ type: "text", text: `Project #${params.project_number} not found for ${params.owner}.` }] };
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Project #${params.project_number} not found for ${params.owner}.`,
+              },
+            ],
+          };
         }
 
         const fields = params.field_type
@@ -284,18 +324,22 @@ Returns: Each field's name, dataType, node ID, and (for single-select) all optio
           : project.fields.nodes;
 
         const fieldLines = fields.map(formatField);
-        const filterNote = params.field_type ? ` (filtered: ${params.field_type})` : "";
+        const filterNote = params.field_type
+          ? ` (filtered: ${params.field_type})`
+          : "";
         const text = [
           `## Fields for: ${project.title} (#${project.number})${filterNote}`,
           "",
-          fieldLines.length === 0 ? `_No fields of type ${params.field_type} found._` : fieldLines.join("\n"),
+          fieldLines.length === 0
+            ? `_No fields of type ${params.field_type} found._`
+            : fieldLines.join("\n"),
         ].join("\n");
 
         return { content: [{ type: "text", text }] };
       } catch (err) {
         return { content: [{ type: "text", text: formatError(err) }] };
       }
-    }
+    },
   );
 
   // ── Update Project ─────────────────────────────────────────────────────────
@@ -337,7 +381,8 @@ Returns: Updated project metadata.`,
 
         const input: Record<string, unknown> = { projectId: params.project_id };
         if (params.title !== undefined) input.title = params.title;
-        if (params.short_description !== undefined) input.shortDescription = params.short_description;
+        if (params.short_description !== undefined)
+          input.shortDescription = params.short_description;
         if (params.readme !== undefined) input.readme = params.readme;
         if (params.public !== undefined) input.public = params.public;
         if (params.closed !== undefined) input.closed = params.closed;
@@ -346,19 +391,25 @@ Returns: Updated project metadata.`,
         const p = data.updateProjectV2.projectV2;
 
         return {
-          content: [{
-            type: "text",
-            text: [
-              "✅ Project updated successfully.",
-              `**Title**: ${p.title}`,
-              `**Status**: ${p.closed ? "Closed" : "Open"} | ${p.public ? "Public" : "Private"}`,
-              p.shortDescription ? `**Description**: ${p.shortDescription}` : "",
-            ].filter(Boolean).join("\n"),
-          }],
+          content: [
+            {
+              type: "text",
+              text: [
+                "✅ Project updated successfully.",
+                `**Title**: ${p.title}`,
+                `**Status**: ${p.closed ? "Closed" : "Open"} | ${p.public ? "Public" : "Private"}`,
+                p.shortDescription
+                  ? `**Description**: ${p.shortDescription}`
+                  : "",
+              ]
+                .filter(Boolean)
+                .join("\n"),
+            },
+          ],
         };
       } catch (err) {
         return { content: [{ type: "text", text: formatError(err) }] };
       }
-    }
+    },
   );
-}
+};
