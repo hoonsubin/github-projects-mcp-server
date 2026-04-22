@@ -93,6 +93,7 @@ flowchart LR
 
     subgraph Services["src/services/"]
         GH["github.ts"]
+        LOG["logger.ts"]
         FMTS["formatters.ts"]
         SCRUM["scrum.ts"]
     end
@@ -106,6 +107,7 @@ flowchart LR
     PT & IT & ST -->|validates input| ZOD
     PT & IT & ST -->|calls API| GH
     PT & IT & ST -->|formats output| FMTS
+    PT & IT & ST & GH -->|stderr| LOG
     ST -->|sprint logic| SCRUM
     RES -->|loadScrumConfig| SCRUM
     GH & FMTS & SCRUM -->|uses| TY
@@ -141,14 +143,14 @@ flowchart LR
 
 These tools operate on project coordinates from `scrum.config.yml` — no `owner`/`project_number` params needed. Requires `project-board.config.json` (`deno task sync-config` to generate).
 
-| Tool                            | Type  | Description                                                                                                  |
-| ------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------ |
-| `github_get_sprint_status`      | Read  | Live sprint health: committed/completed points, per-item status grouped view, blocked items, carry-over risk |
-| `github_get_velocity`           | Read  | Velocity series across last N completed iterations — points committed vs completed, rolling average, trend   |
-| `github_get_backlog_items`      | Read  | Items not assigned to any sprint, sorted by MoSCoW priority then estimated before unestimated; paginated     |
-| `github_bulk_update_item_field` | Write | Set the same field on multiple items (max 50) — primary sprint-planning write tool                           |
-| `github_close_sprint`           | Write | Carry incomplete items to next sprint or backlog; optionally archive Done items. `dry_run: true` by default  |
-| `github_generate_sprint_report` | Read  | Full sprint review doc: goal assessment, velocity, item outcomes, carry-over, DoD checklist, retro scaffold  |
+| Tool                            | Type  | Description                                                                                                                        |
+| ------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `github_get_sprint_status`      | Read  | Live sprint health: committed/completed points, per-item status grouped view, blocked items, carry-over risk                       |
+| `github_get_velocity`           | Read  | Velocity series across last N completed iterations — points committed vs completed, rolling average, trend                         |
+| `github_get_backlog_items`      | Read  | Items not assigned to any sprint, sorted by MoSCoW priority then estimated before unestimated; paginated                           |
+| `github_bulk_update_item_field` | Write | Set the same field on up to 50 items; `project_id` optional (auto-resolves from scrum config) — primary sprint-planning write tool |
+| `github_close_sprint`           | Write | Carry incomplete items to next sprint or backlog; optionally archive Done items. `dry_run: true` by default                        |
+| `github_generate_sprint_report` | Read  | Full sprint review doc: goal assessment, velocity, item outcomes, carry-over, DoD checklist, retro scaffold                        |
 
 ---
 
@@ -473,6 +475,16 @@ deno task sync-config      # sync GitHub board fields → project-board.config.j
 deno task sync-config:dry  # preview sync output without writing
 ```
 
+### Debugging
+
+Set `DEBUG=1` to enable debug-level logging on stderr:
+
+```bash
+DEBUG=1 GITHUB_TOKEN=ghp_yourtoken deno task start
+```
+
+Debug output includes incoming tool calls with parsed parameters, outgoing GraphQL queries and variables, raw API responses, and JSON-RPC wire traffic. All server output goes to stderr so it does not interfere with the stdio JSON-RPC channel.
+
 ---
 
 ## Project Structure
@@ -501,6 +513,7 @@ github-projects-mcp-server/
     │   └── inputs.ts              # Zod validation schemas for all tool inputs
     └── services/
         ├── github.ts              # graphql<T>() executor, GitHubApiError, formatError()
+        ├── logger.ts              # Structured stderr logger; set DEBUG=1 for debug-level output
         ├── formatters.ts          # GraphQL fragments + Markdown output formatters
         └── scrum.ts               # loadScrumConfig(), resolveFields(), fetchAllItems(), helpers
 ```
@@ -509,40 +522,23 @@ github-projects-mcp-server/
 
 ## Environment Variables
 
-| Variable        | Default | Description                       |
-| --------------- | ------- | --------------------------------- |
-| `GITHUB_TOKEN`  | —       | **Required.** GitHub classic PAT  |
-| `MCP_TRANSPORT` | `stdio` | `stdio` or `http`                 |
-| `PORT`          | `3000`  | HTTP listen port (http mode only) |
+| Variable        | Default | Description                                                                               |
+| --------------- | ------- | ----------------------------------------------------------------------------------------- |
+| `GITHUB_TOKEN`  | —       | **Required.** GitHub classic PAT                                                          |
+| `MCP_TRANSPORT` | `stdio` | `stdio` or `http`                                                                         |
+| `PORT`          | `3000`  | HTTP listen port (http mode only)                                                         |
+| `DEBUG`         | unset   | Set to `1` to enable debug-level logging (tool calls, GraphQL ops, JSON-RPC wire traffic) |
 
 ## Todo
 
-- [ ] Implement GitHub repository API function
-- [ ] Refactor the config type system to make it dynamic based on the fetched json file instead of manual coding
-- [ ] Improve tool calling descriptions and fail safes. Right now, the tool invocation would fail or be very inconsistent
-
-### ✅ 1. Fix `FieldValueUnion` Schema Structure (Highest Impact)
-
-- [ ] **Refactor `FieldValueUnion`**: Replace `z.discriminatedUnion("anyOf", ...)` with a single flat object schema.
-  - [ ] Define all variant keys (`value`, `number_value`, `option_id`, `iteration_id`) as optional fields within one object.
-  - [ ] Keep `type` field as an `enum` discriminator.
-- [ ] **Update Validation Logic**: Move per-type required-field checks from Schema to Handler (switch statement with explicit error messages).
-- [ ] **Verify Compatibility**: Ensure Zod validation passes for local models without hallucinating sibling keys.
-
-### ✅ 2. Implement Missing `github_update_draft_issue` Tool
-
-- [ ] **Add Tool Definition**: Create `github_update_draft_issue` in `src/tools/items.ts`.
-  - [ ] Signature: `(draft_issue_id, title?, body?, assignee_ids?)`.
-- [ ] **Handle ID Mapping**: Ensure tool accepts the _content node ID_ (not Project Item ID).
-  - [ ] Implement lookup logic if necessary to resolve content node ID from `github_add_draft_issue` return values.
-- [ ] **Prevent Hallucination**: Verify model no longer invents tool names for draft issue edits.
-
-### ✅ 3. Clean Up `ListItemsSchema` Enum
-
-- [ ] **Remove Placeholder**: Delete `"REDACTED"` from `filter_type: z.enum(...)`.
-- [ ] **Document Intent**: If the slot is reserved for future types, add a code comment instead of using a placeholder value.
-
-### ✅ 4. Fix Transport Label Logging (`http:undefined`)
-
-- [ ] **Refactor Wrapper**: Update `wrapTransportLogging` to avoid capturing `transport.sessionId` at wrap time.
-- [ ] **Implement Lazy Capture**: Use a helper (e.g., `getLabel()`) inside the closure to read `sessionId` at log-call time, not initialization time.
+- [ ] Implement GitHub repository API tools
+- [ ] Refactor the config type system to be dynamic (derived from the fetched JSON file rather than manually coded)
+- [ ] Add `github_update_draft_issue` to `src/tools/items.ts`; signature: `(draft_issue_id, title?, body?, assignee_ids?)`.
+  - [ ] The tool must accept the draft issue's _content node ID_ (returned by `github_add_draft_issue`), not the project item ID.
+  - [ ] Prevents models from hallucinating tool names when they need to edit a draft issue title or body.
+- [ ] Fix Transport Label Logging (`http:undefined`)
+  - [ ] Update `wrapTransportLogging` in `src/index.ts` to use a lazy `getLabel()` closure that reads `transport.sessionId` at log-call time instead of capturing it at wrap time (it is `undefined` during initialization).
+- [x] **Flatten `FieldValueUnion` schema** — replaced `z.discriminatedUnion` (6-variant `anyOf` with `additionalProperties: false` per variant) with a single flat `z.object`. All companion keys (`value`, `number_value`, `option_id`, `iteration_id`) are now optional fields on one object; `type` remains an enum discriminator. Eliminates the primary cause of write-tool failures for local LLMs.
+- [x] **Centralize field value validation** — added `resolveFieldValue()` helper in `src/schemas/inputs.ts`; shared by `items.ts` and `sprints.ts`, returns human-readable error strings the model can act on.
+- [x] **Remove `"REDACTED"` placeholder** — cleaned `filter_type` enum in `ListItemsSchema`; was causing a type mismatch against `ItemContentType` and leaking as a valid API value.
+- [x] **Structured logger** — added `src/services/logger.ts`; all output to stderr; `DEBUG=1` enables debug-level output without polluting the stdio JSON-RPC channel.
