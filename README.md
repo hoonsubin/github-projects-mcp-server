@@ -67,8 +67,6 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    classDef planned stroke-dasharray:5 5,stroke:#888,color:#888
-
     subgraph Entry["src/index.ts"]
         FACTORY["createMcpServer()"]
         STDIO_T["runStdio()"]
@@ -78,7 +76,15 @@ flowchart LR
     subgraph Tools["src/tools/"]
         PT["projects.ts"]
         IT["items.ts"]
-        ST["sprints.ts"]:::planned
+        ST["sprints.ts"]
+    end
+
+    subgraph Resources["src/resources/"]
+        RES["index.ts\nscrum://config\nscrum://sprint/*"]
+    end
+
+    subgraph Prompts["src/prompts/"]
+        PRO["index.ts\nclassify-intent\nconfirm-mutation\nworkflow prompts"]
     end
 
     subgraph Schemas["src/schemas/"]
@@ -88,7 +94,7 @@ flowchart LR
     subgraph Services["src/services/"]
         GH["github.ts"]
         FMTS["formatters.ts"]
-        SCRUM["scrum.ts"]:::planned
+        SCRUM["scrum.ts"]
     end
 
     subgraph Types["src/types.ts"]
@@ -96,10 +102,12 @@ flowchart LR
     end
 
     FACTORY -->|registers| PT & IT & ST
+    FACTORY -->|registers| RES & PRO
     PT & IT & ST -->|validates input| ZOD
     PT & IT & ST -->|calls API| GH
     PT & IT & ST -->|formats output| FMTS
     ST -->|sprint logic| SCRUM
+    RES -->|loadScrumConfig| SCRUM
     GH & FMTS & SCRUM -->|uses| TY
 ```
 
@@ -107,54 +115,68 @@ flowchart LR
 
 ## Tool Reference
 
-### Existing Tools
-
-#### Project Management (`src/tools/projects.ts`)
+### Project Management (`src/tools/projects.ts`)
 
 | Tool | Type | Description |
 |---|---|---|
 | `github_list_projects` | Read | List all Projects v2 for a user or org, with pagination and closed-project filter |
 | `github_get_project` | Read | Full project details: node IDs, field definitions, option IDs, README |
-| `github_get_project_fields` | Read | All custom fields with their IDs, types, single-select options, and iteration configs |
+| `github_get_project_fields` | Read | All custom fields with IDs, types, options, and iteration configs; optional `field_type` filter |
 | `github_update_project` | Write | Patch title, description, README, visibility, or open/closed status |
 
-#### Item Management (`src/tools/items.ts`)
+### Item Management (`src/tools/items.ts`)
 
 | Tool | Type | Description |
 |---|---|---|
-| `github_list_project_items` | Read | Paginated item list with full content and all field values; optional type filter |
+| `github_list_project_items` | Read | Paginated item list; optional `filter_type`, `iteration_id`, and `status_option_id` filters |
 | `github_add_item_to_project` | Write | Add an existing Issue or PR to a project by node ID |
-| `github_add_draft_issue` | Write | Create a draft issue directly in a project with optional assignees |
+| `github_add_draft_issue` | Write | Create a draft issue; optional `iteration_id` assigns it to a sprint immediately |
 | `github_update_item_field` | Write | Set or clear any field value: text, number, date, single-select, or iteration |
 | `github_archive_project_item` | Write | Archive or unarchive an item (reversible; item stays in project) |
 | `github_delete_project_item` | Write | Permanently remove an item from a project (irreversible) |
 | `github_get_issue_node_id` | Read | Resolve a human-readable issue/PR number to a GraphQL node ID |
 | `github_get_user_node_id` | Read | Resolve a GitHub login to a GraphQL node ID |
 
----
+### Sprint & SCRUM Layer (`src/tools/sprints.ts`)
 
-### Planned Tools
-
-#### Sprint & SCRUM Layer (`src/tools/sprints.ts`)
-
-These tools form the autonomous SCRUM management layer. They are read/aggregate or bulk-mutation operations that the agent cannot currently accomplish with existing tools without excessive multi-step reasoning.
+These tools operate on project coordinates from `scrum.config.yml` — no `owner`/`project_number` params needed. Requires `project-board.config.json` (`deno task sync-config` to generate).
 
 | Tool | Type | Description |
 |---|---|---|
-| `github_get_sprint_status` | Read | Full state of one iteration: committed points, completed points, per-item status, blocked items, carry-over candidates |
-| `github_get_velocity` | Read | Velocity series across last N completed iterations — story points done per sprint, rolling average, trend |
-| `github_get_backlog_items` | Read | Items not assigned to any iteration, ordered by a priority field; the agent's view of the Product Backlog |
-| `github_bulk_update_item_field` | Write | Set the same field value on a list of items in one call — used to commit a batch of items to a sprint |
-| `github_close_sprint` | Write | Sprint close ceremony: moves incomplete items to a target iteration or clears them to backlog; optionally archives Done items |
-| `github_generate_sprint_report` | Read | Synthesizes sprint review data into a structured document: goal, velocity, item-by-item outcome, carry-over list, retrospective scaffold |
+| `github_get_sprint_status` | Read | Live sprint health: committed/completed points, per-item status grouped view, blocked items, carry-over risk |
+| `github_get_velocity` | Read | Velocity series across last N completed iterations — points committed vs completed, rolling average, trend |
+| `github_get_backlog_items` | Read | Items not assigned to any sprint, sorted by MoSCoW priority then estimated before unestimated; paginated |
+| `github_bulk_update_item_field` | Write | Set the same field on multiple items (max 50) — primary sprint-planning write tool |
+| `github_close_sprint` | Write | Carry incomplete items to next sprint or backlog; optionally archive Done items. `dry_run: true` by default |
+| `github_generate_sprint_report` | Read | Full sprint review doc: goal assessment, velocity, item outcomes, carry-over, DoD checklist, retro scaffold |
 
-#### Enhancements to Existing Tools
+---
 
-| Tool | Change | Reason |
+## Resources & Prompts
+
+### Resources (`src/resources/index.ts`)
+
+MCP Resources provide stable, human-authored context the agent reads before acting. All sprint tools that need project coordinates or field IDs should read `scrum://config` first.
+
+| URI | MIME | Description |
 |---|---|---|
-| `github_list_project_items` | Add `iteration_id` and `status_option_id` filter params | Agent needs scoped queries (e.g. "all Blocked items in Sprint 4") without full-list post-filtering |
-| `github_add_draft_issue` | Add optional `iteration_id` param | Create and assign to sprint in a single call during sprint planning |
-| `github_get_project_fields` | Add optional `field_type` filter param | Agent frequently needs only the iteration field or only the story-points field — avoids scanning 30 fields |
+| `scrum://config` | `application/json` | Merged `scrum.config.yml` + `project-board.config.json` — field IDs, status taxonomy, DoR, DoD, team, autonomy |
+| `scrum://sprint/current` | `text/markdown` | Human-authored sprint goal, capacity plan, and out-of-band decisions (`config/sprint-current.md`) |
+| `scrum://sprint/archive/{n}` | `text/markdown` | Historical sprint doc for sprint N (`config/sprint-archive-{n}.md`) |
+
+### Prompts (`src/prompts/index.ts`)
+
+Prompts define workflow entry points with constrained write scopes and behavioral contracts. They degrade gracefully when the MCP client doesn't surface them — tool descriptions carry the same safety language as fallback.
+
+| Prompt | Write Scope | Purpose |
+|---|---|---|
+| `classify-intent` | None | Disambiguation gate for Slack/comment input — returns `direct_command \| contextual_reference \| incidental_mention` |
+| `confirm-mutation` | None | Shows a structured preview and requires the literal string `"confirm"` before executing any write |
+| `standup` | None | Read-only daily standup brief: sprint progress + blocked items + carry-over risk |
+| `backlog-refinement` | Story points, status, new draft issues | Estimate and prioritise the Product Backlog |
+| `sprint-planning` | Sprint (iteration) field only | Assign backlog items to a sprint iteration |
+| `sprint-close` | Sprint field + archive | Close a sprint with dry-run preview and required confirmation |
+| `sprint-management` | All writes (autonomy-gated) | Full sprint management with classify-intent on every informal message |
 
 ---
 
@@ -454,25 +476,30 @@ deno task sync-config:dry  # preview sync output without writing
 
 ```
 github-projects-mcp-server/
-├── scrum.config.yml           # Human-defined project spec — edit this
-├── project-board.config.json  # Auto-generated board state — do not edit
-├── sprint-current.md          # Active sprint document (Scrum Master updates)
+├── config/
+│   ├── scrum.config.yml           # Human-defined project spec — edit this
+│   ├── project-board.config.json  # Auto-generated board state — do not edit
+│   └── sprint-current.md          # Active sprint document (Scrum Master updates)
 ├── scripts/
-│   └── sync-project-config.ts # Syncs GitHub field metadata → project-board.config.json
-├── deno.json                  # Tasks, imports, compiler options
+│   └── sync-project-config.ts    # Syncs GitHub field metadata → project-board.config.json
+├── deno.json                      # Tasks, imports, compiler options
 └── src/
-    ├── index.ts               # Entry point — transport selection, server factory
-    ├── types.ts               # TypeScript interfaces for GitHub GraphQL responses
+    ├── index.ts                   # Entry point — transport, server factory, all registrations
+    ├── types.ts                   # TypeScript interfaces for GitHub GraphQL responses + SCRUM
     ├── tools/
-    │   ├── projects.ts        # Project-level tools (list, get, update, fields)
-    │   ├── items.ts           # Item-level tools (CRUD, field updates, node ID lookups)
-    │   └── sprints.ts         # ⟵ planned: SCRUM sprint & velocity tools
+    │   ├── projects.ts            # Project-level tools (list, get, update, fields)
+    │   ├── items.ts               # Item-level tools (CRUD, field updates, node ID lookups)
+    │   └── sprints.ts             # SCRUM sprint tools (status, velocity, backlog, close, report)
+    ├── resources/
+    │   └── index.ts               # MCP Resources: scrum://config, scrum://sprint/*
+    ├── prompts/
+    │   └── index.ts               # MCP Prompts: classify-intent, confirm-mutation, workflows
     ├── schemas/
-    │   └── inputs.ts          # Zod validation schemas for all tool inputs
+    │   └── inputs.ts              # Zod validation schemas for all tool inputs
     └── services/
-        ├── github.ts          # graphql<T>() executor, GitHubApiError, formatError()
-        ├── formatters.ts      # GraphQL fragments + Markdown output formatters
-        └── scrum.ts           # ⟵ planned: loadScrumConfig(), velocity, burndown logic
+        ├── github.ts              # graphql<T>() executor, GitHubApiError, formatError()
+        ├── formatters.ts          # GraphQL fragments + Markdown output formatters
+        └── scrum.ts               # loadScrumConfig(), resolveFields(), fetchAllItems(), helpers
 ```
 
 ---

@@ -5,6 +5,9 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import express, { type Response, type Request } from "express";
 import { registerProjectTools } from "./tools/projects.ts";
 import { registerItemTools } from "./tools/items.ts";
+import { registerSprintTools } from "./tools/sprints.ts";
+import { registerScrumResources } from "./resources/index.ts";
+import { registerSprintPrompts } from "./prompts/index.ts";
 import type { Socket } from "node:net";
 
 // ── Server factory ───────────────────────────────────────────────────────────
@@ -17,6 +20,9 @@ const createMcpServer = (): McpServer => {
 
   registerProjectTools(server);
   registerItemTools(server);
+  registerSprintTools(server);
+  registerScrumResources(server);
+  registerSprintPrompts(server);
 
   return server;
 };

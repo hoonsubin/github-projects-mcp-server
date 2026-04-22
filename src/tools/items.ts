@@ -11,6 +11,7 @@ import {
   GetIssueNodeIdSchema,
   GetUserNodeIdSchema,
 } from "../schemas/inputs.ts";
+import { loadScrumConfig, resolveFields, getIterationValue } from "../services/scrum.ts";
 import type {
   ProjectItemsData,
   AddProjectItemData,
@@ -31,7 +32,7 @@ export const registerItemTools = (server: McpServer): void => {
       description: `List items (issues, PRs, draft issues) in a GitHub Project v2.
 
 Returns each item's node ID (needed for field updates), content details,
-and all custom field values.
+and all custom field values. Filtering is client-side (GitHub has no server filterBy).
 
 Args:
   - owner (string): GitHub username or org login
@@ -39,7 +40,10 @@ Args:
   - project_number (number): project number
   - first (number): items per page, 1-100, default 20
   - after (string): pagination cursor
-  - filter_type ('Issue'|'PullRequest'|'DraftIssue'): optional type filter
+  - filter_type ('Issue'|'PullRequest'|'DraftIssue'): optional content type filter
+  - iteration_id (string, optional): filter to items assigned to a specific sprint iteration node ID
+  - status_option_id (string, optional): filter to items with a specific Status option ID
+    (get option IDs from github_get_project_fields)
 
 Returns: Markdown list of items with IDs, titles, states, and field values.
          Includes pagination cursor if more items exist.`,
@@ -94,8 +98,40 @@ Returns: Markdown list of items with IDs, titles, states, and field values.
         }
 
         let items: ProjectV2Item[] = projectData.items.nodes;
+
         if (params.filter_type) {
           items = items.filter((item) => item.type === params.filter_type);
+        }
+
+        // Client-side iteration filter — GitHub has no server-side filterBy
+        if (params.iteration_id) {
+          const targetId = params.iteration_id;
+          // We need the sprint field ID to extract iteration values; try config first
+          let sprintFieldId: string | null = null;
+          try {
+            const cfg = await loadScrumConfig();
+            const fields = resolveFields(cfg);
+            sprintFieldId = fields.sprintFieldId;
+          } catch {
+            // Config unavailable — fall back to matching against any iteration field value
+          }
+          items = items.filter((item) => {
+            const fvs = item.fieldValues.nodes;
+            if (sprintFieldId) {
+              const iv = getIterationValue(item, sprintFieldId);
+              return iv?.iterationId === targetId;
+            }
+            // Fallback: check any field value with a matching iterationId
+            return fvs.some((fv) => fv.iterationId === targetId);
+          });
+        }
+
+        // Client-side status option filter
+        if (params.status_option_id) {
+          const targetOptionId = params.status_option_id;
+          items = items.filter((item) =>
+            item.fieldValues.nodes.some((fv) => fv.optionId === targetOptionId)
+          );
         }
 
         const { totalCount, pageInfo } = projectData.items;
@@ -183,8 +219,10 @@ Args:
   - title (string): Draft issue title (required)
   - body (string, optional): Markdown body content
   - assignee_ids (string[], optional): Array of user node IDs (get from github_get_user_node_id)
+  - iteration_id (string, optional): Sprint iteration node ID to assign immediately on creation.
+    Requires scrum.config.yml and project-board.config.json to be present (run deno task sync-config first).
 
-Returns: Node ID of the new project item.`,
+Returns: Node ID of the new project item, plus sprint assignment status if iteration_id was provided.`,
       inputSchema: AddDraftIssueSchema,
       annotations: {
         readOnlyHint: false,
@@ -214,12 +252,45 @@ Returns: Node ID of the new project item.`,
         const data = await graphql<AddDraftIssueData>(mutation, { input });
         const itemId = data.addProjectV2DraftIssue.projectItem.id;
 
-        return {
-          content: [{
-            type: "text",
-            text: `✅ Draft issue created.\n**Title**: ${params.title}\n**Item node ID**: \`${itemId}\``,
-          }],
-        };
+        const lines = [
+          `✅ Draft issue created.`,
+          `**Title**: ${params.title}`,
+          `**Item node ID**: \`${itemId}\``,
+        ];
+
+        // Assign to sprint immediately if iteration_id was provided
+        if (params.iteration_id) {
+          try {
+            // Resolve sprint field ID from scrum config
+            const cfg = await loadScrumConfig();
+            const resolvedFields = resolveFields(cfg);
+            const sprintFieldId = resolvedFields.sprintFieldId;
+
+            const updateMutation = `
+              mutation($input: UpdateProjectV2ItemFieldValueInput!) {
+                updateProjectV2ItemFieldValue(input: $input) {
+                  projectV2Item { id }
+                }
+              }`;
+
+            await graphql<UpdateProjectItemFieldData>(updateMutation, {
+              input: {
+                projectId: params.project_id,
+                itemId,
+                fieldId: sprintFieldId,
+                value: { iterationId: params.iteration_id },
+              },
+            });
+            lines.push(`**Sprint**: assigned to iteration \`${params.iteration_id}\``);
+          } catch (sprintErr) {
+            lines.push(
+              `⚠️ Sprint assignment failed: ${sprintErr instanceof Error ? sprintErr.message : String(sprintErr)}. ` +
+                `Run \`deno task sync-config\` and retry, or use github_update_item_field manually.`,
+            );
+          }
+        }
+
+        return { content: [{ type: "text", text: lines.join("\n") }] };
       } catch (err) {
         return { content: [{ type: "text", text: formatError(err) }] };
       }

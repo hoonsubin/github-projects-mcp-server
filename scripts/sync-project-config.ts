@@ -16,140 +16,19 @@
 
 import { parseArgs } from "@std/cli/parse-args";
 import { parse as parseYaml } from "@std/yaml";
+import {
+  BoardConfig,
+  GhField,
+  GhIterationField,
+  GhProjectResponse,
+  GhSingleSelectField,
+  ScrumConfigYml,
+  SprintIteration,
+} from "../src/types.ts";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-
-/** Shape of scrum.config.yml (human-defined sections only) */
-interface ScrumConfigYml {
-  project: {
-    owner: string;
-    /** "user" for personal accounts, "org" for organisations */
-    owner_type: "user" | "org";
-    project_number: number;
-  };
-  field_names: {
-    sprint: string;
-    status: string;
-    story_points: string;
-    priority: string;
-    epic: string;
-    item_type: string;
-    assignee: string;
-    [key: string]: string;
-  };
-  sprint?: {
-    duration_days: number | null;
-    velocity_window?: number;
-    carry_over_threshold_days?: number;
-    report_submit_time?: string;
-    report_recipient?: string | null;
-  };
-  story_points?: {
-    method?: string;
-    scale?: number[];
-    max_points_per_item?: number;
-  };
-  [key: string]: unknown;
-}
-
-/** Shape written to project-board.config.json */
-interface BoardConfig {
-  _comment?: string;
-  _last_synced: string | null;
-  project: { id: string | null; title: string | null; url: string | null };
-  status_values: Record<string, unknown>;
-  priority: Record<string, unknown>;
-  item_types: Record<string, unknown>;
-  sprint: {
-    _field_id: string | null;
-    active_sprint: SprintIteration | null;
-    all_iterations: SprintIteration[];
-  };
-  story_points: { _field_id: string | null };
-  _fields_registry: Record<
-    string,
-    { id: string; dataType: string; __typename: string }
-  >;
-  _epic_field: Record<string, unknown> | null;
-  _assignee_field: { _field_id: string; dataType: string } | null;
-}
-
-interface SprintIteration {
-  id: string;
-  title: string;
-  startDate: string;
-  duration: number;
-  completed?: boolean;
-}
-
-// Minimal GraphQL response shapes
-interface GhFieldBase {
-  __typename: string;
-  id: string;
-  name: string;
-  dataType: string;
-  _comment?: string;
-}
-
-interface GhSingleSelectOption {
-  id: string;
-  name: string;
-  color: string;
-  description: string;
-}
-
-interface GhSingleSelectField extends GhFieldBase {
-  __typename: "ProjectV2SingleSelectField";
-  options: GhSingleSelectOption[];
-}
-
-interface GhIterationConfig {
-  startDay: number;
-  duration: number;
-  iterations: Array<{
-    id: string;
-    title: string;
-    startDate: string;
-    duration: number;
-  }>;
-  completedIterations: Array<{
-    id: string;
-    title: string;
-    startDate: string;
-    duration: number;
-  }>;
-}
-
-interface GhIterationField extends GhFieldBase {
-  __typename: "ProjectV2IterationField";
-  configuration: GhIterationConfig;
-}
-
-type GhField = GhFieldBase | GhSingleSelectField | GhIterationField;
-
-interface GhProjectResponse {
-  data: {
-    user?: {
-      projectV2: {
-        id: string;
-        title: string;
-        url: string;
-        fields: { nodes: GhField[] };
-      };
-    };
-    organization?: {
-      projectV2: {
-        id: string;
-        title: string;
-        url: string;
-        fields: { nodes: GhField[] };
-      };
-    };
-  };
-  errors?: Array<{ message: string }>;
-}
 
 // ---------------------------------------------------------------------------
 // GraphQL query
@@ -264,7 +143,7 @@ const fetchProjectFields = async (
       `Project #${projectNumber} not found for ${ownerType} "${owner}".`,
     );
   }
-
+  console.log(JSON.stringify(json));
   return ownerData.projectV2;
 };
 

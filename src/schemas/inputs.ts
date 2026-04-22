@@ -54,6 +54,10 @@ export const ListItemsSchema = z.object({
   ...PaginationSchema,
   filter_type: z.enum(["Issue", "PullRequest", "DraftIssue", "REDACTED"]).optional()
     .describe("Filter items by content type: 'Issue', 'PullRequest', 'DraftIssue'"),
+  iteration_id: z.string().optional()
+    .describe("Filter to items assigned to a specific sprint iteration node ID"),
+  status_option_id: z.string().optional()
+    .describe("Filter to items with a specific Status option ID (from github_get_project_fields)"),
 }).strict();
 
 export const AddItemSchema = z.object({
@@ -72,6 +76,8 @@ export const AddDraftIssueSchema = z.object({
     .describe("Markdown body for the draft issue"),
   assignee_ids: z.array(z.string()).max(10).optional()
     .describe("Array of user node IDs to assign"),
+  iteration_id: z.string().optional()
+    .describe("Iteration node ID to assign to a sprint immediately on creation"),
 }).strict();
 
 export const DeleteItemSchema = z.object({
@@ -92,7 +98,7 @@ export const ArchiveItemSchema = z.object({
 
 // ── Field values ─────────────────────────────────────────────────────────────
 
-const FieldValueUnion = z.discriminatedUnion("type", [
+export const FieldValueUnion = z.discriminatedUnion("type", [
   z.object({ type: z.literal("text"), value: z.string() }),
   z.object({ type: z.literal("number"), value: z.number() }),
   z.object({ type: z.literal("date"), value: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD") }),
@@ -120,6 +126,76 @@ export const GetProjectFieldsSchema = z.object({
   owner_type: OwnerTypeSchema,
   project_number: z.number().int().positive()
     .describe("The project number"),
+  field_type: z.enum([
+    "TEXT", "NUMBER", "DATE", "SINGLE_SELECT", "ITERATION",
+    "ASSIGNEES", "LABELS", "MILESTONE", "REPOSITORY", "REVIEWERS",
+    "TITLE", "TRACKED_BY", "TRACKS",
+  ]).optional()
+    .describe("Filter fields by data type. Omit to return all fields."),
+}).strict();
+
+// ── Sprint tools ──────────────────────────────────────────────────────────────
+
+export const GetSprintStatusSchema = z.object({
+  iteration_id: z.string().optional()
+    .describe(
+      "Iteration node ID to query. Omit to auto-detect the active iteration " +
+      "by today's date (errors if no iteration is currently active).",
+    ),
+}).strict();
+
+export const GetVelocitySchema = z.object({
+  iterations_count: z.number().int().min(1).max(10).default(4)
+    .describe("Number of completed iterations to include in the velocity series."),
+}).strict();
+
+export const GetBacklogItemsSchema = z.object({
+  include_estimated_only: z.boolean().default(false)
+    .describe("Return only items that have a story points value set (sprint-ready candidates)."),
+  first: z.number().int().min(1).max(100).default(20)
+    .describe("Number of items to return (1–100, default 20)."),
+  after: z.string().optional()
+    .describe("Pagination cursor from a previous response."),
+}).strict();
+
+export const BulkUpdateItemFieldSchema = z.object({
+  project_id: z.string().min(1)
+    .describe("Node ID of the project (PVT_kwDO...)."),
+  item_ids: z.array(z.string().min(1)).min(1).max(50)
+    .describe("Project item node IDs (PVTI_lADO...). Maximum 50 per call."),
+  field_id: z.string().min(1)
+    .describe("Field node ID to update (from github_get_project_fields)."),
+  value: FieldValueUnion
+    .describe(
+      "The new field value. Same format as github_update_item_field. " +
+      "Use type='iteration' + iteration_id to commit items to a sprint.",
+    ),
+  stop_on_error: z.boolean().default(false)
+    .describe("Abort on first failure. Default false (best-effort across all items)."),
+}).strict();
+
+export const CloseSprintSchema = z.object({
+  closing_iteration_id: z.string().min(1)
+    .describe("Iteration node ID of the sprint being closed."),
+  target_iteration_id: z.string().optional()
+    .describe(
+      "Iteration to carry incomplete items into. " +
+      "Omit to clear the Sprint field entirely (items return to backlog).",
+    ),
+  archive_done: z.boolean().default(false)
+    .describe("Archive items whose status is Done after moving."),
+  dry_run: z.boolean().default(true)
+    .describe(
+      "Preview the close operation without executing it. " +
+      "Default true — you must explicitly pass false to execute.",
+    ),
+}).strict();
+
+export const GenerateSprintReportSchema = z.object({
+  iteration_id: z.string().optional()
+    .describe("Iteration node ID. Omit to use the currently active iteration."),
+  include_retrospective_scaffold: z.boolean().default(true)
+    .describe("Include a Start / Stop / Continue template in the output."),
 }).strict();
 
 // ── Issue/PR lookup (needed to get node IDs) ─────────────────────────────────

@@ -201,6 +201,9 @@ Args:
   - owner (string): GitHub username or org login
   - owner_type ('user'|'org'): defaults to 'user'
   - project_number (number): project number
+  - field_type (string, optional): filter by data type — one of TEXT, NUMBER, DATE,
+    SINGLE_SELECT, ITERATION, ASSIGNEES, LABELS, MILESTONE, REPOSITORY, REVIEWERS,
+    TITLE, TRACKED_BY, TRACKS. Omit to return all fields.
 
 Returns: Each field's name, dataType, node ID, and (for single-select) all option IDs.`,
       inputSchema: GetProjectFieldsSchema,
@@ -276,11 +279,16 @@ Returns: Each field's name, dataType, node ID, and (for single-select) all optio
           return { content: [{ type: "text", text: `Project #${params.project_number} not found for ${params.owner}.` }] };
         }
 
-        const fieldLines = project.fields.nodes.map(formatField);
+        const fields = params.field_type
+          ? project.fields.nodes.filter((f) => f.dataType === params.field_type)
+          : project.fields.nodes;
+
+        const fieldLines = fields.map(formatField);
+        const filterNote = params.field_type ? ` (filtered: ${params.field_type})` : "";
         const text = [
-          `## Fields for: ${project.title} (#${project.number})`,
+          `## Fields for: ${project.title} (#${project.number})${filterNote}`,
           "",
-          ...fieldLines,
+          fieldLines.length === 0 ? `_No fields of type ${params.field_type} found._` : fieldLines.join("\n"),
         ].join("\n");
 
         return { content: [{ type: "text", text }] };
