@@ -117,38 +117,38 @@ flowchart LR
 
 ### Project Management (`src/tools/projects.ts`)
 
-| Tool | Type | Description |
-|---|---|---|
-| `github_list_projects` | Read | List all Projects v2 for a user or org, with pagination and closed-project filter |
-| `github_get_project` | Read | Full project details: node IDs, field definitions, option IDs, README |
-| `github_get_project_fields` | Read | All custom fields with IDs, types, options, and iteration configs; optional `field_type` filter |
-| `github_update_project` | Write | Patch title, description, README, visibility, or open/closed status |
+| Tool                        | Type  | Description                                                                                     |
+| --------------------------- | ----- | ----------------------------------------------------------------------------------------------- |
+| `github_list_projects`      | Read  | List all Projects v2 for a user or org, with pagination and closed-project filter               |
+| `github_get_project`        | Read  | Full project details: node IDs, field definitions, option IDs, README                           |
+| `github_get_project_fields` | Read  | All custom fields with IDs, types, options, and iteration configs; optional `field_type` filter |
+| `github_update_project`     | Write | Patch title, description, README, visibility, or open/closed status                             |
 
 ### Item Management (`src/tools/items.ts`)
 
-| Tool | Type | Description |
-|---|---|---|
-| `github_list_project_items` | Read | Paginated item list; optional `filter_type`, `iteration_id`, and `status_option_id` filters |
-| `github_add_item_to_project` | Write | Add an existing Issue or PR to a project by node ID |
-| `github_add_draft_issue` | Write | Create a draft issue; optional `iteration_id` assigns it to a sprint immediately |
-| `github_update_item_field` | Write | Set or clear any field value: text, number, date, single-select, or iteration |
-| `github_archive_project_item` | Write | Archive or unarchive an item (reversible; item stays in project) |
-| `github_delete_project_item` | Write | Permanently remove an item from a project (irreversible) |
-| `github_get_issue_node_id` | Read | Resolve a human-readable issue/PR number to a GraphQL node ID |
-| `github_get_user_node_id` | Read | Resolve a GitHub login to a GraphQL node ID |
+| Tool                          | Type  | Description                                                                                 |
+| ----------------------------- | ----- | ------------------------------------------------------------------------------------------- |
+| `github_list_project_items`   | Read  | Paginated item list; optional `filter_type`, `iteration_id`, and `status_option_id` filters |
+| `github_add_item_to_project`  | Write | Add an existing Issue or PR to a project by node ID                                         |
+| `github_add_draft_issue`      | Write | Create a draft issue; optional `iteration_id` assigns it to a sprint immediately            |
+| `github_update_item_field`    | Write | Set or clear any field value: text, number, date, single-select, or iteration               |
+| `github_archive_project_item` | Write | Archive or unarchive an item (reversible; item stays in project)                            |
+| `github_delete_project_item`  | Write | Permanently remove an item from a project (irreversible)                                    |
+| `github_get_issue_node_id`    | Read  | Resolve a human-readable issue/PR number to a GraphQL node ID                               |
+| `github_get_user_node_id`     | Read  | Resolve a GitHub login to a GraphQL node ID                                                 |
 
 ### Sprint & SCRUM Layer (`src/tools/sprints.ts`)
 
 These tools operate on project coordinates from `scrum.config.yml` — no `owner`/`project_number` params needed. Requires `project-board.config.json` (`deno task sync-config` to generate).
 
-| Tool | Type | Description |
-|---|---|---|
-| `github_get_sprint_status` | Read | Live sprint health: committed/completed points, per-item status grouped view, blocked items, carry-over risk |
-| `github_get_velocity` | Read | Velocity series across last N completed iterations — points committed vs completed, rolling average, trend |
-| `github_get_backlog_items` | Read | Items not assigned to any sprint, sorted by MoSCoW priority then estimated before unestimated; paginated |
-| `github_bulk_update_item_field` | Write | Set the same field on multiple items (max 50) — primary sprint-planning write tool |
-| `github_close_sprint` | Write | Carry incomplete items to next sprint or backlog; optionally archive Done items. `dry_run: true` by default |
-| `github_generate_sprint_report` | Read | Full sprint review doc: goal assessment, velocity, item outcomes, carry-over, DoD checklist, retro scaffold |
+| Tool                            | Type  | Description                                                                                                  |
+| ------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------ |
+| `github_get_sprint_status`      | Read  | Live sprint health: committed/completed points, per-item status grouped view, blocked items, carry-over risk |
+| `github_get_velocity`           | Read  | Velocity series across last N completed iterations — points committed vs completed, rolling average, trend   |
+| `github_get_backlog_items`      | Read  | Items not assigned to any sprint, sorted by MoSCoW priority then estimated before unestimated; paginated     |
+| `github_bulk_update_item_field` | Write | Set the same field on multiple items (max 50) — primary sprint-planning write tool                           |
+| `github_close_sprint`           | Write | Carry incomplete items to next sprint or backlog; optionally archive Done items. `dry_run: true` by default  |
+| `github_generate_sprint_report` | Read  | Full sprint review doc: goal assessment, velocity, item outcomes, carry-over, DoD checklist, retro scaffold  |
 
 ---
 
@@ -158,25 +158,25 @@ These tools operate on project coordinates from `scrum.config.yml` — no `owner
 
 MCP Resources provide stable, human-authored context the agent reads before acting. All sprint tools that need project coordinates or field IDs should read `scrum://config` first.
 
-| URI | MIME | Description |
-|---|---|---|
-| `scrum://config` | `application/json` | Merged `scrum.config.yml` + `project-board.config.json` — field IDs, status taxonomy, DoR, DoD, team, autonomy |
-| `scrum://sprint/current` | `text/markdown` | Human-authored sprint goal, capacity plan, and out-of-band decisions (`config/sprint-current.md`) |
-| `scrum://sprint/archive/{n}` | `text/markdown` | Historical sprint doc for sprint N (`config/sprint-archive-{n}.md`) |
+| URI                          | MIME               | Description                                                                                                    |
+| ---------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `scrum://config`             | `application/json` | Merged `scrum.config.yml` + `project-board.config.json` — field IDs, status taxonomy, DoR, DoD, team, autonomy |
+| `scrum://sprint/current`     | `text/markdown`    | Human-authored sprint goal, capacity plan, and out-of-band decisions (`config/sprint-current.md`)              |
+| `scrum://sprint/archive/{n}` | `text/markdown`    | Historical sprint doc for sprint N (`config/sprint-archive-{n}.md`)                                            |
 
 ### Prompts (`src/prompts/index.ts`)
 
 Prompts define workflow entry points with constrained write scopes and behavioral contracts. They degrade gracefully when the MCP client doesn't surface them — tool descriptions carry the same safety language as fallback.
 
-| Prompt | Write Scope | Purpose |
-|---|---|---|
-| `classify-intent` | None | Disambiguation gate for Slack/comment input — returns `direct_command \| contextual_reference \| incidental_mention` |
-| `confirm-mutation` | None | Shows a structured preview and requires the literal string `"confirm"` before executing any write |
-| `standup` | None | Read-only daily standup brief: sprint progress + blocked items + carry-over risk |
-| `backlog-refinement` | Story points, status, new draft issues | Estimate and prioritise the Product Backlog |
-| `sprint-planning` | Sprint (iteration) field only | Assign backlog items to a sprint iteration |
-| `sprint-close` | Sprint field + archive | Close a sprint with dry-run preview and required confirmation |
-| `sprint-management` | All writes (autonomy-gated) | Full sprint management with classify-intent on every informal message |
+| Prompt               | Write Scope                            | Purpose                                                                                                              |
+| -------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `classify-intent`    | None                                   | Disambiguation gate for Slack/comment input — returns `direct_command \| contextual_reference \| incidental_mention` |
+| `confirm-mutation`   | None                                   | Shows a structured preview and requires the literal string `"confirm"` before executing any write                    |
+| `standup`            | None                                   | Read-only daily standup brief: sprint progress + blocked items + carry-over risk                                     |
+| `backlog-refinement` | Story points, status, new draft issues | Estimate and prioritise the Product Backlog                                                                          |
+| `sprint-planning`    | Sprint (iteration) field only          | Assign backlog items to a sprint iteration                                                                           |
+| `sprint-close`       | Sprint field + archive                 | Close a sprint with dry-run preview and required confirmation                                                        |
+| `sprint-management`  | All writes (autonomy-gated)            | Full sprint management with classify-intent on every informal message                                                |
 
 ---
 
@@ -268,13 +268,13 @@ sequenceDiagram
 
 These are hard limits imposed by the GitHub GraphQL API that shape what this server can and cannot do autonomously:
 
-| Constraint | Detail |
-|---|---|
-| **Iteration creation** | Not supported via API. Sprints must be created manually in the GitHub Projects UI. The server can assign items to existing iterations but cannot create new ones. |
-| **Backlog ordering** | GitHub Projects v2 has no native API for reordering items. Priority ordering is approximated via a numeric `Priority` or `Rank` custom field. |
-| **Fine-grained tokens** | Classic PAT required — fine-grained tokens do not yet support the Projects v2 GraphQL mutations. |
-| **Rate limits** | GitHub GraphQL API: 5,000 points/hour. Bulk operations count once per mutation call, not per item. |
-| **Field creation** | Custom fields (story points, priority, etc.) must be created manually. The API supports reading and updating field values, not creating new field types. |
+| Constraint              | Detail                                                                                                                                                            |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Iteration creation**  | Not supported via API. Sprints must be created manually in the GitHub Projects UI. The server can assign items to existing iterations but cannot create new ones. |
+| **Backlog ordering**    | GitHub Projects v2 has no native API for reordering items. Priority ordering is approximated via a numeric `Priority` or `Rank` custom field.                     |
+| **Fine-grained tokens** | Classic PAT required — fine-grained tokens do not yet support the Projects v2 GraphQL mutations.                                                                  |
+| **Rate limits**         | GitHub GraphQL API: 5,000 points/hour. Bulk operations count once per mutation call, not per item.                                                                |
+| **Field creation**      | Custom fields (story points, priority, etc.) must be created manually. The API supports reading and updating field values, not creating new field types.          |
 
 ---
 
@@ -284,10 +284,10 @@ The server uses a **two-file split** to cleanly separate what humans own from wh
 
 ### Source of truth
 
-| File | Owner | Contains | Edit? |
-|---|---|---|---|
-| `scrum.config.yml` | Human | Project coordinates, team, field name map, DoR, DoD, epics, sprint settings | ✅ Yes — version-controlled |
-| `project-board.config.json` | GitHub (synced) | Field IDs, option lists, active sprint, iteration history | ❌ Never — generated by sync script |
+| File                        | Owner           | Contains                                                                    | Edit?                               |
+| --------------------------- | --------------- | --------------------------------------------------------------------------- | ----------------------------------- |
+| `scrum.config.yml`          | Human           | Project coordinates, team, field name map, DoR, DoD, epics, sprint settings | ✅ Yes — version-controlled         |
+| `project-board.config.json` | GitHub (synced) | Field IDs, option lists, active sprint, iteration history                   | ❌ Never — generated by sync script |
 
 ### Sync workflow
 
@@ -300,6 +300,7 @@ GITHUB_TOKEN=ghp_xxx deno task sync-config:dry
 ```
 
 The sync script (`scripts/sync-project-config.ts`):
+
 1. Reads `scrum.config.yml` to get project coordinates and `field_names`
 2. Queries the GitHub Projects v2 GraphQL API for live field metadata
 3. Warns about any `field_names` entries that don't match a real board field (catches typos early)
@@ -340,6 +341,7 @@ flowchart LR
 ### What each file controls
 
 **`scrum.config.yml`** — the project specification. Edit this when you:
+
 - Add or rename team members
 - Update the Definition of Ready / Done
 - Change the MoSCoW priority model or story point scale
@@ -348,6 +350,7 @@ flowchart LR
 - Rename a GitHub Projects field (then re-run `sync-config`)
 
 **`project-board.config.json`** — live board state. Regenerate this when:
+
 - You add or rename a field in GitHub Projects
 - You add a new sprint (iteration) in the GitHub UI
 - You change option names in a single-select field (Status, Priority, Type, Impediment)
@@ -362,11 +365,11 @@ flowchart LR
 
 ### Token Scopes
 
-| Operation | Required Scope |
-|---|---|
-| Read projects | `read:project` |
-| Write projects (add/update/delete items, update project) | `project` |
-| Read issues/PRs (to add them by node ID) | `repo` or `public_repo` |
+| Operation                                                | Required Scope          |
+| -------------------------------------------------------- | ----------------------- |
+| Read projects                                            | `read:project`          |
+| Write projects (add/update/delete items, update project) | `project`               |
+| Read issues/PRs (to add them by node ID)                 | `repo` or `public_repo` |
 
 Generate at: **GitHub → Settings → Developer Settings → Personal access tokens (classic)**
 
@@ -506,8 +509,12 @@ github-projects-mcp-server/
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|---|---|---|
-| `GITHUB_TOKEN` | — | **Required.** GitHub classic PAT |
-| `MCP_TRANSPORT` | `stdio` | `stdio` or `http` |
-| `PORT` | `3000` | HTTP listen port (http mode only) |
+| Variable        | Default | Description                       |
+| --------------- | ------- | --------------------------------- |
+| `GITHUB_TOKEN`  | —       | **Required.** GitHub classic PAT  |
+| `MCP_TRANSPORT` | `stdio` | `stdio` or `http`                 |
+| `PORT`          | `3000`  | HTTP listen port (http mode only) |
+
+## Todo
+
+- [ ] Implement GitHub repository API function
