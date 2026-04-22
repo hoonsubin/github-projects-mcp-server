@@ -609,7 +609,9 @@ MUST have been invoked first and the user MUST have typed "confirm". This is enf
 the prompt layer. Direct-command invocations are subject to the autonomy level in scrum://config.
 
 Args:
-  - project_id (string): Project node ID (PVT_kwDO...)
+  - project_id (string, optional): Project node ID (PVT_kwDO...).
+    Omit to auto-resolve from scrum://config (project-board.config.json).
+    Do NOT substitute owner or project_number — this must be a node ID or omitted.
   - item_ids (string[]): Project item node IDs (PVTI_lADO...) — max 50
   - field_id (string): Field node ID to update
   - value (object): New value — same format as github_update_item_field
@@ -626,11 +628,30 @@ Returns: Per-item success/failure summary.`,
     },
     async (params) => {
       try {
+        // Resolve project_id: use explicit param or fall back to scrum config
+        let projectId = params.project_id;
+        if (!projectId) {
+          const config = await loadScrumConfig();
+          const resolvedId = config._board.project.id;
+          if (!resolvedId) {
+            return {
+              content: [{
+                type: "text",
+                text:
+                  "Error: project_id was not provided and could not be resolved from " +
+                  "project-board.config.json (project.id is missing). " +
+                  "Run `deno task sync-config` first, or pass project_id explicitly.",
+              }],
+            };
+          }
+          projectId = resolvedId;
+        }
+
         const results: BulkUpdateResult[] = [];
 
         for (const itemId of params.item_ids) {
           const errMsg = await executeFieldUpdate(
-            params.project_id,
+            projectId,
             itemId,
             params.field_id,
             params.value,

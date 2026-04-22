@@ -214,8 +214,13 @@ Returns: Node ID of the new project item (use this for github_update_item_field)
 Draft issues live only in the project board (not in a repository) until converted.
 Useful for capturing quick tasks or ideas without creating a repo issue.
 
+**Prerequisites**: you need the project node ID before calling this tool.
+Read scrum://config to get it instantly (project.id field), or call
+github_get_project(owner, owner_type, project_number) and use the returned id.
+
 Args:
-  - project_id (string): Project node ID (e.g., PVT_kwDO...)
+  - project_id (string): Project node ID (PVT_kwDO…) — see Prerequisites above.
+    Do NOT pass owner, project_number, or any other identifier here.
   - title (string): Draft issue title (required)
   - body (string, optional): Markdown body content
   - assignee_ids (string[], optional): Array of user node IDs (get from github_get_user_node_id)
@@ -306,9 +311,10 @@ Returns: Node ID of the new project item, plus sprint assignment status if itera
       description: `Set or clear a custom field value on a project item.
 
 Workflow:
-  1. Get field IDs: github_get_project_fields
-  2. Get item IDs: github_list_project_items
-  3. Call this tool with the IDs
+  1. Get project node ID: read scrum://config (project.id) or call github_get_project
+  2. Get field IDs: github_get_project_fields (or read scrum://config _fields_registry)
+  3. Get item IDs: github_list_project_items
+  4. Call this tool with the resolved IDs
 
 Supported field types and their value format:
   - text:          { type: 'text', value: 'string' }
@@ -319,9 +325,10 @@ Supported field types and their value format:
   - clear:         { type: 'clear' } — removes any current value
 
 Args:
-  - project_id (string): Project node ID
+  - project_id (string): Project node ID (PVT_kwDO…) — read scrum://config or call github_get_project.
+    Do NOT pass owner or project_number here.
   - item_id (string): Project item node ID (e.g., PVTI_lADO...)
-  - field_id (string): Field node ID (from github_get_project_fields)
+  - field_id (string): Field node ID (from github_get_project_fields or scrum://config _fields_registry)
   - value (object): New value with type discriminator (see above)
 
 Returns: Confirmation with item ID.`,
@@ -414,9 +421,11 @@ Returns: Confirmation with item ID.`,
 Archived items are hidden from the default board view but not deleted.
 Use github_delete_project_item to permanently remove an item.
 
+**Prerequisites**: read scrum://config (project.id) or call github_get_project to obtain the project node ID.
+
 Args:
-  - project_id (string): Project node ID
-  - item_id (string): Project item node ID
+  - project_id (string): Project node ID (PVT_kwDO…). Do NOT pass owner or project_number.
+  - item_id (string): Project item node ID (PVTI_lADO…)
   - archived (boolean): true to archive, false to unarchive (default: true)
 
 Returns: Confirmation with item ID and new archived status.`,
@@ -469,9 +478,11 @@ Returns: Confirmation with item ID and new archived status.`,
 ⚠️ This is irreversible. The underlying issue or PR is NOT deleted — only its
 project card is removed. Use github_archive_project_item for reversible hiding.
 
+**Prerequisites**: read scrum://config (project.id) or call github_get_project to obtain the project node ID.
+
 Args:
-  - project_id (string): Project node ID
-  - item_id (string): Project item node ID to delete
+  - project_id (string): Project node ID (PVT_kwDO…). Do NOT pass owner or project_number.
+  - item_id (string): Project item node ID to delete (PVTI_lADO…)
 
 Returns: Confirmation with the deleted item's ID.`,
       inputSchema: DeleteItemSchema,

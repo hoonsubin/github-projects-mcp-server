@@ -518,3 +518,5 @@ github-projects-mcp-server/
 ## Todo
 
 - [ ] Implement GitHub repository API function
+- [ ] Refactor the config type system to make it dynamic based on the fetched json file instead of manual coding
+- [ ] Improve tool calling descriptions and fail safes. Right now, the tool invocation would fail or be very inconsistent

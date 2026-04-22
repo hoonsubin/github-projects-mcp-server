@@ -10,6 +10,9 @@
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
 import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { Variables } from "@modelcontextprotocol/sdk/shared/uriTemplate.js";
+import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
+import type { ServerRequest, ServerNotification } from "@modelcontextprotocol/sdk/types.js";
 import { loadScrumConfig } from "../services/scrum.ts";
 import { formatError } from "../services/github.ts";
 
@@ -122,7 +125,7 @@ export const registerScrumResources = (server: McpServer): void => {
         "Used for velocity commentary and retrospective reference.",
       mimeType: "text/markdown",
     },
-    async (_uri, variables) => {
+    async (_uri: URL, variables: Variables, _extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => {
       const n = Array.isArray(variables.n) ? variables.n[0] : variables.n;
       const uri = `scrum://sprint/archive/${n}`;
       try {

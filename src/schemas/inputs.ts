@@ -159,8 +159,12 @@ export const GetBacklogItemsSchema = z.object({
 }).strict();
 
 export const BulkUpdateItemFieldSchema = z.object({
-  project_id: z.string().min(1)
-    .describe("Node ID of the project (PVT_kwDO...)."),
+  project_id: z.string().min(1).optional()
+    .describe(
+      "Node ID of the project (PVT_kwDO…). " +
+      "Omit to auto-resolve from scrum://config (project-board.config.json must be present — run `deno task sync-config` first). " +
+      "Do NOT pass owner or project_number here.",
+    ),
   item_ids: z.array(z.string().min(1)).min(1).max(50)
     .describe("Project item node IDs (PVTI_lADO...). Maximum 50 per call."),
   field_id: z.string().min(1)
