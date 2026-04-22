@@ -27,7 +27,7 @@ A local MCP (Model Context Protocol) server for interacting with **GitHub Projec
 
 - Node.js ≥ 20
 - Deno.js
-- A GitHub Personal Access Token (classic or fine-grained)
+- A GitHub Personal Access Token (classic. Fine-grained doesn't support projects v2 yet)
 
 ### Token Scopes
 
@@ -54,7 +54,8 @@ GITHUB_TOKEN=ghp_yourtoken
 ```
 
 ```bash
-docker compose up -d
+docker compose build
+docker compose up
 ```
 
 The server listens on `http://127.0.0.1:3456/mcp`. Expose through your existing reverse proxy (Nginx, Caddy, Traefik) with authentication.

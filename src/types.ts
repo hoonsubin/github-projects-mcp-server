@@ -20,7 +20,7 @@ export interface ProjectV2 {
   createdAt: string;
   updatedAt: string;
   readme: string | null;
-  owner: { login: string; __typename: string };
+  owner: { __typename: "User" | "Organization"; login: string };
   fields: { nodes: ProjectV2Field[] };
   items: { totalCount: number };
 }

@@ -2,7 +2,8 @@
   "tasks": {
     "dev": "deno run --env-file --watch --allow-env --allow-net --allow-read src/index.ts",
     "start": "deno run --allow-env --allow-net --allow-read src/index.ts",
-    "inspector": "deno run --allow-env --allow-net --allow-read --allow-run src/index.ts"
+    "inspector": "deno run --allow-env --allow-net --allow-read --allow-run src/index.ts",
+    "test": "deno test --allow-env --allow-net src/"
   },
   "imports": {
     "@modelcontextprotocol/inspector": "npm:@modelcontextprotocol/inspector@^0.21.2",

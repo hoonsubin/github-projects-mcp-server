@@ -13,7 +13,7 @@ export const PROJECT_CORE_FRAGMENT = `
   createdAt
   updatedAt
   readme
-  owner { login __typename }
+  owner { __typename ... on User { login } ... on Organization { login } }
   items { totalCount }
   fields(first: 30) {
     nodes {
