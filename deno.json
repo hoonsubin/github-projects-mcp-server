@@ -3,7 +3,9 @@
     "dev": "deno run --env-file --watch --allow-env --allow-net --allow-read src/index.ts",
     "start": "deno run --allow-env --allow-net --allow-read src/index.ts",
     "inspector": "deno run --allow-env --allow-net --allow-read --allow-run src/index.ts",
-    "test": "deno test --allow-env --allow-net src/"
+    "test": "deno test --allow-env --allow-net src/",
+    "sync-config": "deno run --allow-env --allow-net --allow-read --allow-write scripts/sync-project-config.ts",
+    "sync-config:dry": "deno run --allow-env --allow-net --allow-read --allow-write scripts/sync-project-config.ts --dry-run"
   },
   "imports": {
     "@modelcontextprotocol/inspector": "npm:@modelcontextprotocol/inspector@^0.21.2",
@@ -11,7 +13,9 @@
     "@types/express": "npm:@types/express@^5.0.6",
     "express": "npm:express@^5.2.1",
     "zod": "npm:zod@^4.3.6",
-    "@std/assert": "jsr:@std/assert@1"
+    "@std/assert": "jsr:@std/assert@1",
+    "@std/cli": "jsr:@std/cli@^1.0.29",
+    "@std/yaml": "jsr:@std/yaml@^1.1.0"
   },
   "compilerOptions": {
     "lib": [

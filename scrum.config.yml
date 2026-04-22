@@ -1,0 +1,188 @@
+# =============================================================================
+# scrum.config.yml — Human-defined SCRUM configuration
+#
+# SOURCE OF TRUTH: This file is human-authored and version-controlled.
+# Edit this file to configure your project, team, and SCRUM taxonomy.
+#
+# GitHub board fields (field IDs, option lists, iteration data) are
+# auto-generated and stored separately in project-board.config.json.
+# Run `deno task sync-config` to regenerate project-board.config.json.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# GitHub Project coordinates — used by the sync script and MCP tools
+# -----------------------------------------------------------------------------
+project:
+  owner: hoonsubin
+  # "user" for personal projects, "org" for organisation projects
+  owner_type: user
+  project_number: 4
+
+# -----------------------------------------------------------------------------
+# Product definition
+# -----------------------------------------------------------------------------
+product:
+  name: MesseBuddy
+  vision: >
+    Help new Messe München employees integrate quickly by connecting them
+    with experienced mentors.
+  product_goal: >
+    Enable any new employee to find and communicate with a buddy within
+    their first week.
+
+# -----------------------------------------------------------------------------
+# Team
+# -----------------------------------------------------------------------------
+team:
+  product_owner:
+    name: Peter Tubak
+    contact: peter.tubak@messe-muenchen.de
+  members:
+    - login: alisa-diakova
+      name: Alisa Diakova
+      scrum_master_sprint: 1
+    - login: hoonsubin
+      name: Hoon Kim
+      scrum_master_sprint: 2
+    - login: kseniya-tsiabus
+      name: Kseniya Tsiabus
+      scrum_master_sprint: 3
+    - login: luis-mueller
+      name: Luis Müller
+      scrum_master_sprint: 4
+  supervisor:
+    name: Jannis Kolb
+    contact: j.kolb@lmu.de
+    report_recipient: true
+
+# -----------------------------------------------------------------------------
+# Sprint goal metadata — the agent reads this to evaluate sprint success
+# -----------------------------------------------------------------------------
+sprint_goal:
+  # Exact name of the "Sprint Goal" text field in GitHub Projects (if any).
+  # Leave as null if the sprint goal is tracked only in sprint-current.md.
+  field_name: Sprint Goal
+  required: true
+  format: outcome_based
+
+# -----------------------------------------------------------------------------
+# GitHub Projects field name map
+# Case-sensitive — must match field names exactly as shown in the GitHub UI.
+# -----------------------------------------------------------------------------
+field_names:
+  sprint: Sprint
+  status: Status
+  story_points: Story Points
+  priority: Priority
+  epic: Epic
+  item_type: Type
+  assignee: Assignees
+
+
+# -----------------------------------------------------------------------------
+# Item ID conventions
+# -----------------------------------------------------------------------------
+item_id:
+  # Tasks use a flat T-prefix to remain sprint-agnostic.
+  # Sprint association is tracked via the Sprint field, not the ID.
+  user_story_prefix: "US"
+  task_prefix: "T"
+  commit_format: "[{id}] Short description"
+
+# -----------------------------------------------------------------------------
+# Epics — managed here, not in GitHub (no native epic field in Projects v2)
+# -----------------------------------------------------------------------------
+epics:
+  - id: E-01
+    title: User Management
+    priority: Must Have
+  - id: E-02
+    title: Buddy/Mentor Matching
+    priority: Must Have
+  - id: E-03
+    title: Communication
+    priority: Should Have
+  - id: E-04
+    title: Progress Tracking
+    priority: Should Have
+  - id: E-05
+    title: Admin / HR Dashboard
+    priority: Could Have
+  - id: E-06
+    title: Notifications
+    priority: Could Have
+
+# -----------------------------------------------------------------------------
+# Story points
+# -----------------------------------------------------------------------------
+story_points:
+  method: planning_poker
+  scale: [1, 2, 3, 5, 8, 13]
+  # Items estimated above this threshold should be split before sprint entry.
+  max_points_per_item: 8
+
+# -----------------------------------------------------------------------------
+# Sprint settings
+# duration_days: set to null to derive sprint length from the GitHub iteration's
+#   own duration field (recommended for variable-length sprints). Set to a
+#   number only if all sprints are the same fixed length.
+# -----------------------------------------------------------------------------
+sprint:
+  duration_days: null
+  velocity_window: 4
+  carry_over_threshold_days: 3
+  # Time by which the sprint report must be submitted (local time, 24 h)
+  report_submit_time: "23:59"
+  report_recipient: j.kolb@lmu.de
+
+
+# -----------------------------------------------------------------------------
+# Agent autonomy
+# conservative — confirm every write before executing
+# standard     — confirm bulk and natural-language-triggered writes (default)
+# full         — autonomous for unambiguous single-item writes
+# -----------------------------------------------------------------------------
+autonomy:
+  level: standard
+  require_confirmation_above_n_items: 3
+
+# -----------------------------------------------------------------------------
+# Definition of Ready
+# An item must satisfy all criteria before it can enter a sprint.
+# -----------------------------------------------------------------------------
+definition_of_ready:
+  version: "1.0"
+  last_updated: "2026-04-22"
+  criteria:
+    - Written in user story format with a clear who / what / why
+    - Acceptance criteria clearly defined and agreed by PO + team
+    - Estimated by the development team (story points agreed via Planning Poker)
+    - Dependencies identified and either resolved or de-risked
+    - UI/UX approach noted (wireframe, sketch, or written description)
+    - Technical approach understood at a high level by the whole team
+    - Item is small enough to be completed within a single sprint
+
+# -----------------------------------------------------------------------------
+# Definition of Done
+# Every item must satisfy all criteria before it can be marked Done.
+# -----------------------------------------------------------------------------
+definition_of_done:
+  version: "1.0"
+  last_updated: "2026-04-22"
+  criteria:
+    - Code written and self-reviewed by the author
+    - Code reviewed and approved by at least one other team member
+    - No new linting or static analysis warnings introduced
+    - Feature branch merged into the main/develop branch
+    - Feature functions as described in all acceptance criteria
+    - Basic smoke test passed in the shared staging environment
+    - No critical bugs introduced (checked against existing features)
+    - Inline code comments added where logic is non-obvious
+    - Any new API endpoint documented in the README or API doc file
+    - Decision log updated if a significant architectural choice was made
+    - Feature deployed to the shared staging environment
+    - Team has verified it runs correctly in staging (not just locally)
+    - Acceptance criteria verified by Peter Tubak (or designated team member) in Sprint Review
+    - Code committed to the shared GitHub repository
+    - No uncommitted changes left on developer machines
+    - "Commit message follows agreed format: [US-XX] Short description"
