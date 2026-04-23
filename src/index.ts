@@ -6,10 +6,7 @@ import type {
   Transport,
   TransportSendOptions,
 } from "@modelcontextprotocol/sdk/shared/transport.js";
-import type {
-  JSONRPCMessage,
-  MessageExtraInfo,
-} from "@modelcontextprotocol/sdk/types.js";
+import type { JSONRPCMessage, MessageExtraInfo } from "@modelcontextprotocol/sdk/types.js";
 import express, { type Request, type Response } from "express";
 import { registerProjectTools } from "./tools/projects.ts";
 import { registerItemTools } from "./tools/items.ts";
@@ -171,8 +168,9 @@ const runHttp = () => {
       const server = createMcpServer();
       await server.connect(transport);
       // Wrap AFTER connect — the SDK sets transport.onmessage during connect.
-      if (log.isDebug())
+      if (log.isDebug()) {
         wrapTransportLogging(transport, `http:${transport.sessionId}`);
+      }
     } else {
       res.status(400).json({
         jsonrpc: "2.0",
