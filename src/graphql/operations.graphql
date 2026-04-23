@@ -1,0 +1,295 @@
+# =============================================================================
+# src/graphql/operations.graphql
+#
+# All GraphQL fragments and named operations used by this server.
+# Used by `deno task codegen:validate` to check every query against the schema.
+#
+# Naming convention:
+#   Fragments  — PascalCase noun describing the shape  (ProjectCore, ItemContent)
+#   Operations — Verb + Scope + Entity                 (ListUserProjects, GetOrgProject)
+# =============================================================================
+
+# ── Fragments ─────────────────────────────────────────────────────────────────
+
+fragment ProjectCore on ProjectV2 {
+  id
+  number
+  title
+  shortDescription
+  url
+  public
+  closed
+  createdAt
+  updatedAt
+  readme
+  owner {
+    __typename
+    ... on User { login }
+    ... on Organization { login }
+  }
+  items { totalCount }
+  fields(first: 30) {
+    nodes {
+      ... on ProjectV2Field { id name dataType }
+      ... on ProjectV2SingleSelectField {
+        id name dataType
+        options { id name color description }
+      }
+      ... on ProjectV2IterationField {
+        id name dataType
+        configuration {
+          iterations { id title startDate duration }
+          completedIterations { id title startDate duration }
+        }
+      }
+    }
+  }
+}
+
+fragment ItemContent on ProjectV2Item {
+  content {
+    ... on Issue {
+      __typename id number title url state body
+      assignees(first: 5) { nodes { login } }
+      labels(first: 10)   { nodes { name color } }
+      milestone { title dueOn }
+      repository { name nameWithOwner }
+    }
+    ... on PullRequest {
+      __typename id number title url state body isDraft
+      assignees(first: 5) { nodes { login } }
+      labels(first: 10)   { nodes { name color } }
+      repository { name nameWithOwner }
+    }
+    ... on DraftIssue {
+      __typename id title body
+      assignees(first: 5) { nodes { login } }
+    }
+  }
+}
+
+fragment ItemFieldValues on ProjectV2Item {
+  fieldValues(first: 20) {
+    nodes {
+      __typename
+      ... on ProjectV2ItemFieldTextValue {
+        text
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldNumberValue {
+        number
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldDateValue {
+        date
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldSingleSelectValue {
+        name color optionId
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldIterationValue {
+        title startDate duration iterationId
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldUserValue {
+        users(first: 5) { nodes { login } }
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldLabelValue {
+        labels(first: 10) { nodes { name color } }
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldMilestoneValue {
+        milestone { title dueOn }
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldRepositoryValue {
+        repository { name nameWithOwner }
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+    }
+  }
+}
+
+# ── Projects ──────────────────────────────────────────────────────────────────
+
+query ListUserProjects($login: String!, $first: Int!, $after: String) {
+  user(login: $login) {
+    projectsV2(first: $first, after: $after, orderBy: { field: UPDATED_AT, direction: DESC }) {
+      totalCount
+      pageInfo { hasNextPage endCursor }
+      nodes { ...ProjectCore }
+    }
+  }
+}
+
+query ListOrgProjects($login: String!, $first: Int!, $after: String) {
+  organization(login: $login) {
+    projectsV2(first: $first, after: $after, orderBy: { field: UPDATED_AT, direction: DESC }) {
+      totalCount
+      pageInfo { hasNextPage endCursor }
+      nodes { ...ProjectCore }
+    }
+  }
+}
+
+query GetUserProject($login: String!, $number: Int!) {
+  user(login: $login) {
+    projectV2(number: $number) { ...ProjectCore readme }
+  }
+}
+
+query GetOrgProject($login: String!, $number: Int!) {
+  organization(login: $login) {
+    projectV2(number: $number) { ...ProjectCore readme }
+  }
+}
+
+query GetUserProjectFields($login: String!, $number: Int!) {
+  user(login: $login) {
+    projectV2(number: $number) {
+      title number
+      fields(first: 50) {
+        nodes {
+          ... on ProjectV2Field { id name dataType }
+          ... on ProjectV2SingleSelectField {
+            id name dataType
+            options { id name color description }
+          }
+          ... on ProjectV2IterationField {
+            id name dataType
+            configuration {
+              iterations { id title startDate duration }
+              completedIterations { id title startDate duration }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+query GetOrgProjectFields($login: String!, $number: Int!) {
+  organization(login: $login) {
+    projectV2(number: $number) {
+      title number
+      fields(first: 50) {
+        nodes {
+          ... on ProjectV2Field { id name dataType }
+          ... on ProjectV2SingleSelectField {
+            id name dataType
+            options { id name color description }
+          }
+          ... on ProjectV2IterationField {
+            id name dataType
+            configuration {
+              iterations { id title startDate duration }
+              completedIterations { id title startDate duration }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+mutation UpdateProject($input: UpdateProjectV2Input!) {
+  updateProjectV2(input: $input) {
+    projectV2 { id title shortDescription public closed }
+  }
+}
+
+# ── Items ─────────────────────────────────────────────────────────────────────
+
+query GetUserProjectItems($login: String!, $number: Int!, $first: Int!, $after: String) {
+  user(login: $login) {
+    projectV2(number: $number) {
+      items(first: $first, after: $after) {
+        totalCount
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          id type createdAt updatedAt isArchived
+          ...ItemContent
+          ...ItemFieldValues
+        }
+      }
+    }
+  }
+}
+
+query GetOrgProjectItems($login: String!, $number: Int!, $first: Int!, $after: String) {
+  organization(login: $login) {
+    projectV2(number: $number) {
+      items(first: $first, after: $after) {
+        totalCount
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          id type createdAt updatedAt isArchived
+          ...ItemContent
+          ...ItemFieldValues
+        }
+      }
+    }
+  }
+}
+
+mutation AddProjectItem($projectId: ID!, $contentId: ID!) {
+  addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
+    item { id }
+  }
+}
+
+mutation AddDraftIssue($input: AddProjectV2DraftIssueInput!) {
+  addProjectV2DraftIssue(input: $input) {
+    projectItem { id }
+  }
+}
+
+mutation UpdateItemField($input: UpdateProjectV2ItemFieldValueInput!) {
+  updateProjectV2ItemFieldValue(input: $input) {
+    projectV2Item { id }
+  }
+}
+
+mutation ClearItemField($input: ClearProjectV2ItemFieldValueInput!) {
+  clearProjectV2ItemFieldValue(input: $input) {
+    projectV2Item { id }
+  }
+}
+
+mutation DeleteProjectItem($input: DeleteProjectV2ItemInput!) {
+  deleteProjectV2Item(input: $input) {
+    deletedItemId
+  }
+}
+
+mutation ArchiveProjectItem($input: ArchiveProjectV2ItemInput!) {
+  archiveProjectV2Item(input: $input) {
+    item { id isArchived }
+  }
+}
+
+mutation UnarchiveProjectItem($input: UnarchiveProjectV2ItemInput!) {
+  unarchiveProjectV2Item(input: $input) {
+    item { id isArchived }
+  }
+}
+
+# ── Lookups ───────────────────────────────────────────────────────────────────
+
+query GetIssueNodeId($owner: String!, $repo: String!, $number: Int!) {
+  repository(owner: $owner, name: $repo) {
+    issue(number: $number) { id }
+  }
+}
+
+query GetPRNodeId($owner: String!, $repo: String!, $number: Int!) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $number) { id }
+  }
+}
+
+query GetUserNodeId($login: String!) {
+  user(login: $login) { id }
+}

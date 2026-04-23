@@ -6,7 +6,9 @@
     "test": "deno test --allow-env --allow-net src/",
     "sync-config": "deno run --allow-env --allow-net --allow-read --allow-write scripts/sync-project-config.ts",
     "sync-config:dry": "deno run --allow-env --allow-net --allow-read --allow-write scripts/sync-project-config.ts --dry-run",
-    "query-introspect": "deno run --allow-env --allow-net --allow-read --allow-write scripts/query-introspection.ts"
+    "codegen": "deno run --allow-env --allow-net --allow-read --allow-write scripts/graphql-codegen.ts",
+    "codegen:validate": "deno run --allow-env --allow-net --allow-read --allow-write scripts/graphql-codegen.ts -- --validate",
+    "codegen:types-only": "deno run --allow-env --allow-net --allow-read --allow-write scripts/graphql-codegen.ts -- --skip-fetch"
   },
   "imports": {
     "@modelcontextprotocol/inspector": "npm:@modelcontextprotocol/inspector@^0.21.2",
