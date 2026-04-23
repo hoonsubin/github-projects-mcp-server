@@ -37,8 +37,7 @@ export const registerSprintPrompts = (server: McpServer): void => {
     "classify-intent",
     {
       title: "Classify Intent",
-      description:
-        "Disambiguation gate for unstructured natural language. " +
+      description: "Disambiguation gate for unstructured natural language. " +
         "Call before acting on Slack messages, issue comments, or informal notes. " +
         "Returns intent classification and confidence — do not act on incidental mentions.",
       argsSchema: {
@@ -99,8 +98,7 @@ autonomy level configured in scrum://config.`,
     "confirm-mutation",
     {
       title: "Confirm Mutation",
-      description:
-        "Mutation safety gate. Show a structured preview of a pending write operation " +
+      description: "Mutation safety gate. Show a structured preview of a pending write operation " +
         "and require the literal string 'confirm' before executing. " +
         "Use before any write from unstructured NL input or bulk writes above the threshold.",
       argsSchema: {
@@ -146,7 +144,9 @@ ${itemList}
 
 ---
 
-⚠️  This operation will modify ${items.length} item${items.length === 1 ? "" : "s"} on the GitHub project board.
+⚠️  This operation will modify ${items.length} item${
+                items.length === 1 ? "" : "s"
+              } on the GitHub project board.
 
 Type **confirm** (exactly) to execute, or anything else to cancel.
 "yes", "ok", "looks good" will NOT execute the operation.`,
@@ -215,8 +215,7 @@ Keep the output concise — standup is 15 minutes. Flag blockers first.`,
     "backlog-refinement",
     {
       title: "Backlog Refinement",
-      description:
-        "Estimate, prioritise, and create draft issues in the Product Backlog. " +
+      description: "Estimate, prioritise, and create draft issues in the Product Backlog. " +
         "Permitted writes: story points, status, new draft issues. " +
         "Sprint assignment is NOT permitted — use sprint-planning for that.",
     },
@@ -271,8 +270,7 @@ AUTONOMY NOTE: Respect the autonomy.level in scrum://config:
     "sprint-planning",
     {
       title: "Sprint Planning",
-      description:
-        "Assign backlog items to a sprint iteration. " +
+      description: "Assign backlog items to a sprint iteration. " +
         "The only permitted write is setting the Sprint / Iteration field. " +
         "Estimation and status changes must use the backlog-refinement workflow.",
     },
@@ -327,8 +325,7 @@ regardless of autonomy level. Sprint commitment changes are high-stakes.`,
     "sprint-close",
     {
       title: "Sprint Close",
-      description:
-        "Close a sprint: carry incomplete items to the next sprint or backlog, " +
+      description: "Close a sprint: carry incomplete items to the next sprint or backlog, " +
         "optionally archive Done items. Always starts with a dry-run preview. " +
         "Require explicit 'confirm' before executing.",
     },

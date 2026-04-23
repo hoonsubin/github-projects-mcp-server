@@ -136,8 +136,7 @@ const fetchProjectFields = async (
     );
   }
 
-  const ownerData =
-    ownerType === "user" ? json.data.user : json.data.organization;
+  const ownerData = ownerType === "user" ? json.data.user : json.data.organization;
   if (!ownerData?.projectV2) {
     throw new Error(
       `Project #${projectNumber} not found for ${ownerType} "${owner}".`,
@@ -282,8 +281,7 @@ const buildBoardConfig = (
       ...cfg.completedIterations.map((i) => ({ ...i, completed: true })),
       ...cfg.iterations.map((i) => ({ ...i, completed: false })),
     ].sort(
-      (a, b) =>
-        new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
+      (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
     );
 
     const active = cfg.iterations[0] ?? null;
@@ -291,11 +289,11 @@ const buildBoardConfig = (
       _field_id: sprintField.id,
       active_sprint: active
         ? {
-            id: active.id,
-            title: active.title,
-            startDate: active.startDate,
-            duration: active.duration,
-          }
+          id: active.id,
+          title: active.title,
+          startDate: active.startDate,
+          duration: active.duration,
+        }
         : null,
       all_iterations: allIterations,
     };
@@ -367,10 +365,8 @@ const main = async () => {
     string: ["config", "board-config"],
   });
   const isDryRun = args["dry-run"] as boolean;
-  const humanConfigPath =
-    (args["config"] as string | undefined) ?? "./config/scrum.config.yml";
-  const boardConfigPath =
-    (args["board-config"] as string | undefined) ??
+  const humanConfigPath = (args["config"] as string | undefined) ?? "./config/scrum.config.yml";
+  const boardConfigPath = (args["board-config"] as string | undefined) ??
     "./config/project-board.config.json";
 
   const token = Deno.env.get("GITHUB_TOKEN");

@@ -115,12 +115,12 @@ export const FieldValueUnion = z.object({
     .enum(["text", "number", "date", "single_select", "iteration", "clear"])
     .describe(
       "Field value type. Pick one:\n" +
-      "  'text'          — plain string → also set `value` (string)\n" +
-      "  'number'        — numeric      → also set `number_value` (number)\n" +
-      "  'date'          — ISO date     → also set `value` (YYYY-MM-DD string)\n" +
-      "  'single_select' — option ID    → also set `option_id` (string from field options)\n" +
-      "  'iteration'     — sprint ID    → also set `iteration_id` (string from sprint config)\n" +
-      "  'clear'         — removes the current value, no other keys needed",
+        "  'text'          — plain string → also set `value` (string)\n" +
+        "  'number'        — numeric      → also set `number_value` (number)\n" +
+        "  'date'          — ISO date     → also set `value` (YYYY-MM-DD string)\n" +
+        "  'single_select' — option ID    → also set `option_id` (string from field options)\n" +
+        "  'iteration'     — sprint ID    → also set `iteration_id` (string from sprint config)\n" +
+        "  'clear'         — removes the current value, no other keys needed",
     ),
   value: z
     .string()
@@ -133,11 +133,15 @@ export const FieldValueUnion = z.object({
   option_id: z
     .string()
     .optional()
-    .describe("Single-select option ID — required when type is 'single_select' (get IDs from github_get_project_fields)"),
+    .describe(
+      "Single-select option ID — required when type is 'single_select' (get IDs from github_get_project_fields)",
+    ),
   iteration_id: z
     .string()
     .optional()
-    .describe("Iteration (sprint) node ID — required when type is 'iteration' (get from scrum://config or github_get_project_fields)"),
+    .describe(
+      "Iteration (sprint) node ID — required when type is 'iteration' (get from scrum://config or github_get_project_fields)",
+    ),
 });
 
 // ---------------------------------------------------------------------------
@@ -163,30 +167,36 @@ export const resolveFieldValue = (
       return { isClear: true };
 
     case "text":
-      if (v.value === undefined)
+      if (v.value === undefined) {
         return "Error: field value type is 'text' but `value` (string) was not provided.";
+      }
       return { isClear: false, fieldValue: { text: v.value } };
 
     case "date":
-      if (v.value === undefined)
+      if (v.value === undefined) {
         return "Error: field value type is 'date' but `value` (YYYY-MM-DD string) was not provided.";
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(v.value))
+      }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(v.value)) {
         return `Error: field value type is 'date' but \`value\` '${v.value}' is not in YYYY-MM-DD format.`;
+      }
       return { isClear: false, fieldValue: { date: v.value } };
 
     case "number":
-      if (v.number_value === undefined)
+      if (v.number_value === undefined) {
         return "Error: field value type is 'number' but `number_value` (number) was not provided.";
+      }
       return { isClear: false, fieldValue: { number: v.number_value } };
 
     case "single_select":
-      if (!v.option_id)
+      if (!v.option_id) {
         return "Error: field value type is 'single_select' but `option_id` was not provided. Get option IDs from github_get_project_fields.";
+      }
       return { isClear: false, fieldValue: { singleSelectOptionId: v.option_id } };
 
     case "iteration":
-      if (!v.iteration_id)
+      if (!v.iteration_id) {
         return "Error: field value type is 'iteration' but `iteration_id` was not provided. Get iteration IDs from scrum://config or github_get_project_fields.";
+      }
       return { isClear: false, fieldValue: { iterationId: v.iteration_id } };
 
     default: {
@@ -208,9 +218,9 @@ export const UpdateFieldValueSchema = z.object({
   value: FieldValueUnion
     .describe(
       "The new field value. Set `type` to one of: 'text', 'number', 'date', 'single_select', 'iteration', 'clear'. " +
-      "Then set the matching key: `value` for text/date, `number_value` for number, " +
-      "`option_id` for single_select, `iteration_id` for iteration. " +
-      "No extra key needed for 'clear'."
+        "Then set the matching key: `value` for text/date, `number_value` for number, " +
+        "`option_id` for single_select, `iteration_id` for iteration. " +
+        "No extra key needed for 'clear'.",
     ),
 }).strict();
 
@@ -220,9 +230,19 @@ export const GetProjectFieldsSchema = z.object({
   project_number: z.number().int().positive()
     .describe("The project number"),
   field_type: z.enum([
-    "TEXT", "NUMBER", "DATE", "SINGLE_SELECT", "ITERATION",
-    "ASSIGNEES", "LABELS", "MILESTONE", "REPOSITORY", "REVIEWERS",
-    "TITLE", "TRACKED_BY", "TRACKS",
+    "TEXT",
+    "NUMBER",
+    "DATE",
+    "SINGLE_SELECT",
+    "ITERATION",
+    "ASSIGNEES",
+    "LABELS",
+    "MILESTONE",
+    "REPOSITORY",
+    "REVIEWERS",
+    "TITLE",
+    "TRACKED_BY",
+    "TRACKS",
   ]).optional()
     .describe("Filter fields by data type. Omit to return all fields."),
 }).strict();
@@ -233,7 +253,7 @@ export const GetSprintStatusSchema = z.object({
   iteration_id: z.string().optional()
     .describe(
       "Iteration node ID to query. Omit to auto-detect the active iteration " +
-      "by today's date (errors if no iteration is currently active).",
+        "by today's date (errors if no iteration is currently active).",
     ),
 }).strict();
 
@@ -255,8 +275,8 @@ export const BulkUpdateItemFieldSchema = z.object({
   project_id: z.string().min(1).optional()
     .describe(
       "Node ID of the project (PVT_kwDO…). " +
-      "Omit to auto-resolve from scrum://config (project-board.config.json must be present — run `deno task sync-config` first). " +
-      "Do NOT pass owner or project_number here.",
+        "Omit to auto-resolve from scrum://config (project-board.config.json must be present — run `deno task sync-config` first). " +
+        "Do NOT pass owner or project_number here.",
     ),
   item_ids: z.array(z.string().min(1)).min(1).max(50)
     .describe("Project item node IDs (PVTI_lADO...). Maximum 50 per call."),
@@ -265,7 +285,7 @@ export const BulkUpdateItemFieldSchema = z.object({
   value: FieldValueUnion
     .describe(
       "The new field value. Same format as github_update_item_field. " +
-      "To commit items to a sprint: type='iteration', iteration_id='<sprint iteration node ID>'.",
+        "To commit items to a sprint: type='iteration', iteration_id='<sprint iteration node ID>'.",
     ),
   stop_on_error: z.boolean().default(false)
     .describe("Abort on first failure. Default false (best-effort across all items)."),
@@ -277,14 +297,14 @@ export const CloseSprintSchema = z.object({
   target_iteration_id: z.string().optional()
     .describe(
       "Iteration to carry incomplete items into. " +
-      "Omit to clear the Sprint field entirely (items return to backlog).",
+        "Omit to clear the Sprint field entirely (items return to backlog).",
     ),
   archive_done: z.boolean().default(false)
     .describe("Archive items whose status is Done after moving."),
   dry_run: z.boolean().default(true)
     .describe(
       "Preview the close operation without executing it. " +
-      "Default true — you must explicitly pass false to execute.",
+        "Default true — you must explicitly pass false to execute.",
     ),
 }).strict();
 

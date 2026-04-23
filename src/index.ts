@@ -2,9 +2,12 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import type { Transport, TransportSendOptions } from "@modelcontextprotocol/sdk/shared/transport.js";
+import type {
+  Transport,
+  TransportSendOptions,
+} from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage, MessageExtraInfo } from "@modelcontextprotocol/sdk/types.js";
-import express, { type Response, type Request } from "express";
+import express, { type Request, type Response } from "express";
 import { registerProjectTools } from "./tools/projects.ts";
 import { registerItemTools } from "./tools/items.ts";
 import { registerSprintTools } from "./tools/sprints.ts";
@@ -40,10 +43,15 @@ const patchToolLogging = (server: McpServer): void => {
       const t0 = performance.now();
       try {
         const result = await handler(params, extra);
-        log.debug(`← tool:${name} OK (${Math.round(performance.now() - t0)}ms)`);
+        log.debug(
+          `← tool:${name} OK (${Math.round(performance.now() - t0)}ms)`,
+        );
         return result;
       } catch (err: unknown) {
-        log.error(`✗ tool:${name} threw (${Math.round(performance.now() - t0)}ms)`, err);
+        log.error(
+          `✗ tool:${name} threw (${Math.round(performance.now() - t0)}ms)`,
+          err,
+        );
         throw err;
       }
     });
@@ -78,10 +86,7 @@ const wrapTransportLogging = (transport: Transport, label: string): void => {
 
   // ── Outgoing (server → client) ───────────────────────────────────────────
   const origSend = transport.send.bind(transport);
-  transport.send = async (
-    msg: JSONRPCMessage,
-    options?: TransportSendOptions,
-  ): Promise<void> => {
+  transport.send = (msg: JSONRPCMessage, options?: TransportSendOptions) => {
     log.debug(`[${label}] → send`, msg);
     return origSend(msg, options);
   };
@@ -163,7 +168,9 @@ const runHttp = () => {
       const server = createMcpServer();
       await server.connect(transport);
       // Wrap AFTER connect — the SDK sets transport.onmessage during connect.
-      if (log.isDebug()) wrapTransportLogging(transport, `http:${transport.sessionId}`);
+      if (log.isDebug()) {
+        wrapTransportLogging(transport, `http:${transport.sessionId}`);
+      }
     } else {
       res.status(400).json({
         jsonrpc: "2.0",
@@ -203,7 +210,9 @@ const runHttp = () => {
 
   const port = parseInt(Deno.env.get("PORT") || "3000", 10);
   const httpServer = app.listen(port, () => {
-    log.info(`github-projects-mcp-server listening → http://0.0.0.0:${port}/mcp`);
+    log.info(
+      `github-projects-mcp-server listening → http://0.0.0.0:${port}/mcp`,
+    );
   });
 
   // ── Graceful shutdown ──────────────────────────────────────────────────────

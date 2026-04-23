@@ -1,18 +1,18 @@
 # GitHub Projects v2 MCP Server
 
-A local [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for operating on **GitHub Projects v2** via the GitHub GraphQL API. Designed to serve as the action layer for LLM agents performing autonomous SCRUM project management — sprint planning, backlog refinement, velocity tracking, and ceremony facilitation — without leaving the GitHub Projects ecosystem.
+A local [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for operating on
+**GitHub Projects v2** via the GitHub GraphQL API. Designed to serve as the action layer for LLM
+agents performing autonomous SCRUM project management — sprint planning, backlog refinement,
+velocity tracking, and ceremony facilitation — without leaving the GitHub Projects ecosystem.
 
-Supports two transports: **stdio** (Claude Desktop / Claude Code / LM Studio) and **Streamable HTTP** (Open WebUI / Docker / home lab).
-
----
+Supports two transports: **stdio** (Claude Desktop / Claude Code / LM Studio) and **Streamable
+HTTP** (Open WebUI / Docker / home lab).
 
 ## Related Documentation
 
 - [GitHub Projects v2 — About Projects](https://docs.github.com/en/issues/planning-and-tracking-with-projects/learning-about-projects/about-projects)
 - [GitHub Projects v2 — GraphQL API](https://docs.github.com/en/issues/planning-and-tracking-with-projects/automating-your-project/using-the-api-to-manage-projects)
 - [Model Context Protocol Specification](https://modelcontextprotocol.io/docs)
-
----
 
 ## System Architecture
 
@@ -113,8 +113,6 @@ flowchart LR
     GH & FMTS & SCRUM -->|uses| TY
 ```
 
----
-
 ## Tool Reference
 
 ### Project Management (`src/tools/projects.ts`)
@@ -141,7 +139,8 @@ flowchart LR
 
 ### Sprint & SCRUM Layer (`src/tools/sprints.ts`)
 
-These tools operate on project coordinates from `scrum.config.yml` — no `owner`/`project_number` params needed. Requires `project-board.config.json` (`deno task sync-config` to generate).
+These tools operate on project coordinates from `scrum.config.yml` — no `owner`/`project_number`
+params needed. Requires `project-board.config.json` (`deno task sync-config` to generate).
 
 | Tool                            | Type  | Description                                                                                                                        |
 | ------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------- |
@@ -158,7 +157,8 @@ These tools operate on project coordinates from `scrum.config.yml` — no `owner
 
 ### Resources (`src/resources/index.ts`)
 
-MCP Resources provide stable, human-authored context the agent reads before acting. All sprint tools that need project coordinates or field IDs should read `scrum://config` first.
+MCP Resources provide stable, human-authored context the agent reads before acting. All sprint tools
+that need project coordinates or field IDs should read `scrum://config` first.
 
 | URI                          | MIME               | Description                                                                                                    |
 | ---------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------- |
@@ -168,7 +168,9 @@ MCP Resources provide stable, human-authored context the agent reads before acti
 
 ### Prompts (`src/prompts/index.ts`)
 
-Prompts define workflow entry points with constrained write scopes and behavioral contracts. They degrade gracefully when the MCP client doesn't surface them — tool descriptions carry the same safety language as fallback.
+Prompts define workflow entry points with constrained write scopes and behavioral contracts. They
+degrade gracefully when the MCP client doesn't surface them — tool descriptions carry the same
+safety language as fallback.
 
 | Prompt               | Write Scope                            | Purpose                                                                                                              |
 | -------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
@@ -268,7 +270,8 @@ sequenceDiagram
 
 ## GitHub API Constraints
 
-These are hard limits imposed by the GitHub GraphQL API that shape what this server can and cannot do autonomously:
+These are hard limits imposed by the GitHub GraphQL API that shape what this server can and cannot
+do autonomously:
 
 | Constraint              | Detail                                                                                                                                                            |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -306,7 +309,8 @@ The sync script (`scripts/sync-project-config.ts`):
 1. Reads `scrum.config.yml` to get project coordinates and `field_names`
 2. Queries the GitHub Projects v2 GraphQL API for live field metadata
 3. Warns about any `field_names` entries that don't match a real board field (catches typos early)
-4. Writes field IDs, option lists, iteration data, and `_fields_registry` to `project-board.config.json`
+4. Writes field IDs, option lists, iteration data, and `_fields_registry` to
+   `project-board.config.json`
 5. **Never touches** `scrum.config.yml` — your project spec is always preserved
 
 ### Config split diagram
@@ -363,7 +367,8 @@ flowchart LR
 
 - **Deno** ≥ 1.40 (runtime)
 - **Node.js** ≥ 20 (for MCP SDK compatibility)
-- A **GitHub Personal Access Token (classic)** — fine-grained tokens do not support Projects v2 write operations
+- A **GitHub Personal Access Token (classic)** — fine-grained tokens do not support Projects v2
+  write operations
 
 ### Token Scopes
 
@@ -432,7 +437,8 @@ docker compose build
 docker compose up
 ```
 
-The server listens on `http://0.0.0.0:3000/mcp`. Expose through a reverse proxy (Nginx, Caddy, Traefik) with authentication.
+The server listens on `http://0.0.0.0:3000/mcp`. Expose through a reverse proxy (Nginx, Caddy,
+Traefik) with authentication.
 
 ### HTTP Session Lifecycle
 
@@ -483,7 +489,9 @@ Set `DEBUG=1` to enable debug-level logging on stderr:
 DEBUG=1 GITHUB_TOKEN=ghp_yourtoken deno task start
 ```
 
-Debug output includes incoming tool calls with parsed parameters, outgoing GraphQL queries and variables, raw API responses, and JSON-RPC wire traffic. All server output goes to stderr so it does not interfere with the stdio JSON-RPC channel.
+Debug output includes incoming tool calls with parsed parameters, outgoing GraphQL queries and
+variables, raw API responses, and JSON-RPC wire traffic. All server output goes to stderr so it does
+not interfere with the stdio JSON-RPC channel.
 
 ---
 
@@ -532,13 +540,28 @@ github-projects-mcp-server/
 ## Todo
 
 - [ ] Implement GitHub repository API tools
-- [ ] Refactor the config type system to be dynamic (derived from the fetched JSON file rather than manually coded)
-- [ ] Add `github_update_draft_issue` to `src/tools/items.ts`; signature: `(draft_issue_id, title?, body?, assignee_ids?)`.
-  - [ ] The tool must accept the draft issue's _content node ID_ (returned by `github_add_draft_issue`), not the project item ID.
-  - [ ] Prevents models from hallucinating tool names when they need to edit a draft issue title or body.
+- [ ] Refactor the config type system to be dynamic (derived from the fetched JSON file rather than
+      manually coded)
+- [ ] Refactor the codebase to be shorter and "human-readable"
+- [ ] Add `github_update_draft_issue` to `src/tools/items.ts`; signature:
+      `(draft_issue_id, title?, body?, assignee_ids?)`.
+  - [ ] The tool must accept the draft issue's _content node ID_ (returned by
+        `github_add_draft_issue`), not the project item ID.
+  - [ ] Prevents models from hallucinating tool names when they need to edit a draft issue title or
+        body.
 - [ ] Fix Transport Label Logging (`http:undefined`)
-  - [ ] Update `wrapTransportLogging` in `src/index.ts` to use a lazy `getLabel()` closure that reads `transport.sessionId` at log-call time instead of capturing it at wrap time (it is `undefined` during initialization).
-- [x] **Flatten `FieldValueUnion` schema** — replaced `z.discriminatedUnion` (6-variant `anyOf` with `additionalProperties: false` per variant) with a single flat `z.object`. All companion keys (`value`, `number_value`, `option_id`, `iteration_id`) are now optional fields on one object; `type` remains an enum discriminator. Eliminates the primary cause of write-tool failures for local LLMs.
-- [x] **Centralize field value validation** — added `resolveFieldValue()` helper in `src/schemas/inputs.ts`; shared by `items.ts` and `sprints.ts`, returns human-readable error strings the model can act on.
-- [x] **Remove `"REDACTED"` placeholder** — cleaned `filter_type` enum in `ListItemsSchema`; was causing a type mismatch against `ItemContentType` and leaking as a valid API value.
-- [x] **Structured logger** — added `src/services/logger.ts`; all output to stderr; `DEBUG=1` enables debug-level output without polluting the stdio JSON-RPC channel.
+  - [ ] Update `wrapTransportLogging` in `src/index.ts` to use a lazy `getLabel()` closure that
+        reads `transport.sessionId` at log-call time instead of capturing it at wrap time (it is
+        `undefined` during initialization).
+- [x] **Flatten `FieldValueUnion` schema** — replaced `z.discriminatedUnion` (6-variant `anyOf` with
+      `additionalProperties: false` per variant) with a single flat `z.object`. All companion keys
+      (`value`, `number_value`, `option_id`, `iteration_id`) are now optional fields on one object;
+      `type` remains an enum discriminator. Eliminates the primary cause of write-tool failures for
+      local LLMs.
+- [x] **Centralize field value validation** — added `resolveFieldValue()` helper in
+      `src/schemas/inputs.ts`; shared by `items.ts` and `sprints.ts`, returns human-readable error
+      strings the model can act on.
+- [x] **Remove `"REDACTED"` placeholder** — cleaned `filter_type` enum in `ListItemsSchema`; was
+      causing a type mismatch against `ItemContentType` and leaking as a valid API value.
+- [x] **Structured logger** — added `src/services/logger.ts`; all output to stderr; `DEBUG=1`
+      enables debug-level output without polluting the stdio JSON-RPC channel.
