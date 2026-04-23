@@ -99,7 +99,11 @@ flowchart LR
     end
 
     subgraph Types["src/types.ts"]
-        TY["ProjectV2 types"]
+        TY["ProjectV2 types\n(hand-written)"]
+    end
+
+    subgraph Generated["src/generated/"]
+        GT["github-types.ts\nauto-generated from schema\n(deno task codegen)"]
     end
 
     FACTORY -->|registers| PT & IT & ST
@@ -477,8 +481,12 @@ Or via the UI: **Admin Panel → Settings → Tools → MCP Servers**.
 ```bash
 deno task dev              # watch mode with TypeScript recompilation
 deno task inspector        # MCP Inspector UI for interactive tool testing
+deno task test             # run all unit tests under src/
 deno task sync-config      # sync GitHub board fields → project-board.config.json
 deno task sync-config:dry  # preview sync output without writing
+deno task codegen          # fetch GitHub GraphQL schema → src/generated/github-types.ts
+deno task codegen:validate # validate generated types against the live schema
+deno task codegen:types-only # regenerate types without re-fetching the schema
 ```
 
 ### Debugging
@@ -504,26 +512,40 @@ github-projects-mcp-server/
 │   ├── project-board.config.json  # Auto-generated board state — do not edit
 │   └── sprint-current.md          # Active sprint document (Scrum Master updates)
 ├── scripts/
-│   └── sync-project-config.ts    # Syncs GitHub field metadata → project-board.config.json
+│   ├── sync-project-config.ts    # Syncs GitHub field metadata → project-board.config.json
+│   └── graphql-codegen.ts        # Fetches GitHub GraphQL schema → src/generated/github-types.ts
+├── skill/
+│   └── scrum-agile-assistant/    # Claude Skill: SCRUM coaching knowledge base
+│       ├── SKILL.md              #   Skill manifest and system prompt
+│       └── references/           #   Reference docs (templates, dysfunctions, advanced practices)
+├── Dockerfile                     # Container image for HTTP mode
+├── docker-compose.yml             # Docker Compose for HTTP mode deployment
 ├── deno.json                      # Tasks, imports, compiler options
 └── src/
     ├── index.ts                   # Entry point — transport, server factory, all registrations
     ├── types.ts                   # TypeScript interfaces for GitHub GraphQL responses + SCRUM
+    ├── generated/
+    │   └── github-types.ts        # Auto-generated full GitHub GraphQL type catalog (do not edit)
     ├── tools/
     │   ├── projects.ts            # Project-level tools (list, get, update, fields)
+    │   ├── projects_test.ts       #   Unit tests
     │   ├── items.ts               # Item-level tools (CRUD, field updates, node ID lookups)
+    │   ├── items_test.ts          #   Unit tests
     │   └── sprints.ts             # SCRUM sprint tools (status, velocity, backlog, close, report)
     ├── resources/
     │   └── index.ts               # MCP Resources: scrum://config, scrum://sprint/*
     ├── prompts/
     │   └── index.ts               # MCP Prompts: classify-intent, confirm-mutation, workflows
     ├── schemas/
-    │   └── inputs.ts              # Zod validation schemas for all tool inputs
+    │   ├── inputs.ts              # Zod validation schemas for all tool inputs
+    │   └── inputs_test.ts         #   Unit tests
     └── services/
         ├── github.ts              # graphql<T>() executor, GitHubApiError, formatError()
+        ├── github_test.ts         #   Unit tests
         ├── logger.ts              # Structured stderr logger; set DEBUG=1 for debug-level output
         ├── formatters.ts          # GraphQL fragments + Markdown output formatters
-        └── scrum.ts               # loadScrumConfig(), resolveFields(), fetchAllItems(), helpers
+        ├── scrum.ts               # loadScrumConfig(), resolveFields(), fetchAllItems(), helpers
+        └── scrum_test.ts          #   Unit tests
 ```
 
 ---
