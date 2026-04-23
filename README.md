@@ -527,6 +527,7 @@ github-projects-mcp-server/
 
 - [ ] Implement GitHub repository API tools
 - [ ] Refactor the config type system to be dynamic (derived from the fetched JSON file rather than manually coded)
+- [ ] Refactor the codebase to be shorter and "human-readable"
 - [ ] Add `github_update_draft_issue` to `src/tools/items.ts`; signature: `(draft_issue_id, title?, body?, assignee_ids?)`.
   - [ ] The tool must accept the draft issue's _content node ID_ (returned by `github_add_draft_issue`), not the project item ID.
   - [ ] Prevents models from hallucinating tool names when they need to edit a draft issue title or body.
