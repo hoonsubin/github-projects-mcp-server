@@ -154,7 +154,7 @@ Args:
     Omit to auto-detect the active iteration by today's date.
 
 Returns: Sprint progress (points, %), blocked items, carry-over risk.`,
-      inputSchema: GetSprintStatusSchema,
+      inputSchema: GetSprintStatusSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -287,7 +287,7 @@ Args:
   - iterations_count (number): Number of completed iterations to include (1-10, default 4)
 
 Returns: Table of committed vs completed points per sprint, average velocity, trend.`,
-      inputSchema: GetVelocitySchema,
+      inputSchema: GetVelocitySchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -451,7 +451,7 @@ Args:
   - after (string, optional): Pagination cursor from a previous response
 
 Returns: Backlog items grouped by sprint-ready / needs estimation.`,
-      inputSchema: GetBacklogItemsSchema,
+      inputSchema: GetBacklogItemsSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -597,7 +597,7 @@ Args:
   - stop_on_error (boolean): Abort on first failure (default false = best-effort)
 
 Returns: Per-item success/failure summary.`,
-      inputSchema: BulkUpdateItemFieldSchema,
+      inputSchema: BulkUpdateItemFieldSchema.shape,
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
@@ -702,7 +702,7 @@ Args:
   - dry_run (boolean): Preview without executing (DEFAULT TRUE)
 
 Returns: Preview or execution summary.`,
-      inputSchema: CloseSprintSchema,
+      inputSchema: CloseSprintSchema.shape,
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
@@ -881,7 +881,7 @@ Args:
   - include_retrospective_scaffold (boolean): Include Start/Stop/Continue table (default true)
 
 Returns: Sprint review document with goal assessment, velocity, item outcomes, carry-over, and retro scaffold.`,
-      inputSchema: GenerateSprintReportSchema,
+      inputSchema: GenerateSprintReportSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,

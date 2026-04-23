@@ -1,31 +1,31 @@
 import type { GraphQLResponse } from "../types.ts";
 import { log } from "./logger.ts";
 
-const GITHUB_API_URL = "https://api.github.com/graphql";
+export const GITHUB_API_URL = "https://api.github.com/graphql";
 const REQUEST_TIMEOUT_MS = 30_000;
 
 export class GitHubApiError extends Error {
   constructor(
     message: string,
     public readonly statusCode?: number,
-    public readonly graphqlErrors?: string[]
+    public readonly graphqlErrors?: string[],
   ) {
     super(message);
     this.name = "GitHubApiError";
   }
 }
 
-const getToken = (): string => {
+export const getToken = (): string => {
   const token = Deno.env.get("GITHUB_TOKEN");
   if (!token) {
     throw new GitHubApiError(
       "GITHUB_TOKEN environment variable is not set. " +
         "Generate a token at https://github.com/settings/tokens with scopes: " +
-        "read:project, project (for write), repo (for issue/PR access)."
+        "read:project, project (for write), repo (for issue/PR access).",
     );
   }
   return token;
-}
+};
 // ---------------------------------------------------------------------------
 // GraphQL operation name extractor
 // ---------------------------------------------------------------------------
@@ -46,7 +46,7 @@ const extractOpName = (query: string): string => {
 // documentation: https://docs.github.com/en/graphql/guides/forming-calls-with-graphql#about-queries
 export const graphql = async <T>(
   query: string,
-  variables: Record<string, unknown> = {}
+  variables: Record<string, unknown> = {},
 ): Promise<T> => {
   const token = getToken();
   const op = extractOpName(query);
@@ -78,7 +78,7 @@ export const graphql = async <T>(
     }
     log.error(`✗ graphql:${op} network error (${ms}ms)`, err);
     throw new GitHubApiError(
-      `Network error: ${err instanceof Error ? err.message : String(err)}`
+      `Network error: ${err instanceof Error ? err.message : String(err)}`,
     );
   } finally {
     clearTimeout(timeout);
@@ -90,7 +90,7 @@ export const graphql = async <T>(
     log.error(`✗ graphql:${op} 401 Unauthorized (${ms}ms)`);
     throw new GitHubApiError(
       "Authentication failed. Check that GITHUB_TOKEN is valid and has the required scopes.",
-      401
+      401,
     );
   }
   if (response.status === 403) {
@@ -98,17 +98,19 @@ export const graphql = async <T>(
     const resetTime = rateLimitReset
       ? new Date(Number(rateLimitReset) * 1000).toISOString()
       : "unknown";
-    log.error(`✗ graphql:${op} 403 rate-limited (${ms}ms), resets ${resetTime}`);
+    log.error(
+      `✗ graphql:${op} 403 rate-limited (${ms}ms), resets ${resetTime}`,
+    );
     throw new GitHubApiError(
       `Rate limit or permission denied. Rate limit resets at ${resetTime}.`,
-      403
+      403,
     );
   }
   if (!response.ok) {
     log.error(`✗ graphql:${op} HTTP ${response.status} (${ms}ms)`);
     throw new GitHubApiError(
       `GitHub API error: HTTP ${response.status} ${response.statusText}`,
-      response.status
+      response.status,
     );
   }
 
@@ -120,7 +122,7 @@ export const graphql = async <T>(
     throw new GitHubApiError(
       `GraphQL errors: ${messages.join("; ")}`,
       undefined,
-      messages
+      messages,
     );
   }
 
@@ -131,7 +133,7 @@ export const graphql = async <T>(
 
   log.debug(`← graphql:${op} OK (${ms}ms)`);
   return json.data;
-}
+};
 
 /** Format a GitHubApiError into a human-readable MCP tool error string. */
 export const formatError = (err: unknown): string => {
@@ -142,4 +144,4 @@ export const formatError = (err: unknown): string => {
     return `Error: ${err.message}`;
   }
   return `Error: ${String(err)}`;
-}
+};

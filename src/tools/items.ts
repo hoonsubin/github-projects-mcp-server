@@ -48,7 +48,7 @@ Args:
 
 Returns: Markdown list of items with IDs, titles, states, and field values.
          Includes pagination cursor if more items exist.`,
-      inputSchema: ListItemsSchema,
+      inputSchema: ListItemsSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -169,7 +169,7 @@ Args:
   - content_id (string): Issue or PR node ID (e.g., I_kwDO... or PR_kwDO...)
 
 Returns: Node ID of the new project item (use this for github_update_item_field).`,
-      inputSchema: AddItemSchema,
+      inputSchema: AddItemSchema.shape,
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
@@ -229,7 +229,7 @@ Args:
     Requires scrum.config.yml and project-board.config.json to be present (run deno task sync-config first).
 
 Returns: Node ID of the new project item, plus sprint assignment status if iteration_id was provided.`,
-      inputSchema: AddDraftIssueSchema,
+      inputSchema: AddDraftIssueSchema.shape,
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
@@ -333,7 +333,7 @@ Args:
   - value (object): New value with type discriminator (see above)
 
 Returns: Confirmation with item ID.`,
-      inputSchema: UpdateFieldValueSchema,
+      inputSchema: UpdateFieldValueSchema.shape,
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
@@ -414,7 +414,7 @@ Args:
   - archived (boolean): true to archive, false to unarchive (default: true)
 
 Returns: Confirmation with item ID and new archived status.`,
-      inputSchema: ArchiveItemSchema,
+      inputSchema: ArchiveItemSchema.shape,
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
@@ -470,7 +470,7 @@ Args:
   - item_id (string): Project item node ID to delete (PVTI_lADO…)
 
 Returns: Confirmation with the deleted item's ID.`,
-      inputSchema: DeleteItemSchema,
+      inputSchema: DeleteItemSchema.shape,
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
@@ -523,7 +523,7 @@ Args:
   - type ('issue'|'pull_request'): default 'issue'
 
 Returns: The node ID (e.g., I_kwDO...) needed for other tools.`,
-      inputSchema: GetIssueNodeIdSchema,
+      inputSchema: GetIssueNodeIdSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -597,7 +597,7 @@ Args:
   - login (string): GitHub username
 
 Returns: The user's node ID (e.g., U_kgDO...).`,
-      inputSchema: GetUserNodeIdSchema,
+      inputSchema: GetUserNodeIdSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,

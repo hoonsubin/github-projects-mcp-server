@@ -40,7 +40,7 @@ Args:
   - include_closed (boolean): include closed projects, default false
 
 Returns: Markdown list of projects with IDs, numbers, URLs, and field summaries.`,
-      inputSchema: ListProjectsSchema,
+      inputSchema: ListProjectsSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -151,7 +151,7 @@ Args:
   - project_number (number): project number from the URL (e.g., 1 for /projects/1)
 
 Returns: Full project details including fields, options, and node IDs.`,
-      inputSchema: GetProjectSchema,
+      inputSchema: GetProjectSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -227,7 +227,7 @@ Args:
     TITLE, TRACKED_BY, TRACKS. Omit to return all fields.
 
 Returns: Each field's name, dataType, node ID, and (for single-select) all option IDs.`,
-      inputSchema: GetProjectFieldsSchema,
+      inputSchema: GetProjectFieldsSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -362,7 +362,7 @@ Args:
   - closed (boolean, optional): true to close, false to reopen
 
 Returns: Updated project metadata.`,
-      inputSchema: UpdateProjectSchema,
+      inputSchema: UpdateProjectSchema.shape,
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,

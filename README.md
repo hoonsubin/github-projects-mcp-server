@@ -4,15 +4,11 @@ A local [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server 
 
 Supports two transports: **stdio** (Claude Desktop / Claude Code / LM Studio) and **Streamable HTTP** (Open WebUI / Docker / home lab).
 
----
-
 ## Related Documentation
 
 - [GitHub Projects v2 — About Projects](https://docs.github.com/en/issues/planning-and-tracking-with-projects/learning-about-projects/about-projects)
 - [GitHub Projects v2 — GraphQL API](https://docs.github.com/en/issues/planning-and-tracking-with-projects/automating-your-project/using-the-api-to-manage-projects)
 - [Model Context Protocol Specification](https://modelcontextprotocol.io/docs)
-
----
 
 ## System Architecture
 
@@ -112,8 +108,6 @@ flowchart LR
     RES -->|loadScrumConfig| SCRUM
     GH & FMTS & SCRUM -->|uses| TY
 ```
-
----
 
 ## Tool Reference
 
