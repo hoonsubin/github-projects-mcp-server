@@ -12,7 +12,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
 import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Variables } from "@modelcontextprotocol/sdk/shared/uriTemplate.js";
 import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
-import type { ServerRequest, ServerNotification } from "@modelcontextprotocol/sdk/types.js";
+import type { ServerNotification, ServerRequest } from "@modelcontextprotocol/sdk/types.js";
 import { loadScrumConfig } from "../services/scrum.ts";
 import { formatError } from "../services/github.ts";
 
@@ -75,8 +75,7 @@ export const registerScrumResources = (server: McpServer): void => {
     "sprint-current",
     "scrum://sprint/current",
     {
-      description:
-        "Human-authored sprint goal, capacity plan, team commitments, and out-of-band " +
+      description: "Human-authored sprint goal, capacity plan, team commitments, and out-of-band " +
         "decisions for the current sprint. Read before standup or sprint review to " +
         "understand the intent behind the live board state.",
       mimeType: "text/markdown",
@@ -119,13 +118,16 @@ export const registerScrumResources = (server: McpServer): void => {
     "sprint-archive",
     archiveTemplate,
     {
-      description:
-        "Historical sprint doc for sprint number {n}. " +
+      description: "Historical sprint doc for sprint number {n}. " +
         "Backed by config/sprint-archive-{n}.md. " +
         "Used for velocity commentary and retrospective reference.",
       mimeType: "text/markdown",
     },
-    async (_uri: URL, variables: Variables, _extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => {
+    async (
+      _uri: URL,
+      variables: Variables,
+      _extra: RequestHandlerExtra<ServerRequest, ServerNotification>,
+    ) => {
       const n = Array.isArray(variables.n) ? variables.n[0] : variables.n;
       const uri = `scrum://sprint/archive/${n}`;
       try {

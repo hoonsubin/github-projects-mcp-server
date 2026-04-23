@@ -16,7 +16,11 @@ import { parseArgs } from "@std/cli/parse-args";
 import {
   buildClientSchema,
   buildSchema,
+  type DocumentNode,
   getIntrospectionQuery,
+  type GraphQLNamedType,
+  type GraphQLSchema,
+  type GraphQLType,
   isEnumType,
   isInputObjectType,
   isInterfaceType,
@@ -25,16 +29,12 @@ import {
   isObjectType,
   isScalarType,
   isUnionType,
+  type OperationDefinitionNode,
   parse as gqlParse,
   printSchema,
   validate as gqlValidate,
-  type DocumentNode,
-  type GraphQLNamedType,
-  type GraphQLSchema,
-  type GraphQLType,
-  type OperationDefinitionNode,
 } from "graphql";
-import { GITHUB_API_URL, getToken } from "../src/services/github.ts";
+import { getToken, GITHUB_API_URL } from "../src/services/github.ts";
 
 // ── CLI ───────────────────────────────────────────────────────────────────────
 
@@ -137,9 +137,7 @@ const phase2 = (schema: GraphQLSchema): DocumentNode => {
   const ops = doc.definitions.filter(
     (d): d is OperationDefinitionNode => d.kind === "OperationDefinition",
   );
-  ops.forEach((op) =>
-    console.log(`  ✓ ${op.operation} ${op.name?.value ?? "(anon)"}`),
-  );
+  ops.forEach((op) => console.log(`  ✓ ${op.operation} ${op.name?.value ?? "(anon)"}`));
   console.log(`  → ${ops.length} operations OK`);
   return doc;
 };
@@ -160,9 +158,7 @@ function schemaTypeInner(type: GraphQLType): string {
   if (isNonNullType(type)) return schemaTypeInner(type.ofType);
   if (isListType(type)) return `Array<${schemaFieldToTs(type.ofType)}>`;
   const named = type as GraphQLNamedType;
-  return isScalarType(named)
-    ? (SCALAR_TS[named.name] ?? "unknown")
-    : named.name;
+  return isScalarType(named) ? (SCALAR_TS[named.name] ?? "unknown") : named.name;
 }
 
 function fieldLines(
@@ -189,9 +185,11 @@ const phase3 = async (schema: GraphQLSchema): Promise<void> => {
     inputs: [] as string[],
   };
 
-  for (const [name, type] of Object.entries(schema.getTypeMap()).sort(
-    ([a], [b]) => a.localeCompare(b),
-  )) {
+  for (
+    const [name, type] of Object.entries(schema.getTypeMap()).sort(
+      ([a], [b]) => a.localeCompare(b),
+    )
+  ) {
     if (name.startsWith("__") || BUILTIN_SCALARS.has(name)) continue;
     if (isScalarType(type)) {
       buckets.scalars.push(
@@ -201,19 +199,23 @@ const phase3 = async (schema: GraphQLSchema): Promise<void> => {
     }
     if (isEnumType(type)) {
       buckets.enums.push(
-        `export type ${name} =\n${type
-          .getValues()
-          .map((v) => `  | ${JSON.stringify(v.value)}`)
-          .join("\n")};`,
+        `export type ${name} =\n${
+          type
+            .getValues()
+            .map((v) => `  | ${JSON.stringify(v.value)}`)
+            .join("\n")
+        };`,
       );
       continue;
     }
     if (isUnionType(type)) {
       buckets.unions.push(
-        `export type ${name} = ${type
-          .getTypes()
-          .map((t) => t.name)
-          .join(" | ")};`,
+        `export type ${name} = ${
+          type
+            .getTypes()
+            .map((t) => t.name)
+            .join(" | ")
+        };`,
       );
       continue;
     }

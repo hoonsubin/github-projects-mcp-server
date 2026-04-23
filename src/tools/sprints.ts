@@ -13,42 +13,42 @@
 // =============================================================================
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
-import { graphql, formatError } from "../services/github.ts";
+import { formatError, graphql } from "../services/github.ts";
 import {
-  loadScrumConfig,
-  resolveFields,
+  computeEndDate,
+  decodeCursor,
+  encodeCursor,
+  extractPriorityValue,
   fetchAllItems,
-  resolveTargetIteration,
   getFieldValue,
+  getItemAssignees,
+  getItemNumber,
+  getItemTitle,
+  getItemUrl,
+  getIterationValue,
   getNumberFieldValue,
   getStatusValue,
-  getIterationValue,
-  sumStoryPoints,
-  extractPriorityValue,
   isBacklogItem,
-  getItemTitle,
-  getItemNumber,
-  getItemUrl,
-  getItemAssignees,
-  encodeCursor,
-  decodeCursor,
-  computeEndDate,
+  loadScrumConfig,
+  resolveFields,
+  resolveTargetIteration,
+  sumStoryPoints,
 } from "../services/scrum.ts";
 import {
-  GetSprintStatusSchema,
-  GetVelocitySchema,
-  GetBacklogItemsSchema,
   BulkUpdateItemFieldSchema,
   CloseSprintSchema,
   GenerateSprintReportSchema,
+  GetBacklogItemsSchema,
+  GetSprintStatusSchema,
+  GetVelocitySchema,
   resolveFieldValue,
 } from "../schemas/inputs.ts";
 import type {
-  ProjectV2Item,
-  UpdateProjectItemFieldData,
   ArchiveProjectItemData,
   BulkUpdateResult,
   IterationVelocity,
+  ProjectV2Item,
+  UpdateProjectItemFieldData,
 } from "../types.ts";
 
 // ---------------------------------------------------------------------------
@@ -198,17 +198,16 @@ Returns: Sprint progress (points, %), blocked items, carry-over risk.`,
         const doneItems = byStatus[doneName] ?? [];
         const blockedItems = impedimentFieldId
           ? sprintItems.filter((item) => {
-              const fv = getFieldValue(item, impedimentFieldId);
-              return fv !== undefined && fv.name !== undefined;
-            })
+            const fv = getFieldValue(item, impedimentFieldId);
+            return fv !== undefined && fv.name !== undefined;
+          })
           : (byStatus[blockedName] ?? []);
 
         const committedPoints = sumStoryPoints(sprintItems, storyPointsFieldId);
         const completedPoints = sumStoryPoints(doneItems, storyPointsFieldId);
-        const completionPct =
-          committedPoints > 0
-            ? Math.round((completedPoints / committedPoints) * 100)
-            : 0;
+        const completionPct = committedPoints > 0
+          ? Math.round((completedPoints / committedPoints) * 100)
+          : 0;
 
         // Carry-over risk: not done and days remaining < threshold
         const carryThreshold = config.sprint?.carry_over_threshold_days ?? 3;
@@ -221,7 +220,9 @@ Returns: Sprint progress (points, %), blocked items, carry-over risk.`,
         const lines: string[] = [
           `## Sprint Status: ${target.title}  (${target.startDate} → ${target.endDate})`,
           "",
-          `**Progress**: ${completedPoints} / ${committedPoints} pts  (${completionPct}%)   ·   ${target.daysRemaining} day${target.daysRemaining === 1 ? "" : "s"} remaining`,
+          `**Progress**: ${completedPoints} / ${committedPoints} pts  (${completionPct}%)   ·   ${target.daysRemaining} day${
+            target.daysRemaining === 1 ? "" : "s"
+          } remaining`,
           `**Items**: ${sprintItems.length} total`,
         ];
 
@@ -376,25 +377,30 @@ Returns: Table of committed vs completed points per sprint, average velocity, tr
 
         // Compute averages from completed rows only
         const completedRows = velocityRows.filter((r) => !r.isCurrent);
-        const avgVelocity =
-          completedRows.length > 0
-            ? Math.round(
-                completedRows.reduce((sum, r) => sum + r.completedPoints, 0) /
-                  completedRows.length,
-              )
-            : null;
+        const avgVelocity = completedRows.length > 0
+          ? Math.round(
+            completedRows.reduce((sum, r) => sum + r.completedPoints, 0) /
+              completedRows.length,
+          )
+          : null;
 
         // Trend: most recent completed sprint vs average
         let trendStr = "n/a";
         if (completedRows.length >= 2 && avgVelocity !== null) {
           const recent = completedRows[completedRows.length - 1].completedPoints;
           const diff = recent - avgVelocity;
-          trendStr = diff > 0 ? `↑ ${diff} pts above avg` : diff < 0 ? `↓ ${Math.abs(diff)} pts below avg` : "→ at avg";
+          trendStr = diff > 0
+            ? `↑ ${diff} pts above avg`
+            : diff < 0
+            ? `↓ ${Math.abs(diff)} pts below avg`
+            : "→ at avg";
         }
 
         // Render table
         const lines = [
-          `## Velocity Report — Last ${params.iterations_count} Sprint${params.iterations_count === 1 ? "" : "s"}`,
+          `## Velocity Report — Last ${params.iterations_count} Sprint${
+            params.iterations_count === 1 ? "" : "s"
+          }`,
           "",
           "| Sprint | Dates | Committed | Completed | Rate |",
           "|---|---|---|---|---|",
@@ -516,9 +522,15 @@ Returns: Backlog items grouped by sprint-ready / needs estimation.`,
         );
 
         const lines: string[] = [
-          `## Product Backlog — ${backlog.length} item${backlog.length === 1 ? "" : "s"} unassigned to any sprint`,
+          `## Product Backlog — ${backlog.length} item${
+            backlog.length === 1 ? "" : "s"
+          } unassigned to any sprint`,
           "",
-          `**Unestimated**: ${backlog.filter((i) => getNumberFieldValue(i, storyPointsFieldId ?? "") === null).length} items  |  **Estimated**: ${backlog.filter((i) => getNumberFieldValue(i, storyPointsFieldId ?? "") !== null).length} items · ${totalEstimatedPts} pts total`,
+          `**Unestimated**: ${
+            backlog.filter((i) => getNumberFieldValue(i, storyPointsFieldId ?? "") === null).length
+          } items  |  **Estimated**: ${
+            backlog.filter((i) => getNumberFieldValue(i, storyPointsFieldId ?? "") !== null).length
+          } items · ${totalEstimatedPts} pts total`,
         ];
 
         if (hasNextPage && endCursor) {
@@ -616,8 +628,7 @@ Returns: Per-item success/failure summary.`,
             return {
               content: [{
                 type: "text",
-                text:
-                  "Error: project_id was not provided and could not be resolved from " +
+                text: "Error: project_id was not provided and could not be resolved from " +
                   "project-board.config.json (project.id is missing). " +
                   "Run `deno task sync-config` first, or pass project_id explicitly.",
               }],
@@ -648,19 +659,20 @@ Returns: Per-item success/failure summary.`,
         const succeeded = results.filter((r) => r.success).length;
         const failed = results.filter((r) => !r.success).length;
 
-        const valueDesc =
-          params.value.type === "iteration"
-            ? `iteration \`${params.value.iteration_id}\``
-            : params.value.type === "single_select"
-              ? `option \`${params.value.option_id}\``
-              : params.value.type === "clear"
-                ? "cleared"
-                : String((params.value as Record<string, unknown>).value ?? params.value.type);
+        const valueDesc = params.value.type === "iteration"
+          ? `iteration \`${params.value.iteration_id}\``
+          : params.value.type === "single_select"
+          ? `option \`${params.value.option_id}\``
+          : params.value.type === "clear"
+          ? "cleared"
+          : String((params.value as Record<string, unknown>).value ?? params.value.type);
 
         const lines: string[] = [
           `## Bulk Update — ${succeeded} / ${results.length} succeeded`,
           "",
-          `Field \`${params.field_id}\` → ${valueDesc} on ${results.length} item${results.length === 1 ? "" : "s"}`,
+          `Field \`${params.field_id}\` → ${valueDesc} on ${results.length} item${
+            results.length === 1 ? "" : "s"
+          }`,
           "",
         ];
 
@@ -671,7 +683,12 @@ Returns: Per-item success/failure summary.`,
         }
 
         if (failed > 0) {
-          lines.push("", `${failed} item${failed === 1 ? "" : "s"} failed. Re-run or use github_update_item_field individually.`);
+          lines.push(
+            "",
+            `${failed} item${
+              failed === 1 ? "" : "s"
+            } failed. Re-run or use github_update_item_field individually.`,
+          );
         }
 
         return { content: [{ type: "text", text: lines.join("\n") }] };
@@ -720,7 +737,8 @@ Returns: Preview or execution summary.`,
           return {
             content: [{
               type: "text",
-              text: "Error: project node ID not found in project-board.config.json. Run `deno task sync-config` first.",
+              text:
+                "Error: project node ID not found in project-board.config.json. Run `deno task sync-config` first.",
             }],
           };
         }
@@ -765,7 +783,9 @@ Returns: Preview or execution summary.`,
             `**Carry incomplete to**: ${carryTarget}`,
             `**Archive Done items**: ${params.archive_done ? "Yes" : "No"}`,
             "",
-            `**Would carry over**: ${incompleteItems.length} item${incompleteItems.length === 1 ? "" : "s"} (${sumStoryPoints(incompleteItems, storyPointsFieldId)} pts) → ${carryTarget}`,
+            `**Would carry over**: ${incompleteItems.length} item${
+              incompleteItems.length === 1 ? "" : "s"
+            } (${sumStoryPoints(incompleteItems, storyPointsFieldId)} pts) → ${carryTarget}`,
           ];
 
           for (const item of incompleteItems) {
@@ -777,7 +797,9 @@ Returns: Preview or execution summary.`,
 
           lines.push(
             "",
-            `**Would ${params.archive_done ? "archive" : "leave"}**: ${doneItems.length} Done item${doneItems.length === 1 ? "" : "s"}`,
+            `**Would ${params.archive_done ? "archive" : "leave"}**: ${doneItems.length} Done item${
+              doneItems.length === 1 ? "" : "s"
+            }`,
           );
 
           lines.push(
@@ -842,13 +864,21 @@ Returns: Preview or execution summary.`,
         ];
 
         for (const r of moveResults) {
-          lines.push(`  ${r.success ? "✅" : "❌"} \`${r.item_id}\` ${r.title}${r.error ? `  ⚠️ ${r.error}` : ""}`);
+          lines.push(
+            `  ${r.success ? "✅" : "❌"} \`${r.item_id}\` ${r.title}${
+              r.error ? `  ⚠️ ${r.error}` : ""
+            }`,
+          );
         }
 
         if (params.archive_done) {
           lines.push("", `**Archived**: ${archiveSucceeded} / ${archiveResults.length} Done items`);
           for (const r of archiveResults) {
-            lines.push(`  ${r.success ? "✅" : "❌"} \`${r.item_id}\` ${r.title}${r.error ? `  ⚠️ ${r.error}` : ""}`);
+            lines.push(
+              `  ${r.success ? "✅" : "❌"} \`${r.item_id}\` ${r.title}${
+                r.error ? `  ⚠️ ${r.error}` : ""
+              }`,
+            );
           }
         }
 
@@ -921,10 +951,9 @@ Returns: Sprint review document with goal assessment, velocity, item outcomes, c
 
         const committedPoints = sumStoryPoints(sprintItems, storyPointsFieldId);
         const completedPoints = sumStoryPoints(doneItems, storyPointsFieldId);
-        const completionPct =
-          committedPoints > 0
-            ? Math.round((completedPoints / committedPoints) * 100)
-            : 0;
+        const completionPct = committedPoints > 0
+          ? Math.round((completedPoints / committedPoints) * 100)
+          : 0;
 
         // Velocity context — last few completed sprints
         const completedIterations = allIterations
@@ -981,12 +1010,11 @@ Returns: Sprint review document with goal assessment, velocity, item outcomes, c
         const today = new Date().toISOString().slice(0, 10);
 
         // Goal assessment
-        const goalAchieved =
-          incompleteItems.length === 0
-            ? "✅ Fully achieved"
-            : doneItems.length > 0
-              ? `⚠️ Partially achieved — ${doneItems.length} of ${sprintItems.length} items completed`
-              : "❌ Not achieved";
+        const goalAchieved = incompleteItems.length === 0
+          ? "✅ Fully achieved"
+          : doneItems.length > 0
+          ? `⚠️ Partially achieved — ${doneItems.length} of ${sprintItems.length} items completed`
+          : "❌ Not achieved";
 
         // --- Build the report ---
         const lines: string[] = [
@@ -1023,7 +1051,9 @@ Returns: Sprint review document with goal assessment, velocity, item outcomes, c
           const titleStr = url ? `[${title}](${url})` : title;
           const statusEntry = getStatusValue(item, statusFieldId);
           const isDone = statusEntry?.name === doneName;
-          const statusLabel = isDone ? `✅ ${statusEntry?.name}` : `⚠️ ${statusEntry?.name ?? "No Status"}`;
+          const statusLabel = isDone
+            ? `✅ ${statusEntry?.name}`
+            : `⚠️ ${statusEntry?.name ?? "No Status"}`;
           const pts = getNumberFieldValue(item, storyPointsFieldId ?? "") ?? "—";
           lines.push(`| ${num} | ${titleStr} | ${statusLabel} | ${pts} |`);
         }
@@ -1032,7 +1062,9 @@ Returns: Sprint review document with goal assessment, velocity, item outcomes, c
           const carryPts = sumStoryPoints(incompleteItems, storyPointsFieldId);
           lines.push("", `## Carry-over to Next Sprint`);
           lines.push(
-            `${incompleteItems.length} item${incompleteItems.length === 1 ? "" : "s"} · ${carryPts} pts`,
+            `${incompleteItems.length} item${
+              incompleteItems.length === 1 ? "" : "s"
+            } · ${carryPts} pts`,
           );
           for (const item of incompleteItems) {
             const pts = getNumberFieldValue(item, storyPointsFieldId ?? "");

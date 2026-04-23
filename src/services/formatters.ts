@@ -1,4 +1,4 @@
-import type { ProjectV2, ProjectV2Item, ProjectV2Field } from "../types.ts";
+import type { ProjectV2, ProjectV2Field, ProjectV2Item } from "../types.ts";
 
 // ── Shared GraphQL fragments ─────────────────────────────────────────────────
 
@@ -99,7 +99,7 @@ export const formatProject = (p: ProjectV2): string => {
     }
   }
   return lines.join("\n");
-}
+};
 
 export const formatItem = (item: ProjectV2Item): string => {
   const lines: string[] = [`### Item \`${item.id}\``];
@@ -121,7 +121,7 @@ export const formatItem = (item: ProjectV2Item): string => {
   }
 
   const fieldValues = item.fieldValues.nodes.filter(
-    (fv) => fv.__typename !== "ProjectV2ItemFieldTextValue" || fv.text !== undefined
+    (fv) => fv.__typename !== "ProjectV2ItemFieldTextValue" || fv.text !== undefined,
   );
   if (fieldValues.length > 0) {
     lines.push("**Fields**:");
@@ -142,13 +142,12 @@ export const formatItem = (item: ProjectV2Item): string => {
   }
 
   return lines.join("\n");
-}
+};
 
 export const formatField = (f: ProjectV2Field): string => {
   let line = `- **${f.name}** | type: \`${f.dataType}\` | id: \`${f.id}\``;
   if (f.options) {
-    line +=
-      "\n  Options: " +
+    line += "\n  Options: " +
       f.options.map((o) => `\`${o.id}\` ${o.name} (${o.color})`).join(", ");
   }
   if (f.configuration) {
@@ -158,4 +157,4 @@ export const formatField = (f: ProjectV2Field): string => {
     line += `\n  Active iterations: ${iters}`;
   }
   return line;
-}
+};

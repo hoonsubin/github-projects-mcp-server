@@ -1,22 +1,18 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
-import { graphql, formatError } from "../services/github.ts";
+import { formatError, graphql } from "../services/github.ts";
+import { formatField, formatProject, PROJECT_CORE_FRAGMENT } from "../services/formatters.ts";
 import {
-  PROJECT_CORE_FRAGMENT,
-  formatProject,
-  formatField,
-} from "../services/formatters.ts";
-import {
-  ListProjectsSchema,
-  GetProjectSchema,
-  UpdateProjectSchema,
   GetProjectFieldsSchema,
+  GetProjectSchema,
+  ListProjectsSchema,
+  UpdateProjectSchema,
 } from "../schemas/inputs.ts";
 import type {
-  UserProjectsData,
   OrgProjectsData,
+  ProjectV2Field,
   SingleProjectData,
   UpdateProjectData,
-  ProjectV2Field,
+  UserProjectsData,
 } from "../types.ts";
 
 export const registerProjectTools = (server: McpServer): void => {
@@ -67,7 +63,7 @@ Returns: Markdown list of projects with IDs, numbers, URLs, and field summaries.
             after: params.after ?? null,
           });
           const projectsV2 = data.organization?.projectsV2;
-          if (!projectsV2)
+          if (!projectsV2) {
             return {
               content: [
                 {
@@ -76,16 +72,13 @@ Returns: Markdown list of projects with IDs, numbers, URLs, and field summaries.
                 },
               ],
             };
+          }
 
           const { nodes, totalCount, pageInfo } = projectsV2;
-          const filtered = params.include_closed
-            ? nodes
-            : nodes.filter((p) => !p.closed);
+          const filtered = params.include_closed ? nodes : nodes.filter((p) => !p.closed);
           const text = [
             `## Projects for org: ${params.owner} (${totalCount} total)`,
-            pageInfo.hasNextPage
-              ? `_Next page cursor: \`${pageInfo.endCursor}\`_`
-              : "",
+            pageInfo.hasNextPage ? `_Next page cursor: \`${pageInfo.endCursor}\`_` : "",
             "",
             ...filtered.map(formatProject),
           ].join("\n");
@@ -107,22 +100,19 @@ Returns: Markdown list of projects with IDs, numbers, URLs, and field summaries.
             after: params.after ?? null,
           });
           const projectsV2 = data.user?.projectsV2;
-          if (!projectsV2)
+          if (!projectsV2) {
             return {
               content: [
                 { type: "text", text: `User '${params.owner}' not found.` },
               ],
             };
+          }
 
           const { nodes, totalCount, pageInfo } = projectsV2;
-          const filtered = params.include_closed
-            ? nodes
-            : nodes.filter((p) => !p.closed);
+          const filtered = params.include_closed ? nodes : nodes.filter((p) => !p.closed);
           const text = [
             `## Projects for user: ${params.owner} (${totalCount} total)`,
-            pageInfo.hasNextPage
-              ? `_Next page cursor: \`${pageInfo.endCursor}\`_`
-              : "",
+            pageInfo.hasNextPage ? `_Next page cursor: \`${pageInfo.endCursor}\`_` : "",
             "",
             ...filtered.map(formatProject),
           ].join("\n");
@@ -161,14 +151,13 @@ Returns: Full project details including fields, options, and node IDs.`,
     },
     async (params) => {
       try {
-        const query =
-          params.owner_type === "org"
-            ? `query($login: String!, $number: Int!) {
+        const query = params.owner_type === "org"
+          ? `query($login: String!, $number: Int!) {
                 organization(login: $login) {
                   projectV2(number: $number) { ${PROJECT_CORE_FRAGMENT} readme }
                 }
               }`
-            : `query($login: String!, $number: Int!) {
+          : `query($login: String!, $number: Int!) {
                 user(login: $login) {
                   projectV2(number: $number) { ${PROJECT_CORE_FRAGMENT} readme }
                 }
@@ -179,10 +168,9 @@ Returns: Full project details including fields, options, and node IDs.`,
           number: params.project_number,
         });
 
-        const project =
-          params.owner_type === "org"
-            ? data.organization?.projectV2
-            : data.user?.projectV2;
+        const project = params.owner_type === "org"
+          ? data.organization?.projectV2
+          : data.user?.projectV2;
 
         if (!project) {
           return {
@@ -237,9 +225,8 @@ Returns: Each field's name, dataType, node ID, and (for single-select) all optio
     },
     async (params) => {
       try {
-        const query =
-          params.owner_type === "org"
-            ? `query($login: String!, $number: Int!) {
+        const query = params.owner_type === "org"
+          ? `query($login: String!, $number: Int!) {
                 organization(login: $login) {
                   projectV2(number: $number) {
                     title number
@@ -262,7 +249,7 @@ Returns: Each field's name, dataType, node ID, and (for single-select) all optio
                   }
                 }
               }`
-            : `query($login: String!, $number: Int!) {
+          : `query($login: String!, $number: Int!) {
                 user(login: $login) {
                   projectV2(number: $number) {
                     title number
@@ -303,10 +290,9 @@ Returns: Each field's name, dataType, node ID, and (for single-select) all optio
           };
         }>(query, { login: params.owner, number: params.project_number });
 
-        const project =
-          params.owner_type === "org"
-            ? data.organization?.projectV2
-            : data.user?.projectV2;
+        const project = params.owner_type === "org"
+          ? data.organization?.projectV2
+          : data.user?.projectV2;
 
         if (!project) {
           return {
@@ -324,9 +310,7 @@ Returns: Each field's name, dataType, node ID, and (for single-select) all optio
           : project.fields.nodes;
 
         const fieldLines = fields.map(formatField);
-        const filterNote = params.field_type
-          ? ` (filtered: ${params.field_type})`
-          : "";
+        const filterNote = params.field_type ? ` (filtered: ${params.field_type})` : "";
         const text = [
           `## Fields for: ${project.title} (#${project.number})${filterNote}`,
           "",
@@ -381,8 +365,9 @@ Returns: Updated project metadata.`,
 
         const input: Record<string, unknown> = { projectId: params.project_id };
         if (params.title !== undefined) input.title = params.title;
-        if (params.short_description !== undefined)
+        if (params.short_description !== undefined) {
           input.shortDescription = params.short_description;
+        }
         if (params.readme !== undefined) input.readme = params.readme;
         if (params.public !== undefined) input.public = params.public;
         if (params.closed !== undefined) input.closed = params.closed;
@@ -398,9 +383,7 @@ Returns: Updated project metadata.`,
                 "✅ Project updated successfully.",
                 `**Title**: ${p.title}`,
                 `**Status**: ${p.closed ? "Closed" : "Open"} | ${p.public ? "Public" : "Private"}`,
-                p.shortDescription
-                  ? `**Description**: ${p.shortDescription}`
-                  : "",
+                p.shortDescription ? `**Description**: ${p.shortDescription}` : "",
               ]
                 .filter(Boolean)
                 .join("\n"),

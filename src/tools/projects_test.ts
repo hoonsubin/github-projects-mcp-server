@@ -5,7 +5,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { registerProjectTools } from "./projects.ts";
 import type { ProjectV2 } from "../types.ts";
 
-const mockFetch = (data: unknown, status = 200): (() => void) => {
+const mockFetch = (data: unknown, status = 200): () => void => {
   const original = globalThis.fetch;
   globalThis.fetch = () =>
     Promise.resolve(
@@ -23,8 +23,7 @@ const makeTestClient = async () => {
   const server = new McpServer({ name: "test", version: "0.0.0" });
   registerProjectTools(server);
 
-  const [clientTransport, serverTransport] =
-    InMemoryTransport.createLinkedPair();
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
 
   const client = new Client({ name: "test-client", version: "0.0.0" });
@@ -64,11 +63,14 @@ Deno.test(
 
     try {
       const client = await makeTestClient();
-      const result = await client.callTool({ name: "github_list_projects", arguments: {
-        owner: "hoonsubin",
-        owner_type: "user",
-        first: 20,
-      }});
+      const result = await client.callTool({
+        name: "github_list_projects",
+        arguments: {
+          owner: "hoonsubin",
+          owner_type: "user",
+          first: 20,
+        },
+      });
       const text = (result.content[0] as { text: string }).text;
       assertStringIncludes(text, "My Project");
       assertStringIncludes(text, "Projects for user: hoonsubin");
@@ -85,11 +87,14 @@ Deno.test(
     const restore = mockFetch({ user: null });
     try {
       const client = await makeTestClient();
-      const result = await client.callTool({ name: "github_list_projects", arguments: {
-        owner: "ghost",
-        owner_type: "user",
-        first: 20,
-      }});
+      const result = await client.callTool({
+        name: "github_list_projects",
+        arguments: {
+          owner: "ghost",
+          owner_type: "user",
+          first: 20,
+        },
+      });
       const text = (result.content[0] as { text: string }).text;
       assertStringIncludes(text, "User 'ghost' not found");
     } finally {
@@ -133,17 +138,25 @@ Deno.test(
         projectsV2: {
           totalCount: 1,
           pageInfo: { hasNextPage: false, endCursor: null },
-          nodes: [makeProject({ title: "Org Project", owner: { __typename: "Organization", login: "myorg" } })],
+          nodes: [
+            makeProject({
+              title: "Org Project",
+              owner: { __typename: "Organization", login: "myorg" },
+            }),
+          ],
         },
       },
     });
     try {
       const client = await makeTestClient();
-      const result = await client.callTool({ name: "github_list_projects", arguments: {
-        owner: "myorg",
-        owner_type: "org",
-        first: 20,
-      }});
+      const result = await client.callTool({
+        name: "github_list_projects",
+        arguments: {
+          owner: "myorg",
+          owner_type: "org",
+          first: 20,
+        },
+      });
       const text = (result.content[0] as { text: string }).text;
       assertStringIncludes(text, "Projects for org: myorg");
       assertStringIncludes(text, "Org Project");
@@ -160,11 +173,14 @@ Deno.test(
     const restore = mockFetch({ organization: null });
     try {
       const client = await makeTestClient();
-      const result = await client.callTool({ name: "github_list_projects", arguments: {
-        owner: "nonexistent-org",
-        owner_type: "org",
-        first: 20,
-      }});
+      const result = await client.callTool({
+        name: "github_list_projects",
+        arguments: {
+          owner: "nonexistent-org",
+          owner_type: "org",
+          first: 20,
+        },
+      });
       const text = (result.content[0] as { text: string }).text;
       assertStringIncludes(text, "not found");
       assertStringIncludes(text, "nonexistent-org");
@@ -189,11 +205,14 @@ Deno.test(
     });
     try {
       const client = await makeTestClient();
-      const result = await client.callTool({ name: "github_list_projects", arguments: {
-        owner: "hoonsubin",
-        owner_type: "user",
-        first: 1,
-      }});
+      const result = await client.callTool({
+        name: "github_list_projects",
+        arguments: {
+          owner: "hoonsubin",
+          owner_type: "user",
+          first: 1,
+        },
+      });
       const text = (result.content[0] as { text: string }).text;
       assertStringIncludes(text, "cursor_abc");
     } finally {
@@ -215,11 +234,14 @@ Deno.test(
     });
     try {
       const client = await makeTestClient();
-      const result = await client.callTool({ name: "github_get_project", arguments: {
-        owner: "hoonsubin",
-        owner_type: "user",
-        project_number: 1,
-      }});
+      const result = await client.callTool({
+        name: "github_get_project",
+        arguments: {
+          owner: "hoonsubin",
+          owner_type: "user",
+          project_number: 1,
+        },
+      });
       const text = (result.content[0] as { text: string }).text;
       assertStringIncludes(text, "My Project");
       assertStringIncludes(text, "PVT_1");
@@ -239,11 +261,14 @@ Deno.test(
     });
     try {
       const client = await makeTestClient();
-      const result = await client.callTool({ name: "github_get_project", arguments: {
-        owner: "hoonsubin",
-        owner_type: "user",
-        project_number: 1,
-      }});
+      const result = await client.callTool({
+        name: "github_get_project",
+        arguments: {
+          owner: "hoonsubin",
+          owner_type: "user",
+          project_number: 1,
+        },
+      });
       const text = (result.content[0] as { text: string }).text;
       assertStringIncludes(text, "README");
       assertStringIncludes(text, "some content");
@@ -260,11 +285,14 @@ Deno.test(
     const restore = mockFetch({ user: { projectV2: null } });
     try {
       const client = await makeTestClient();
-      const result = await client.callTool({ name: "github_get_project", arguments: {
-        owner: "hoonsubin",
-        owner_type: "user",
-        project_number: 99,
-      }});
+      const result = await client.callTool({
+        name: "github_get_project",
+        arguments: {
+          owner: "hoonsubin",
+          owner_type: "user",
+          project_number: 99,
+        },
+      });
       const text = (result.content[0] as { text: string }).text;
       assertStringIncludes(text, "not found");
       assertStringIncludes(text, "99");
@@ -288,11 +316,14 @@ Deno.test(
     });
     try {
       const client = await makeTestClient();
-      const result = await client.callTool({ name: "github_get_project", arguments: {
-        owner: "myorg",
-        owner_type: "org",
-        project_number: 1,
-      }});
+      const result = await client.callTool({
+        name: "github_get_project",
+        arguments: {
+          owner: "myorg",
+          owner_type: "org",
+          project_number: 1,
+        },
+      });
       const text = (result.content[0] as { text: string }).text;
       assertStringIncludes(text, "Org Board");
     } finally {
@@ -330,11 +361,14 @@ Deno.test(
     });
     try {
       const client = await makeTestClient();
-      const result = await client.callTool({ name: "github_get_project_fields", arguments: {
-        owner: "hoonsubin",
-        owner_type: "user",
-        project_number: 1,
-      }});
+      const result = await client.callTool({
+        name: "github_get_project_fields",
+        arguments: {
+          owner: "hoonsubin",
+          owner_type: "user",
+          project_number: 1,
+        },
+      });
       const text = (result.content[0] as { text: string }).text;
       assertStringIncludes(text, "Notes");
       assertStringIncludes(text, "F_TEXT");
@@ -366,12 +400,15 @@ Deno.test(
     });
     try {
       const client = await makeTestClient();
-      const result = await client.callTool({ name: "github_get_project_fields", arguments: {
-        owner: "hoonsubin",
-        owner_type: "user",
-        project_number: 1,
-        field_type: "TEXT",
-      }});
+      const result = await client.callTool({
+        name: "github_get_project_fields",
+        arguments: {
+          owner: "hoonsubin",
+          owner_type: "user",
+          project_number: 1,
+          field_type: "TEXT",
+        },
+      });
       const text = (result.content[0] as { text: string }).text;
       assertStringIncludes(text, "Notes");
       assertStringIncludes(text, "filtered: TEXT");
@@ -400,12 +437,15 @@ Deno.test(
     });
     try {
       const client = await makeTestClient();
-      const result = await client.callTool({ name: "github_get_project_fields", arguments: {
-        owner: "hoonsubin",
-        owner_type: "user",
-        project_number: 1,
-        field_type: "ITERATION",
-      }});
+      const result = await client.callTool({
+        name: "github_get_project_fields",
+        arguments: {
+          owner: "hoonsubin",
+          owner_type: "user",
+          project_number: 1,
+          field_type: "ITERATION",
+        },
+      });
       const text = (result.content[0] as { text: string }).text;
       assertStringIncludes(text, "No fields");
       assertStringIncludes(text, "ITERATION");
@@ -422,11 +462,14 @@ Deno.test(
     const restore = mockFetch({ user: { projectV2: null } });
     try {
       const client = await makeTestClient();
-      const result = await client.callTool({ name: "github_get_project_fields", arguments: {
-        owner: "hoonsubin",
-        owner_type: "user",
-        project_number: 99,
-      }});
+      const result = await client.callTool({
+        name: "github_get_project_fields",
+        arguments: {
+          owner: "hoonsubin",
+          owner_type: "user",
+          project_number: 99,
+        },
+      });
       const text = (result.content[0] as { text: string }).text;
       assertStringIncludes(text, "not found");
     } finally {
@@ -456,10 +499,13 @@ Deno.test(
     });
     try {
       const client = await makeTestClient();
-      const result = await client.callTool({ name: "github_update_project", arguments: {
-        project_id: "PVT_1",
-        title: "New Title",
-      }});
+      const result = await client.callTool({
+        name: "github_update_project",
+        arguments: {
+          project_id: "PVT_1",
+          title: "New Title",
+        },
+      });
       const text = (result.content[0] as { text: string }).text;
       assertStringIncludes(text, "✅");
       assertStringIncludes(text, "New Title");
@@ -486,10 +532,13 @@ Deno.test(
     });
     try {
       const client = await makeTestClient();
-      const result = await client.callTool({ name: "github_update_project", arguments: {
-        project_id: "PVT_1",
-        short_description: "sprint tracker",
-      }});
+      const result = await client.callTool({
+        name: "github_update_project",
+        arguments: {
+          project_id: "PVT_1",
+          short_description: "sprint tracker",
+        },
+      });
       const text = (result.content[0] as { text: string }).text;
       assertStringIncludes(text, "sprint tracker");
     } finally {
@@ -515,10 +564,13 @@ Deno.test(
     });
     try {
       const client = await makeTestClient();
-      const result = await client.callTool({ name: "github_update_project", arguments: {
-        project_id: "PVT_1",
-        closed: true,
-      }});
+      const result = await client.callTool({
+        name: "github_update_project",
+        arguments: {
+          project_id: "PVT_1",
+          closed: true,
+        },
+      });
       const text = (result.content[0] as { text: string }).text;
       assertStringIncludes(text, "Closed");
     } finally {

@@ -78,7 +78,6 @@ field_names:
   item_type: Type
   assignee: Assignees
 
-
 # -----------------------------------------------------------------------------
 # Item ID conventions
 # -----------------------------------------------------------------------------
@@ -134,7 +133,6 @@ sprint:
   # Time by which the sprint report must be submitted (local time, 24 h)
   report_submit_time: "23:59"
   report_recipient: j.kolb@lmu.de
-
 
 # -----------------------------------------------------------------------------
 # Agent autonomy

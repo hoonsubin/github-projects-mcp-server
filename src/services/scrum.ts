@@ -25,10 +25,7 @@ import type {
   SprintIteration,
 } from "../types.ts";
 import { graphql } from "./github.ts";
-import {
-  ITEM_CONTENT_FRAGMENT,
-  ITEM_FIELD_VALUES_FRAGMENT,
-} from "./formatters.ts";
+import { ITEM_CONTENT_FRAGMENT, ITEM_FIELD_VALUES_FRAGMENT } from "./formatters.ts";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -138,10 +135,8 @@ export const resolveFields = (
 
   if (Object.keys(registry).length > 0) {
     return {
-      sprintFieldId:
-        registry[fn.sprint]?.id ?? throwMissing("sprint", fn.sprint, registry),
-      statusFieldId:
-        registry[fn.status]?.id ?? throwMissing("status", fn.status, registry),
+      sprintFieldId: registry[fn.sprint]?.id ?? throwMissing("sprint", fn.sprint, registry),
+      statusFieldId: registry[fn.status]?.id ?? throwMissing("status", fn.status, registry),
       storyPointsFieldId: registry[fn.story_points]?.id ?? null,
       priorityFieldId: registry[fn.priority]?.id ?? null,
       impedimentFieldId: registry[fn.impediment]?.id ?? null,
@@ -220,10 +215,7 @@ export const fetchAllItems = async (
       after: cursor,
     });
 
-    const projectData =
-      ownerType === "user"
-        ? data.user?.projectV2
-        : data.organization?.projectV2;
+    const projectData = ownerType === "user" ? data.user?.projectV2 : data.organization?.projectV2;
 
     if (!projectData) break;
 
@@ -379,12 +371,10 @@ export const extractPriorityValue = (
 export const isBacklogItem = (
   item: ProjectV2Item,
   sprintFieldId: string,
-): boolean =>
-  !item.isArchived && getIterationValue(item, sprintFieldId) === null;
+): boolean => !item.isArchived && getIterationValue(item, sprintFieldId) === null;
 
 /** Extract a display title from any item content type. */
-export const getItemTitle = (item: ProjectV2Item): string =>
-  item.content?.title ?? "(no title)";
+export const getItemTitle = (item: ProjectV2Item): string => item.content?.title ?? "(no title)";
 
 /** Extract a human-readable issue/PR number; null for draft issues. */
 export const getItemNumber = (item: ProjectV2Item): number | null =>

@@ -1,20 +1,20 @@
 import { assertEquals, assertThrows } from "@std/assert";
 import type { ProjectV2Item, ProjectV2ItemFieldValue } from "../types.ts";
 import {
-  encodeCursor,
-  decodeCursor,
-  computeEndDate,
   calcDaysRemaining,
+  computeEndDate,
+  decodeCursor,
+  encodeCursor,
   getFieldValue,
+  getItemAssignees,
+  getItemNumber,
+  getItemTitle,
+  getItemUrl,
+  getIterationValue,
   getNumberFieldValue,
   getStatusValue,
-  getIterationValue,
-  sumStoryPoints,
   isBacklogItem,
-  getItemTitle,
-  getItemNumber,
-  getItemUrl,
-  getItemAssignees,
+  sumStoryPoints,
 } from "./scrum.ts";
 
 // ---------------------------------------------------------------------------

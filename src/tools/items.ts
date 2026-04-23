@@ -1,26 +1,30 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
-import { graphql, formatError } from "../services/github.ts";
-import { ITEM_CONTENT_FRAGMENT, ITEM_FIELD_VALUES_FRAGMENT, formatItem } from "../services/formatters.ts";
+import { formatError, graphql } from "../services/github.ts";
 import {
-  ListItemsSchema,
-  AddItemSchema,
+  formatItem,
+  ITEM_CONTENT_FRAGMENT,
+  ITEM_FIELD_VALUES_FRAGMENT,
+} from "../services/formatters.ts";
+import {
   AddDraftIssueSchema,
-  DeleteItemSchema,
+  AddItemSchema,
   ArchiveItemSchema,
-  UpdateFieldValueSchema,
+  DeleteItemSchema,
   GetIssueNodeIdSchema,
   GetUserNodeIdSchema,
+  ListItemsSchema,
   resolveFieldValue,
+  UpdateFieldValueSchema,
 } from "../schemas/inputs.ts";
-import { loadScrumConfig, resolveFields, getIterationValue } from "../services/scrum.ts";
+import { getIterationValue, loadScrumConfig, resolveFields } from "../services/scrum.ts";
 import type {
-  ProjectItemsData,
-  AddProjectItemData,
   AddDraftIssueData,
-  UpdateProjectItemFieldData,
-  DeleteProjectItemData,
+  AddProjectItemData,
   ArchiveProjectItemData,
+  DeleteProjectItemData,
+  ProjectItemsData,
   ProjectV2Item,
+  UpdateProjectItemFieldData,
 } from "../types.ts";
 
 export const registerItemTools = (server: McpServer): void => {
@@ -69,14 +73,13 @@ Returns: Markdown list of items with IDs, titles, states, and field values.
             }
           }`;
 
-        const query =
-          params.owner_type === "org"
-            ? `query($login: String!, $number: Int!, $first: Int!, $after: String) {
+        const query = params.owner_type === "org"
+          ? `query($login: String!, $number: Int!, $first: Int!, $after: String) {
                 organization(login: $login) {
                   projectV2(number: $number) { ${itemsFragment} }
                 }
               }`
-            : `query($login: String!, $number: Int!, $first: Int!, $after: String) {
+          : `query($login: String!, $number: Int!, $first: Int!, $after: String) {
                 user(login: $login) {
                   projectV2(number: $number) { ${itemsFragment} }
                 }
@@ -89,13 +92,17 @@ Returns: Markdown list of items with IDs, titles, states, and field values.
           after: params.after ?? null,
         });
 
-        const projectData =
-          params.owner_type === "org"
-            ? data.organization?.projectV2
-            : data.user?.projectV2;
+        const projectData = params.owner_type === "org"
+          ? data.organization?.projectV2
+          : data.user?.projectV2;
 
         if (!projectData) {
-          return { content: [{ type: "text", text: `Project #${params.project_number} not found for ${params.owner}.` }] };
+          return {
+            content: [{
+              type: "text",
+              text: `Project #${params.project_number} not found for ${params.owner}.`,
+            }],
+          };
         }
 
         let items: ProjectV2Item[] = projectData.items.nodes;
@@ -140,16 +147,14 @@ Returns: Markdown list of items with IDs, titles, states, and field values.
           `## Project Items (${totalCount} total, showing ${items.length})`,
           pageInfo.hasNextPage ? `_Next page cursor: \`${pageInfo.endCursor}\`_` : "",
           "",
-          items.length === 0
-            ? "_No items found._"
-            : items.map(formatItem).join("\n\n---\n\n"),
+          items.length === 0 ? "_No items found._" : items.map(formatItem).join("\n\n---\n\n"),
         ];
 
-        return { content: [{ type: "text", text: lines.filter(l => l !== "").join("\n") }] };
+        return { content: [{ type: "text", text: lines.filter((l) => l !== "").join("\n") }] };
       } catch (err) {
         return { content: [{ type: "text", text: formatError(err) }] };
       }
-    }
+    },
   );
 
   // ── Add Issue/PR to Project ────────────────────────────────────────────────
@@ -195,13 +200,14 @@ Returns: Node ID of the new project item (use this for github_update_item_field)
         return {
           content: [{
             type: "text",
-            text: `✅ Item added to project.\n**Item node ID**: \`${itemId}\`\n\nUse this ID with github_update_item_field to set field values.`,
+            text:
+              `✅ Item added to project.\n**Item node ID**: \`${itemId}\`\n\nUse this ID with github_update_item_field to set field values.`,
           }],
         };
       } catch (err) {
         return { content: [{ type: "text", text: formatError(err) }] };
       }
-    }
+    },
   );
 
   // ── Add Draft Issue ────────────────────────────────────────────────────────
@@ -290,7 +296,9 @@ Returns: Node ID of the new project item, plus sprint assignment status if itera
             lines.push(`**Sprint**: assigned to iteration \`${params.iteration_id}\``);
           } catch (sprintErr) {
             lines.push(
-              `⚠️ Sprint assignment failed: ${sprintErr instanceof Error ? sprintErr.message : String(sprintErr)}. ` +
+              `⚠️ Sprint assignment failed: ${
+                sprintErr instanceof Error ? sprintErr.message : String(sprintErr)
+              }. ` +
                 `Run \`deno task sync-config\` and retry, or use github_update_item_field manually.`,
             );
           }
@@ -300,7 +308,7 @@ Returns: Node ID of the new project item, plus sprint assignment status if itera
       } catch (err) {
         return { content: [{ type: "text", text: formatError(err) }] };
       }
-    }
+    },
   );
 
   // ── Update Field Value ─────────────────────────────────────────────────────
@@ -355,13 +363,16 @@ Returns: Confirmation with item ID.`,
                 projectV2Item { id }
               }
             }`;
-          await graphql<{ clearProjectV2ItemFieldValue: { projectV2Item: { id: string } } }>(mutation, {
-            input: {
-              projectId: params.project_id,
-              itemId: params.item_id,
-              fieldId: params.field_id,
+          await graphql<{ clearProjectV2ItemFieldValue: { projectV2Item: { id: string } } }>(
+            mutation,
+            {
+              input: {
+                projectId: params.project_id,
+                itemId: params.item_id,
+                fieldId: params.field_id,
+              },
             },
-          });
+          );
           return {
             content: [{ type: "text", text: `✅ Field cleared on item \`${params.item_id}\`.` }],
           };
@@ -386,13 +397,14 @@ Returns: Confirmation with item ID.`,
         return {
           content: [{
             type: "text",
-            text: `✅ Field updated on item \`${data.updateProjectV2ItemFieldValue.projectV2Item.id}\`.`,
+            text:
+              `✅ Field updated on item \`${data.updateProjectV2ItemFieldValue.projectV2Item.id}\`.`,
           }],
         };
       } catch (err) {
         return { content: [{ type: "text", text: formatError(err) }] };
       }
-    }
+    },
   );
 
   // ── Archive Item ───────────────────────────────────────────────────────────
@@ -449,7 +461,7 @@ Returns: Confirmation with item ID and new archived status.`,
       } catch (err) {
         return { content: [{ type: "text", text: formatError(err) }] };
       }
-    }
+    },
   );
 
   // ── Delete Item ────────────────────────────────────────────────────────────
@@ -497,13 +509,14 @@ Returns: Confirmation with the deleted item's ID.`,
         return {
           content: [{
             type: "text",
-            text: `✅ Item \`${data.deleteProjectV2Item.deletedItemId}\` has been permanently removed from the project.`,
+            text:
+              `✅ Item \`${data.deleteProjectV2Item.deletedItemId}\` has been permanently removed from the project.`,
           }],
         };
       } catch (err) {
         return { content: [{ type: "text", text: formatError(err) }] };
       }
-    }
+    },
   );
 
   // ── Helper: Get Issue Node ID ──────────────────────────────────────────────
@@ -533,14 +546,13 @@ Returns: The node ID (e.g., I_kwDO...) needed for other tools.`,
     },
     async (params) => {
       try {
-        const query =
-          params.type === "pull_request"
-            ? `query($owner: String!, $repo: String!, $number: Int!) {
+        const query = params.type === "pull_request"
+          ? `query($owner: String!, $repo: String!, $number: Int!) {
                 repository(owner: $owner, name: $repo) {
                   pullRequest(number: $number) { id number title url state }
                 }
               }`
-            : `query($owner: String!, $repo: String!, $number: Int!) {
+          : `query($owner: String!, $repo: String!, $number: Int!) {
                 repository(owner: $owner, name: $repo) {
                   issue(number: $number) { id number title url state }
                 }
@@ -561,7 +573,9 @@ Returns: The node ID (e.g., I_kwDO...) needed for other tools.`,
           return {
             content: [{
               type: "text",
-              text: `${params.type === "pull_request" ? "PR" : "Issue"} #${params.issue_number} not found in ${params.owner}/${params.repo}.`,
+              text: `${
+                params.type === "pull_request" ? "PR" : "Issue"
+              } #${params.issue_number} not found in ${params.owner}/${params.repo}.`,
             }],
           };
         }
@@ -580,7 +594,7 @@ Returns: The node ID (e.g., I_kwDO...) needed for other tools.`,
       } catch (err) {
         return { content: [{ type: "text", text: formatError(err) }] };
       }
-    }
+    },
   );
 
   // ── Helper: Get User Node ID ───────────────────────────────────────────────
@@ -633,6 +647,6 @@ Returns: The user's node ID (e.g., U_kgDO...).`,
       } catch (err) {
         return { content: [{ type: "text", text: formatError(err) }] };
       }
-    }
+    },
   );
-}
+};

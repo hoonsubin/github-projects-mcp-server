@@ -6,7 +6,7 @@ services:
     env_file:
       - .env
     ports:
-      - "127.0.0.1:3456:3000"   # bind to loopback; expose via reverse proxy
+      - "127.0.0.1:3456:3000" # bind to loopback; expose via reverse proxy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
       interval: 30s
