@@ -123,12 +123,12 @@ Deno.test("github_list_project_items - user: returns formatted item list", async
   const restore = mockFetch(wrapUserItems([makeDraftItem()]));
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_list_project_items", {
+    const result = await client.callTool({ name: "github_list_project_items", arguments: {
       owner: "hoonsubin",
       owner_type: "user",
       project_number: 1,
       first: 20,
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "Project Items");
     assertStringIncludes(text, "PVTI_1");
@@ -143,12 +143,12 @@ Deno.test("github_list_project_items - org: resolves via organization key", asyn
   const restore = mockFetch(wrapOrgItems([makeDraftItem("PVTI_3", "Org Task")]));
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_list_project_items", {
+    const result = await client.callTool({ name: "github_list_project_items", arguments: {
       owner: "myorg",
       owner_type: "org",
       project_number: 2,
       first: 20,
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "Org Task");
   } finally {
@@ -161,12 +161,12 @@ Deno.test("github_list_project_items - project not found: returns specific error
   const restore = mockFetch({ user: { projectV2: null } });
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_list_project_items", {
+    const result = await client.callTool({ name: "github_list_project_items", arguments: {
       owner: "hoonsubin",
       owner_type: "user",
       project_number: 99,
       first: 20,
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "not found");
     assertStringIncludes(text, "99");
@@ -181,13 +181,13 @@ Deno.test("github_list_project_items - filter_type DraftIssue: only draft items 
   const restore = mockFetch(wrapUserItems(items, 2));
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_list_project_items", {
+    const result = await client.callTool({ name: "github_list_project_items", arguments: {
       owner: "hoonsubin",
       owner_type: "user",
       project_number: 1,
       first: 20,
       filter_type: "DraftIssue",
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "showing 1");
     assertStringIncludes(text, "Draft Task");
@@ -213,13 +213,13 @@ Deno.test("github_list_project_items - status_option_id filter: only matching it
   const restore = mockFetch(wrapUserItems([itemWithStatus, itemNoStatus], 2));
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_list_project_items", {
+    const result = await client.callTool({ name: "github_list_project_items", arguments: {
       owner: "hoonsubin",
       owner_type: "user",
       project_number: 1,
       first: 20,
       status_option_id: "OPT_IN_PROGRESS",
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "showing 1");
     assertStringIncludes(text, "In Progress Task");
@@ -247,13 +247,13 @@ Deno.test("github_list_project_items - iteration_id filter (fallback path): matc
   const restore = mockFetch(wrapUserItems([itemInSprint, itemNoSprint], 2));
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_list_project_items", {
+    const result = await client.callTool({ name: "github_list_project_items", arguments: {
       owner: "hoonsubin",
       owner_type: "user",
       project_number: 1,
       first: 20,
       iteration_id: "ITER_X",
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "showing 1");
     assertStringIncludes(text, "Sprint Task");
@@ -269,12 +269,12 @@ Deno.test("github_list_project_items - pagination cursor shown when hasNextPage"
   );
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_list_project_items", {
+    const result = await client.callTool({ name: "github_list_project_items", arguments: {
       owner: "hoonsubin",
       owner_type: "user",
       project_number: 1,
       first: 1,
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "CURSOR_99");
   } finally {
@@ -287,12 +287,12 @@ Deno.test("github_list_project_items - empty project: shows no items message", a
   const restore = mockFetch(wrapUserItems([], 0));
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_list_project_items", {
+    const result = await client.callTool({ name: "github_list_project_items", arguments: {
       owner: "hoonsubin",
       owner_type: "user",
       project_number: 1,
       first: 20,
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "No items found");
   } finally {
@@ -311,10 +311,10 @@ Deno.test("github_add_item_to_project - success: returns item node ID", async ()
   });
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_add_item_to_project", {
+    const result = await client.callTool({ name: "github_add_item_to_project", arguments: {
       project_id: "PVT_1",
       content_id: "I_abc123",
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "PVTI_NEW");
     assertStringIncludes(text, "✅");
@@ -328,10 +328,10 @@ Deno.test("github_add_item_to_project - API error: returns formatted error", asy
   const restore = mockFetch({}, 500);
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_add_item_to_project", {
+    const result = await client.callTool({ name: "github_add_item_to_project", arguments: {
       project_id: "PVT_1",
       content_id: "I_abc123",
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "Error:");
   } finally {
@@ -350,10 +350,10 @@ Deno.test("github_add_draft_issue - success without iteration_id: returns item I
   });
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_add_draft_issue", {
+    const result = await client.callTool({ name: "github_add_draft_issue", arguments: {
       project_id: "PVT_1",
       title: "My Draft Task",
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "✅");
     assertStringIncludes(text, "PVTI_DRAFT");
@@ -372,11 +372,11 @@ Deno.test("github_add_draft_issue - with iteration_id when config unavailable: s
   });
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_add_draft_issue", {
+    const result = await client.callTool({ name: "github_add_draft_issue", arguments: {
       project_id: "PVT_1",
       title: "Sprint Task",
       iteration_id: "ITER_1",
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "PVTI_DRAFT");
     // Either success or warning — both indicate the draft was created
@@ -391,10 +391,10 @@ Deno.test("github_add_draft_issue - API error: returns formatted error", async (
   const restore = mockFetch({}, 500);
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_add_draft_issue", {
+    const result = await client.callTool({ name: "github_add_draft_issue", arguments: {
       project_id: "PVT_1",
       title: "My Draft",
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "Error:");
   } finally {
@@ -413,12 +413,12 @@ Deno.test("github_update_item_field - text type: updates successfully", async ()
   });
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_update_item_field", {
+    const result = await client.callTool({ name: "github_update_item_field", arguments: {
       project_id: "PVT_1",
       item_id: "PVTI_1",
       field_id: "F_1",
       value: { type: "text", value: "some text" },
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "✅");
     assertStringIncludes(text, "PVTI_1");
@@ -434,12 +434,12 @@ Deno.test("github_update_item_field - number type: updates successfully", async 
   });
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_update_item_field", {
+    const result = await client.callTool({ name: "github_update_item_field", arguments: {
       project_id: "PVT_1",
       item_id: "PVTI_1",
       field_id: "F_SP",
       value: { type: "number", number_value: 5 },
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "✅");
   } finally {
@@ -454,12 +454,12 @@ Deno.test("github_update_item_field - date type valid: updates successfully", as
   });
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_update_item_field", {
+    const result = await client.callTool({ name: "github_update_item_field", arguments: {
       project_id: "PVT_1",
       item_id: "PVTI_1",
       field_id: "F_DATE",
       value: { type: "date", value: "2025-06-01" },
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "✅");
   } finally {
@@ -474,12 +474,12 @@ Deno.test("github_update_item_field - single_select type: updates successfully",
   });
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_update_item_field", {
+    const result = await client.callTool({ name: "github_update_item_field", arguments: {
       project_id: "PVT_1",
       item_id: "PVTI_1",
       field_id: "F_STATUS",
       value: { type: "single_select", option_id: "OPT_1" },
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "✅");
   } finally {
@@ -494,12 +494,12 @@ Deno.test("github_update_item_field - iteration type: updates successfully", asy
   });
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_update_item_field", {
+    const result = await client.callTool({ name: "github_update_item_field", arguments: {
       project_id: "PVT_1",
       item_id: "PVTI_1",
       field_id: "F_SPRINT",
       value: { type: "iteration", iteration_id: "ITER_1" },
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "✅");
   } finally {
@@ -514,12 +514,12 @@ Deno.test("github_update_item_field - clear type: calls clear mutation and retur
   });
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_update_item_field", {
+    const result = await client.callTool({ name: "github_update_item_field", arguments: {
       project_id: "PVT_1",
       item_id: "PVTI_1",
       field_id: "F_1",
       value: { type: "clear" },
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "✅");
     assertStringIncludes(text, "cleared");
@@ -535,12 +535,12 @@ Deno.test("github_update_item_field - text missing value: returns validation err
   const restore = mockFetch({});
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_update_item_field", {
+    const result = await client.callTool({ name: "github_update_item_field", arguments: {
       project_id: "PVT_1",
       item_id: "PVTI_1",
       field_id: "F_1",
       value: { type: "text" },
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "Error:");
     assertStringIncludes(text, "value");
@@ -554,12 +554,12 @@ Deno.test("github_update_item_field - date invalid format: returns YYYY-MM-DD er
   const restore = mockFetch({});
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_update_item_field", {
+    const result = await client.callTool({ name: "github_update_item_field", arguments: {
       project_id: "PVT_1",
       item_id: "PVTI_1",
       field_id: "F_DATE",
       value: { type: "date", value: "not-a-date" },
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "YYYY-MM-DD");
   } finally {
@@ -578,11 +578,11 @@ Deno.test("github_archive_project_item - archive: returns 'archived' confirmatio
   });
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_archive_project_item", {
+    const result = await client.callTool({ name: "github_archive_project_item", arguments: {
       project_id: "PVT_1",
       item_id: "PVTI_1",
       archived: true,
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "✅");
     assertStringIncludes(text, "PVTI_1");
@@ -599,11 +599,11 @@ Deno.test("github_archive_project_item - unarchive: returns 'unarchived' confirm
   });
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_archive_project_item", {
+    const result = await client.callTool({ name: "github_archive_project_item", arguments: {
       project_id: "PVT_1",
       item_id: "PVTI_1",
       archived: false,
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "unarchived");
   } finally {
@@ -616,10 +616,10 @@ Deno.test("github_archive_project_item - API error: returns formatted error", as
   const restore = mockFetch({}, 500);
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_archive_project_item", {
+    const result = await client.callTool({ name: "github_archive_project_item", arguments: {
       project_id: "PVT_1",
       item_id: "PVTI_1",
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "Error:");
   } finally {
@@ -638,10 +638,10 @@ Deno.test("github_delete_project_item - success: returns deleted item ID", async
   });
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_delete_project_item", {
+    const result = await client.callTool({ name: "github_delete_project_item", arguments: {
       project_id: "PVT_1",
       item_id: "PVTI_1",
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "✅");
     assertStringIncludes(text, "PVTI_1");
@@ -656,10 +656,10 @@ Deno.test("github_delete_project_item - API error: returns formatted error", asy
   const restore = mockFetch({}, 500);
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_delete_project_item", {
+    const result = await client.callTool({ name: "github_delete_project_item", arguments: {
       project_id: "PVT_1",
       item_id: "PVTI_1",
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "Error:");
   } finally {
@@ -686,12 +686,12 @@ Deno.test("github_get_issue_node_id - issue found: returns node ID and details",
   });
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_get_issue_node_id", {
+    const result = await client.callTool({ name: "github_get_issue_node_id", arguments: {
       owner: "owner",
       repo: "repo",
       issue_number: 42,
       type: "issue",
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "I_abc123");
     assertStringIncludes(text, "Bug fix");
@@ -717,12 +717,12 @@ Deno.test("github_get_issue_node_id - pull_request found: returns PR node ID", a
   });
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_get_issue_node_id", {
+    const result = await client.callTool({ name: "github_get_issue_node_id", arguments: {
       owner: "owner",
       repo: "repo",
       issue_number: 7,
       type: "pull_request",
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "PR_xyz789");
     assertStringIncludes(text, "MERGED");
@@ -736,12 +736,12 @@ Deno.test("github_get_issue_node_id - issue not found: returns 'not found' messa
   const restore = mockFetch({ repository: { issue: null } });
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_get_issue_node_id", {
+    const result = await client.callTool({ name: "github_get_issue_node_id", arguments: {
       owner: "owner",
       repo: "repo",
       issue_number: 999,
       type: "issue",
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "not found");
     assertStringIncludes(text, "#999");
@@ -755,12 +755,12 @@ Deno.test("github_get_issue_node_id - PR not found: returns 'PR not found' messa
   const restore = mockFetch({ repository: { pullRequest: null } });
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_get_issue_node_id", {
+    const result = await client.callTool({ name: "github_get_issue_node_id", arguments: {
       owner: "owner",
       repo: "repo",
       issue_number: 7,
       type: "pull_request",
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "not found");
     assertStringIncludes(text, "PR");
@@ -785,9 +785,9 @@ Deno.test("github_get_user_node_id - success with name: returns node ID, login, 
   });
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_get_user_node_id", {
+    const result = await client.callTool({ name: "github_get_user_node_id", arguments: {
       login: "hoonsubin",
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "U_kgDO123");
     assertStringIncludes(text, "hoonsubin");
@@ -809,9 +809,9 @@ Deno.test("github_get_user_node_id - success without name: omits name line", asy
   });
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_get_user_node_id", {
+    const result = await client.callTool({ name: "github_get_user_node_id", arguments: {
       login: "anon-user",
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "U_anon");
     assertStringIncludes(text, "anon-user");
@@ -828,9 +828,9 @@ Deno.test("github_get_user_node_id - user not found: returns 'not found' message
   const restore = mockFetch({ user: null });
   try {
     const client = await makeTestClient();
-    const result = await client.callTool("github_get_user_node_id", {
+    const result = await client.callTool({ name: "github_get_user_node_id", arguments: {
       login: "ghost",
-    });
+    }});
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "not found");
     assertStringIncludes(text, "ghost");
