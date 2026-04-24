@@ -38,11 +38,11 @@ team:
     name: Peter Tubak
     contact: peter.tubak@messe-muenchen.de
   members:
-    - login: alisa-diakova
-      name: Alisa Diakova
-      scrum_master_sprint: 1
     - login: hoonsubin
       name: Hoon Kim
+      scrum_master_sprint: 1
+    - login: alisa-diakova
+      name: Alisa Diakova
       scrum_master_sprint: 2
     - login: kseniya-tsiabus
       name: Kseniya Tsiabus

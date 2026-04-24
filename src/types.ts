@@ -247,6 +247,7 @@ export interface ScrumConfigYml {
     required: boolean;
     format: string;
   };
+  // todo: the custom field names should be dynamically created based on the project taxonomy
   field_names: {
     sprint: string;
     status: string;

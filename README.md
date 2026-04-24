@@ -1,18 +1,308 @@
 # GitHub Projects v2 MCP Server
 
-A local [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for operating on
-**GitHub Projects v2** via the GitHub GraphQL API. Designed to serve as the action layer for LLM
-agents performing autonomous SCRUM project management — sprint planning, backlog refinement,
-velocity tracking, and ceremony facilitation — without leaving the GitHub Projects ecosystem.
+A local [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for operating on **GitHub Projects v2** via the GitHub GraphQL API. Designed to serve as the action layer for LLM agents performing autonomous SCRUM project management — sprint planning, backlog refinement, velocity tracking, and ceremony facilitation — without leaving the GitHub Projects ecosystem.
 
-Supports two transports: **stdio** (Claude Desktop / Claude Code / LM Studio) and **Streamable
-HTTP** (Open WebUI / Docker / home lab).
+Supports two transports: **stdio** (Claude Desktop / Claude Code / LM Studio) and **Streamable HTTP** (Open WebUI / Docker / home lab).
 
 ## Related Documentation
 
 - [GitHub Projects v2 — About Projects](https://docs.github.com/en/issues/planning-and-tracking-with-projects/learning-about-projects/about-projects)
 - [GitHub Projects v2 — GraphQL API](https://docs.github.com/en/issues/planning-and-tracking-with-projects/automating-your-project/using-the-api-to-manage-projects)
 - [Model Context Protocol Specification](https://modelcontextprotocol.io/docs)
+- [The SCRUM Method](https://www.scrum.org/learning-series/what-is-scrum/)
+
+## What is SCRUM?
+
+> If you are just getting started, think of Scrum as a way to get work done as a team in small pieces at a time, with continuous experimentation and feedback loops along the way to learn and improve as you go. Scrum helps people and teams deliver value incrementally in a collaborative way. As an agile framework, Scrum provides just enough structure for people and teams to integrate into how they work, while adding the right practices to optimize for their specific needs.
+>
+> [From SCRUM.org](https://www.scrum.org/learning-series/what-is-scrum/)
+
+A fully mapped SCRUM project composition will look something like the following:
+
+```mermaid
+erDiagram
+
+    %% ── CORE PROJECT STRUCTURE ──────────────────────────────────────────────
+
+    PROJECT {
+        string  id          PK
+        string  name
+        string  vision
+        enum    status      "Active|Paused|Completed|Archived"
+        date    start_date
+        date    end_date
+    }
+
+    TEAM {
+        string  id          PK
+        string  project_id  FK
+        string  name
+    }
+
+    MEMBER {
+        string  id          PK
+        string  team_id     FK
+        string  name
+        string  email
+    }
+
+    MEMBER_CAPACITY {
+        string  id              PK
+        string  member_id       FK
+        string  sprint_id       FK
+        float   available_days
+        int     capacity_points
+        string  notes
+    }
+
+    ROLE_ASSIGNMENT {
+        string  id          PK
+        string  member_id   FK
+        string  sprint_id   FK
+        enum    role        "PO|SM|Developer"
+    }
+
+    %% ── BACKLOG HIERARCHY ───────────────────────────────────────────────────
+
+    PRODUCT_BACKLOG {
+        string  id              PK
+        string  project_id      FK
+        string  product_goal
+        date    last_refined
+    }
+
+    EPIC {
+        string  id          PK
+        string  backlog_id  FK
+        string  title
+        string  description
+        enum    priority    "Must|Should|Could|Wont"
+        enum    status      "Open|InProgress|Done"
+    }
+
+    USER_STORY {
+        string  id              PK
+        string  epic_id         FK
+        string  title
+        string  as_a
+        string  i_want
+        string  so_that
+        int     story_points
+        enum    status          "Backlog|Ready|InSprint|Done|Blocked"
+        enum    priority        "Must|Should|Could|Wont"
+    }
+
+    SPRINT_BACKLOG_ITEM {
+        string  id                  PK
+        string  sprint_id           FK
+        string  story_id            FK
+        date    added_date
+        bool    carried_over
+        int     committed_points
+    }
+
+    ACCEPTANCE_CRITERIA {
+        string  id          PK
+        string  story_id    FK
+        string  criterion
+        bool    passed
+    }
+
+    TASK {
+        string  id              PK
+        string  story_id        FK
+        string  assignee_id     FK
+        string  title
+        enum    type            "Feature|Bug|TechDebt|Spike|Research"
+        enum    status          "Todo|InProgress|Blocked|Done"
+        float   hours_estimate
+        float   hours_actual
+    }
+
+    IMPEDIMENT {
+        string  id              PK
+        string  sprint_id       FK
+        string  task_id         FK
+        string  story_id        FK
+        string  raised_by       FK
+        string  owner_id        FK
+        string  description
+        date    raised_date
+        date    resolved_date
+        enum    status          "Open|InProgress|Resolved"
+    }
+
+    %% ── SPRINT ──────────────────────────────────────────────────────────────
+
+    SPRINT {
+        string  id                  PK
+        string  project_id          FK
+        int     number
+        string  goal
+        date    start_date
+        date    end_date
+        int     capacity_points
+        int     committed_points
+        int     completed_points
+        enum    status              "Planned|Active|Closed"
+    }
+
+    %% ── CEREMONIES ──────────────────────────────────────────────────────────
+
+    CEREMONY {
+        string      id              PK
+        string      sprint_id       FK
+        string      facilitator_id  FK
+        enum        type            "Planning|Standup|Review|Retro|Refinement"
+        datetime    scheduled_at
+        int         duration_min
+        string      notes
+    }
+
+    CEREMONY_ATTENDANCE {
+        string  id              PK
+        string  ceremony_id     FK
+        string  member_id       FK
+        bool    attended
+    }
+
+    STANDUP_ENTRY {
+        string  id              PK
+        string  ceremony_id     FK
+        string  member_id       FK
+        date    date
+        string  done_yesterday
+        string  plan_today
+        string  blockers
+    }
+
+    RETRO_ENTRY {
+        string  id              PK
+        string  ceremony_id     FK
+        string  member_id       FK
+        enum    category        "WentWell|Improve|Start|Stop"
+        string  observation
+    }
+
+    RETRO_ACTION {
+        string  id                  PK
+        string  retro_entry_id      FK
+        string  sprint_id           FK
+        string  owner_id            FK
+        string  description
+        enum    status              "Open|Done|Deferred"
+        string  sprint_target_id    FK
+    }
+
+    REVIEW_FEEDBACK {
+        string  id                      PK
+        string  sprint_id               FK
+        string  ceremony_id             FK
+        string  given_by
+        string  feedback
+        string  triggered_story_id      FK
+    }
+
+    %% ── TRACKING ────────────────────────────────────────────────────────────
+
+    BURNDOWN_DATAPOINT {
+        string  id                  PK
+        string  sprint_id           FK
+        enum    series              "Ideal|Actual"
+        date    date
+        int     remaining_points
+        int     completed_points
+    }
+
+    VELOCITY_RECORD {
+        string  id                  PK
+        string  project_id          FK
+        string  sprint_id           FK
+        int     committed_points
+        int     completed_points
+    }
+
+    %% ── QUALITY ─────────────────────────────────────────────────────────────
+
+    DEFINITION_OF_DONE {
+        string  id              PK
+        string  project_id      FK
+        string  criterion
+        string  area
+        int     version
+        date    last_updated
+    }
+
+    DEFINITION_OF_READY {
+        string  id              PK
+        string  project_id      FK
+        string  criterion
+        int     version
+        date    last_updated
+    }
+
+    SPRINT_REPORT {
+        string  id                      PK
+        string  sprint_id               FK
+        string  author_id               FK
+        date    submitted_at
+        string  summary
+        string  commitment_next_sprint
+    }
+
+    %% ── RELATIONSHIPS ───────────────────────────────────────────────────────
+
+    PROJECT             ||--o{ TEAM                 : "has"
+    PROJECT             ||--||  PRODUCT_BACKLOG     : "owns"
+    PROJECT             ||--o{ SPRINT               : "runs"
+    PROJECT             ||--o{ DEFINITION_OF_DONE   : "defines"
+    PROJECT             ||--o{ DEFINITION_OF_READY  : "defines"
+    PROJECT             ||--o{ VELOCITY_RECORD      : "tracks"
+
+    TEAM                ||--o{ MEMBER               : "includes"
+    MEMBER              ||--o{ ROLE_ASSIGNMENT      : "holds"
+    MEMBER              ||--o{ MEMBER_CAPACITY      : "has per sprint"
+    SPRINT              ||--o{ ROLE_ASSIGNMENT      : "scopes"
+    SPRINT              ||--o{ MEMBER_CAPACITY      : "allocates"
+
+    PRODUCT_BACKLOG     ||--o{ EPIC                 : "contains"
+    EPIC                ||--o{ USER_STORY           : "breaks into"
+
+    USER_STORY          ||--o{ ACCEPTANCE_CRITERIA  : "verified by"
+    USER_STORY          ||--o{ TASK                 : "decomposed into"
+    USER_STORY          ||--o{ SPRINT_BACKLOG_ITEM  : "pulled into"
+
+    SPRINT              ||--o{ SPRINT_BACKLOG_ITEM  : "contains"
+    SPRINT              ||--o{ CEREMONY             : "schedules"
+    SPRINT              ||--||  SPRINT_REPORT       : "documented in"
+    SPRINT              ||--o{ VELOCITY_RECORD      : "recorded in"
+    SPRINT              ||--o{ BURNDOWN_DATAPOINT   : "tracked by"
+    SPRINT              ||--o{ IMPEDIMENT           : "surfaces"
+
+    TASK                }o--o{ IMPEDIMENT           : "may cause"
+    USER_STORY          }o--o{ IMPEDIMENT           : "may cause"
+    MEMBER              ||--o{ IMPEDIMENT           : "owns"
+    MEMBER              ||--o{ TASK                 : "assigned to"
+
+    CEREMONY            ||--o{ CEREMONY_ATTENDANCE  : "records"
+    CEREMONY            ||--o{ STANDUP_ENTRY        : "captures"
+    CEREMONY            ||--o{ RETRO_ENTRY          : "captures"
+    CEREMONY            ||--o{ REVIEW_FEEDBACK      : "captures"
+    MEMBER              ||--o{ CEREMONY_ATTENDANCE  : "attends"
+
+    RETRO_ENTRY         ||--o{ RETRO_ACTION         : "generates"
+    MEMBER              ||--o{ RETRO_ACTION         : "owns"
+    SPRINT              ||--o{ RETRO_ACTION         : "targets"
+
+    USER_STORY          }o--o{ REVIEW_FEEDBACK      : "triggered by"
+
+    SPRINT_REPORT       }o--||  MEMBER              : "authored by"
+```
+
+This project provides the necessary tools for a LLM to act as the SCRUM master assistant within the GitHub ecosystem.
+Removing the need for complex PM tools.
+
+It is designed to be used with the `skill/scrum-master-assistant/` agentic skill.
 
 ## System Architecture
 
@@ -191,7 +481,7 @@ safety language as fallback.
 ## SCRUM Ceremony → Tool Mapping
 
 ```mermaid
-flowchart TD
+flowchart LR
     subgraph Ceremonies["SCRUM Ceremonies"]
         SP["Sprint Planning"]
         DS["Daily Standup"]
@@ -269,23 +559,6 @@ sequenceDiagram
     GH-->>MCP: updated item IDs
     MCP-->>Agent: Sprint 5 backlog committed (31 pts across 12 items)
 ```
-
----
-
-## GitHub API Constraints
-
-These are hard limits imposed by the GitHub GraphQL API that shape what this server can and cannot
-do autonomously:
-
-| Constraint              | Detail                                                                                                                                                            |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Iteration creation**  | Not supported via API. Sprints must be created manually in the GitHub Projects UI. The server can assign items to existing iterations but cannot create new ones. |
-| **Backlog ordering**    | GitHub Projects v2 has no native API for reordering items. Priority ordering is approximated via a numeric `Priority` or `Rank` custom field.                     |
-| **Fine-grained tokens** | Classic PAT required — fine-grained tokens do not yet support the Projects v2 GraphQL mutations.                                                                  |
-| **Rate limits**         | GitHub GraphQL API: 5,000 points/hour. Bulk operations count once per mutation call, not per item.                                                                |
-| **Field creation**      | Custom fields (story points, priority, etc.) must be created manually. The API supports reading and updating field values, not creating new field types.          |
-
----
 
 ## Configuration
 
