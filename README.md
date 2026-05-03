@@ -2,7 +2,7 @@
 
 A local [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for operating on **GitHub Projects v2** via the GitHub GraphQL API. Designed to serve as the action layer for LLM agents performing autonomous SCRUM project management — sprint planning, backlog refinement, velocity tracking, and ceremony facilitation — without leaving the GitHub Projects ecosystem.
 
-Supports two transports: **stdio** (Claude Desktop / Claude Code / LM Studio) and **Streamable HTTP** (Open WebUI / Docker / home lab).
+Supports two transports: **stdio** (Claude Desktop / Claude Code / LM Studio) and **Streamable HTTP** (Open WebUI / Docker / homelab).
 
 ## Related Documentation
 
@@ -21,842 +21,486 @@ A fully mapped SCRUM project composition will look something like the following:
 
 ```mermaid
 erDiagram
+%% ── CORE PROJECT STRUCTURE ──────────────────────────────────────────────
 
-    %% ── CORE PROJECT STRUCTURE ──────────────────────────────────────────────
+PROJECT {
+ string id PK
+ string name
+ string vision
+ enum status "Active|Paused|Completed|Archived"
+ date start_date
+ date end_date
+}
 
-    PROJECT {
-        string  id          PK
-        string  name
-        string  vision
-        enum    status      "Active|Paused|Completed|Archived"
-        date    start_date
-        date    end_date
-    }
+TEAM {
+ string id PK
+ string project_id FK
+ string name
+}
 
-    TEAM {
-        string  id          PK
-        string  project_id  FK
-        string  name
-    }
+MEMBER {
+ string id PK
+ string team_id FK
+ string name
+ string email
+}
 
-    MEMBER {
-        string  id          PK
-        string  team_id     FK
-        string  name
-        string  email
-    }
+MEMBER_CAPACITY {
+ string id PK
+ string member_id FK
+ string sprint_id FK
+ float available_days
+ int capacity_points
+ string notes
+}
 
-    MEMBER_CAPACITY {
-        string  id              PK
-        string  member_id       FK
-        string  sprint_id       FK
-        float   available_days
-        int     capacity_points
-        string  notes
-    }
+ROLE_ASSIGNMENT {
+ string id PK
+ string member_id FK
+ string sprint_id FK
+ enum role "PO|SM|Developer"
+}
 
-    ROLE_ASSIGNMENT {
-        string  id          PK
-        string  member_id   FK
-        string  sprint_id   FK
-        enum    role        "PO|SM|Developer"
-    }
+%% ── BACKLOG HIERARCHY ───────────────────────────────────────────────────
 
-    %% ── BACKLOG HIERARCHY ───────────────────────────────────────────────────
+PRODUCT_BACKLOG {
+ string id PK
+ string project_id FK
+ string product_goal
+ date last_refined
+}
 
-    PRODUCT_BACKLOG {
-        string  id              PK
-        string  project_id      FK
-        string  product_goal
-        date    last_refined
-    }
+EPIC {
+ string id PK
+ string backlog_id FK
+ string title
+ string description
+ enum priority "Must|Should|Could|Wont"
+ enum status "Open|InProgress|Done"
+}
 
-    EPIC {
-        string  id          PK
-        string  backlog_id  FK
-        string  title
-        string  description
-        enum    priority    "Must|Should|Could|Wont"
-        enum    status      "Open|InProgress|Done"
-    }
+USER_STORY {
+ string id PK
+ string epic_id FK
+ string title
+ string as_a
+ string i_want
+ string so_that
+ int story_points
+ enum status "Backlog|Ready|InSprint|Done|Blocked"
+ enum priority "Must|Should|Could|Wont"
+}
 
-    USER_STORY {
-        string  id              PK
-        string  epic_id         FK
-        string  title
-        string  as_a
-        string  i_want
-        string  so_that
-        int     story_points
-        enum    status          "Backlog|Ready|InSprint|Done|Blocked"
-        enum    priority        "Must|Should|Could|Wont"
-    }
+SPRINT_BACKLOG_ITEM {
+ string id PK
+ string sprint_id FK
+ string story_id FK
+ date added_date
+ bool carried_over
+ int committed_points
+}
 
-    SPRINT_BACKLOG_ITEM {
-        string  id                  PK
-        string  sprint_id           FK
-        string  story_id            FK
-        date    added_date
-        bool    carried_over
-        int     committed_points
-    }
+ACCEPTANCE_CRITERIA {
+ string id PK
+ string story_id FK
+ string criterion
+ bool passed
+}
 
-    ACCEPTANCE_CRITERIA {
-        string  id          PK
-        string  story_id    FK
-        string  criterion
-        bool    passed
-    }
+TASK {
+ string id PK
+ string story_id FK
+ string assignee_id FK
+ string title
+ enum type "Feature|Bug|TechDebt|Spike|Research"
+ enum status "Todo|InProgress|Blocked|Done"
+ float hours_estimate
+ float hours_actual
+}
 
-    TASK {
-        string  id              PK
-        string  story_id        FK
-        string  assignee_id     FK
-        string  title
-        enum    type            "Feature|Bug|TechDebt|Spike|Research"
-        enum    status          "Todo|InProgress|Blocked|Done"
-        float   hours_estimate
-        float   hours_actual
-    }
+IMPEDIMENT {
+ string id PK
+ string sprint_id FK
+ string task_id FK
+ string story_id FK
+ string raised_by FK
+ string owner_id FK
+ string description
+ date raised_date
+ date resolved_date
+ enum status "Open|InProgress|Resolved"
+}
 
-    IMPEDIMENT {
-        string  id              PK
-        string  sprint_id       FK
-        string  task_id         FK
-        string  story_id        FK
-        string  raised_by       FK
-        string  owner_id        FK
-        string  description
-        date    raised_date
-        date    resolved_date
-        enum    status          "Open|InProgress|Resolved"
-    }
+%% ── SPRINT ──────────────────────────────────────────────────────────────
 
-    %% ── SPRINT ──────────────────────────────────────────────────────────────
+SPRINT {
+ string id PK
+ string project_id FK
+ int number
+ string goal
+ date start_date
+ date end_date
+ int capacity_points
+ int committed_points
+ int completed_points
+ enum status "Planned|Active|Closed"
+}
 
-    SPRINT {
-        string  id                  PK
-        string  project_id          FK
-        int     number
-        string  goal
-        date    start_date
-        date    end_date
-        int     capacity_points
-        int     committed_points
-        int     completed_points
-        enum    status              "Planned|Active|Closed"
-    }
+%% ── CEREMONIES ──────────────────────────────────────────────────────────
 
-    %% ── CEREMONIES ──────────────────────────────────────────────────────────
+CEREMONY {
+ string id PK
+ string sprint_id FK
+ string facilitator_id FK
+ enum type "Planning|Standup|Review|Retro|Refinement"
+ datetime scheduled_at
+ int duration_min
+ string notes
+}
 
-    CEREMONY {
-        string      id              PK
-        string      sprint_id       FK
-        string      facilitator_id  FK
-        enum        type            "Planning|Standup|Review|Retro|Refinement"
-        datetime    scheduled_at
-        int         duration_min
-        string      notes
-    }
+CEREMONY_ATTENDANCE {
+ string id PK
+ string ceremony_id FK
+ string member_id FK
+ bool attended
+}
 
-    CEREMONY_ATTENDANCE {
-        string  id              PK
-        string  ceremony_id     FK
-        string  member_id       FK
-        bool    attended
-    }
+STANDUP_ENTRY {
+ string id PK
+ string ceremony_id FK
+ string member_id FK
+ date date
+ string done_yesterday
+ string plan_today
+ string blockers
+}
 
-    STANDUP_ENTRY {
-        string  id              PK
-        string  ceremony_id     FK
-        string  member_id       FK
-        date    date
-        string  done_yesterday
-        string  plan_today
-        string  blockers
-    }
+RETRO_ENTRY {
+ string id PK
+ string ceremony_id FK
+ string member_id FK
+ enum category "WentWell|Improve|Start|Stop"
+ string observation
+}
 
-    RETRO_ENTRY {
-        string  id              PK
-        string  ceremony_id     FK
-        string  member_id       FK
-        enum    category        "WentWell|Improve|Start|Stop"
-        string  observation
-    }
+RETRO_ACTION {
+ string id PK
+ string retro_entry_id FK
+ string sprint_id FK
+ string owner_id FK
+ string description
+ enum status "Open|Done|Deferred"
+ string sprint_target_id FK
+}
 
-    RETRO_ACTION {
-        string  id                  PK
-        string  retro_entry_id      FK
-        string  sprint_id           FK
-        string  owner_id            FK
-        string  description
-        enum    status              "Open|Done|Deferred"
-        string  sprint_target_id    FK
-    }
+REVIEW_FEEDBACK {
+ string id PK
+ string sprint_id FK
+ string ceremony_id FK
+ string given_by
+ string feedback
+ string triggered_story_id FK
+}
 
-    REVIEW_FEEDBACK {
-        string  id                      PK
-        string  sprint_id               FK
-        string  ceremony_id             FK
-        string  given_by
-        string  feedback
-        string  triggered_story_id      FK
-    }
+%% ── TRACKING ────────────────────────────────────────────────────────────
 
-    %% ── TRACKING ────────────────────────────────────────────────────────────
+BURNDOWN_DATAPOINT {
+ string id PK
+ string sprint_id FK
+ enum series "Ideal|Actual"
+ date date
+ int remaining_points
+ int completed_points
+}
 
-    BURNDOWN_DATAPOINT {
-        string  id                  PK
-        string  sprint_id           FK
-        enum    series              "Ideal|Actual"
-        date    date
-        int     remaining_points
-        int     completed_points
-    }
+VELOCITY_RECORD {
+ string id PK
+ string project_id FK
+ string sprint_id FK
+ int committed_points
+ int completed_points
+}
 
-    VELOCITY_RECORD {
-        string  id                  PK
-        string  project_id          FK
-        string  sprint_id           FK
-        int     committed_points
-        int     completed_points
-    }
+%% ── QUALITY ─────────────────────────────────────────────────────────────
 
-    %% ── QUALITY ─────────────────────────────────────────────────────────────
+DEFINITION_OF_DONE {
+ string id PK
+ string project_id FK
+ string criterion
+ string area
+ int version
+ date last_updated
+}
 
-    DEFINITION_OF_DONE {
-        string  id              PK
-        string  project_id      FK
-        string  criterion
-        string  area
-        int     version
-        date    last_updated
-    }
+DEFINITION_OF_READY {
+ string id PK
+ string project_id FK
+ string criterion
+ int version
+ date last_updated
+}
 
-    DEFINITION_OF_READY {
-        string  id              PK
-        string  project_id      FK
-        string  criterion
-        int     version
-        date    last_updated
-    }
+SPRINT_REPORT {
+ string id PK
+ string sprint_id FK
+ string author_id FK
+ date submitted_at
+ string summary
+ string commitment_next_sprint
+}
 
-    SPRINT_REPORT {
-        string  id                      PK
-        string  sprint_id               FK
-        string  author_id               FK
-        date    submitted_at
-        string  summary
-        string  commitment_next_sprint
-    }
+%% ── RELATIONSHIPS ───────────────────────────────────────────────────────
 
-    %% ── RELATIONSHIPS ───────────────────────────────────────────────────────
+PROJECT ||--o{ TEAM : "has"
+PROJECT ||--|| PRODUCT_BACKLOG : "owns"
+PROJECT ||--o{ SPRINT : "runs"
+PROJECT ||--o{ DEFINITION_OF_DONE : "defines"
+PROJECT ||--o{ DEFINITION_OF_READY : "defines"
+PROJECT ||--o{ VELOCITY_RECORD : "tracks"
 
-    PROJECT             ||--o{ TEAM                 : "has"
-    PROJECT             ||--||  PRODUCT_BACKLOG     : "owns"
-    PROJECT             ||--o{ SPRINT               : "runs"
-    PROJECT             ||--o{ DEFINITION_OF_DONE   : "defines"
-    PROJECT             ||--o{ DEFINITION_OF_READY  : "defines"
-    PROJECT             ||--o{ VELOCITY_RECORD      : "tracks"
+TEAM ||--o{ MEMBER : "includes"
+MEMBER ||--o{ ROLE_ASSIGNMENT : "holds"
+MEMBER ||--o{ MEMBER_CAPACITY : "has per sprint"
+SPRINT ||--o{ ROLE_ASSIGNMENT : "scopes"
+SPRINT ||--o{ MEMBER_CAPACITY : "allocates"
 
-    TEAM                ||--o{ MEMBER               : "includes"
-    MEMBER              ||--o{ ROLE_ASSIGNMENT      : "holds"
-    MEMBER              ||--o{ MEMBER_CAPACITY      : "has per sprint"
-    SPRINT              ||--o{ ROLE_ASSIGNMENT      : "scopes"
-    SPRINT              ||--o{ MEMBER_CAPACITY      : "allocates"
+PRODUCT_BACKLOG ||--o{ EPIC : "contains"
+EPIC ||--o{ USER_STORY : "breaks into"
 
-    PRODUCT_BACKLOG     ||--o{ EPIC                 : "contains"
-    EPIC                ||--o{ USER_STORY           : "breaks into"
+USER_STORY ||--o{ ACCEPTANCE_CRITERIA : "verified by"
+USER_STORY ||--o{ TASK : "decomposed into"
+USER_STORY ||--o{ SPRINT_BACKLOG_ITEM : "pulled into"
 
-    USER_STORY          ||--o{ ACCEPTANCE_CRITERIA  : "verified by"
-    USER_STORY          ||--o{ TASK                 : "decomposed into"
-    USER_STORY          ||--o{ SPRINT_BACKLOG_ITEM  : "pulled into"
+SPRINT ||--o{ SPRINT_BACKLOG_ITEM : "contains"
+SPRINT ||--o{ CEREMONY : "schedules"
+SPRINT ||--|| SPRINT_REPORT : "documented in"
+SPRINT ||--o{ VELOCITY_RECORD : "recorded in"
+SPRINT ||--o{ BURNDOWN_DATAPOINT : "tracked by"
+SPRINT ||--o{ IMPEDIMENT : "surfaces"
 
-    SPRINT              ||--o{ SPRINT_BACKLOG_ITEM  : "contains"
-    SPRINT              ||--o{ CEREMONY             : "schedules"
-    SPRINT              ||--||  SPRINT_REPORT       : "documented in"
-    SPRINT              ||--o{ VELOCITY_RECORD      : "recorded in"
-    SPRINT              ||--o{ BURNDOWN_DATAPOINT   : "tracked by"
-    SPRINT              ||--o{ IMPEDIMENT           : "surfaces"
+TASK }o--o{ IMPEDIMENT : "may cause"
+USER_STORY }o--o{ IMPEDIMENT : "may cause"
+MEMBER ||--o{ IMPEDIMENT : "owns"
+MEMBER ||--o{ TASK : "assigned to"
 
-    TASK                }o--o{ IMPEDIMENT           : "may cause"
-    USER_STORY          }o--o{ IMPEDIMENT           : "may cause"
-    MEMBER              ||--o{ IMPEDIMENT           : "owns"
-    MEMBER              ||--o{ TASK                 : "assigned to"
+CEREMONY ||--o{ CEREMONY_ATTENDANCE : "records"
+CEREMONY ||--o{ STANDUP_ENTRY : "captures"
+CEREMONY ||--o{ RETRO_ENTRY : "captures"
+CEREMONY ||--o{ REVIEW_FEEDBACK : "captures"
+MEMBER ||--o{ CEREMONY_ATTENDANCE : "attends"
 
-    CEREMONY            ||--o{ CEREMONY_ATTENDANCE  : "records"
-    CEREMONY            ||--o{ STANDUP_ENTRY        : "captures"
-    CEREMONY            ||--o{ RETRO_ENTRY          : "captures"
-    CEREMONY            ||--o{ REVIEW_FEEDBACK      : "captures"
-    MEMBER              ||--o{ CEREMONY_ATTENDANCE  : "attends"
+RETRO_ENTRY ||--o{ RETRO_ACTION : "generates"
+MEMBER ||--o{ RETRO_ACTION : "owns"
+SPRINT ||--o{ RETRO_ACTION : "targets"
 
-    RETRO_ENTRY         ||--o{ RETRO_ACTION         : "generates"
-    MEMBER              ||--o{ RETRO_ACTION         : "owns"
-    SPRINT              ||--o{ RETRO_ACTION         : "targets"
+USER_STORY }o--o{ REVIEW_FEEDBACK : "triggered by"
 
-    USER_STORY          }o--o{ REVIEW_FEEDBACK      : "triggered by"
-
-    SPRINT_REPORT       }o--||  MEMBER              : "authored by"
+SPRINT_REPORT }o--|| MEMBER : "authored by"
 ```
 
 This project provides the necessary tools for a LLM to act as the SCRUM master assistant within the GitHub ecosystem.
 Removing the need for complex PM tools.
 
-It is designed to be used with the `skill/scrum-master-assistant/` agentic skill.
+It is designed to be used with the `skill/scrum-master-assistant/` agentic skill as the orchestration layer.
 
-## System Architecture
+This project requires significant refactoring, as it needs to be more flexible and functional in different project contexts.
 
-### High-Level: MCP Clients → Server → GitHub
+## Refactoring Plan
 
-```mermaid
-flowchart TD
-    subgraph Clients["MCP Clients"]
-        CC["Claude Desktop\n/ Claude Code"]
-        LM["LM Studio\n/ Open WebUI"]
-        CI["CI / Scripts"]
-    end
+### Diagnosis
 
-    subgraph Transport["Transport Layer"]
-        STDIO["stdio\n(default)"]
-        HTTP["Streamable HTTP\nPOST · GET SSE · DELETE\n:3000/mcp"]
-    end
+The current codebase has two overlapping concerns that need to be separated.
 
-    subgraph Server["github-projects-mcp-server (Deno + TypeScript)"]
-        direction TB
-        MCP["McpServer\n(MCP SDK)"]
-        TOOLS["Tool Registry\nprojects · items · sprints"]
-        SCHEMAS["Zod Input Schemas"]
-        SVC["GitHub Service\ngraphql() · formatError()"]
-        FMT["Formatters\nMarkdown output"]
-    end
+**The server is doing Scrum reasoning instead of API wrapping.** `src/tools/sprints.ts` contains five tools — `github_get_sprint_status`, `github_get_velocity`, `github_get_backlog_items`, `github_close_sprint`, `github_generate_sprint_report` — that are aggregate operations combining filtering, sorting, inference, and in the case of close/report, LLM synthesis. None of these are GitHub API operations. They are Scrum workflows dressed as tools, and they crowd the agent's context with pre-baked logic the agent should derive itself from primitive API calls.
 
-    subgraph GitHub["GitHub Cloud"]
-        GQL["GraphQL API\napi.github.com/graphql"]
-        PROJ["Projects v2"]
-        ISSUES["Issues & PRs"]
-        USERS["Users / Orgs"]
-    end
+**The server owns project state it shouldn't own.** The `scrum://config`, `scrum://sprint/current`, and `scrum://sprint/archive/{n}` resources read from local files (`config/scrum.config.yml`, `config/project-board.config.json`, `config/sprint-current.md`). This makes the server stateful and couples it to a single project. Any team wanting to use the server against a different project must reconfigure and redeploy the server.
 
-    CC -->|"JSON-RPC\nover stdio"| STDIO
-    LM -->|"JSON-RPC\nover HTTP"| HTTP
-    CI -->|"JSON-RPC\nover HTTP"| HTTP
+**The server can move cards but cannot read what is on them.** The entire GitHub repository layer is missing. Issues, pull requests, comments, and discussions are where the actual content of the project lives — user stories, acceptance criteria, blocker context, review feedback. Without reading this content, the agent cannot assess Definition of Ready, understand a blocked item, or write a meaningful sprint report.
 
-    STDIO --> MCP
-    HTTP --> MCP
-    MCP --> TOOLS
-    TOOLS --> SCHEMAS
-    TOOLS --> SVC
-    SVC --> FMT
-    SVC -->|"Bearer token\n30s timeout"| GQL
-    GQL --> PROJ
-    GQL --> ISSUES
-    GQL --> USERS
-```
-
-### Internal Module Architecture
-
-```mermaid
-flowchart LR
-    subgraph Entry["src/index.ts"]
-        FACTORY["createMcpServer()"]
-        STDIO_T["runStdio()"]
-        HTTP_T["runHttp()"]
-    end
-
-    subgraph Tools["src/tools/"]
-        PT["projects.ts"]
-        IT["items.ts"]
-        ST["sprints.ts"]
-    end
-
-    subgraph Resources["src/resources/"]
-        RES["index.ts\nscrum://config\nscrum://sprint/*"]
-    end
-
-    subgraph Prompts["src/prompts/"]
-        PRO["index.ts\nclassify-intent\nconfirm-mutation\nworkflow prompts"]
-    end
-
-    subgraph Schemas["src/schemas/"]
-        ZOD["inputs.ts\nZod schemas"]
-    end
-
-    subgraph Services["src/services/"]
-        GH["github.ts"]
-        LOG["logger.ts"]
-        FMTS["formatters.ts"]
-        SCRUM["scrum.ts"]
-    end
-
-    subgraph Types["src/types.ts"]
-        TY["ProjectV2 types\n(hand-written)"]
-    end
-
-    subgraph Generated["src/generated/"]
-        GT["github-types.ts\nauto-generated from schema\n(deno task codegen)"]
-    end
-
-    FACTORY -->|registers| PT & IT & ST
-    FACTORY -->|registers| RES & PRO
-    PT & IT & ST -->|validates input| ZOD
-    PT & IT & ST -->|calls API| GH
-    PT & IT & ST -->|formats output| FMTS
-    PT & IT & ST & GH -->|stderr| LOG
-    ST -->|sprint logic| SCRUM
-    RES -->|loadScrumConfig| SCRUM
-    GH & FMTS & SCRUM -->|uses| TY
-```
-
-## Tool Reference
-
-### Project Management (`src/tools/projects.ts`)
-
-| Tool                        | Type  | Description                                                                                     |
-| --------------------------- | ----- | ----------------------------------------------------------------------------------------------- |
-| `github_list_projects`      | Read  | List all Projects v2 for a user or org, with pagination and closed-project filter               |
-| `github_get_project`        | Read  | Full project details: node IDs, field definitions, option IDs, README                           |
-| `github_get_project_fields` | Read  | All custom fields with IDs, types, options, and iteration configs; optional `field_type` filter |
-| `github_update_project`     | Write | Patch title, description, README, visibility, or open/closed status                             |
-
-### Item Management (`src/tools/items.ts`)
-
-| Tool                          | Type  | Description                                                                                 |
-| ----------------------------- | ----- | ------------------------------------------------------------------------------------------- |
-| `github_list_project_items`   | Read  | Paginated item list; optional `filter_type`, `iteration_id`, and `status_option_id` filters |
-| `github_add_item_to_project`  | Write | Add an existing Issue or PR to a project by node ID                                         |
-| `github_add_draft_issue`      | Write | Create a draft issue; optional `iteration_id` assigns it to a sprint immediately            |
-| `github_update_item_field`    | Write | Set or clear any field value: text, number, date, single-select, or iteration               |
-| `github_archive_project_item` | Write | Archive or unarchive an item (reversible; item stays in project)                            |
-| `github_delete_project_item`  | Write | Permanently remove an item from a project (irreversible)                                    |
-| `github_get_issue_node_id`    | Read  | Resolve a human-readable issue/PR number to a GraphQL node ID                               |
-| `github_get_user_node_id`     | Read  | Resolve a GitHub login to a GraphQL node ID                                                 |
-
-### Sprint & SCRUM Layer (`src/tools/sprints.ts`)
-
-These tools operate on project coordinates from `scrum.config.yml` — no `owner`/`project_number`
-params needed. Requires `project-board.config.json` (`deno task sync-config` to generate).
-
-| Tool                            | Type  | Description                                                                                                                        |
-| ------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `github_get_sprint_status`      | Read  | Live sprint health: committed/completed points, per-item status grouped view, blocked items, carry-over risk                       |
-| `github_get_velocity`           | Read  | Velocity series across last N completed iterations — points committed vs completed, rolling average, trend                         |
-| `github_get_backlog_items`      | Read  | Items not assigned to any sprint, sorted by MoSCoW priority then estimated before unestimated; paginated                           |
-| `github_bulk_update_item_field` | Write | Set the same field on up to 50 items; `project_id` optional (auto-resolves from scrum config) — primary sprint-planning write tool |
-| `github_close_sprint`           | Write | Carry incomplete items to next sprint or backlog; optionally archive Done items. `dry_run: true` by default                        |
-| `github_generate_sprint_report` | Read  | Full sprint review doc: goal assessment, velocity, item outcomes, carry-over, DoD checklist, retro scaffold                        |
+**`src/types.ts` has manual typings that overlap with the generated schema.** At 451 lines alongside a 14,766-line `src/generated/github-types.ts`, there is redundancy that adds maintenance burden without value.
 
 ---
 
-## Resources & Prompts
+### Design Principles
 
-### Resources (`src/resources/index.ts`)
+**The server is a stateless GitHub API wrapper.** It holds no project state. All project context — sprint goals, scrum configuration, DoD/DoR criteria, team capacity — lives in the managed repository and is read by the agent on demand.
 
-MCP Resources provide stable, human-authored context the agent reads before acting. All sprint tools
-that need project coordinates or field IDs should read `scrum://config` first.
+**Business logic belongs to the orchestrating agent skill, not the tool server.** The server exposes what the GitHub API can do. The Scrum Master skill (external to this server) interprets that data in Scrum terms, runs ceremonies, enforces DoR/DoD, and decides what actions to take.
 
-| URI                          | MIME               | Description                                                                                                    |
-| ---------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------- |
-| `scrum://config`             | `application/json` | Merged `scrum.config.yml` + `project-board.config.json` — field IDs, status taxonomy, DoR, DoD, team, autonomy |
-| `scrum://sprint/current`     | `text/markdown`    | Human-authored sprint goal, capacity plan, and out-of-band decisions (`config/sprint-current.md`)              |
-| `scrum://sprint/archive/{n}` | `text/markdown`    | Historical sprint doc for sprint N (`config/sprint-archive-{n}.md`)                                            |
+**Reads are flexible; writes are structured.** A single raw GraphQL query tool (`github_graphql`) covers the entire read surface. The agent constructs queries using a curated fragment library (`.github/scrum/vocabulary.graphql`). Write operations remain typed, named tools with validated parameters — arbitrary mutation strings are not permitted.
 
-### Prompts (`src/prompts/index.ts`)
-
-Prompts define workflow entry points with constrained write scopes and behavioral contracts. They
-degrade gracefully when the MCP client doesn't surface them — tool descriptions carry the same
-safety language as fallback.
-
-| Prompt               | Write Scope                            | Purpose                                                                                                              |
-| -------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `classify-intent`    | None                                   | Disambiguation gate for Slack/comment input — returns `direct_command \| contextual_reference \| incidental_mention` |
-| `confirm-mutation`   | None                                   | Shows a structured preview and requires the literal string `"confirm"` before executing any write                    |
-| `standup`            | None                                   | Read-only daily standup brief: sprint progress + blocked items + carry-over risk                                     |
-| `backlog-refinement` | Story points, status, new draft issues | Estimate and prioritise the Product Backlog                                                                          |
-| `sprint-planning`    | Sprint (iteration) field only          | Assign backlog items to a sprint iteration                                                                           |
-| `sprint-close`       | Sprint field + archive                 | Close a sprint with dry-run preview and required confirmation                                                        |
-| `sprint-management`  | All writes (autonomy-gated)            | Full sprint management with classify-intent on every informal message                                                |
+**Project context is loaded in tiers by recall frequency.** Constants (`config.yml`) are read once per session. Sprint context (`sprint-current.md` + active iteration ID) is read once per sprint. Board state is queried daily. Item detail is fetched on demand. Pre-write ID lookups are always fresh. This minimises API calls and context window consumption.
 
 ---
 
-## SCRUM Ceremony → Tool Mapping
+### Target Architecture
 
-```mermaid
-flowchart LR
-    subgraph Ceremonies["SCRUM Ceremonies"]
-        SP["Sprint Planning"]
-        DS["Daily Standup"]
-        SR["Sprint Review"]
-        RR["Retrospective"]
-        REF["Backlog Refinement"]
-    end
+**Server bootstrap — environment variables only:**
 
-    subgraph ReadTools["Read / Aggregate Tools"]
-        GBI["github_get_backlog_items"]
-        GSS["github_get_sprint_status"]
-        GV["github_get_velocity"]
-        GPF["github_get_project_fields"]
-        GLPI["github_list_project_items\n(+ iteration_id filter)"]
-        GSR["github_generate_sprint_report"]
-    end
-
-    subgraph WriteTools["Write / Mutation Tools"]
-        GBUF["github_bulk_update_item_field"]
-        GUIF["github_update_item_field"]
-        GADI["github_add_draft_issue\n(+ iteration_id)"]
-        GCS["github_close_sprint"]
-        GARC["github_archive_project_item"]
-    end
-
-    SP --> GBI
-    SP --> GV
-    SP --> GPF
-    SP --> GBUF
-    SP --> GADI
-
-    DS --> GSS
-    DS --> GLPI
-
-    SR --> GSS
-    SR --> GV
-    SR --> GSR
-
-    RR --> GSR
-    RR --> GCS
-    RR --> GARC
-
-    REF --> GBI
-    REF --> GUIF
-    REF --> GADI
 ```
+GITHUB_TOKEN
+GITHUB_OWNER
+GITHUB_REPO
+GITHUB_PROJECT_NUMBER
+```
+
+**Repository-resident configuration (`.github/scrum/`):**
+
+| File | Purpose | Recall tier |
+|---|---|---|
+| `config.yml` | Project constants: field mappings, team, DoD/DoR, ceremony backend, autonomy level | Tier 1 — once per session |
+| `vocabulary.graphql` | Curated GraphQL fragment library for agent query construction | Tier 1 — once per session |
+| `sprint-current.md` | Human-authored sprint goal, capacity plan, role assignments | Tier 2 — once per sprint |
+| `sprint-archive-N.md` | Historical sprint records (velocity, retro commitments, goal outcomes) | Tier 4 — on demand |
+
+The server exposes `github_get_repo_file` so the agent reads any of these files via the GitHub API. No local config files remain in the server codebase.
+
+**Final tool inventory (9 tools):**
+
+| Tool | File | Operation | Notes |
+|---|---|---|---|
+| `github_graphql` | `repository.ts` | Read | Replaces all current read-only tools |
+| `github_get_repo_file` | `repository.ts` | Read | Replaces all `scrum://` resources |
+| `github_update_item_field` | `items.ts` | Write | Keep as-is |
+| `github_bulk_update_item_field` | `items.ts` | Write | Keep as-is |
+| `github_add_project_item` | `items.ts` | Write | Merges `add_item_to_project` + `add_draft_issue` |
+| `github_create_issue` | `repository.ts` | Write | New |
+| `github_update_issue` | `repository.ts` | Write | New |
+| `github_create_comment` | `repository.ts` | Write | New — unified for issues, PRs, discussions |
+| `github_write_repo_file` | `repository.ts` | Write | New — for sprint archive writes |
+
+**Removed tools (10):** The five tools in `sprints.ts` are deleted outright. `github_list_projects`, `github_get_project`, `github_get_project_fields`, `github_update_project`, `github_get_issue_node_id`, and `github_get_user_node_id` are superseded by `github_graphql` on the read side; they remain in place during Phase 2 as a regression safety net and are removed in Phase 3 once the new tool is verified.
+
+**Removed resources (3):** `scrum://config`, `scrum://sprint/current`, `scrum://sprint/archive/{n}`
+
+**Removed prompts (6):** `standup`, `backlog-refinement`, `sprint-planning`, `sprint-management`, `classify-intent`, `confirm-mutation` — workflow orchestration belongs in the Scrum Master skill file, not the tool server.
 
 ---
 
-## Data Flow: Sprint Planning (Example Autonomous Workflow)
+### The `github_graphql` Tool and the Vocabulary File
 
-```mermaid
-sequenceDiagram
-    participant Agent
-    participant MCP as MCP Server
-    participant GH as GitHub GraphQL
+The `github_graphql` tool accepts a `query` string and an optional `variables` object. It executes a read-only GraphQL operation against the GitHub API and returns the raw JSON response. Any operation string containing the `mutation` keyword is rejected at the tool layer.
 
-    Agent->>MCP: github_get_project_fields(project)
-    MCP->>GH: query { projectV2.fields }
-    GH-->>MCP: iteration field ID, story_points field ID, status field ID + options
-    MCP-->>Agent: field map
+Rather than requiring the agent to derive queries from the 14,766-line `schema.graphql`, a curated fragment library in `.github/scrum/vocabulary.graphql` defines the four entity shapes the SM works with: `ProjectItemCore`, `ProjectFields`, `IssueDetail`, and `PRDetail`. The file also contains seven ready-to-use query templates (`GetBoardItems`, `GetProjectFields`, `GetIssue`, `GetPullRequest`, `ListIssues`, `GetDiscussion`, `ListDiscussions`, `GetUser`).
 
-    Agent->>MCP: github_get_velocity(project, iterations=5)
-    MCP->>GH: query completed iterations → Done items → sum story_points
-    GH-->>MCP: raw iteration data
-    MCP-->>Agent: avg velocity = 34 pts, trend = +2/sprint
+The `config.yml` provides the semantic layer: it maps Scrum concepts (`sprint`, `status`, `story_points`) to the exact field names configured in the GitHub project. When the agent reads a board item response and finds a `ProjectV2ItemFieldIterationValue` whose `field.name` matches `config.fields.sprint`, it knows that value is the sprint assignment.
 
-    Agent->>MCP: github_get_backlog_items(project, order_by=priority)
-    MCP->>GH: query items where iteration = null, order by Priority field
-    GH-->>MCP: ranked backlog items with estimates
-    MCP-->>Agent: top 12 items totalling 31 pts (within capacity)
-
-    Agent->>MCP: github_bulk_update_item_field(items=[...], field=iteration, value=sprint_5_id)
-    MCP->>GH: mutation updateProjectV2ItemFieldValue × N
-    GH-->>MCP: updated item IDs
-    MCP-->>Agent: Sprint 5 backlog committed (31 pts across 12 items)
-```
-
-## Configuration
-
-The server uses a **two-file split** to cleanly separate what humans own from what GitHub owns.
-
-### Source of truth
-
-| File                        | Owner           | Contains                                                                    | Edit?                               |
-| --------------------------- | --------------- | --------------------------------------------------------------------------- | ----------------------------------- |
-| `scrum.config.yml`          | Human           | Project coordinates, team, field name map, DoR, DoD, epics, sprint settings | ✅ Yes — version-controlled         |
-| `project-board.config.json` | GitHub (synced) | Field IDs, option lists, active sprint, iteration history                   | ❌ Never — generated by sync script |
-
-### Sync workflow
-
-```bash
-# First-time setup — or after any change to GitHub Projects field names/options
-GITHUB_TOKEN=ghp_xxx deno task sync-config
-
-# Preview what would be written without writing it
-GITHUB_TOKEN=ghp_xxx deno task sync-config:dry
-```
-
-The sync script (`scripts/sync-project-config.ts`):
-
-1. Reads `scrum.config.yml` to get project coordinates and `field_names`
-2. Queries the GitHub Projects v2 GraphQL API for live field metadata
-3. Warns about any `field_names` entries that don't match a real board field (catches typos early)
-4. Writes field IDs, option lists, iteration data, and `_fields_registry` to
-   `project-board.config.json`
-5. **Never touches** `scrum.config.yml` — your project spec is always preserved
-
-### Config split diagram
-
-```mermaid
-flowchart LR
-    subgraph Human["Human-authored"]
-        YML["scrum.config.yml\nproject · team · field_names\nDoR · DoD · epics · autonomy"]
-    end
-
-    subgraph Script["scripts/sync-project-config.ts"]
-        SYNC["deno task sync-config"]
-    end
-
-    subgraph GitHub["GitHub Projects v2"]
-        GQL["GraphQL API\nfields · options · iterations"]
-    end
-
-    subgraph Generated["Auto-generated"]
-        JSON["project-board.config.json\nfield IDs · status options\nactive sprint · all iterations\n_fields_registry"]
-    end
-
-    subgraph Runtime["MCP Server runtime"]
-        MERGE["loadScrumConfig()\nmerges both files"]
-    end
-
-    YML --> SYNC
-    GQL --> SYNC
-    SYNC --> JSON
-    YML --> MERGE
-    JSON --> MERGE
-```
-
-### What each file controls
-
-**`scrum.config.yml`** — the project specification. Edit this when you:
-
-- Add or rename team members
-- Update the Definition of Ready / Done
-- Change the MoSCoW priority model or story point scale
-- Add epics
-- Change autonomy level or confirmation thresholds
-- Rename a GitHub Projects field (then re-run `sync-config`)
-
-**`project-board.config.json`** — live board state. Regenerate this when:
-
-- You add or rename a field in GitHub Projects
-- You add a new sprint (iteration) in the GitHub UI
-- You change option names in a single-select field (Status, Priority, Type, Impediment)
+These two files together are the agent's working schema. The full `schema.graphql` remains in the repo as a reference for edge cases but is never loaded into working context.
 
 ---
 
-## Prerequisites
+### Phase Plan
 
-- **Deno** ≥ 1.40 (runtime)
-- **Node.js** ≥ 20 (for MCP SDK compatibility)
-- A **GitHub Personal Access Token (classic)** — fine-grained tokens do not support Projects v2
-  write operations
+Each phase leaves the server in a working, testable state.
 
-### Token Scopes
+#### Phase 1 — Strip
 
-| Operation                                                | Required Scope          |
-| -------------------------------------------------------- | ----------------------- |
-| Read projects                                            | `read:project`          |
-| Write projects (add/update/delete items, update project) | `project`               |
-| Read issues/PRs (to add them by node ID)                 | `repo` or `public_repo` |
+Remove everything that encodes Scrum business logic or owns project state.
 
-Generate at: **GitHub → Settings → Developer Settings → Personal access tokens (classic)**
+- Delete `src/tools/sprints.ts`
+- Audit `src/services/formatters.ts` — delete if it only serves deleted tools
+- Remove `src/services/scrum.ts` and `src/services/scrum_test.ts`
+- Clear `src/resources/index.ts` — remove all `scrum://` registrations
+- Clear `src/prompts/index.ts` — remove all prompt registrations
+- Update `src/index.ts` to remove all references to deleted modules
+- Delete the `config/` directory and its contents
+- Remove the `sync-config` task from `deno.json`
+- Run the test suite; fix broken imports
 
----
+**Exit state:** Working server with the original project and item tools, no resources, no prompts, no local state.
 
-## Quickstart
+#### Phase 2 — Repository Layer
 
-```bash
-# Clone and install dependencies
-deno install
+Create `src/tools/repository.ts` with all new read and write tools. Extend `src/services/github.ts` with REST methods for issues, comments, and file operations.
 
-# Run on stdio (for Claude Desktop / Claude Code / LM Studio)
-GITHUB_TOKEN=ghp_yourtoken deno task start
-```
+Tools to implement: `github_graphql`, `github_get_repo_file`, `github_create_issue`, `github_update_issue`, `github_create_comment`, `github_write_repo_file`.
 
-### Claude Desktop / Claude Code (`~/.claude/config.json`)
+Register all new tools in `src/index.ts`. Write tests. Manually test `github_graphql` against the vocabulary query templates, and `github_get_repo_file` against `.github/scrum/config.yml`.
 
-```json
-{
-  "mcpServers": {
-    "github-projects": {
-      "command": "deno",
-      "args": ["task", "start"],
-      "cwd": "/path/to/github-projects-mcp-server",
-      "env": { "GITHUB_TOKEN": "ghp_yourtoken" }
-    }
-  }
-}
-```
+**Exit state:** Server at ~16 tools (original tools still present + new repository tools). The agent can now read full issue and PR content.
 
-### LM Studio
+#### Phase 3 — Consolidate
 
-In **LM Studio → Settings → MCP Servers**, add:
+Reduce from ~16 tools to the target 9.
 
-```json
-{
-  "name": "github-projects",
-  "transport": "stdio",
-  "command": "deno",
-  "args": ["task", "start", "--cwd", "/path/to/github-projects-mcp-server"],
-  "env": { "GITHUB_TOKEN": "ghp_yourtoken" }
-}
-```
+- Merge `github_add_item_to_project` + `github_add_draft_issue` → `github_add_project_item`
+- Verify `github_graphql` reproduces all read patterns from the retired project tools (write one representative query per retired tool and confirm the response shape)
+- Remove `github_list_projects`, `github_get_project`, `github_get_project_fields`, `github_update_project`, `github_get_issue_node_id`, `github_get_user_node_id`
+- Delete `src/tools/projects.ts` and its test file
+- Update `src/index.ts` to the final 9-tool registration
+
+**Exit state:** Server at target 9 tools. All tests passing.
+
+#### Phase 4 — Type Cleanup
+
+- Audit every type in `src/types.ts` against `src/generated/github-types.ts`: delete types with a generated equivalent, update all import sites, keep only types that are genuinely non-derivable
+- Audit `src/schemas/inputs.ts`: keep Zod schemas that serve as tool argument validation; remove any that duplicate GraphQL input types and are no longer referenced
+- Run `deno check` and the full test suite
+
+**Exit state:** `src/types.ts` contains only non-derivable types. `src/schemas/inputs.ts` contains only tool argument schemas.
 
 ---
 
-## HTTP Mode (Home Lab / Docker)
+### Repository Config Files
 
-```bash
-# .env
-GITHUB_TOKEN=ghp_yourtoken
-MCP_TRANSPORT=http
-PORT=3000
-```
+Two files have been drafted and committed to `.github/scrum/` as part of the architecture work preceding this refactor:
 
-```bash
-docker compose build
-docker compose up
-```
+- `.github/scrum/config.yml` — requires customisation before deployment: fill in actual project coordinates (`owner`, `repo`, `number`), team logins, and field names to match the GitHub project's exact configuration
+- `.github/scrum/vocabulary.graphql` — ready to use as-is; fragments are valid against the current GitHub GraphQL schema
 
-The server listens on `http://0.0.0.0:3000/mcp`. Expose through a reverse proxy (Nginx, Caddy,
-Traefik) with authentication.
-
-### HTTP Session Lifecycle
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Server as Express + McpServer
-
-    Client->>Server: POST /mcp (Initialize, no session ID)
-    Server-->>Client: 200 + Mcp-Session-Id header
-
-    Client->>Server: POST /mcp (tool call, session ID in header)
-    Server-->>Client: 200 + tool result
-
-    Client->>Server: GET /mcp (SSE, session ID in header)
-    Server-->>Client: SSE stream (server-initiated notifications)
-
-    Client->>Server: DELETE /mcp (session ID in header)
-    Server-->>Client: 200 (session closed)
-```
-
-### Open WebUI
-
-In the Open WebUI environment, set:
-
-```
-MCP_SERVER_URL=http://github-projects-mcp:3000/mcp
-```
-
-Or via the UI: **Admin Panel → Settings → Tools → MCP Servers**.
+A `sprint-current.md` template should be added to `.github/scrum/` before Phase 1 begins. It should include placeholders for: sprint number, sprint goal, start and end dates, role assignments for this sprint, team capacity (available person-days), committed items narrative, and the retro commitment carried over from the previous sprint.
 
 ---
-
-## Development
-
-```bash
-deno task dev              # watch mode with TypeScript recompilation
-deno task inspector        # MCP Inspector UI for interactive tool testing
-deno task test             # run all unit tests under src/
-deno task sync-config      # sync GitHub board fields → project-board.config.json
-deno task sync-config:dry  # preview sync output without writing
-deno task codegen          # fetch GitHub GraphQL schema → src/generated/github-types.ts
-deno task codegen:validate # validate generated types against the live schema
-deno task codegen:types-only # regenerate types without re-fetching the schema
-```
-
-### Debugging
-
-Set `DEBUG=1` to enable debug-level logging on stderr:
-
-```bash
-DEBUG=1 GITHUB_TOKEN=ghp_yourtoken deno task start
-```
-
-Debug output includes incoming tool calls with parsed parameters, outgoing GraphQL queries and
-variables, raw API responses, and JSON-RPC wire traffic. All server output goes to stderr so it does
-not interfere with the stdio JSON-RPC channel.
-
----
-
-## Project Structure
-
-```
-github-projects-mcp-server/
-├── config/
-│   ├── scrum.config.yml           # Human-defined project spec — edit this
-│   ├── project-board.config.json  # Auto-generated board state — do not edit
-│   └── sprint-current.md          # Active sprint document (Scrum Master updates)
-├── scripts/
-│   ├── sync-project-config.ts    # Syncs GitHub field metadata → project-board.config.json
-│   └── graphql-codegen.ts        # Fetches GitHub GraphQL schema → src/generated/github-types.ts
-├── skill/
-│   └── scrum-agile-assistant/    # Claude Skill: SCRUM coaching knowledge base
-│       ├── SKILL.md              #   Skill manifest and system prompt
-│       └── references/           #   Reference docs (templates, dysfunctions, advanced practices)
-├── Dockerfile                     # Container image for HTTP mode
-├── docker-compose.yml             # Docker Compose for HTTP mode deployment
-├── deno.json                      # Tasks, imports, compiler options
-└── src/
-    ├── index.ts                   # Entry point — transport, server factory, all registrations
-    ├── types.ts                   # TypeScript interfaces for GitHub GraphQL responses + SCRUM
-    ├── generated/
-    │   └── github-types.ts        # Auto-generated full GitHub GraphQL type catalog (do not edit)
-    ├── tools/
-    │   ├── projects.ts            # Project-level tools (list, get, update, fields)
-    │   ├── projects_test.ts       #   Unit tests
-    │   ├── items.ts               # Item-level tools (CRUD, field updates, node ID lookups)
-    │   ├── items_test.ts          #   Unit tests
-    │   └── sprints.ts             # SCRUM sprint tools (status, velocity, backlog, close, report)
-    ├── resources/
-    │   └── index.ts               # MCP Resources: scrum://config, scrum://sprint/*
-    ├── prompts/
-    │   └── index.ts               # MCP Prompts: classify-intent, confirm-mutation, workflows
-    ├── schemas/
-    │   ├── inputs.ts              # Zod validation schemas for all tool inputs
-    │   └── inputs_test.ts         #   Unit tests
-    └── services/
-        ├── github.ts              # graphql<T>() executor, GitHubApiError, formatError()
-        ├── github_test.ts         #   Unit tests
-        ├── logger.ts              # Structured stderr logger; set DEBUG=1 for debug-level output
-        ├── formatters.ts          # GraphQL fragments + Markdown output formatters
-        ├── scrum.ts               # loadScrumConfig(), resolveFields(), fetchAllItems(), helpers
-        └── scrum_test.ts          #   Unit tests
-```
-
----
-
-## Environment Variables
-
-| Variable        | Default | Description                                                                               |
-| --------------- | ------- | ----------------------------------------------------------------------------------------- |
-| `GITHUB_TOKEN`  | —       | **Required.** GitHub classic PAT                                                          |
-| `MCP_TRANSPORT` | `stdio` | `stdio` or `http`                                                                         |
-| `PORT`          | `3000`  | HTTP listen port (http mode only)                                                         |
-| `DEBUG`         | unset   | Set to `1` to enable debug-level logging (tool calls, GraphQL ops, JSON-RPC wire traffic) |
 
 ## Todo
 
-- [ ] Implement GitHub repository API tools
-- [ ] Refactor the config type system to be dynamic (derived from the fetched JSON file rather than
-      manually coded)
-- [ ] Refactor the codebase to be shorter and "human-readable"
-- [ ] Add `github_update_draft_issue` to `src/tools/items.ts`; signature:
-      `(draft_issue_id, title?, body?, assignee_ids?)`.
-  - [ ] The tool must accept the draft issue's _content node ID_ (returned by
-        `github_add_draft_issue`), not the project item ID.
-  - [ ] Prevents models from hallucinating tool names when they need to edit a draft issue title or
-        body.
-- [ ] Fix Transport Label Logging (`http:undefined`)
-  - [ ] Update `wrapTransportLogging` in `src/index.ts` to use a lazy `getLabel()` closure that
-        reads `transport.sessionId` at log-call time instead of capturing it at wrap time (it is
-        `undefined` during initialization).
-- [x] **Flatten `FieldValueUnion` schema** — replaced `z.discriminatedUnion` (6-variant `anyOf` with
-      `additionalProperties: false` per variant) with a single flat `z.object`. All companion keys
-      (`value`, `number_value`, `option_id`, `iteration_id`) are now optional fields on one object;
-      `type` remains an enum discriminator. Eliminates the primary cause of write-tool failures for
-      local LLMs.
-- [x] **Centralize field value validation** — added `resolveFieldValue()` helper in
-      `src/schemas/inputs.ts`; shared by `items.ts` and `sprints.ts`, returns human-readable error
-      strings the model can act on.
-- [x] **Remove `"REDACTED"` placeholder** — cleaned `filter_type` enum in `ListItemsSchema`; was
-      causing a type mismatch against `ItemContentType` and leaking as a valid API value.
-- [x] **Structured logger** — added `src/services/logger.ts`; all output to stderr; `DEBUG=1`
-      enables debug-level output without polluting the stdio JSON-RPC channel.
+### Repository Config
+
+- [ ] Customise `.github/scrum/config.yml` — fill in real `project.owner`, `project.repo`, `project.number`, `team` logins, and `fields.*` names to match the GitHub project
+- [ ] Create `.github/scrum/sprint-current.md` with template placeholders (sprint number, goal, dates, roles, capacity, committed items, prior retro commitment)
+
+### Phase 1 — Strip
+
+- [ ] Delete `src/tools/sprints.ts`
+- [ ] Audit `src/services/formatters.ts` — determine if it is referenced by surviving tools; delete if not
+- [ ] Delete `src/services/scrum.ts` and `src/services/scrum_test.ts`
+- [ ] Remove all resource registrations from `src/resources/index.ts` (the three `scrum://` resources)
+- [ ] Remove all prompt registrations from `src/prompts/index.ts`
+- [ ] Update `src/index.ts` — remove all imports and `server.register*` calls for deleted tools, resources, and prompts
+- [ ] Delete `config/` directory and all contents
+- [ ] Remove `sync-config` task from `deno.json`
+- [ ] Run `deno test` — fix any broken imports or references
+
+### Phase 2 — Repository Layer
+
+- [ ] Add REST helper methods to `src/services/github.ts`: issue create, issue update, comment create, file read (`GET /repos/{owner}/{repo}/contents/{path}`), file write (`PUT /repos/{owner}/{repo}/contents/{path}`)
+- [ ] Create `src/tools/repository.ts`
+- [ ] Implement `github_graphql` — accepts `query: string` and `variables?: object`; rejects any operation containing the `mutation` keyword; returns raw JSON response
+- [ ] Implement `github_get_repo_file` — accepts `path: string`; returns decoded text content of the file at that path in the configured repo
+- [ ] Implement `github_create_issue` — accepts `title`, `body?`, `labels?`, `assignees?`, `milestone?`
+- [ ] Implement `github_update_issue` — accepts `number` and a patch object (`state?`, `title?`, `body?`, `labels?`, `assignees?`)
+- [ ] Implement `github_create_comment` — accepts `number`, `body`, `type: "issue" | "pr" | "discussion"`
+- [ ] Implement `github_write_repo_file` — accepts `path`, `content`, `commit_message`, `sha?` (required for updates)
+- [ ] Register all new tools in `src/index.ts`
+- [ ] Create `src/tools/repository_test.ts` and write tests for each tool
+- [ ] Manually run `GetProjectFields` query via `github_graphql` against the live project and confirm field IDs are returned correctly
+- [ ] Manually run `GetBoardItems` query and confirm item field values are readable using `config.yml` mappings
+- [ ] Manually run `github_get_repo_file` against `.github/scrum/config.yml` and confirm decoded output
+
+### Phase 3 — Consolidate
+
+- [ ] Merge `github_add_item_to_project` and `github_add_draft_issue` into `github_add_project_item` in `src/tools/items.ts` — `content_id` parameter links an existing issue/PR; `draft` object parameter creates a draft issue
+- [ ] Update `src/tools/items_test.ts` to cover the merged `github_add_project_item` tool
+- [ ] Write one representative `github_graphql` query for each of the six tools being retired (`list_projects`, `get_project`, `get_project_fields`, `update_project`, `get_issue_node_id`, `get_user_node_id`) and confirm the response shape is equivalent
+- [ ] Remove `github_list_projects`, `github_get_project`, `github_get_project_fields`, `github_update_project`, `github_get_issue_node_id`, `github_get_user_node_id` from `src/tools/projects.ts`
+- [ ] Delete `src/tools/projects.ts` and `src/tools/projects_test.ts`
+- [ ] Update `src/index.ts` to reflect the final 9-tool registration
+- [ ] Run `deno test` — confirm all 9 tools registered and all tests pass
+
+### Phase 4 — Type Cleanup
+
+- [ ] Go through `src/types.ts` line by line; for each exported type annotate: (a) has generated equivalent in `github-types.ts` → remove and update imports, (b) no generated equivalent and still in use → keep, (c) only served deleted tools → remove
+- [ ] Apply annotations — delete types and update all import sites across `src/`
+- [ ] Audit `src/schemas/inputs.ts` — keep Zod schemas used as tool argument validators; remove anything that mirrors a GraphQL input type and is no longer referenced
+- [ ] Run `deno check` — resolve any type errors
+- [ ] Run `deno test` — confirm all tests pass after type cleanup
