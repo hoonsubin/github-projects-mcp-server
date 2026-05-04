@@ -16,7 +16,6 @@ import {
   resolveFieldValue,
   UpdateFieldValueSchema,
 } from "../schemas/inputs.ts";
-import { getIterationValue, loadScrumConfig, resolveFields } from "../services/scrum.ts";
 import type {
   AddDraftIssueData,
   AddProjectItemData,
@@ -111,27 +110,13 @@ Returns: Markdown list of items with IDs, titles, states, and field values.
           items = items.filter((item) => item.type === params.filter_type);
         }
 
-        // Client-side iteration filter — GitHub has no server-side filterBy
+        // Client-side iteration filter — matches any field value node with the given iterationId.
+        // The agent is responsible for knowing which field is the sprint field (via config.yml).
         if (params.iteration_id) {
           const targetId = params.iteration_id;
-          // We need the sprint field ID to extract iteration values; try config first
-          let sprintFieldId: string | null = null;
-          try {
-            const cfg = await loadScrumConfig();
-            const fields = resolveFields(cfg);
-            sprintFieldId = fields.sprintFieldId;
-          } catch {
-            // Config unavailable — fall back to matching against any iteration field value
-          }
-          items = items.filter((item) => {
-            const fvs = item.fieldValues.nodes;
-            if (sprintFieldId) {
-              const iv = getIterationValue(item, sprintFieldId);
-              return iv?.iterationId === targetId;
-            }
-            // Fallback: check any field value with a matching iterationId
-            return fvs.some((fv) => fv.iterationId === targetId);
-          });
+          items = items.filter((item) =>
+            item.fieldValues.nodes.some((fv) => fv.iterationId === targetId)
+          );
         }
 
         // Client-side status option filter
@@ -222,19 +207,15 @@ Draft issues live only in the project board (not in a repository) until converte
 Useful for capturing quick tasks or ideas without creating a repo issue.
 
 **Prerequisites**: you need the project node ID before calling this tool.
-Read scrum://config to get it instantly (project.id field), or call
-github_get_project(owner, owner_type, project_number) and use the returned id.
+Call github_get_project(owner, owner_type, project_number) and use the returned id.
 
 Args:
-  - project_id (string): Project node ID (PVT_kwDO…) — see Prerequisites above.
-    Do NOT pass owner, project_number, or any other identifier here.
+  - project_id (string): Project node ID (PVT_kwDO…). Do NOT pass owner or project_number here.
   - title (string): Draft issue title (required)
   - body (string, optional): Markdown body content
   - assignee_ids (string[], optional): Array of user node IDs (get from github_get_user_node_id)
-  - iteration_id (string, optional): Sprint iteration node ID to assign immediately on creation.
-    Requires scrum.config.yml and project-board.config.json to be present (run deno task sync-config first).
 
-Returns: Node ID of the new project item, plus sprint assignment status if iteration_id was provided.`,
+Returns: Node ID of the new project item. Use github_update_item_field to set field values such as sprint assignment.`,
       inputSchema: AddDraftIssueSchema.shape,
       annotations: {
         readOnlyHint: false,
@@ -264,47 +245,16 @@ Returns: Node ID of the new project item, plus sprint assignment status if itera
         const data = await graphql<AddDraftIssueData>(mutation, { input });
         const itemId = data.addProjectV2DraftIssue.projectItem.id;
 
-        const lines = [
-          `✅ Draft issue created.`,
-          `**Title**: ${params.title}`,
-          `**Item node ID**: \`${itemId}\``,
-        ];
-
-        // Assign to sprint immediately if iteration_id was provided
-        if (params.iteration_id) {
-          try {
-            // Resolve sprint field ID from scrum config
-            const cfg = await loadScrumConfig();
-            const resolvedFields = resolveFields(cfg);
-            const sprintFieldId = resolvedFields.sprintFieldId;
-
-            const updateMutation = `
-              mutation($input: UpdateProjectV2ItemFieldValueInput!) {
-                updateProjectV2ItemFieldValue(input: $input) {
-                  projectV2Item { id }
-                }
-              }`;
-
-            await graphql<UpdateProjectItemFieldData>(updateMutation, {
-              input: {
-                projectId: params.project_id,
-                itemId,
-                fieldId: sprintFieldId,
-                value: { iterationId: params.iteration_id },
-              },
-            });
-            lines.push(`**Sprint**: assigned to iteration \`${params.iteration_id}\``);
-          } catch (sprintErr) {
-            lines.push(
-              `⚠️ Sprint assignment failed: ${
-                sprintErr instanceof Error ? sprintErr.message : String(sprintErr)
-              }. ` +
-                `Run \`deno task sync-config\` and retry, or use github_update_item_field manually.`,
-            );
-          }
-        }
-
-        return { content: [{ type: "text", text: lines.join("\n") }] };
+        return {
+          content: [{
+            type: "text",
+            text: [
+              `✅ Draft issue created.`,
+              `**Title**: ${params.title}`,
+              `**Item node ID**: \`${itemId}\``,
+            ].join("\n"),
+          }],
+        };
       } catch (err) {
         return { content: [{ type: "text", text: formatError(err) }] };
       }
@@ -320,8 +270,8 @@ Returns: Node ID of the new project item, plus sprint assignment status if itera
       description: `Set or clear a custom field value on a project item.
 
 Workflow:
-  1. Get project node ID: read scrum://config (project.id) or call github_get_project
-  2. Get field IDs: github_get_project_fields (or read scrum://config _fields_registry)
+  1. Get project node ID: call github_get_project or use github_graphql
+  2. Get field IDs: call github_get_project_fields or use github_graphql
   3. Get item IDs: github_list_project_items
   4. Call this tool with the resolved IDs
 
@@ -334,10 +284,10 @@ Supported field types — always set \`type\`, then set the matching companion k
   - clear:         { type: 'clear' }  — removes any current value, no other key needed
 
 Args:
-  - project_id (string): Project node ID (PVT_kwDO…) — read scrum://config or call github_get_project.
+  - project_id (string): Project node ID (PVT_kwDO…) — from github_get_project or github_graphql.
     Do NOT pass owner or project_number here.
   - item_id (string): Project item node ID (e.g., PVTI_lADO...)
-  - field_id (string): Field node ID (from github_get_project_fields or scrum://config _fields_registry)
+  - field_id (string): Field node ID (from github_get_project_fields or github_graphql)
   - value (object): New value with type discriminator (see above)
 
 Returns: Confirmation with item ID.`,
@@ -418,7 +368,7 @@ Returns: Confirmation with item ID.`,
 Archived items are hidden from the default board view but not deleted.
 Use github_delete_project_item to permanently remove an item.
 
-**Prerequisites**: read scrum://config (project.id) or call github_get_project to obtain the project node ID.
+**Prerequisites**: you need the project node ID — call github_get_project or use github_graphql.
 
 Args:
   - project_id (string): Project node ID (PVT_kwDO…). Do NOT pass owner or project_number.
@@ -475,7 +425,7 @@ Returns: Confirmation with item ID and new archived status.`,
 ⚠️ This is irreversible. The underlying issue or PR is NOT deleted — only its
 project card is removed. Use github_archive_project_item for reversible hiding.
 
-**Prerequisites**: read scrum://config (project.id) or call github_get_project to obtain the project node ID.
+**Prerequisites**: you need the project node ID — call github_get_project or use github_graphql.
 
 Args:
   - project_id (string): Project node ID (PVT_kwDO…). Do NOT pass owner or project_number.

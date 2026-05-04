@@ -4,8 +4,6 @@
     "start": "deno run --allow-env --allow-net --allow-read src/index.ts",
     "inspector": "deno run --allow-env --allow-net --allow-read --allow-run src/index.ts",
     "test": "deno test --allow-env --allow-net src/",
-    "sync-config": "deno run --allow-env --allow-net --allow-read --allow-write scripts/sync-project-config.ts",
-    "sync-config:dry": "deno run --allow-env --allow-net --allow-read --allow-write scripts/sync-project-config.ts --dry-run",
     "codegen": "deno run --allow-env --allow-net --allow-read --allow-write scripts/graphql-codegen.ts",
     "codegen:validate": "deno run --allow-env --allow-net --allow-read --allow-write scripts/graphql-codegen.ts -- --validate",
     "codegen:types-only": "deno run --allow-env --allow-net --allow-read --allow-write scripts/graphql-codegen.ts -- --skip-fetch"

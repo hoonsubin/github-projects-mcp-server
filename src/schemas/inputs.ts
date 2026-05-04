@@ -76,8 +76,6 @@ export const AddDraftIssueSchema = z.object({
     .describe("Markdown body for the draft issue"),
   assignee_ids: z.array(z.string()).max(10).optional()
     .describe("Array of user node IDs to assign"),
-  iteration_id: z.string().optional()
-    .describe("Iteration node ID to assign to a sprint immediately on creation"),
 }).strict();
 
 export const DeleteItemSchema = z.object({
@@ -140,7 +138,7 @@ export const FieldValueUnion = z.object({
     .string()
     .optional()
     .describe(
-      "Iteration (sprint) node ID — required when type is 'iteration' (get from scrum://config or github_get_project_fields)",
+      "Iteration (sprint) node ID — required when type is 'iteration' (get from github_get_project_fields or github_graphql)",
     ),
 });
 
@@ -272,10 +270,10 @@ export const GetBacklogItemsSchema = z.object({
 }).strict();
 
 export const BulkUpdateItemFieldSchema = z.object({
-  project_id: z.string().min(1).optional()
+  project_id: z.string().min(1)
     .describe(
       "Node ID of the project (PVT_kwDO…). " +
-        "Omit to auto-resolve from scrum://config (project-board.config.json must be present — run `deno task sync-config` first). " +
+        "Get it from github_get_project or github_graphql. " +
         "Do NOT pass owner or project_number here.",
     ),
   item_ids: z.array(z.string().min(1)).min(1).max(50)

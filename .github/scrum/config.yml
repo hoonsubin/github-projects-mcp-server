@@ -18,7 +18,6 @@
 #   - Sprint goal and capacity plan — live in sprint-current.md
 #   - Sprint history — lives in sprint-archive-N.md
 
-
 # ── PROJECT IDENTITY ─────────────────────────────────────────────────────────
 #
 # owner_type determines which GraphQL query shape to use:
@@ -26,12 +25,11 @@
 #   org   → organization(login: $owner) { projectV2(number: $number) { ... } }
 
 project:
-  name: "My Product"
-  owner: myorg
-  owner_type: org                    # user | org
-  repo: my-repo
-  number: 3                          # Project number from the GitHub URL (/projects/3)
-
+  name: "GitHub Projects MCP Server"
+  owner: hoonsubin
+  owner_type: user # user | org
+  repo: github-projects-mcp-server
+  number: 5 # Project number from the GitHub URL (/projects/3)
 
 # ── TEAM ─────────────────────────────────────────────────────────────────────
 #
@@ -40,13 +38,9 @@ project:
 # Per-sprint role overrides (e.g., rotating SM) go in sprint-current.md.
 
 team:
-  - login: hoonkim
+  - login: hoonsubin
     name: Hoon Kim
-    role: developer                  # scrum_master | product_owner | developer
-  - login: janesmith
-    name: Jane Smith
-    role: product_owner
-
+    role: product_owner # scrum_master | product_owner | developer
 
 # ── SPRINT SETTINGS ──────────────────────────────────────────────────────────
 #
@@ -57,12 +51,11 @@ team:
 
 sprint:
   length_weeks: 2
-  start_day: monday                  # monday | tuesday | wednesday | thursday | friday
-  story_point_scale: fibonacci       # fibonacci | linear | tshirt (informational only)
+  start_day: monday # monday | tuesday | wednesday | thursday | friday
+  story_point_scale: fibonacci # fibonacci | linear | tshirt (informational only)
   story_point_values: [1, 2, 3, 5, 8, 13]
   velocity_window: 4
   carry_over_threshold_days: 2
-
 
 # ── FIELD NAME MAPPINGS ───────────────────────────────────────────────────────
 #
@@ -77,14 +70,13 @@ sprint:
 # do not need entries here — they are accessed via the `content` node.
 
 fields:
-  sprint: "Sprint"                   # ITERATION type field
-  status: "Status"                   # SINGLE_SELECT type field
-  story_points: "Story Points"       # NUMBER type field
-  priority: "Priority"               # SINGLE_SELECT type field
+  sprint: "Sprint" # ITERATION type field
+  status: "Status" # SINGLE_SELECT type field
+  story_points: "Story Points" # NUMBER type field
+  priority: "Priority" # SINGLE_SELECT type field
   # Add custom fields as needed:
   # epic: "Epic"
   # blocked_reason: "Blocked Reason"
-
 
 # ── STATUS VOCABULARY ────────────────────────────────────────────────────────
 #
@@ -102,7 +94,6 @@ status:
   done: "Done"
   blocked: "Blocked"
 
-
 # ── PRIORITY VOCABULARY ──────────────────────────────────────────────────────
 #
 # Maps MoSCoW tiers to exact option names in the GitHub Priority field.
@@ -113,7 +104,6 @@ priority:
   should: "Should"
   could: "Could"
   wont: "Won't"
-
 
 # ── DEFINITION OF READY ──────────────────────────────────────────────────────
 #
@@ -126,7 +116,6 @@ definition_of_ready:
   - Estimated in story points
   - Dependencies identified and de-risked
   - Completable within one sprint
-
 
 # ── DEFINITION OF DONE ───────────────────────────────────────────────────────
 #
@@ -141,7 +130,6 @@ definition_of_done:
   - No new linting or type errors introduced
   - Documentation updated if public behaviour changed
   - Deployed to staging and smoke-tested
-
 
 # ── CEREMONY RECORDS ─────────────────────────────────────────────────────────
 #
@@ -171,7 +159,6 @@ ceremony_records:
   # file_path: docs/minutes/
   # Files are named: YYYY-MM-DD-<ceremony-type>.md (e.g., 2026-05-03-retro.md)
 
-
 # ── AI AUTONOMY ──────────────────────────────────────────────────────────────
 #
 # Controls how much the AI self-initiates and when it requires explicit confirmation.
@@ -182,5 +169,5 @@ ceremony_records:
 #                always confirm destructive operations regardless of level
 
 autonomy:
-  level: standard                    # conservative | standard | full
+  level: standard # conservative | standard | full
   require_confirmation_above_n_items: 5

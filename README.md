@@ -329,6 +329,8 @@ The current codebase has two overlapping concerns that need to be separated.
 
 **Reads are flexible; writes are structured.** A single raw GraphQL query tool (`github_graphql`) covers the entire read surface. The agent constructs queries using a curated fragment library (`.github/scrum/vocabulary.graphql`). Write operations remain typed, named tools with validated parameters — arbitrary mutation strings are not permitted.
 
+**The agent bootstraps from its own context, not from server config.** The agent receives the target repository coordinates (`owner`, `repo`, `project_number`) via its context window — a system prompt, skill configuration, or memory entry. It passes these as arguments on every tool call. The server holds no record of which project it is serving. If these coordinates are absent from context when the agent needs to use a tool, it must ask the user to provide them explicitly rather than guessing or proceeding with incomplete information.
+
 **Project context is loaded in tiers by recall frequency.** Constants (`config.yml`) are read once per session. Sprint context (`sprint-current.md` + active iteration ID) is read once per sprint. Board state is queried daily. Item detail is fetched on demand. Pre-write ID lookups are always fresh. This minimises API calls and context window consumption.
 
 ---
@@ -338,36 +340,37 @@ The current codebase has two overlapping concerns that need to be separated.
 **Server bootstrap — environment variables only:**
 
 ```
-GITHUB_TOKEN
-GITHUB_OWNER
-GITHUB_REPO
-GITHUB_PROJECT_NUMBER
+GITHUB_TOKEN      # GitHub personal access token — the only secret the server holds
+MCP_TRANSPORT     # "stdio" (default) or "http"
+PORT              # HTTP port when MCP_TRANSPORT=http (default 3000)
 ```
+
+`owner`, `repo`, and `project_number` are **not** environment variables. They are parameters passed by the agent on each tool call. The agent learns these coordinates from its own context — a system prompt, skill configuration, or memory entry pointing at the subject repository. This keeps the server project-agnostic: one running instance can serve any repository the token has access to.
 
 **Repository-resident configuration (`.github/scrum/`):**
 
-| File | Purpose | Recall tier |
-|---|---|---|
-| `config.yml` | Project constants: field mappings, team, DoD/DoR, ceremony backend, autonomy level | Tier 1 — once per session |
-| `vocabulary.graphql` | Curated GraphQL fragment library for agent query construction | Tier 1 — once per session |
-| `sprint-current.md` | Human-authored sprint goal, capacity plan, role assignments | Tier 2 — once per sprint |
-| `sprint-archive-N.md` | Historical sprint records (velocity, retro commitments, goal outcomes) | Tier 4 — on demand |
+| File                  | Purpose                                                                            | Recall tier               |
+| --------------------- | ---------------------------------------------------------------------------------- | ------------------------- |
+| `config.yml`          | Project constants: field mappings, team, DoD/DoR, ceremony backend, autonomy level | Tier 1 — once per session |
+| `vocabulary.graphql`  | Curated GraphQL fragment library for agent query construction                      | Tier 1 — once per session |
+| `sprint-current.md`   | Human-authored sprint goal, capacity plan, role assignments                        | Tier 2 — once per sprint  |
+| `sprint-archive-N.md` | Historical sprint records (velocity, retro commitments, goal outcomes)             | Tier 4 — on demand        |
 
 The server exposes `github_get_repo_file` so the agent reads any of these files via the GitHub API. No local config files remain in the server codebase.
 
 **Final tool inventory (9 tools):**
 
-| Tool | File | Operation | Notes |
-|---|---|---|---|
-| `github_graphql` | `repository.ts` | Read | Replaces all current read-only tools |
-| `github_get_repo_file` | `repository.ts` | Read | Replaces all `scrum://` resources |
-| `github_update_item_field` | `items.ts` | Write | Keep as-is |
-| `github_bulk_update_item_field` | `items.ts` | Write | Keep as-is |
-| `github_add_project_item` | `items.ts` | Write | Merges `add_item_to_project` + `add_draft_issue` |
-| `github_create_issue` | `repository.ts` | Write | New |
-| `github_update_issue` | `repository.ts` | Write | New |
-| `github_create_comment` | `repository.ts` | Write | New — unified for issues, PRs, discussions |
-| `github_write_repo_file` | `repository.ts` | Write | New — for sprint archive writes |
+| Tool                            | File            | Operation | Notes                                            |
+| ------------------------------- | --------------- | --------- | ------------------------------------------------ |
+| `github_graphql`                | `repository.ts` | Read      | Replaces all current read-only tools; agent passes owner/repo/project_number in query variables |
+| `github_get_repo_file`          | `repository.ts` | Read      | Replaces all `scrum://` resources; accepts `owner`, `repo`, `path`                              |
+| `github_update_item_field`      | `items.ts`      | Write     | Keep as-is                                       |
+| `github_bulk_update_item_field` | `items.ts`      | Write     | Keep as-is                                       |
+| `github_add_project_item`       | `items.ts`      | Write     | Merges `add_item_to_project` + `add_draft_issue` |
+| `github_create_issue`           | `repository.ts` | Write     | New                                              |
+| `github_update_issue`           | `repository.ts` | Write     | New                                              |
+| `github_create_comment`         | `repository.ts` | Write     | New — unified for issues, PRs, discussions       |
+| `github_write_repo_file`        | `repository.ts` | Write     | New — for sprint archive writes                  |
 
 **Removed tools (10):** The five tools in `sprints.ts` are deleted outright. `github_list_projects`, `github_get_project`, `github_get_project_fields`, `github_update_project`, `github_get_issue_node_id`, and `github_get_user_node_id` are superseded by `github_graphql` on the read side; they remain in place during Phase 2 as a regression safety net and are removed in Phase 3 once the new tool is verified.
 
@@ -456,31 +459,32 @@ A `sprint-current.md` template should be added to `.github/scrum/` before Phase 
 
 ### Repository Config
 
-- [ ] Customise `.github/scrum/config.yml` — fill in real `project.owner`, `project.repo`, `project.number`, `team` logins, and `fields.*` names to match the GitHub project
-- [ ] Create `.github/scrum/sprint-current.md` with template placeholders (sprint number, goal, dates, roles, capacity, committed items, prior retro commitment)
+- [x] Customise `.github/scrum/config.yml` — fill in real `project.owner`, `project.repo`, `project.number`, `team` logins, and `fields.*` names to match the GitHub project
+- [x] Create `.github/scrum/sprint-current.md` with template placeholders (sprint number, goal, dates, roles, capacity, committed items, prior retro commitment)
 
 ### Phase 1 — Strip
 
-- [ ] Delete `src/tools/sprints.ts`
-- [ ] Audit `src/services/formatters.ts` — determine if it is referenced by surviving tools; delete if not
-- [ ] Delete `src/services/scrum.ts` and `src/services/scrum_test.ts`
-- [ ] Remove all resource registrations from `src/resources/index.ts` (the three `scrum://` resources)
-- [ ] Remove all prompt registrations from `src/prompts/index.ts`
-- [ ] Update `src/index.ts` — remove all imports and `server.register*` calls for deleted tools, resources, and prompts
-- [ ] Delete `config/` directory and all contents
-- [ ] Remove `sync-config` task from `deno.json`
-- [ ] Run `deno test` — fix any broken imports or references
+- [x] Delete `src/tools/sprints.ts`
+- [x] Audit `src/services/formatters.ts` — determine if it is referenced by surviving tools; delete if not
+- [x] Delete `src/services/scrum.ts` and `src/services/scrum_test.ts`
+- [x] Remove all resource registrations from `src/resources/index.ts` (the three `scrum://` resources)
+- [x] Remove all prompt registrations from `src/prompts/index.ts`
+- [x] Update `src/index.ts` — remove all imports and `server.register*` calls for deleted tools, resources, and prompts
+- [x] Delete `config/` directory and all contents
+- [x] Remove `sync-config` task from `deno.json`
+- [x] Run `deno test` — fix any broken imports or references
+  - [x] Fix dangling reference in `tools/items.ts` for functions `github_list_project_items` and `github_add_draft_issue`
 
 ### Phase 2 — Repository Layer
 
 - [ ] Add REST helper methods to `src/services/github.ts`: issue create, issue update, comment create, file read (`GET /repos/{owner}/{repo}/contents/{path}`), file write (`PUT /repos/{owner}/{repo}/contents/{path}`)
 - [ ] Create `src/tools/repository.ts`
 - [ ] Implement `github_graphql` — accepts `query: string` and `variables?: object`; rejects any operation containing the `mutation` keyword; returns raw JSON response
-- [ ] Implement `github_get_repo_file` — accepts `path: string`; returns decoded text content of the file at that path in the configured repo
-- [ ] Implement `github_create_issue` — accepts `title`, `body?`, `labels?`, `assignees?`, `milestone?`
-- [ ] Implement `github_update_issue` — accepts `number` and a patch object (`state?`, `title?`, `body?`, `labels?`, `assignees?`)
-- [ ] Implement `github_create_comment` — accepts `number`, `body`, `type: "issue" | "pr" | "discussion"`
-- [ ] Implement `github_write_repo_file` — accepts `path`, `content`, `commit_message`, `sha?` (required for updates)
+- [ ] Implement `github_get_repo_file` — accepts `owner`, `repo`, `path`; returns decoded text content of the file at that path
+- [ ] Implement `github_create_issue` — accepts `owner`, `repo`, `title`, `body?`, `labels?`, `assignees?`, `milestone?`
+- [ ] Implement `github_update_issue` — accepts `owner`, `repo`, `number` and a patch object (`state?`, `title?`, `body?`, `labels?`, `assignees?`)
+- [ ] Implement `github_create_comment` — accepts `owner`, `repo`, `number`, `body`, `type: "issue" | "pr" | "discussion"`
+- [ ] Implement `github_write_repo_file` — accepts `owner`, `repo`, `path`, `content`, `commit_message`, `sha?` (required for updates)
 - [ ] Register all new tools in `src/index.ts`
 - [ ] Create `src/tools/repository_test.ts` and write tests for each tool
 - [ ] Manually run `GetProjectFields` query via `github_graphql` against the live project and confirm field IDs are returned correctly
