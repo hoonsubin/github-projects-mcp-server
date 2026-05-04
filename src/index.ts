@@ -10,6 +10,7 @@ import type { JSONRPCMessage, MessageExtraInfo } from "@modelcontextprotocol/sdk
 import express, { type Request, type Response } from "express";
 import { registerProjectTools } from "./tools/projects.ts";
 import { registerItemTools } from "./tools/items.ts";
+import { registerRepositoryTools } from "./tools/repository.ts";
 import { log } from "./services/logger.ts";
 import type { Socket } from "node:net";
 
@@ -104,6 +105,7 @@ const createMcpServer = (): McpServer => {
 
   registerProjectTools(server);
   registerItemTools(server);
+  registerRepositoryTools(server);
 
   return server;
 };

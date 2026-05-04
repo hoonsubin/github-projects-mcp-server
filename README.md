@@ -298,8 +298,7 @@ USER_STORY }o--o{ REVIEW_FEEDBACK : "triggered by"
 SPRINT_REPORT }o--|| MEMBER : "authored by"
 ```
 
-This project provides the necessary tools for a LLM to act as the SCRUM master assistant within the GitHub ecosystem.
-Removing the need for complex PM tools.
+This project provides the necessary tools for a LLM to act as the SCRUM master assistant within the GitHub ecosystem. Removing the need for complex PM tools.
 
 It is designed to be used with the `skill/scrum-master-assistant/` agentic skill as the orchestration layer.
 
@@ -360,17 +359,17 @@ The server exposes `github_get_repo_file` so the agent reads any of these files 
 
 **Final tool inventory (9 tools):**
 
-| Tool                            | File            | Operation | Notes                                            |
-| ------------------------------- | --------------- | --------- | ------------------------------------------------ |
+| Tool                            | File            | Operation | Notes                                                                                           |
+| ------------------------------- | --------------- | --------- | ----------------------------------------------------------------------------------------------- |
 | `github_graphql`                | `repository.ts` | Read      | Replaces all current read-only tools; agent passes owner/repo/project_number in query variables |
 | `github_get_repo_file`          | `repository.ts` | Read      | Replaces all `scrum://` resources; accepts `owner`, `repo`, `path`                              |
-| `github_update_item_field`      | `items.ts`      | Write     | Keep as-is                                       |
-| `github_bulk_update_item_field` | `items.ts`      | Write     | Keep as-is                                       |
-| `github_add_project_item`       | `items.ts`      | Write     | Merges `add_item_to_project` + `add_draft_issue` |
-| `github_create_issue`           | `repository.ts` | Write     | New                                              |
-| `github_update_issue`           | `repository.ts` | Write     | New                                              |
-| `github_create_comment`         | `repository.ts` | Write     | New — unified for issues, PRs, discussions       |
-| `github_write_repo_file`        | `repository.ts` | Write     | New — for sprint archive writes                  |
+| `github_update_item_field`      | `items.ts`      | Write     | Keep as-is                                                                                      |
+| `github_bulk_update_item_field` | `items.ts`      | Write     | Keep as-is                                                                                      |
+| `github_add_project_item`       | `items.ts`      | Write     | Merges `add_item_to_project` + `add_draft_issue`                                                |
+| `github_create_issue`           | `repository.ts` | Write     | New                                                                                             |
+| `github_update_issue`           | `repository.ts` | Write     | New                                                                                             |
+| `github_create_comment`         | `repository.ts` | Write     | New — unified for issues, PRs, discussions                                                      |
+| `github_write_repo_file`        | `repository.ts` | Write     | New — for sprint archive writes                                                                 |
 
 **Removed tools (10):** The five tools in `sprints.ts` are deleted outright. `github_list_projects`, `github_get_project`, `github_get_project_fields`, `github_update_project`, `github_get_issue_node_id`, and `github_get_user_node_id` are superseded by `github_graphql` on the read side; they remain in place during Phase 2 as a regression safety net and are removed in Phase 3 once the new tool is verified.
 
@@ -414,13 +413,15 @@ Remove everything that encodes Scrum business logic or owns project state.
 
 #### Phase 2 — Repository Layer
 
-Create `src/tools/repository.ts` with all new read and write tools. Extend `src/services/github.ts` with REST methods for issues, comments, and file operations.
+Create `src/tools/repository.ts` with all new read and write tools. **No REST layer is needed** — the GitHub GraphQL API supports all required mutations (`createIssue`, `updateIssue`, `addComment`, `addDiscussionComment`, `createCommitOnBranch`), and file reading is covered by the `Blob` type in the query API. All six tools use the existing `graphql()` service in `src/services/github.ts`.
 
 Tools to implement: `github_graphql`, `github_get_repo_file`, `github_create_issue`, `github_update_issue`, `github_create_comment`, `github_write_repo_file`.
 
+Two tools perform an internal two-step GraphQL sequence transparent to the agent: `github_create_issue` first resolves the repository node ID (required by the `createIssue` mutation), and `github_write_repo_file` first queries the branch HEAD OID (required as an optimistic lock by `createCommitOnBranch`). All other tools are single-call.
+
 Register all new tools in `src/index.ts`. Write tests. Manually test `github_graphql` against the vocabulary query templates, and `github_get_repo_file` against `.github/scrum/config.yml`.
 
-**Exit state:** Server at ~16 tools (original tools still present + new repository tools). The agent can now read full issue and PR content.
+**Exit state:** Server at ~16 tools (original tools still present + new repository tools). The agent can now read and write issues, comments, discussions, and repository files.
 
 #### Phase 3 — Consolidate
 
@@ -477,18 +478,19 @@ A `sprint-current.md` template should be added to `.github/scrum/` before Phase 
 
 ### Phase 2 — Repository Layer
 
-- [ ] Add REST helper methods to `src/services/github.ts`: issue create, issue update, comment create, file read (`GET /repos/{owner}/{repo}/contents/{path}`), file write (`PUT /repos/{owner}/{repo}/contents/{path}`)
-- [ ] Create `src/tools/repository.ts`
-- [ ] Implement `github_graphql` — accepts `query: string` and `variables?: object`; rejects any operation containing the `mutation` keyword; returns raw JSON response
-- [ ] Implement `github_get_repo_file` — accepts `owner`, `repo`, `path`; returns decoded text content of the file at that path
-- [ ] Implement `github_create_issue` — accepts `owner`, `repo`, `title`, `body?`, `labels?`, `assignees?`, `milestone?`
-- [ ] Implement `github_update_issue` — accepts `owner`, `repo`, `number` and a patch object (`state?`, `title?`, `body?`, `labels?`, `assignees?`)
-- [ ] Implement `github_create_comment` — accepts `owner`, `repo`, `number`, `body`, `type: "issue" | "pr" | "discussion"`
-- [ ] Implement `github_write_repo_file` — accepts `owner`, `repo`, `path`, `content`, `commit_message`, `sha?` (required for updates)
-- [ ] Register all new tools in `src/index.ts`
-- [ ] Create `src/tools/repository_test.ts` and write tests for each tool
-- [ ] Manually run `GetProjectFields` query via `github_graphql` against the live project and confirm field IDs are returned correctly
-- [ ] Manually run `GetBoardItems` query and confirm item field values are readable using `config.yml` mappings
+- [x] Add Zod schemas for all 6 new tools to `src/schemas/inputs.ts`
+- [x] Create `src/tools/repository.ts`
+- [x] Implement `github_graphql` — accepts `query: string` and `variables?: object`; rejects any operation containing the `mutation` keyword; returns raw JSON response; silent all-null responses trigger a permission warning
+- [x] Implement `github_get_repo_file` — accepts `owner`, `repo`, `path`; wraps `repository { object(expression) { ... on Blob { text oid } } }` query; returns decoded file text and blob OID
+- [x] Implement `github_create_issue` — accepts `owner`, `repo`, `title`, `body?`, `labels?`, `assignees?`; internally resolves repository node ID then calls `createIssue` mutation; returns issue number and URL
+- [x] Implement `github_update_issue` — accepts `issue_node_id`, patch object (`state?`, `title?`, `body?`, `label_ids?`, `assignee_ids?`); calls `updateIssue` mutation directly; returns confirmation
+- [x] Implement `github_create_comment` — accepts `subject_id` (issue or PR or discussion node ID), `body`, `type: "issue" | "pr" | "discussion"`; routes to `addComment` or `addDiscussionComment`; returns comment URL
+- [x] Implement `github_write_repo_file` — accepts `owner`, `repo`, `branch`, `path`, `content` (plain text, base64-encoded internally), `commit_message`; internally queries branch HEAD OID then calls `createCommitOnBranch`; returns new commit OID
+- [x] Add `enrichError()` to `src/services/github.ts` — classifies `GitHubApiError` by status code and GraphQL error message patterns and appends a concrete `→ Fix:` hint; all repository tool handlers use it in place of `formatError()`
+- [x] Register all new tools in `src/index.ts`
+- [x] Create `src/tools/repository_test.ts` and write tests for each tool (109 total passing)
+- [x] Manually run `GetProjectFields` query via `github_graphql` against the live project and confirm field IDs are returned correctly
+- [x] Manually run `GetBoardItems` query and confirm item field values are readable using `config.yml` mappings
 - [ ] Manually run `github_get_repo_file` against `.github/scrum/config.yml` and confirm decoded output
 
 ### Phase 3 — Consolidate

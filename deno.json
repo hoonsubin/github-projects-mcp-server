@@ -35,7 +35,7 @@
     "indentWidth": 2,
     "singleQuote": false,
     "semiColons": true,
-    "proseWrap": "always"
+    "proseWrap": "never"
   },
   "lint": {
     "rules": {
