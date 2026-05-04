@@ -304,209 +304,333 @@ It is designed to be used with the `skill/scrum-master-assistant/` agentic skill
 
 This project requires significant refactoring, as it needs to be more flexible and functional in different project contexts.
 
-## Refactoring Plan
+## Tool Surface
 
-### Diagnosis
+This section defines the public MCP interface — the tools an LLM agent can call. It is the stable contract of the project: backend implementations, data types, and storage details may change underneath, but every tool listed below should retain the same name, semantic arguments, and return meaning.
 
-The current codebase has two overlapping concerns that need to be separated.
+### Design principles
 
-**The server is doing Scrum reasoning instead of API wrapping.** `src/tools/sprints.ts` contains five tools — `github_get_sprint_status`, `github_get_velocity`, `github_get_backlog_items`, `github_close_sprint`, `github_generate_sprint_report` — that are aggregate operations combining filtering, sorting, inference, and in the case of close/report, LLM synthesis. None of these are GitHub API operations. They are Scrum workflows dressed as tools, and they crowd the agent's context with pre-baked logic the agent should derive itself from primitive API calls.
+The surface is governed by five rules. Any change that violates one is a breaking change.
 
-**The server owns project state it shouldn't own.** The `scrum://config`, `scrum://sprint/current`, and `scrum://sprint/archive/{n}` resources read from local files (`config/scrum.config.yml`, `config/project-board.config.json`, `config/sprint-current.md`). This makes the server stateful and couples it to a single project. Any team wanting to use the server against a different project must reconfigure and redeploy the server.
+1. **Scrum vocabulary only.** No tool name, argument, or return field references the underlying platform (no `github_*`, no `issue_id`, no `node_id`). The agent speaks Scrum; the backend translates.
+2. **Backend-agnostic shapes.** Inputs and outputs are described in domain terms (`Story`, `Sprint`, `Board`, `ScrumField`). Adding a Notion or Trello backend must require zero changes to this section.
+3. **Stateless server, per-call resolution.** No tool depends on context cached between calls. Each tool resolves any names → backend IDs at the moment of invocation. The agent may call any tool in any order without a setup step.
+4. **Atomic at the tool boundary, not below.** A single tool call performs one logically complete Scrum operation. The agent may need multiple calls for a workflow (e.g., create a story, then assign it to a sprint), but each call either succeeds end-to-end or fails cleanly.
+5. **The MCP is amoral.** It does not enforce Definition of Ready, Definition of Done, sprint-injection policy, or any other Scrum judgement. Those live in the agent skill. If the agent asks the MCP to assign an unrefined item to a sprint, the MCP complies. The skill is responsible for not asking.
 
-**The server can move cards but cannot read what is on them.** The entire GitHub repository layer is missing. Issues, pull requests, comments, and discussions are where the actual content of the project lives — user stories, acceptance criteria, blocker context, review feedback. Without reading this content, the agent cannot assess Definition of Ready, understand a blocked item, or write a meaningful sprint report.
+### Common types
 
-**`src/types.ts` has manual typings that overlap with the generated schema.** At 451 lines alongside a 14,766-line `src/generated/github-types.ts`, there is redundancy that adds maintenance burden without value.
+These appear in arguments and return values across multiple tools. They are described semantically; the on-the-wire representation is a backend concern.
+
+| Type | Meaning |
+|---|---|
+| `StoryRef` | A reference to a single Story. Accepted forms: `{ "number": 42 }` (the user-facing reference, e.g., issue number, card ID) or `{ "id": "<opaque>" }` (the backend-native handle returned by previous calls). Tools accept either form. |
+| `SprintRef` | A reference to a sprint. Accepted forms: `"current"`, `"next"`, `null` (= no sprint, i.e., the backlog), or an explicit sprint name (e.g., `"Sprint 12"`). |
+| `ScrumField` | One of `status`, `sprint`, `story_points`, `priority`, `assignee`. The set is fixed; new field types are out of scope for v1. |
+| `StoryType` | One of `feature`, `bug`, `tech_debt`, `spike`. Drives the type label or category the backend applies. |
+| `Story` | The canonical entity. See full shape under [Story shape](#story-shape) below. |
+
+#### Story shape
+
+Every read tool that returns Stories returns objects of this shape (with optional fields populated when present):
+
+| Field | Meaning |
+|---|---|
+| `ref` | A `StoryRef` containing both `number` and `id` so the agent can use either. |
+| `title` | The story title. |
+| `body` | The story body, rendered as markdown. Includes user-story format, AC checklist, dependencies, technical notes — whatever the team wrote. |
+| `type` | `StoryType` resolved from the type label or category. |
+| `status` | The current status, in the team's vocabulary (e.g., `"In Progress"`). |
+| `sprint` | The current sprint name, or `null` if the story is in the backlog. |
+| `story_points` | Numeric estimate, or `null` if unestimated. |
+| `priority` | The team's priority value (e.g., `"Must"`), or `null`. |
+| `assignees` | Array of team member identifiers (login or display name as configured). |
+| `labels` | Array of label strings (excluding the `type:*` label, which is reflected in `type`). |
+| `epic` | Parent epic name or `null`. (V1 reads epic membership; does not write.) |
+| `created_at`, `updated_at` | ISO-8601 timestamps. |
+| `url` | Canonical URL to view the story in the backend's UI, when available. |
+
+### Read tools
+
+Read tools are the agent's eyes. They are cheap, idempotent, and safe to call as often as needed.
+
+#### `scrum_get_config`
+
+Returns the team's static Scrum configuration: Definition of Ready, Definition of Done, status vocabulary, priority vocabulary, team roster, sprint length, and story-point scale. Read once per session by the agent at orient time.
+
+**Arguments:** none.
+
+**Returns:** an object with fields `definition_of_ready` (array of strings), `definition_of_done` (array of strings), `status_vocabulary` (array of strings, in workflow order), `priority_vocabulary` (array of strings, ordered by importance), `story_point_values` (array of allowed numeric estimates), `sprint` (object with `length_weeks`, `start_day`), `team` (array of `{ login, name, role }`), `ceremony_records_backend` (string indicating where notes land).
+
+**Notes:** This is the one place the agent learns the team's Scrum dialect — what "Done" is called, what priority tiers exist, who is on the team. All write tools that take vocabulary values (e.g., `scrum_set_field` with field `status`) accept values from this vocabulary.
+
+**Does not:** return live sprint state (use `scrum_get_board`), historical data (use `scrum_get_velocity`), or platform identifiers.
+
+#### `scrum_get_board`
+
+Returns the current Sprint Backlog as a snapshot: the sprint metadata, its goal, its capacity, and every Story currently assigned to it grouped by status, with story points summed per group.
+
+**Arguments:**
+- `sprint` (optional, `SprintRef`): defaults to `"current"`. Pass `"next"` to inspect the upcoming sprint, or an explicit sprint name to inspect a past sprint.
+
+**Returns:** an object with `sprint` (`{ name, goal, start_date, end_date, days_remaining, capacity_points }`), `groups` (array of `{ status, stories: Story[], points_sum }` in the order defined by `status_vocabulary`), `totals` (`{ committed_points, completed_points, in_flight_points, blocked_points }`).
+
+**Notes:** This is the agent's primary orient call for any in-sprint ceremony. The grouped structure means the agent doesn't have to bucket Stories itself — a 9B model especially benefits from receiving pre-grouped data.
+
+**Does not:** include backlog (unsprinted) items; surface burndown timeseries; resolve dependencies between stories.
+
+#### `scrum_get_backlog`
+
+Returns the Product Backlog: all Stories not assigned to any sprint and not yet `Done`, ordered by priority. Supports filtering so the agent can answer "is this a duplicate of something already tracked?"
+
+**Arguments:**
+- `search` (optional, string): free-text match against title and body.
+- `labels` (optional, array of strings): include only Stories carrying all of these labels.
+- `priority` (optional, string): include only Stories at this priority value or higher.
+- `epic` (optional, string): include only Stories under this epic.
+- `limit` (optional, integer, default 50): cap on items returned.
+
+**Returns:** an object with `stories` (array of `Story`), `total_count` (number of items matching the filter regardless of `limit`), and `readiness` (object summarising how many items are sprint-ready, in refinement, future candidates — based on whether they have `story_points`, AC in body, and a priority).
+
+**Notes:** The readiness summary is a pure aggregation, not a Scrum judgement. It reports observable state; it does not enforce DoR.
+
+**Does not:** modify ordering; create or estimate items; mark items as ready.
+
+#### `scrum_get_story`
+
+Returns the full detail of one Story, including comments, sub-tasks if the backend supports them, linked PRs, and the full body content.
+
+**Arguments:**
+- `ref` (required, `StoryRef`).
+
+**Returns:** a `Story` object plus `comments` (array of `{ author, body, created_at, url }`), `linked_prs` (array of PR references with state), `sub_tasks` (array of `{ title, status }` if the backend exposes sub-tasks), `acceptance_criteria` (array of `{ text, checked }` parsed from the body).
+
+**Notes:** Use when the agent needs deep context on a single item — assessing DoR, drafting a status update, debugging a blocked item.
+
+**Does not:** return diff content of linked PRs, render images attached to the story, or follow links to other stories transitively.
+
+#### `scrum_get_velocity`
+
+Returns historical sprint completion data so the agent can compute capacity, trend, and confidence intervals.
+
+**Arguments:**
+- `window` (optional, integer, default 5): number of most recent closed sprints to include.
+
+**Returns:** an array of `{ sprint, committed_points, completed_points, completion_rate, started_count, completed_count }`, ordered most-recent-first. Plus an aggregate field `average_completed` over the window.
+
+**Notes:** Velocity is a pure read-aggregation. The MCP does not write velocity records — they are derived from sprint state.
+
+**Does not:** project future velocity, surface variance analysis, or compute team-member-level throughput.
+
+### Write tools
+
+Write tools mutate state. The agent should call them only after confirming intent with the human (per the skill's autonomy rules).
+
+#### `scrum_create_story`
+
+Creates a new Story and optionally places it on the board.
+
+**Arguments:**
+- `title` (required, string): the story title.
+- `body` (required, string, markdown): the full story body. The agent assembles the user-story format, AC checklist, dependencies, and technical notes into one markdown document before calling.
+- `type` (required, `StoryType`): drives the type label.
+- `priority` (optional, string): a value from `priority_vocabulary`.
+- `story_points` (optional, number): a value from `story_point_values`.
+- `labels` (optional, array of strings): additional non-type labels (e.g., `area:ux`).
+- `epic` (optional, string): parent epic name.
+- `assignees` (optional, array of strings): team member logins.
+- `sprint` (optional, `SprintRef`): if provided, the story is created and immediately assigned to this sprint. If omitted, the story enters the backlog.
+
+**Returns:** the newly created `Story`.
+
+**Notes:** The single-call atomicity is the point of this tool. The agent does not need to follow a `create` with `set_field` for points and priority; it bundles them in the create call.
+
+**Does not:** validate DoR, check sprint capacity, notify anyone, or create sub-tasks.
+
+#### `scrum_update_story`
+
+Edits the content of an existing Story — title, body, labels, assignees, epic. Does not touch board fields (status, sprint, story points, priority); use `scrum_set_field` for those.
+
+**Arguments:**
+- `ref` (required, `StoryRef`).
+- `title` (optional, string).
+- `body` (optional, string, markdown): replaces the full body. The agent reads the current body via `scrum_get_story` first if it intends to append.
+- `labels` (optional, array of strings): replaces the label set, excluding `type:*` and `priority:*` labels which are managed by their own writes.
+- `assignees` (optional, array of strings): replaces the assignee set.
+- `epic` (optional, string or `null`): set to `null` to detach from epic.
+
+**Returns:** the updated `Story`.
+
+**Notes:** The body field is replace-not-append. This is intentional — the agent must read before it writes if it wants to preserve content. `scrum_post_note` exists for append-only commentary and should be preferred for ceremony notes.
+
+**Does not:** modify board state, change story type, archive or close the story.
+
+#### `scrum_set_field`
+
+The single tool for board-field writes. Replaces 80% of what raw GitHub Projects field updates would otherwise require, with no IDs in the agent's context.
+
+**Arguments:**
+- `ref` (required, `StoryRef`).
+- `field` (required, `ScrumField`): one of `status`, `sprint`, `story_points`, `priority`, `assignee`.
+- `value` (required): semantic value matching the field:
+  - `status`: a string from `status_vocabulary` (e.g., `"In Progress"`).
+  - `sprint`: a `SprintRef` (`"current"`, `"next"`, `null`, or explicit sprint name).
+  - `story_points`: a number from `story_point_values`, or `null` to unestimate.
+  - `priority`: a string from `priority_vocabulary`, or `null` to clear.
+  - `assignee`: a team member login, or `null` to unassign. To assign multiple, use `scrum_update_story` with `assignees`.
+
+**Returns:** the updated `Story`.
+
+**Notes:** Setting `sprint` to `null` is how the agent removes a story from the current sprint (e.g., during a mid-sprint swap). This is the "remove from sprint" operation; there is no separate tool.
+
+**Does not:** validate that the value transition makes Scrum sense (e.g., setting `Done` on an item that hasn't been reviewed). The skill enforces such rules.
+
+#### `scrum_plan_sprint`
+
+Bulk-assigns multiple Stories to a sprint in one atomic call. Used during sprint planning to commit the agreed scope after the team has discussed each item.
+
+**Arguments:**
+- `sprint` (required, `SprintRef`): typically `"next"` or an explicit name; `"current"` is allowed but represents a mid-sprint scope change.
+- `stories` (required, array of `StoryRef`): the items to commit.
+- `replace` (optional, boolean, default `false`): if `true`, clears any existing sprint assignment first; if `false`, adds to whatever's already there.
+
+**Returns:** an object with `assigned` (array of refs successfully placed), `skipped` (array of `{ ref, reason }` for failures — e.g., story already Done, story not found).
+
+**Notes:** This is a convenience over `scrum_set_field` in a loop, but the atomicity matters: if the backend supports a single transaction, the assignment either succeeds for all listed items or fails as a group with a clear partial-success report.
+
+**Does not:** check capacity, enforce DoR on the listed items, or set a Sprint Goal (the goal is a property of the sprint metadata, set via the team's chosen ceremony backend — a Discussion post, a sprint-current.md file, etc.).
+
+#### `scrum_log_impediment`
+
+Creates a new Story typed `impediment` (or the team's equivalent label), links it to the affected story, and sets its status to `Blocked`.
+
+**Arguments:**
+- `description` (required, string, markdown): the impediment body.
+- `affects` (required, `StoryRef`): the Story this is blocking.
+- `raised_by` (optional, string): team member login of the person who surfaced it; defaults to the configured Scrum Master.
+- `priority` (optional, string): a value from `priority_vocabulary`; defaults to the highest tier.
+
+**Returns:** the impediment as a `Story`, plus `linked_to` containing the affected story's ref.
+
+**Notes:** Impediments are first-class Stories so they show up on the board and in velocity reporting if the team chooses. The link to the affected story is bidirectional where the backend supports it (e.g., a comment on each).
+
+**Does not:** notify the impediment owner, escalate after N days (the agent's daily standup ceremony does this), or close the affected story.
+
+#### `scrum_post_note`
+
+Appends a comment or note to an existing Story. Used for ceremony artefacts (standup logs, retro entries, review feedback) and for the audit trail of decisions like sprint injection.
+
+**Arguments:**
+- `ref` (required, `StoryRef`).
+- `body` (required, string, markdown).
+- `kind` (optional, string, default `"comment"`): one of `"comment"`, `"standup"`, `"retro"`, `"review"`. Determines any tagging the backend applies for later filtering. Treat as a hint; the body is always preserved verbatim.
+
+**Returns:** an object with `url` (the canonical URL of the new comment).
+
+**Notes:** This is append-only. It does not modify the Story body. It is the right tool whenever the agent wants to leave an auditable note without changing the underlying content.
+
+**Does not:** edit existing comments, delete comments, or notify the assignee.
+
+### What this surface deliberately does NOT include
+
+The full Scrum domain (see the ER diagram above) is much richer than these eleven tools. The omissions are intentional. Anything in this list is either out of scope for the MCP, handled by the agent skill, or deferred to v2.
+
+- **Sprint creation, closure, and field-setup writes.** Creating new iterations, changing field option sets, renaming statuses, and provisioning labels are administrative one-shots performed by the human against the platform UI or via a separate CLI/script. The MCP does not expose these as agent-callable tools.
+- **Burndown writes.** Burndown is computed by the agent from `scrum_get_board` snapshots over time. The MCP does not store time-series.
+- **Velocity record writes.** Velocity is read-only-aggregated. The MCP does not maintain a velocity table; it derives velocity from completed sprint state on demand.
+- **Ceremony entities (CEREMONY, CEREMONY_ATTENDANCE, STANDUP_ENTRY, RETRO_ENTRY, REVIEW_FEEDBACK as records).** Ceremonies are activities the agent facilitates with the human; their artefacts land as `scrum_post_note` calls or as files in the team's chosen ceremony-records backend. There is no Ceremony entity write.
+- **Acceptance criteria as a separate entity.** AC lives inside the Story body as a markdown checklist. `scrum_get_story` parses it for convenience; writes go through `scrum_update_story` against the body.
+- **Tasks as separate entities.** V1 flattens Stories — each PBI is one Story. Sub-task hierarchy (parent/child) is deferred to v2.
+- **Definition of Done / Definition of Ready writes.** DoD and DoR are read via `scrum_get_config`. Edits happen against the team's config file by hand.
+- **Member capacity writes.** Per-sprint capacity lives in the team's sprint-current document and is read into context via the agent's skill, not via a dedicated MCP tool.
+- **Notifications, mentions, or messaging.** The MCP does not send Slack messages, emails, or mobile pushes. If the team wants those, they configure separate automation against the same backend.
+- **Authentication or token management.** The server is bootstrapped with credentials at startup; agent-callable tools do not surface auth operations.
+
+If a future workflow requires something on this list, the right move is usually to add it as agent skill behaviour or as a separate CLI task — not to grow the MCP tool surface.
 
 ---
 
-### Design Principles
+## How this MCP is used with the agent skill
 
-**The server is a stateless GitHub API wrapper.** It holds no project state. All project context — sprint goals, scrum configuration, DoD/DoR criteria, team capacity — lives in the managed repository and is read by the agent on demand.
+This MCP is the action layer for an LLM agent acting as a Scrum Master. The agent's reasoning, coaching, and ceremony facilitation come from the [`scrum-agile-assistant`](https://github.com/anthropics/skills/tree/main/scrum-agile-assistant) skill (or any equivalent system prompt). The MCP's job is to make that reasoning effective on a real platform.
 
-**Business logic belongs to the orchestrating agent skill, not the tool server.** The server exposes what the GitHub API can do. The Scrum Master skill (external to this server) interprets that data in Scrum terms, runs ceremonies, enforces DoR/DoD, and decides what actions to take.
+The two layers have strictly separate responsibilities. Confusion between them is the failure mode this project is designed to prevent.
 
-**Reads are flexible; writes are structured.** A single raw GraphQL query tool (`github_graphql`) covers the entire read surface. The agent constructs queries using a curated fragment library (`.github/scrum/vocabulary.graphql`). Write operations remain typed, named tools with validated parameters — arbitrary mutation strings are not permitted.
+### Division of responsibilities
 
-**The agent bootstraps from its own context, not from server config.** The agent receives the target repository coordinates (`owner`, `repo`, `project_number`) via its context window — a system prompt, skill configuration, or memory entry. It passes these as arguments on every tool call. The server holds no record of which project it is serving. If these coordinates are absent from context when the agent needs to use a tool, it must ask the user to provide them explicitly rather than guessing or proceeding with incomplete information.
+| Layer | Owns |
+|---|---|
+| **Human** | Intent, content, scope decisions, approval of state-changing actions, anything the system cannot fetch from itself. |
+| **Agent skill** | Scrum knowledge, ceremony facilitation, DoR/DoD enforcement, mid-sprint scope-injection coaching, retro format selection, document drafting, asking the human the right questions, deciding when to call the MCP. |
+| **MCP server** | Atomic platform operations, name → backend ID resolution, board snapshots, velocity aggregation, write idempotence. |
 
-**Project context is loaded in tiers by recall frequency.** Constants (`config.yml`) are read once per session. Sprint context (`sprint-current.md` + active iteration ID) is read once per sprint. Board state is queried daily. Item detail is fetched on demand. Pre-write ID lookups are always fresh. This minimises API calls and context window consumption.
+Three rules follow from this split:
 
----
+1. **The agent never asks the MCP a Scrum question.** "Is this story ready?" is an agent question — it reads `scrum_get_story` and applies its own DoR check. "Does this team have a Definition of Ready?" is also an agent question — it reads `scrum_get_config`, but the interpretation belongs to the skill.
+2. **The MCP never asks the human a question.** Tools either succeed or fail with a clear error. Clarification happens in the agent layer.
+3. **The human never directly issues backend operations.** The whole point of the abstraction is that the human says "test solution b this sprint" and the agent translates that into the right sequence of MCP calls.
 
-### Target Architecture
+### The four-phase interaction pattern
 
-**Server bootstrap — environment variables only:**
+Every non-trivial workflow follows the same shape. The pattern is what makes the system predictable across ceremonies and across backends.
 
-```
-GITHUB_TOKEN      # GitHub personal access token — the only secret the server holds
-MCP_TRANSPORT     # "stdio" (default) or "http"
-PORT              # HTTP port when MCP_TRANSPORT=http (default 3000)
-```
+**Phase 1 — Orient.** The agent reads world state with `scrum_get_config`, `scrum_get_board`, and (when context demands) `scrum_get_backlog` or `scrum_get_velocity`. These calls happen silently; the human does not see them as a sequence of operations. The skill uses the results to ground the rest of the conversation in real numbers.
 
-`owner`, `repo`, and `project_number` are **not** environment variables. They are parameters passed by the agent on each tool call. The agent learns these coordinates from its own context — a system prompt, skill configuration, or memory entry pointing at the subject repository. This keeps the server project-agnostic: one running instance can serve any repository the token has access to.
+**Phase 2 — Coach.** The agent applies the skill. It identifies any DoR gaps, sprint-injection risks, capacity violations, or unclarified intent. It surfaces these to the human in plain language and asks for the missing information. No MCP calls happen in this phase.
 
-**Repository-resident configuration (`.github/scrum/`):**
+**Phase 3 — Confirm.** Once the human has given the agent enough information, the agent restates the planned changes — "I'm going to create a Spike titled X with N points in Sprint M, and bump story #37 back to the backlog" — and waits for approval. Confirmation is required for every state change above the autonomy threshold defined in `config.yml`.
 
-| File                  | Purpose                                                                            | Recall tier               |
-| --------------------- | ---------------------------------------------------------------------------------- | ------------------------- |
-| `config.yml`          | Project constants: field mappings, team, DoD/DoR, ceremony backend, autonomy level | Tier 1 — once per session |
-| `vocabulary.graphql`  | Curated GraphQL fragment library for agent query construction                      | Tier 1 — once per session |
-| `sprint-current.md`   | Human-authored sprint goal, capacity plan, role assignments                        | Tier 2 — once per sprint  |
-| `sprint-archive-N.md` | Historical sprint records (velocity, retro commitments, goal outcomes)             | Tier 4 — on demand        |
+**Phase 4 — Execute.** The agent calls the MCP write tools in sequence. Each call is atomic; the agent threads returned references between calls (`scrum_create_story` returns a `StoryRef` that the next `scrum_set_field` consumes).
 
-The server exposes `github_get_repo_file` so the agent reads any of these files via the GitHub API. No local config files remain in the server codebase.
+**Phase 5 — Report.** The agent summarises what changed in plain language with links to the affected Stories. The human can verify directly in the platform UI if they want.
 
-**Final tool inventory (9 tools):**
+### What the agent must always ask the human
 
-| Tool                            | File            | Operation | Notes                                                                                           |
-| ------------------------------- | --------------- | --------- | ----------------------------------------------------------------------------------------------- |
-| `github_graphql`                | `repository.ts` | Read      | Replaces all current read-only tools; agent passes owner/repo/project_number in query variables |
-| `github_get_repo_file`          | `repository.ts` | Read      | Replaces all `scrum://` resources; accepts `owner`, `repo`, `path`                              |
-| `github_update_item_field`      | `items.ts`      | Write     | Keep as-is                                                                                      |
-| `github_bulk_update_item_field` | `items.ts`      | Write     | Keep as-is                                                                                      |
-| `github_add_project_item`       | `items.ts`      | Write     | Merges `add_item_to_project` + `add_draft_issue`                                                |
-| `github_create_issue`           | `repository.ts` | Write     | New                                                                                             |
-| `github_update_issue`           | `repository.ts` | Write     | New                                                                                             |
-| `github_create_comment`         | `repository.ts` | Write     | New — unified for issues, PRs, discussions                                                      |
-| `github_write_repo_file`        | `repository.ts` | Write     | New — for sprint archive writes                                                                 |
+Some information cannot be fetched by any tool because it lives only in the human's head. The skill recognises these as forced clarifications:
 
-**Removed tools (10):** The five tools in `sprints.ts` are deleted outright. `github_list_projects`, `github_get_project`, `github_get_project_fields`, `github_update_project`, `github_get_issue_node_id`, and `github_get_user_node_id` are superseded by `github_graphql` on the read side; they remain in place during Phase 2 as a regression safety net and are removed in Phase 3 once the new tool is verified.
+- **The actual content of the work.** "Solution b" or "the new login flow" or "fix the bug Cara reported" is an opaque label. The agent must obtain the concrete description before drafting a Story.
+- **The user role for a story.** "Players" vs. "new players on mobile" is a judgement the human must make.
+- **Acceptance criteria.** What does success look like? In measurable terms? The MCP does not know.
+- **Estimates and time-boxes.** Team members provide these during planning; the agent records them after.
+- **Mid-sprint scope decisions.** Whether to inject into the current sprint or queue for the next, and if injecting, what to drop.
+- **The Sprint Goal.** A sentence the team commits to. The agent can suggest, but cannot decide.
+- **Retro commitments.** Exactly one improvement per sprint, owned by the team — not the agent.
+- **Approval to write.** For any change above the configured autonomy level.
 
-**Removed resources (3):** `scrum://config`, `scrum://sprint/current`, `scrum://sprint/archive/{n}`
+### What the MCP cannot answer
 
-**Removed prompts (6):** `standup`, `backlog-refinement`, `sprint-planning`, `sprint-management`, `classify-intent`, `confirm-mutation` — workflow orchestration belongs in the Scrum Master skill file, not the tool server.
+The corresponding non-list — questions the MCP is structurally incapable of answering, by design:
 
----
+- "Is this Story ready?"
+- "Should we inject this into the current sprint?"
+- "What's a good Sprint Goal for this work?"
+- "Who should this be assigned to?" (it knows the team but not who has bandwidth)
+- "Is this estimate realistic?"
+- "Was the last retro commitment honoured?"
+- "Why has this Story been blocked for three days?"
 
-### The `github_graphql` Tool and the Vocabulary File
+These belong to the agent skill, the human, or both. Anyone tempted to "just add a tool" for one of these should treat that as a signal that the boundary has slipped.
 
-The `github_graphql` tool accepts a `query` string and an optional `variables` object. It executes a read-only GraphQL operation against the GitHub API and returns the raw JSON response. Any operation string containing the `mutation` keyword is rejected at the tool layer.
+### Canonical example: mid-sprint UX research request
 
-Rather than requiring the agent to derive queries from the 14,766-line `schema.graphql`, a curated fragment library in `.github/scrum/vocabulary.graphql` defines the four entity shapes the SM works with: `ProjectItemCore`, `ProjectFields`, `IssueDetail`, and `PRDetail`. The file also contains seven ready-to-use query templates (`GetBoardItems`, `GetProjectFields`, `GetIssue`, `GetPullRequest`, `ListIssues`, `GetDiscussion`, `ListDiscussions`, `GetUser`).
+The human says: *"Several players report the game interface is too complicated. My ideas to fix are a, b, c. I think b is most feasible to test before the end of this sprint."*
 
-The `config.yml` provides the semantic layer: it maps Scrum concepts (`sprint`, `status`, `story_points`) to the exact field names configured in the GitHub project. When the agent reads a board item response and finds a `ProjectV2ItemFieldIterationValue` whose `field.name` matches `config.fields.sprint`, it knows that value is the sprint assignment.
+What happens, by phase:
 
-These two files together are the agent's working schema. The full `schema.graphql` remains in the repo as a reference for edge cases but is never loaded into working context.
+1. **Orient.** Agent calls `scrum_get_config()`, `scrum_get_board()`, and `scrum_get_backlog({ search: "ui" })`. Now it knows the current Sprint Goal, capacity, days remaining, and whether this concern is already tracked.
+2. **Coach.** Agent recognises three issues: solutions a/b/c are opaque labels, no AC has been defined, and this is mid-sprint scope injection. It asks the human: what is solution b in concrete terms, who is the affected user, is this research (Spike) or a deliverable (Story), what does success look like, and is the human prepared to drop something to make room?
+3. **Confirm.** Human answers. Agent drafts: "Spike titled 'A/B test reduced main-menu', 3 SP, in current sprint, dropping #37 (Daily login bonus) to make room. AC: ≥10% reduction in new-player tutorial drop-off." Asks for approval.
+4. **Execute.** Agent calls in sequence: `scrum_create_story` (returns the new ref), `scrum_set_field(new, "sprint", "current")`, `scrum_set_field(new, "story_points", 3)`, `scrum_set_field(#37, "sprint", null)`, `scrum_post_note(#37, "Removed mid-sprint to make room for X — will reschedule next sprint.")`.
+5. **Report.** Agent: "Done. Spike #42 created in Sprint 5 with 3 points; #37 bumped back to backlog. Test runs through Friday."
 
----
+Every other workflow this server supports — sprint planning, daily standup, sprint review, retrospective, backlog refinement, impediment escalation — follows the same five-phase shape with different tool sequences in Phase 4.
 
-### Phase Plan
+### Where the boundary helps when things change
 
-Each phase leaves the server in a working, testable state.
+The reason this division matters: the system survives change in three independent dimensions.
 
-#### Phase 1 — Strip
+- **Backend changes.** Swapping GitHub for Notion replaces only the implementations behind the eleven tools. The agent skill, the Scrum vocabulary, and the human's interactions are unchanged.
+- **Skill changes.** Improving the agent's coaching, adding new ceremony formats, or supporting new retro frameworks is a skill-file edit. The MCP does not need a release.
+- **Domain changes.** If a future Scrum dialect needs new fields (say, a "confidence" rating on estimates), the team adds it as a custom field in their backend, declares it in `config.yml`, and the agent reads it from the Story body or from `scrum_get_config`. The tool surface does not grow.
 
-Remove everything that encodes Scrum business logic or owns project state.
-
-- Delete `src/tools/sprints.ts`
-- Audit `src/services/formatters.ts` — delete if it only serves deleted tools
-- Remove `src/services/scrum.ts` and `src/services/scrum_test.ts`
-- Clear `src/resources/index.ts` — remove all `scrum://` registrations
-- Clear `src/prompts/index.ts` — remove all prompt registrations
-- Update `src/index.ts` to remove all references to deleted modules
-- Delete the `config/` directory and its contents
-- Remove the `sync-config` task from `deno.json`
-- Run the test suite; fix broken imports
-
-**Exit state:** Working server with the original project and item tools, no resources, no prompts, no local state.
-
-#### Phase 2 — Repository Layer
-
-Create `src/tools/repository.ts` with all new read and write tools. **No REST layer is needed** — the GitHub GraphQL API supports all required mutations (`createIssue`, `updateIssue`, `addComment`, `addDiscussionComment`, `createCommitOnBranch`), and file reading is covered by the `Blob` type in the query API. All six tools use the existing `graphql()` service in `src/services/github.ts`.
-
-Tools to implement: `github_graphql`, `github_get_repo_file`, `github_create_issue`, `github_update_issue`, `github_create_comment`, `github_write_repo_file`.
-
-Two tools perform an internal two-step GraphQL sequence transparent to the agent: `github_create_issue` first resolves the repository node ID (required by the `createIssue` mutation), and `github_write_repo_file` first queries the branch HEAD OID (required as an optimistic lock by `createCommitOnBranch`). All other tools are single-call.
-
-Register all new tools in `src/index.ts`. Write tests. Manually test `github_graphql` against the vocabulary query templates, and `github_get_repo_file` against `.github/scrum/config.yml`.
-
-**Exit state:** Server at ~16 tools (original tools still present + new repository tools). The agent can now read and write issues, comments, discussions, and repository files.
-
-#### Phase 3 — Consolidate
-
-Reduce from ~16 tools to the target 9.
-
-- Merge `github_add_item_to_project` + `github_add_draft_issue` → `github_add_project_item`
-- Verify `github_graphql` reproduces all read patterns from the retired project tools (write one representative query per retired tool and confirm the response shape)
-- Remove `github_list_projects`, `github_get_project`, `github_get_project_fields`, `github_update_project`, `github_get_issue_node_id`, `github_get_user_node_id`
-- Delete `src/tools/projects.ts` and its test file
-- Update `src/index.ts` to the final 9-tool registration
-
-**Exit state:** Server at target 9 tools. All tests passing.
-
-#### Phase 4 — Type Cleanup
-
-- Audit every type in `src/types.ts` against `src/generated/github-types.ts`: delete types with a generated equivalent, update all import sites, keep only types that are genuinely non-derivable
-- Audit `src/schemas/inputs.ts`: keep Zod schemas that serve as tool argument validation; remove any that duplicate GraphQL input types and are no longer referenced
-- Run `deno check` and the full test suite
-
-**Exit state:** `src/types.ts` contains only non-derivable types. `src/schemas/inputs.ts` contains only tool argument schemas.
-
----
-
-### Repository Config Files
-
-Two files have been drafted and committed to `.github/scrum/` as part of the architecture work preceding this refactor:
-
-- `.github/scrum/config.yml` — requires customisation before deployment: fill in actual project coordinates (`owner`, `repo`, `number`), team logins, and field names to match the GitHub project's exact configuration
-- `.github/scrum/vocabulary.graphql` — ready to use as-is; fragments are valid against the current GitHub GraphQL schema
-
-A `sprint-current.md` template should be added to `.github/scrum/` before Phase 1 begins. It should include placeholders for: sprint number, sprint goal, start and end dates, role assignments for this sprint, team capacity (available person-days), committed items narrative, and the retro commitment carried over from the previous sprint.
-
----
-
-## Todo
-
-### Repository Config
-
-- [x] Customise `.github/scrum/config.yml` — fill in real `project.owner`, `project.repo`, `project.number`, `team` logins, and `fields.*` names to match the GitHub project
-- [x] Create `.github/scrum/sprint-current.md` with template placeholders (sprint number, goal, dates, roles, capacity, committed items, prior retro commitment)
-
-### Phase 1 — Strip
-
-- [x] Delete `src/tools/sprints.ts`
-- [x] Audit `src/services/formatters.ts` — determine if it is referenced by surviving tools; delete if not
-- [x] Delete `src/services/scrum.ts` and `src/services/scrum_test.ts`
-- [x] Remove all resource registrations from `src/resources/index.ts` (the three `scrum://` resources)
-- [x] Remove all prompt registrations from `src/prompts/index.ts`
-- [x] Update `src/index.ts` — remove all imports and `server.register*` calls for deleted tools, resources, and prompts
-- [x] Delete `config/` directory and all contents
-- [x] Remove `sync-config` task from `deno.json`
-- [x] Run `deno test` — fix any broken imports or references
-  - [x] Fix dangling reference in `tools/items.ts` for functions `github_list_project_items` and `github_add_draft_issue`
-
-### Phase 2 — Repository Layer
-
-- [x] Add Zod schemas for all 6 new tools to `src/schemas/inputs.ts`
-- [x] Create `src/tools/repository.ts`
-- [x] Implement `github_graphql` — accepts `query: string` and `variables?: object`; rejects any operation containing the `mutation` keyword; returns raw JSON response; silent all-null responses trigger a permission warning
-- [x] Implement `github_get_repo_file` — accepts `owner`, `repo`, `path`; wraps `repository { object(expression) { ... on Blob { text oid } } }` query; returns decoded file text and blob OID
-- [x] Implement `github_create_issue` — accepts `owner`, `repo`, `title`, `body?`, `labels?`, `assignees?`; internally resolves repository node ID then calls `createIssue` mutation; returns issue number and URL
-- [x] Implement `github_update_issue` — accepts `issue_node_id`, patch object (`state?`, `title?`, `body?`, `label_ids?`, `assignee_ids?`); calls `updateIssue` mutation directly; returns confirmation
-- [x] Implement `github_create_comment` — accepts `subject_id` (issue or PR or discussion node ID), `body`, `type: "issue" | "pr" | "discussion"`; routes to `addComment` or `addDiscussionComment`; returns comment URL
-- [x] Implement `github_write_repo_file` — accepts `owner`, `repo`, `branch`, `path`, `content` (plain text, base64-encoded internally), `commit_message`; internally queries branch HEAD OID then calls `createCommitOnBranch`; returns new commit OID
-- [x] Add `enrichError()` to `src/services/github.ts` — classifies `GitHubApiError` by status code and GraphQL error message patterns and appends a concrete `→ Fix:` hint; all repository tool handlers use it in place of `formatError()`
-- [x] Register all new tools in `src/index.ts`
-- [x] Create `src/tools/repository_test.ts` and write tests for each tool (109 total passing)
-- [x] Manually run `GetProjectFields` query via `github_graphql` against the live project and confirm field IDs are returned correctly
-- [x] Manually run `GetBoardItems` query and confirm item field values are readable using `config.yml` mappings
-- [ ] Manually run `github_get_repo_file` against `.github/scrum/config.yml` and confirm decoded output
-
-### Phase 3 — Consolidate
-
-- [ ] Merge `github_add_item_to_project` and `github_add_draft_issue` into `github_add_project_item` in `src/tools/items.ts` — `content_id` parameter links an existing issue/PR; `draft` object parameter creates a draft issue
-- [ ] Update `src/tools/items_test.ts` to cover the merged `github_add_project_item` tool
-- [ ] Write one representative `github_graphql` query for each of the six tools being retired (`list_projects`, `get_project`, `get_project_fields`, `update_project`, `get_issue_node_id`, `get_user_node_id`) and confirm the response shape is equivalent
-- [ ] Remove `github_list_projects`, `github_get_project`, `github_get_project_fields`, `github_update_project`, `github_get_issue_node_id`, `github_get_user_node_id` from `src/tools/projects.ts`
-- [ ] Delete `src/tools/projects.ts` and `src/tools/projects_test.ts`
-- [ ] Update `src/index.ts` to reflect the final 9-tool registration
-- [ ] Run `deno test` — confirm all 9 tools registered and all tests pass
-
-### Phase 4 — Type Cleanup
-
-- [ ] Go through `src/types.ts` line by line; for each exported type annotate: (a) has generated equivalent in `github-types.ts` → remove and update imports, (b) no generated equivalent and still in use → keep, (c) only served deleted tools → remove
-- [ ] Apply annotations — delete types and update all import sites across `src/`
-- [ ] Audit `src/schemas/inputs.ts` — keep Zod schemas used as tool argument validators; remove anything that mirrors a GraphQL input type and is no longer referenced
-- [ ] Run `deno check` — resolve any type errors
-- [ ] Run `deno test` — confirm all tests pass after type cleanup
+The eleven tools are the contract. Everything else is a moving part.
