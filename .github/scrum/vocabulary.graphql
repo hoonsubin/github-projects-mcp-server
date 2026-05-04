@@ -1,0 +1,524 @@
+# .github/scrum/vocabulary.graphql
+#
+# Curated GraphQL fragment library for project management operations.
+# This file is the agent's working schema — it replaces the need to read
+# the full schema.graphql for any standard Scrum workflow.
+#
+# HOW TO USE
+# ──────────────────────────────────────────────────────────────────────────────
+# 1. Read config.yml to get field name → Scrum concept mappings.
+# 2. Read this file to get the fragment definitions.
+# 3. Compose a query from the templates below, substituting variables
+#    from config.yml and from prior API responses.
+# 4. Call github_graphql with the composed query + variables.
+#
+# FIELD NAME RESOLUTION
+# ──────────────────────────────────────────────────────────────────────────────
+# Fragments use fieldValues(first: 20) to fetch ALL field values in one pass.
+# Each value node includes the parent field's name via the `field` inline fragment.
+# Match field.name against config.yml `fields.*` values to identify Scrum concepts.
+#
+# Example: a ProjectV2ItemFieldIterationValue whose field.name = "Sprint"
+# (matching config.yml fields.sprint = "Sprint") is the sprint assignment.
+#
+# OWNER TYPE BRANCHING
+# ──────────────────────────────────────────────────────────────────────────────
+# Query templates show the `user(login: $owner)` form.
+# If config.yml owner_type = "org", replace with organization(login: $owner).
+#
+# MUTATIONS
+# ──────────────────────────────────────────────────────────────────────────────
+# Mutations are NOT in this file. They are handled exclusively by the structured
+# write tools (github_update_item_field, github_create_issue, etc.).
+# The github_graphql tool accepts query operations only.
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# FRAGMENTS
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+# ── ProjectItemCore ───────────────────────────────────────────────────────────
+# Use for: Tier 3 daily board queries — standup, sprint status, carry-over risk.
+#
+# Fetches all field values so a single query returns the complete item picture.
+# The agent filters and groups by field.name using config.yml mappings.
+#
+# `content` covers all three item types: Issue, PullRequest, DraftIssue.
+# DraftIssue does not have a number or URL — check __typename before dereferencing.
+
+fragment ProjectItemCore on ProjectV2Item {
+  id
+  isArchived
+  type                               # ISSUE | PULL_REQUEST | DRAFT_ISSUE | REDACTED
+  createdAt
+  updatedAt
+
+  fieldValues(first: 20) {
+    nodes {
+      __typename
+
+      ... on ProjectV2ItemFieldTextValue {
+        text
+        field {
+          ... on ProjectV2Field            { id name }
+          ... on ProjectV2SingleSelectField { id name }
+          ... on ProjectV2IterationField   { id name }
+        }
+      }
+
+      ... on ProjectV2ItemFieldNumberValue {
+        number
+        field {
+          ... on ProjectV2Field            { id name }
+          ... on ProjectV2SingleSelectField { id name }
+          ... on ProjectV2IterationField   { id name }
+        }
+      }
+
+      ... on ProjectV2ItemFieldDateValue {
+        date
+        field {
+          ... on ProjectV2Field            { id name }
+          ... on ProjectV2SingleSelectField { id name }
+          ... on ProjectV2IterationField   { id name }
+        }
+      }
+
+      ... on ProjectV2ItemFieldSingleSelectValue {
+        name                         # Option display name — match against config.yml status.*
+        optionId                     # Use this as the value in single-select write operations
+        field {
+          ... on ProjectV2Field            { id name }
+          ... on ProjectV2SingleSelectField { id name }
+          ... on ProjectV2IterationField   { id name }
+        }
+      }
+
+      ... on ProjectV2ItemFieldIterationValue {
+        iterationId                  # Use this as iteration_id in iteration write operations
+        title                        # Sprint name (e.g. "Sprint 4")
+        startDate                    # ISO date — compute end date as startDate + duration days
+        duration                     # Duration in days
+        field {
+          ... on ProjectV2Field            { id name }
+          ... on ProjectV2SingleSelectField { id name }
+          ... on ProjectV2IterationField   { id name }
+        }
+      }
+    }
+  }
+
+  content {
+    __typename
+
+    ... on Issue {
+      id
+      number
+      title
+      state                          # OPEN | CLOSED
+      url
+      assignees(first: 5)  { nodes { login } }
+      labels(first: 10)    { nodes { name  } }
+    }
+
+    ... on PullRequest {
+      id
+      number
+      title
+      state                          # OPEN | CLOSED | MERGED
+      url
+      isDraft
+      reviewDecision                 # APPROVED | CHANGES_REQUESTED | REVIEW_REQUIRED | null
+      assignees(first: 5)  { nodes { login } }
+      labels(first: 10)    { nodes { name  } }
+    }
+
+    ... on DraftIssue {
+      id
+      title
+      body
+      assignees(first: 5)  { nodes { login } }
+      # DraftIssue has no number, url, or state
+    }
+  }
+}
+
+
+# ── ProjectFields ─────────────────────────────────────────────────────────────
+# Use for: Tier 2 (active iteration resolution) and Tier 5 (pre-write ID lookup).
+#
+# Call GetProjectFields before any write operation to resolve:
+#   - Field node IDs          → required by all update_item_field calls
+#   - Single-select option IDs → required by status/priority writes
+#   - Iteration IDs           → required by sprint assignment writes
+#
+# Active iteration: the iteration whose startDate ≤ today < startDate + duration days.
+# Completed iterations: use for velocity queries (last N entries).
+
+fragment ProjectFields on ProjectV2 {
+  id
+  title
+  updatedAt
+
+  fields(first: 30) {
+    nodes {
+      __typename
+
+      ... on ProjectV2Field {
+        id
+        name
+        dataType                     # TEXT | NUMBER | DATE | ASSIGNEES | LABELS | etc.
+      }
+
+      ... on ProjectV2SingleSelectField {
+        id
+        name
+        options {
+          id                         # optionId for write operations
+          name                       # Match against config.yml status.* or priority.*
+        }
+      }
+
+      ... on ProjectV2IterationField {
+        id
+        name
+        configuration {
+          duration                   # Default iteration duration in days
+          startDay                   # 0 = Sunday … 6 = Saturday
+          iterations {
+            id                       # iterationId for write operations
+            title
+            startDate
+            duration
+          }
+          completedIterations {
+            id
+            title
+            startDate
+            duration
+          }
+        }
+      }
+    }
+  }
+}
+
+
+# ── IssueDetail ───────────────────────────────────────────────────────────────
+# Use for: Tier 4 item investigation — DoR/DoD assessment, blocker context,
+#          understanding what an item actually requires before acting on it.
+#
+# Fetches the last 20 comments. For deeply threaded issues, paginate comments
+# using a separate query with the `after` cursor.
+
+fragment IssueDetail on Issue {
+  id
+  number
+  title
+  body                               # Full issue body — contains user story and acceptance criteria
+  state
+  url
+  createdAt
+  updatedAt
+  author { login }
+  assignees(first: 10) { nodes { login } }
+  labels(first: 10)    { nodes { name color } }
+  milestone            { title dueOn }
+  comments(last: 20) {
+    totalCount
+    nodes {
+      author { login }
+      body
+      createdAt
+    }
+  }
+}
+
+
+# ── PRDetail ──────────────────────────────────────────────────────────────────
+# Use for: Tier 4 review status checks — is a story actually releasable?
+#          Check reviewDecision and CI status before marking Done.
+#
+# reviews(last: 5): most recent review decisions from each reviewer.
+# statusCheckRollup: aggregate CI status on the latest commit.
+
+fragment PRDetail on PullRequest {
+  id
+  number
+  title
+  body
+  state
+  url
+  isDraft
+  reviewDecision                     # APPROVED | CHANGES_REQUESTED | REVIEW_REQUIRED | null
+  createdAt
+  updatedAt
+  author    { login }
+  assignees(first: 10) { nodes { login } }
+  labels(first: 10)    { nodes { name  } }
+  reviews(last: 5) {
+    nodes {
+      author    { login }
+      state                          # APPROVED | CHANGES_REQUESTED | COMMENTED | DISMISSED
+      body
+      submittedAt
+    }
+  }
+  commits(last: 1) {
+    nodes {
+      commit {
+        statusCheckRollup {
+          state                      # SUCCESS | FAILURE | PENDING | ERROR | EXPECTED
+        }
+      }
+    }
+  }
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# QUERY TEMPLATES
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# These are composable starting points. Fill variables from config.yml.
+# For org-owned projects, replace `user(login: $owner)` with
+# `organization(login: $owner)` throughout.
+
+
+# ── GetProjectFields ──────────────────────────────────────────────────────────
+# Tier 2 + Tier 5 | Recall: once per sprint (Tier 2) or before any write (Tier 5)
+#
+# Use to:
+#   - Identify the active sprint iteration ID (compare startDate + duration to today)
+#   - Resolve field node IDs before update_item_field calls
+#   - Resolve single-select option IDs before status/priority writes
+#
+# Run once per session and cache the result. Re-run only if a write fails
+# due to a stale ID, or if the project configuration has changed.
+
+query GetProjectFields($owner: String!, $projectNumber: Int!) {
+  user(login: $owner) {
+    projectV2(number: $projectNumber) {
+      ...ProjectFields
+    }
+  }
+}
+
+
+# ── GetBoardItems ─────────────────────────────────────────────────────────────
+# Tier 3 | Recall: daily — standup, sprint check-in, carry-over risk assessment
+#
+# Returns all non-archived project items with full field values and content.
+# Client-side filter by sprint field iterationId (from GetProjectFields) to
+# isolate sprint items. Items with no sprint field value are in the backlog.
+#
+# Pagination: if pageInfo.hasNextPage is true, call again with
+#   after: pageInfo.endCursor to retrieve the next page.
+#
+# Typical derivations from this response (no extra API calls needed):
+#   - Sprint items:       fieldValues where field.name = config.fields.sprint
+#                         and iterationId = active iteration ID
+#   - Backlog items:      items with no iteration field value set
+#   - Done count:         status field name = config.status.done
+#   - Blocked items:      status field name = config.status.blocked
+#   - Story points done:  sum number values where status = done
+#   - Carry-over risk:    in_progress items + days remaining < config.sprint.carry_over_threshold_days
+
+query GetBoardItems($owner: String!, $projectNumber: Int!, $cursor: String) {
+  user(login: $owner) {
+    projectV2(number: $projectNumber) {
+      items(first: 50, after: $cursor) {
+        nodes {
+          ...ProjectItemCore
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        totalCount
+      }
+    }
+  }
+}
+
+
+# ── GetIssue ──────────────────────────────────────────────────────────────────
+# Tier 4 | Recall: on demand — when investigating a specific item
+#
+# Use when you need the full issue body and comment thread to:
+#   - Assess DoR (acceptance criteria present?)
+#   - Assess DoD (all criteria met based on comments?)
+#   - Understand the context of a blocker
+#   - Read review feedback captured as comments
+
+query GetIssue($owner: String!, $repo: String!, $number: Int!) {
+  repository(owner: $owner, name: $repo) {
+    issue(number: $number) {
+      ...IssueDetail
+    }
+  }
+}
+
+
+# ── GetPullRequest ────────────────────────────────────────────────────────────
+# Tier 4 | Recall: on demand — checking whether a story is releasable
+#
+# Use to verify review approval and CI status before marking an item Done.
+# reviewDecision = APPROVED and statusCheckRollup.state = SUCCESS is the
+# typical gate for DoD compliance on PR-linked items.
+
+query GetPullRequest($owner: String!, $repo: String!, $number: Int!) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $number) {
+      ...PRDetail
+    }
+  }
+}
+
+
+# ── ListIssues ────────────────────────────────────────────────────────────────
+# Tier 4 | Recall: on demand — browsing repo issues for linking or triage
+#
+# Use to find existing issues before creating duplicates, or to identify
+# issues that should be added to the project board.
+# `labels` and `states` are optional filters — omit to return all.
+
+query ListIssues(
+  $owner: String!
+  $repo: String!
+  $states: [IssueState!]
+  $labels: [String!]
+  $cursor: String
+) {
+  repository(owner: $owner, name: $repo) {
+    issues(
+      first: 50
+      after: $cursor
+      states: $states
+      labels: $labels
+      orderBy: { field: CREATED_AT, direction: DESC }
+    ) {
+      nodes {
+        id
+        number
+        title
+        state
+        url
+        createdAt
+        assignees(first: 3) { nodes { login } }
+        labels(first: 5)    { nodes { name  } }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      totalCount
+    }
+  }
+}
+
+
+# ── GetDiscussion ─────────────────────────────────────────────────────────────
+# Tier 4 | Recall: on demand — reading a ceremony record
+#
+# Use when config.yml ceremony_records.backend = "github_discussions".
+# Retrieves a specific ceremony document with all comments (replies).
+# The discussion number comes from ListDiscussions below.
+
+query GetDiscussion($owner: String!, $repo: String!, $number: Int!) {
+  repository(owner: $owner, name: $repo) {
+    discussion(number: $number) {
+      id
+      number
+      title
+      body
+      createdAt
+      author { login }
+      comments(first: 50) {
+        totalCount
+        nodes {
+          author { login }
+          body
+          createdAt
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+  }
+}
+
+
+# ── ListDiscussions ────────────────────────────────────────────────────────────
+# Tier 4 | Recall: on demand — listing ceremony records for a sprint
+#
+# Use when config.yml ceremony_records.backend = "github_discussions".
+# categoryId must be resolved first via a repository.discussionCategories query
+# (run once; category IDs are stable). Filter by title prefix or date in the
+# agent's reasoning after fetching — GitHub discussions do not support
+# full-text filter by title in this query.
+
+query ListDiscussions(
+  $owner: String!
+  $repo: String!
+  $categoryId: ID
+  $cursor: String
+) {
+  repository(owner: $owner, name: $repo) {
+    discussions(
+      first: 20
+      after: $cursor
+      categoryId: $categoryId
+      orderBy: { field: CREATED_AT, direction: DESC }
+    ) {
+      nodes {
+        id
+        number
+        title
+        createdAt
+        author { login }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+}
+
+
+# ── GetDiscussionCategories ───────────────────────────────────────────────────
+# Utility | Recall: once per session when using github_discussions backend
+#
+# Resolves the category ID for config.yml ceremony_records.discussion_category.
+# Run once and reuse the ID for all ListDiscussions and create_discussion calls.
+
+query GetDiscussionCategories($owner: String!, $repo: String!) {
+  repository(owner: $owner, name: $repo) {
+    discussionCategories(first: 20) {
+      nodes {
+        id
+        name                         # Match against config.yml ceremony_records.discussion_category
+        emoji
+      }
+    }
+  }
+}
+
+
+# ── GetUser ────────────────────────────────────────────────────────────────────
+# Utility | Recall: on demand — resolving a user node ID for assignee operations
+#
+# Use before github_create_issue or github_add_project_item when an assignee
+# node ID is needed. Cross-reference with config.yml team[].login.
+
+query GetUser($login: String!) {
+  user(login: $login) {
+    id                               # Node ID for assignee_ids in write tools
+    login
+    name
+  }
+}

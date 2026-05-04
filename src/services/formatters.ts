@@ -102,15 +102,22 @@ export const formatProject = (p: ProjectV2): string => {
 };
 
 export const formatItem = (item: ProjectV2Item): string => {
-  const lines: string[] = [`### Item \`${item.id}\``];
+  // item.id is the project-item node ID (PVTI_...) — used by github_update_item_field,
+  // github_archive_project_item, github_delete_project_item.
+  // It is NOT the content node ID (I_kwDO.../PR_kwDO...) required by github_add_item_to_project.
+  const lines: string[] = [`### Item \`${item.id}\` *(project item ID)*`];
   lines.push(`**Type**: ${item.type} | **Archived**: ${item.isArchived}`);
 
   const c = item.content;
   if (c) {
     if (c.__typename === "DraftIssue") {
+      // Draft issues have no repository content node ID — they exist only in the project board.
       lines.push(`**Title**: ${c.title}`);
+      lines.push(`⚠️ Draft issue — no repository content node ID. Cannot be added to other projects or linked to PRs via github_add_item_to_project.`);
       if (c.body) lines.push(`**Body**: ${c.body.slice(0, 200)}${c.body.length > 200 ? "…" : ""}`);
     } else if (c.__typename === "Issue" || c.__typename === "PullRequest") {
+      // c.id is the content node ID (I_kwDO.../PR_kwDO...) — pass this to github_add_item_to_project.
+      lines.push(`**Content node ID**: \`${c.id}\` *(use as content_id in github_add_item_to_project)*`);
       lines.push(`**Title**: [${c.title}](${c.url}) (#${c.number})`);
       lines.push(`**State**: ${c.state}`);
       lines.push(`**Repo**: ${c.repository.nameWithOwner}`);
@@ -132,7 +139,7 @@ export const formatItem = (item: ProjectV2Item): string => {
       else if (fv.number !== undefined) value = String(fv.number);
       else if (fv.date !== undefined) value = fv.date;
       else if (fv.name !== undefined) value = fv.name; // single-select
-      else if (fv.title !== undefined) value = `${fv.title} (${fv.startDate})`; // iteration
+      else if (fv.title !== undefined) value = `${fv.title} (starts ${fv.startDate}, ${fv.duration}d) [id: ${fv.iterationId}]`; // iteration
       else if (fv.users?.nodes) value = fv.users.nodes.map((u) => u.login).join(", ");
       else if (fv.labels?.nodes) value = fv.labels.nodes.map((l) => l.name).join(", ");
       else if (fv.milestone) value = fv.milestone.title;
@@ -151,10 +158,18 @@ export const formatField = (f: ProjectV2Field): string => {
       f.options.map((o) => `\`${o.id}\` ${o.name} (${o.color})`).join(", ");
   }
   if (f.configuration) {
-    const iters = f.configuration.iterations
-      .map((i) => `\`${i.id}\` ${i.title}`)
-      .join(", ");
-    line += `\n  Active iterations: ${iters}`;
+    if (f.configuration.iterations.length > 0) {
+      const iters = f.configuration.iterations
+        .map((i) => `\`${i.id}\` ${i.title} (starts ${i.startDate}, ${i.duration}d)`)
+        .join("\n    ");
+      line += `\n  Active iterations:\n    ${iters}`;
+    }
+    if (f.configuration.completedIterations.length > 0) {
+      const done = f.configuration.completedIterations
+        .map((i) => `\`${i.id}\` ${i.title} (starts ${i.startDate}, ${i.duration}d)`)
+        .join("\n    ");
+      line += `\n  Completed iterations:\n    ${done}`;
+    }
   }
   return line;
 };

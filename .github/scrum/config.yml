@@ -1,0 +1,173 @@
+# .github/scrum/config.yml
+#
+# Scrum Master configuration for this project.
+# Read by the AI agent at the start of every session (Tier 1 — project constants).
+#
+# What lives here:
+#   - Project identity and GitHub coordinates
+#   - Team roster and Scrum roles
+#   - Sprint cadence and estimation settings
+#   - GitHub Projects v2 field name → Scrum concept mapping
+#   - Status and priority option vocabularies
+#   - Definition of Done and Definition of Ready
+#   - Ceremony records backend declaration
+#   - AI autonomy level
+#
+# What does NOT live here:
+#   - GitHub node IDs (field IDs, option IDs, iteration IDs) — always fetched fresh
+#   - Sprint goal and capacity plan — live in sprint-current.md
+#   - Sprint history — lives in sprint-archive-N.md
+
+# ── PROJECT IDENTITY ─────────────────────────────────────────────────────────
+#
+# owner_type determines which GraphQL query shape to use:
+#   user  → user(login: $owner) { projectV2(number: $number) { ... } }
+#   org   → organization(login: $owner) { projectV2(number: $number) { ... } }
+
+project:
+  name: "GitHub Projects MCP Server"
+  owner: hoonsubin
+  owner_type: user # user | org
+  repo: github-projects-mcp-server
+  number: 5 # Project number from the GitHub URL (/projects/3)
+
+# ── TEAM ─────────────────────────────────────────────────────────────────────
+#
+# GitHub login is the canonical identifier across all tools.
+# `role` is the team member's default Scrum role.
+# Per-sprint role overrides (e.g., rotating SM) go in sprint-current.md.
+
+team:
+  - login: hoonsubin
+    name: Hoon Kim
+    role: product_owner # scrum_master | product_owner | developer
+
+# ── SPRINT SETTINGS ──────────────────────────────────────────────────────────
+#
+# story_point_values: the exact values the team uses for estimation.
+# velocity_window: how many past completed sprints to average for capacity planning.
+# carry_over_threshold_days: items not Done with fewer days remaining than this
+#   are flagged as carry-over risk at standup.
+
+sprint:
+  length_weeks: 2
+  start_day: monday # monday | tuesday | wednesday | thursday | friday
+  story_point_scale: fibonacci # fibonacci | linear | tshirt (informational only)
+  story_point_values: [1, 2, 3, 5, 8, 13]
+  velocity_window: 4
+  carry_over_threshold_days: 2
+
+# ── FIELD NAME MAPPINGS ───────────────────────────────────────────────────────
+#
+# Maps Scrum concepts to the exact field names in the GitHub project.
+# The agent matches these against `field.name` values in API responses.
+#
+# If you rename a field in the GitHub project UI, update the value here.
+# The key (left side) is the Scrum concept used in agent reasoning.
+# The value (right side) must match the GitHub field name exactly (case-sensitive).
+#
+# Built-in GitHub fields (Assignees, Labels, Milestone, Title, Repository)
+# do not need entries here — they are accessed via the `content` node.
+
+fields:
+  sprint: "Sprint" # ITERATION type field
+  status: "Status" # SINGLE_SELECT type field
+  story_points: "Story Points" # NUMBER type field
+  priority: "Priority" # SINGLE_SELECT type field
+  # Add custom fields as needed:
+  # epic: "Epic"
+  # blocked_reason: "Blocked Reason"
+
+# ── STATUS VOCABULARY ────────────────────────────────────────────────────────
+#
+# Maps Scrum workflow states to the exact option names in the GitHub Status field.
+# Used to filter and interpret item responses, and to resolve option names for writes.
+# Must match the GitHub project configuration exactly (case-sensitive).
+#
+# Remove states your team does not use. Do not add states not in the GitHub project.
+
+status:
+  backlog: "Backlog"
+  ready: "Ready"
+  in_progress: "In Progress"
+  in_review: "In Review"
+  done: "Done"
+  blocked: "Blocked"
+
+# ── PRIORITY VOCABULARY ──────────────────────────────────────────────────────
+#
+# Maps MoSCoW tiers to exact option names in the GitHub Priority field.
+# Used the same way as status above.
+
+priority:
+  must: "Must"
+  should: "Should"
+  could: "Could"
+  wont: "Won't"
+
+# ── DEFINITION OF READY ──────────────────────────────────────────────────────
+#
+# Planning gate. An item must meet ALL criteria before it can enter sprint planning.
+# The agent checks this list when assessing sprint-readiness during backlog queries.
+
+definition_of_ready:
+  - Written as a user story (who / what / why)
+  - Acceptance criteria defined and agreed by the team
+  - Estimated in story points
+  - Dependencies identified and de-risked
+  - Completable within one sprint
+
+# ── DEFINITION OF DONE ───────────────────────────────────────────────────────
+#
+# Quality gate for every increment.
+# Never lower this to meet a deadline — create a tech debt item instead.
+# The agent checks this list before accepting a status transition to Done.
+
+definition_of_done:
+  - Code reviewed and approved
+  - All acceptance criteria met and verified
+  - Tests written and passing in CI
+  - No new linting or type errors introduced
+  - Documentation updated if public behaviour changed
+  - Deployed to staging and smoke-tested
+
+# ── CEREMONY RECORDS ─────────────────────────────────────────────────────────
+#
+# Declares the single source of truth for ceremony notes and artifacts.
+# The agent reads this to determine which tool calls to use when reading or
+# writing standup summaries, retro notes, review feedback, and action items.
+#
+# Changing `backend` does not migrate existing records — do that manually.
+# Only one backend is active at a time.
+#
+# backend options:
+#   github_discussions  — threaded, categorized; best for async teams
+#   github_issues       — linear, label-based; works without Discussions enabled
+#   repo_file           — markdown files in the repo; best for version-controlled records
+
+ceremony_records:
+  backend: github_discussions
+
+  # ── github_discussions options ──
+  # `discussion_category` must match an existing Discussion category in the repo.
+  discussion_category: Ceremonies
+
+  # ── github_issues options ──
+  # issue_label: ceremony
+
+  # ── repo_file options ──
+  # file_path: docs/minutes/
+  # Files are named: YYYY-MM-DD-<ceremony-type>.md (e.g., 2026-05-03-retro.md)
+
+# ── AI AUTONOMY ──────────────────────────────────────────────────────────────
+#
+# Controls how much the AI self-initiates and when it requires explicit confirmation.
+#
+# conservative — confirm before every write, including single-item updates
+# standard     — confirm before bulk writes and writes triggered by natural language
+# full         — proceed on high-confidence direct commands;
+#                always confirm destructive operations regardless of level
+
+autonomy:
+  level: standard # conservative | standard | full
+  require_confirmation_above_n_items: 5

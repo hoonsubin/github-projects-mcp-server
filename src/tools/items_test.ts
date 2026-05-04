@@ -255,6 +255,8 @@ Deno.test("github_list_project_items - iteration_id filter (fallback path): matc
         field: { id: "F_SPRINT", name: "Sprint" },
         title: "Sprint 1",
         iterationId: "ITER_X",
+        startDate: "2026-04-14",
+        duration: 14,
       }],
     },
   };
@@ -275,6 +277,7 @@ Deno.test("github_list_project_items - iteration_id filter (fallback path): matc
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "showing 1");
     assertStringIncludes(text, "Sprint Task");
+    assertStringIncludes(text, "Sprint 1 (starts 2026-04-14, 14d) [id: ITER_X]");
   } finally {
     restore();
   }
@@ -323,6 +326,34 @@ Deno.test("github_list_project_items - empty project: shows no items message", a
     restore();
   }
 });
+
+Deno.test(
+  "github_list_project_items - filter_type mismatch: zero results include type breakdown hint",
+  async () => {
+    Deno.env.set("GITHUB_TOKEN", "test-token");
+    // Board has 2 DRAFT_ISSUE items, but filter asks for Issue — should explain the mismatch.
+    const restore = mockFetch(wrapUserItems([makeDraftItem("PVTI_1", "A"), makeDraftItem("PVTI_2", "B")], 2));
+    try {
+      const client = await makeTestClient();
+      const result = await client.callTool({
+        name: "github_list_project_items",
+        arguments: {
+          owner: "hoonsubin",
+          owner_type: "user",
+          project_number: 1,
+          first: 20,
+          filter_type: "Issue",
+        },
+      });
+      const text = (result.content[0] as { text: string }).text;
+      assertStringIncludes(text, "No Issue items found");
+      assertStringIncludes(text, "DraftIssue");
+      assertStringIncludes(text, "Re-run without filter_type");
+    } finally {
+      restore();
+    }
+  },
+);
 
 // ---------------------------------------------------------------------------
 // github_add_item_to_project
@@ -396,9 +427,9 @@ Deno.test("github_add_draft_issue - success without iteration_id: returns item I
   }
 });
 
-Deno.test("github_add_draft_issue - with iteration_id when config unavailable: shows sprint warning", async () => {
-  // Without --allow-read, loadScrumConfig() throws a permission error.
-  // The sprint assignment catch block fires and appends a warning.
+Deno.test("github_add_draft_issue - with body and assignees: returns item ID and title", async () => {
+  // iteration_id was removed from AddDraftIssueSchema in Phase 1 refactor.
+  // Sprint assignment is now done via a separate github_update_item_field call.
   Deno.env.set("GITHUB_TOKEN", "test-token");
   const restore = mockFetch({
     addProjectV2DraftIssue: { projectItem: { id: "PVTI_DRAFT" } },
@@ -410,13 +441,14 @@ Deno.test("github_add_draft_issue - with iteration_id when config unavailable: s
       arguments: {
         project_id: "PVT_1",
         title: "Sprint Task",
-        iteration_id: "ITER_1",
+        body: "Detailed description",
+        assignee_ids: ["U_kgDO123"],
       },
     });
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "PVTI_DRAFT");
-    // Either success or warning — both indicate the draft was created
     assertStringIncludes(text, "Sprint Task");
+    assertStringIncludes(text, "✅");
   } finally {
     restore();
   }

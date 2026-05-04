@@ -247,6 +247,7 @@ export interface ScrumConfigYml {
     required: boolean;
     format: string;
   };
+  // todo: the custom field names should be dynamically created based on the project taxonomy
   field_names: {
     sprint: string;
     status: string;
@@ -297,6 +298,7 @@ export interface SprintIteration extends IterationEntry {
   completed?: boolean;
 }
 
+// todo: the BoardConfig should be minimal and use the metadata directly fetched from the API
 /** Shape written to project-board.config.json by the sync script. */
 export interface BoardConfig {
   _comment?: string;
@@ -324,6 +326,7 @@ export interface BoardConfig {
   _assignee_field: { _field_id: string; dataType: string } | null;
 }
 
+// todo: redundant. Must be replaced with codegen-fetched types for API response shapes
 // ── Sync script GraphQL shapes ────────────────────────────────────────────────
 
 export interface GhFieldBase {

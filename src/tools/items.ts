@@ -16,7 +16,6 @@ import {
   resolveFieldValue,
   UpdateFieldValueSchema,
 } from "../schemas/inputs.ts";
-import { getIterationValue, loadScrumConfig, resolveFields } from "../services/scrum.ts";
 import type {
   AddDraftIssueData,
   AddProjectItemData,
@@ -36,8 +35,17 @@ export const registerItemTools = (server: McpServer): void => {
       title: "List Project Items",
       description: `List items (issues, PRs, draft issues) in a GitHub Project v2.
 
-Returns each item's node ID (needed for field updates), content details,
-and all custom field values. Filtering is client-side (GitHub has no server filterBy).
+Returns each item's node IDs, content details, and all custom field values.
+Filtering is client-side (GitHub has no server filterBy).
+
+ID types in the response — understand the difference before acting:
+  - Project item ID (PVTI_...): shown as "project item ID" on each card.
+    Use with: github_update_item_field, github_archive_project_item, github_delete_project_item.
+    Do NOT pass to github_add_item_to_project.
+  - Content node ID (I_kwDO... or PR_kwDO...): shown as "Content node ID" on Issue/PR cards.
+    Use with: github_add_item_to_project, github_update_issue, github_create_comment.
+  - Draft issues have NO content node ID — they are project-board-only cards with no repo issue.
+    They cannot be added to other projects or linked to PRs.
 
 Args:
   - owner (string): GitHub username or org login
@@ -111,27 +119,13 @@ Returns: Markdown list of items with IDs, titles, states, and field values.
           items = items.filter((item) => item.type === params.filter_type);
         }
 
-        // Client-side iteration filter — GitHub has no server-side filterBy
+        // Client-side iteration filter — matches any field value node with the given iterationId.
+        // The agent is responsible for knowing which field is the sprint field (via config.yml).
         if (params.iteration_id) {
           const targetId = params.iteration_id;
-          // We need the sprint field ID to extract iteration values; try config first
-          let sprintFieldId: string | null = null;
-          try {
-            const cfg = await loadScrumConfig();
-            const fields = resolveFields(cfg);
-            sprintFieldId = fields.sprintFieldId;
-          } catch {
-            // Config unavailable — fall back to matching against any iteration field value
-          }
-          items = items.filter((item) => {
-            const fvs = item.fieldValues.nodes;
-            if (sprintFieldId) {
-              const iv = getIterationValue(item, sprintFieldId);
-              return iv?.iterationId === targetId;
-            }
-            // Fallback: check any field value with a matching iterationId
-            return fvs.some((fv) => fv.iterationId === targetId);
-          });
+          items = items.filter((item) =>
+            item.fieldValues.nodes.some((fv) => fv.iterationId === targetId)
+          );
         }
 
         // Client-side status option filter
@@ -143,11 +137,24 @@ Returns: Markdown list of items with IDs, titles, states, and field values.
         }
 
         const { totalCount, pageInfo } = projectData.items;
+        let noItemsMsg = "_No items found._";
+        if (items.length === 0 && params.filter_type) {
+          const typeCounts = projectData.items.nodes.reduce<Record<string, number>>((acc, item) => {
+            acc[item.type] = (acc[item.type] ?? 0) + 1;
+            return acc;
+          }, {});
+          const breakdown = Object.entries(typeCounts)
+            .map(([t, n]) => `${t} (${n})`)
+            .join(", ");
+          noItemsMsg = `_No ${params.filter_type} items found._\n` +
+            `Hint: project has ${totalCount} item(s) of type(s): ${breakdown || "none"}. ` +
+            `Re-run without filter_type to see all.`;
+        }
         const lines = [
           `## Project Items (${totalCount} total, showing ${items.length})`,
           pageInfo.hasNextPage ? `_Next page cursor: \`${pageInfo.endCursor}\`_` : "",
           "",
-          items.length === 0 ? "_No items found._" : items.map(formatItem).join("\n\n---\n\n"),
+          items.length === 0 ? noItemsMsg : items.map(formatItem).join("\n\n---\n\n"),
         ];
 
         return { content: [{ type: "text", text: lines.filter((l) => l !== "").join("\n") }] };
@@ -164,6 +171,9 @@ Returns: Markdown list of items with IDs, titles, states, and field values.
     {
       title: "Add Issue/PR to Project",
       description: `Add an existing Issue or Pull Request to a GitHub Project v2.
+
+Use this to put a PR on the project board so it appears alongside issues.
+This is the correct way to associate a PR with the project — not via field updates.
 
 You need:
   1. The project node ID — get it from github_get_project
@@ -222,19 +232,23 @@ Draft issues live only in the project board (not in a repository) until converte
 Useful for capturing quick tasks or ideas without creating a repo issue.
 
 **Prerequisites**: you need the project node ID before calling this tool.
-Read scrum://config to get it instantly (project.id field), or call
-github_get_project(owner, owner_type, project_number) and use the returned id.
+Call github_get_project(owner, owner_type, project_number) and use the returned id.
+
+⚠️ Draft issue limitations:
+  - Cannot be linked to pull requests (no "Development" section, no closing references).
+  - Cannot receive comments (no comment thread).
+  - Labels and milestones cannot be applied.
+  - LINKED_PULL_REQUESTS, LABELS, MILESTONE, REPOSITORY fields are all empty/unset.
+  - To link to a PR or add labels, convert to a real issue first via the GitHub UI
+    or the convertProjectV2DraftIssueItemToIssue GraphQL mutation.
 
 Args:
-  - project_id (string): Project node ID (PVT_kwDO…) — see Prerequisites above.
-    Do NOT pass owner, project_number, or any other identifier here.
+  - project_id (string): Project node ID (PVT_kwDO…). Do NOT pass owner or project_number here.
   - title (string): Draft issue title (required)
   - body (string, optional): Markdown body content
   - assignee_ids (string[], optional): Array of user node IDs (get from github_get_user_node_id)
-  - iteration_id (string, optional): Sprint iteration node ID to assign immediately on creation.
-    Requires scrum.config.yml and project-board.config.json to be present (run deno task sync-config first).
 
-Returns: Node ID of the new project item, plus sprint assignment status if iteration_id was provided.`,
+Returns: Node ID of the new project item. Use github_update_item_field to set field values such as sprint assignment.`,
       inputSchema: AddDraftIssueSchema.shape,
       annotations: {
         readOnlyHint: false,
@@ -264,47 +278,16 @@ Returns: Node ID of the new project item, plus sprint assignment status if itera
         const data = await graphql<AddDraftIssueData>(mutation, { input });
         const itemId = data.addProjectV2DraftIssue.projectItem.id;
 
-        const lines = [
-          `✅ Draft issue created.`,
-          `**Title**: ${params.title}`,
-          `**Item node ID**: \`${itemId}\``,
-        ];
-
-        // Assign to sprint immediately if iteration_id was provided
-        if (params.iteration_id) {
-          try {
-            // Resolve sprint field ID from scrum config
-            const cfg = await loadScrumConfig();
-            const resolvedFields = resolveFields(cfg);
-            const sprintFieldId = resolvedFields.sprintFieldId;
-
-            const updateMutation = `
-              mutation($input: UpdateProjectV2ItemFieldValueInput!) {
-                updateProjectV2ItemFieldValue(input: $input) {
-                  projectV2Item { id }
-                }
-              }`;
-
-            await graphql<UpdateProjectItemFieldData>(updateMutation, {
-              input: {
-                projectId: params.project_id,
-                itemId,
-                fieldId: sprintFieldId,
-                value: { iterationId: params.iteration_id },
-              },
-            });
-            lines.push(`**Sprint**: assigned to iteration \`${params.iteration_id}\``);
-          } catch (sprintErr) {
-            lines.push(
-              `⚠️ Sprint assignment failed: ${
-                sprintErr instanceof Error ? sprintErr.message : String(sprintErr)
-              }. ` +
-                `Run \`deno task sync-config\` and retry, or use github_update_item_field manually.`,
-            );
-          }
-        }
-
-        return { content: [{ type: "text", text: lines.join("\n") }] };
+        return {
+          content: [{
+            type: "text",
+            text: [
+              `✅ Draft issue created.`,
+              `**Title**: ${params.title}`,
+              `**Item node ID**: \`${itemId}\``,
+            ].join("\n"),
+          }],
+        };
       } catch (err) {
         return { content: [{ type: "text", text: formatError(err) }] };
       }
@@ -320,12 +303,12 @@ Returns: Node ID of the new project item, plus sprint assignment status if itera
       description: `Set or clear a custom field value on a project item.
 
 Workflow:
-  1. Get project node ID: read scrum://config (project.id) or call github_get_project
-  2. Get field IDs: github_get_project_fields (or read scrum://config _fields_registry)
+  1. Get project node ID: call github_get_project or use github_graphql
+  2. Get field IDs: call github_get_project_fields or use github_graphql
   3. Get item IDs: github_list_project_items
   4. Call this tool with the resolved IDs
 
-Supported field types — always set \`type\`, then set the matching companion key:
+Writable field types — always set \`type\`, then set the matching companion key:
   - text:          { type: 'text', value: 'string' }
   - number:        { type: 'number', number_value: 123 }
   - date:          { type: 'date', value: 'YYYY-MM-DD' }
@@ -333,11 +316,22 @@ Supported field types — always set \`type\`, then set the matching companion k
   - iteration:     { type: 'iteration', iteration_id: 'abc123' }
   - clear:         { type: 'clear' }  — removes any current value, no other key needed
 
+⚠️ Read-only system fields — these CANNOT be set with this tool:
+  LINKED_PULL_REQUESTS, LABELS, ASSIGNEES, MILESTONE, REPOSITORY, REVIEWERS,
+  PARENT_ISSUE, TRACKS, TRACKED_BY, TITLE.
+  GitHub manages these automatically. Only TEXT, NUMBER, DATE, SINGLE_SELECT,
+  and ITERATION fields are writable.
+
+  To add a PR to the project board (so it appears alongside issues), use
+  github_add_item_to_project with the PR node ID instead.
+  The LINKED_PULL_REQUESTS column on issues is auto-populated by GitHub
+  when a PR body contains "Closes #N" or "Fixes #N" — it is not settable.
+
 Args:
-  - project_id (string): Project node ID (PVT_kwDO…) — read scrum://config or call github_get_project.
+  - project_id (string): Project node ID (PVT_kwDO…) — from github_get_project or github_graphql.
     Do NOT pass owner or project_number here.
   - item_id (string): Project item node ID (e.g., PVTI_lADO...)
-  - field_id (string): Field node ID (from github_get_project_fields or scrum://config _fields_registry)
+  - field_id (string): Field node ID (from github_get_project_fields or github_graphql)
   - value (object): New value with type discriminator (see above)
 
 Returns: Confirmation with item ID.`,
@@ -418,7 +412,7 @@ Returns: Confirmation with item ID.`,
 Archived items are hidden from the default board view but not deleted.
 Use github_delete_project_item to permanently remove an item.
 
-**Prerequisites**: read scrum://config (project.id) or call github_get_project to obtain the project node ID.
+**Prerequisites**: you need the project node ID — call github_get_project or use github_graphql.
 
 Args:
   - project_id (string): Project node ID (PVT_kwDO…). Do NOT pass owner or project_number.
@@ -475,7 +469,7 @@ Returns: Confirmation with item ID and new archived status.`,
 ⚠️ This is irreversible. The underlying issue or PR is NOT deleted — only its
 project card is removed. Use github_archive_project_item for reversible hiding.
 
-**Prerequisites**: read scrum://config (project.id) or call github_get_project to obtain the project node ID.
+**Prerequisites**: you need the project node ID — call github_get_project or use github_graphql.
 
 Args:
   - project_id (string): Project node ID (PVT_kwDO…). Do NOT pass owner or project_number.
