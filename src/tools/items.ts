@@ -35,8 +35,17 @@ export const registerItemTools = (server: McpServer): void => {
       title: "List Project Items",
       description: `List items (issues, PRs, draft issues) in a GitHub Project v2.
 
-Returns each item's node ID (needed for field updates), content details,
-and all custom field values. Filtering is client-side (GitHub has no server filterBy).
+Returns each item's node IDs, content details, and all custom field values.
+Filtering is client-side (GitHub has no server filterBy).
+
+ID types in the response — understand the difference before acting:
+  - Project item ID (PVTI_...): shown as "project item ID" on each card.
+    Use with: github_update_item_field, github_archive_project_item, github_delete_project_item.
+    Do NOT pass to github_add_item_to_project.
+  - Content node ID (I_kwDO... or PR_kwDO...): shown as "Content node ID" on Issue/PR cards.
+    Use with: github_add_item_to_project, github_update_issue, github_create_comment.
+  - Draft issues have NO content node ID — they are project-board-only cards with no repo issue.
+    They cannot be added to other projects or linked to PRs.
 
 Args:
   - owner (string): GitHub username or org login
@@ -128,11 +137,24 @@ Returns: Markdown list of items with IDs, titles, states, and field values.
         }
 
         const { totalCount, pageInfo } = projectData.items;
+        let noItemsMsg = "_No items found._";
+        if (items.length === 0 && params.filter_type) {
+          const typeCounts = projectData.items.nodes.reduce<Record<string, number>>((acc, item) => {
+            acc[item.type] = (acc[item.type] ?? 0) + 1;
+            return acc;
+          }, {});
+          const breakdown = Object.entries(typeCounts)
+            .map(([t, n]) => `${t} (${n})`)
+            .join(", ");
+          noItemsMsg = `_No ${params.filter_type} items found._\n` +
+            `Hint: project has ${totalCount} item(s) of type(s): ${breakdown || "none"}. ` +
+            `Re-run without filter_type to see all.`;
+        }
         const lines = [
           `## Project Items (${totalCount} total, showing ${items.length})`,
           pageInfo.hasNextPage ? `_Next page cursor: \`${pageInfo.endCursor}\`_` : "",
           "",
-          items.length === 0 ? "_No items found._" : items.map(formatItem).join("\n\n---\n\n"),
+          items.length === 0 ? noItemsMsg : items.map(formatItem).join("\n\n---\n\n"),
         ];
 
         return { content: [{ type: "text", text: lines.filter((l) => l !== "").join("\n") }] };
@@ -149,6 +171,9 @@ Returns: Markdown list of items with IDs, titles, states, and field values.
     {
       title: "Add Issue/PR to Project",
       description: `Add an existing Issue or Pull Request to a GitHub Project v2.
+
+Use this to put a PR on the project board so it appears alongside issues.
+This is the correct way to associate a PR with the project — not via field updates.
 
 You need:
   1. The project node ID — get it from github_get_project
@@ -208,6 +233,14 @@ Useful for capturing quick tasks or ideas without creating a repo issue.
 
 **Prerequisites**: you need the project node ID before calling this tool.
 Call github_get_project(owner, owner_type, project_number) and use the returned id.
+
+⚠️ Draft issue limitations:
+  - Cannot be linked to pull requests (no "Development" section, no closing references).
+  - Cannot receive comments (no comment thread).
+  - Labels and milestones cannot be applied.
+  - LINKED_PULL_REQUESTS, LABELS, MILESTONE, REPOSITORY fields are all empty/unset.
+  - To link to a PR or add labels, convert to a real issue first via the GitHub UI
+    or the convertProjectV2DraftIssueItemToIssue GraphQL mutation.
 
 Args:
   - project_id (string): Project node ID (PVT_kwDO…). Do NOT pass owner or project_number here.
@@ -275,13 +308,24 @@ Workflow:
   3. Get item IDs: github_list_project_items
   4. Call this tool with the resolved IDs
 
-Supported field types — always set \`type\`, then set the matching companion key:
+Writable field types — always set \`type\`, then set the matching companion key:
   - text:          { type: 'text', value: 'string' }
   - number:        { type: 'number', number_value: 123 }
   - date:          { type: 'date', value: 'YYYY-MM-DD' }
   - single_select: { type: 'single_select', option_id: 'abc123' }
   - iteration:     { type: 'iteration', iteration_id: 'abc123' }
   - clear:         { type: 'clear' }  — removes any current value, no other key needed
+
+⚠️ Read-only system fields — these CANNOT be set with this tool:
+  LINKED_PULL_REQUESTS, LABELS, ASSIGNEES, MILESTONE, REPOSITORY, REVIEWERS,
+  PARENT_ISSUE, TRACKS, TRACKED_BY, TITLE.
+  GitHub manages these automatically. Only TEXT, NUMBER, DATE, SINGLE_SELECT,
+  and ITERATION fields are writable.
+
+  To add a PR to the project board (so it appears alongside issues), use
+  github_add_item_to_project with the PR node ID instead.
+  The LINKED_PULL_REQUESTS column on issues is auto-populated by GitHub
+  when a PR body contains "Closes #N" or "Fixes #N" — it is not settable.
 
 Args:
   - project_id (string): Project node ID (PVT_kwDO…) — from github_get_project or github_graphql.

@@ -255,6 +255,8 @@ Deno.test("github_list_project_items - iteration_id filter (fallback path): matc
         field: { id: "F_SPRINT", name: "Sprint" },
         title: "Sprint 1",
         iterationId: "ITER_X",
+        startDate: "2026-04-14",
+        duration: 14,
       }],
     },
   };
@@ -275,6 +277,7 @@ Deno.test("github_list_project_items - iteration_id filter (fallback path): matc
     const text = (result.content[0] as { text: string }).text;
     assertStringIncludes(text, "showing 1");
     assertStringIncludes(text, "Sprint Task");
+    assertStringIncludes(text, "Sprint 1 (starts 2026-04-14, 14d) [id: ITER_X]");
   } finally {
     restore();
   }
@@ -323,6 +326,34 @@ Deno.test("github_list_project_items - empty project: shows no items message", a
     restore();
   }
 });
+
+Deno.test(
+  "github_list_project_items - filter_type mismatch: zero results include type breakdown hint",
+  async () => {
+    Deno.env.set("GITHUB_TOKEN", "test-token");
+    // Board has 2 DRAFT_ISSUE items, but filter asks for Issue — should explain the mismatch.
+    const restore = mockFetch(wrapUserItems([makeDraftItem("PVTI_1", "A"), makeDraftItem("PVTI_2", "B")], 2));
+    try {
+      const client = await makeTestClient();
+      const result = await client.callTool({
+        name: "github_list_project_items",
+        arguments: {
+          owner: "hoonsubin",
+          owner_type: "user",
+          project_number: 1,
+          first: 20,
+          filter_type: "Issue",
+        },
+      });
+      const text = (result.content[0] as { text: string }).text;
+      assertStringIncludes(text, "No Issue items found");
+      assertStringIncludes(text, "DraftIssue");
+      assertStringIncludes(text, "Re-run without filter_type");
+    } finally {
+      restore();
+    }
+  },
+);
 
 // ---------------------------------------------------------------------------
 // github_add_item_to_project
