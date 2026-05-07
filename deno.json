@@ -33,7 +33,7 @@
     "singleQuote": false,
     "semiColons": true,
     "proseWrap": "never",
-    "ignore": [
+    "exclude": [
       ".roo/"
     ]
   },
