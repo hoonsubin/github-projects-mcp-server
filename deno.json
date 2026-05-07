@@ -32,7 +32,10 @@
     "indentWidth": 2,
     "singleQuote": false,
     "semiColons": true,
-    "proseWrap": "never"
+    "proseWrap": "never",
+    "ignore": [
+      ".roo/"
+    ]
   },
   "lint": {
     "rules": {
