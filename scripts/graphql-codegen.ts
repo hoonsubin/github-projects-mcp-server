@@ -1,3 +1,5 @@
+// todo: [Phase 4] RETIRE — codegen-fetched types are replaced by RuntimeConfig from live API fetch
+// todo: [Phase 4] All field metadata now resolved dynamically in loadConfig (src/services/config.ts)
 // =============================================================================
 // scripts/graphql-codegen.ts
 //

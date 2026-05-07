@@ -3,5 +3,6 @@
   "editor.formatOnSave": true,
   "[typescript]": {
     "editor.defaultFormatter": "denoland.vscode-deno"
-  }
+  },
+  "deepscan.ignoreConfirmWarning": true
 }

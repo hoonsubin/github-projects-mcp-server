@@ -8,8 +8,12 @@ import type {
 } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage, MessageExtraInfo } from "@modelcontextprotocol/sdk/types.js";
 import express, { type Request, type Response } from "express";
+// todo: [Phase 4] Remove + replace with: import { registerScrumReadTools } from "./tools/scrum-read.ts";
 import { registerProjectTools } from "./tools/projects.ts";
+// todo: [Phase 4] Remove + replace with: import { registerScrumWriteTools } from "./tools/scrum-write.ts";
 import { registerItemTools } from "./tools/items.ts";
+// todo: [Phase 4] Gut registrations — keep file only if any internal helpers are still referenced.
+//   After Phase 4, repository.ts should register nothing (github_graphql moves to scrum-write.ts).
 import { registerRepositoryTools } from "./tools/repository.ts";
 import { log } from "./services/logger.ts";
 import type { Socket } from "node:net";
@@ -24,14 +28,14 @@ import type { Socket } from "node:net";
 
 const patchToolLogging = (server: McpServer): void => {
   // deno-lint-ignore no-explicit-any
-  const s = server as unknown as Record<string, any>;
-  const original = s["registerTool"].bind(server) as (
+  const _server = server as unknown as Record<string, any>;
+  const original = _server["registerTool"].bind(server) as (
     name: string,
     config: unknown,
     handler: (params: unknown, extra: unknown) => Promise<unknown>,
   ) => unknown;
 
-  s["registerTool"] = (
+  _server["registerTool"] = (
     name: string,
     config: unknown,
     handler: (params: unknown, extra: unknown) => Promise<unknown>,
@@ -103,8 +107,11 @@ const createMcpServer = (): McpServer => {
     log.debug("tool-call logging enabled");
   }
 
+  // todo: [Phase 4] Remove — replaced by registerScrumReadTools(server, github)
   registerProjectTools(server);
+  // todo: [Phase 4] Remove — replaced by registerScrumWriteTools(server, github)
   registerItemTools(server);
+  // todo: [Phase 4] Gut — registerRepositoryTools will be empty after github_graphql moves to scrum-write.ts
   registerRepositoryTools(server);
 
   return server;

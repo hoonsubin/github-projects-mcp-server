@@ -1,0 +1,31 @@
+{
+	"mcpServers": {
+		"github-projects": {
+			"command": "deno",
+			"args": [
+				"task",
+				"start"
+			],
+			"alwaysAllow": [
+				"github_list_projects",
+				"github_get_project",
+				"github_get_project_fields",
+				"github_update_project",
+				"github_list_project_items",
+				"github_add_item_to_project",
+				"github_add_draft_issue",
+				"github_update_item_field",
+				"github_archive_project_item",
+				"github_get_issue_node_id",
+				"github_get_user_node_id",
+				"github_graphql",
+				"github_get_repo_file",
+				"github_create_issue",
+				"github_update_issue",
+				"github_create_comment",
+				"github_write_repo_file"
+			],
+			"timeout": 300
+		}
+	}
+}

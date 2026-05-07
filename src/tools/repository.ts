@@ -80,10 +80,14 @@ const toBase64 = (text: string): string => {
 export const registerRepositoryTools = (server: McpServer): void => {
   // ── Arbitrary GraphQL query ───────────────────────────────────────────────
 
+  // todo: [Phase 4] Update description — mark as DEPRECATED, add deprecation notice
   server.registerTool(
+    // todo: [Phase 4] Move to scrum-write.ts as deprecated tool
     "github_graphql",
     {
+      // todo: [Phase 4] Update tool description to: "DEPRECATED. Preserved for ad-hoc diagnostic GraphQL lookups. Prefer scrum_* tools."
       title: "GitHub GraphQL Query",
+      // todo: [Phase 4] Update description — mutations already blocked; add deprecation note
       description: `Execute a read-only GraphQL query against the GitHub API.
 
 Use this tool for ad-hoc lookups not covered by other tools:
@@ -201,7 +205,8 @@ Returns: File content as plain text, plus the blob OID (useful as a version refe
           return {
             content: [{
               type: "text",
-              text: `Error: Repository '${params.owner}/${params.repo}' not found or not accessible.\n\n` +
+              text:
+                `Error: Repository '${params.owner}/${params.repo}' not found or not accessible.\n\n` +
                 `→ Fix: Check the owner and repo name, and ensure your fine-grained token ` +
                 `grants 'Contents: Read' access to '${params.owner}/${params.repo}'.`,
             }],
@@ -213,7 +218,8 @@ Returns: File content as plain text, plus the blob OID (useful as a version refe
           return {
             content: [{
               type: "text",
-              text: `Error: Path '${params.path}' not found at ref '${ref}' in ${params.owner}/${params.repo}.\n\n` +
+              text:
+                `Error: Path '${params.path}' not found at ref '${ref}' in ${params.owner}/${params.repo}.\n\n` +
                 `→ Fix: Verify the file path and ref are correct (ref defaults to HEAD if omitted).`,
             }],
           };
@@ -231,7 +237,9 @@ Returns: File content as plain text, plus the blob OID (useful as a version refe
           }],
         };
       } catch (err) {
-        return { content: [{ type: "text", text: enrichError(err, { operation: "get_repo_file" }) }] };
+        return {
+          content: [{ type: "text", text: enrichError(err, { operation: "get_repo_file" }) }],
+        };
       }
     },
   );
@@ -286,7 +294,8 @@ Returns: Issue number, node ID, title, and URL of the created issue.`,
           return {
             content: [{
               type: "text",
-              text: `Error: Repository '${params.owner}/${params.repo}' not found or not accessible.\n\n` +
+              text:
+                `Error: Repository '${params.owner}/${params.repo}' not found or not accessible.\n\n` +
                 `→ Fix: Check the owner and repo name, and ensure your fine-grained token ` +
                 `grants 'Issues: Read and write' access to '${params.owner}/${params.repo}'.`,
             }],
@@ -332,7 +341,9 @@ Returns: Issue number, node ID, title, and URL of the created issue.`,
           }],
         };
       } catch (err) {
-        return { content: [{ type: "text", text: enrichError(err, { operation: "create_issue" }) }] };
+        return {
+          content: [{ type: "text", text: enrichError(err, { operation: "create_issue" }) }],
+        };
       }
     },
   );
@@ -406,7 +417,9 @@ Returns: Updated issue number, state, title, and URL.`,
           }],
         };
       } catch (err) {
-        return { content: [{ type: "text", text: enrichError(err, { operation: "update_issue" }) }] };
+        return {
+          content: [{ type: "text", text: enrichError(err, { operation: "update_issue" }) }],
+        };
       }
     },
   );
@@ -494,7 +507,9 @@ Returns: Node ID and URL of the new comment.`,
           }],
         };
       } catch (err) {
-        return { content: [{ type: "text", text: enrichError(err, { operation: "create_comment" }) }] };
+        return {
+          content: [{ type: "text", text: enrichError(err, { operation: "create_comment" }) }],
+        };
       }
     },
   );
@@ -551,7 +566,8 @@ Returns: Commit OID and URL of the resulting commit.`,
           return {
             content: [{
               type: "text",
-              text: `Error: Repository '${params.owner}/${params.repo}' not found or not accessible.\n\n` +
+              text:
+                `Error: Repository '${params.owner}/${params.repo}' not found or not accessible.\n\n` +
                 `→ Fix: Check the owner and repo name, and ensure your fine-grained token ` +
                 `grants 'Contents: Read and write' access to '${params.owner}/${params.repo}'.`,
             }],
@@ -562,7 +578,8 @@ Returns: Commit OID and URL of the resulting commit.`,
           return {
             content: [{
               type: "text",
-              text: `Error: Branch '${params.branch}' not found in ${params.owner}/${params.repo}.\n\n` +
+              text:
+                `Error: Branch '${params.branch}' not found in ${params.owner}/${params.repo}.\n\n` +
                 `→ Fix: Check the branch name — it must already exist. ` +
                 `This tool cannot create new branches.`,
             }],
@@ -612,7 +629,9 @@ Returns: Commit OID and URL of the resulting commit.`,
           }],
         };
       } catch (err) {
-        return { content: [{ type: "text", text: enrichError(err, { operation: "write_repo_file" }) }] };
+        return {
+          content: [{ type: "text", text: enrichError(err, { operation: "write_repo_file" }) }],
+        };
       }
     },
   );

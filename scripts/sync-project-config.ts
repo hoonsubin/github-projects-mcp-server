@@ -1,3 +1,5 @@
+// todo: [Phase 4] RETIRE — sync script is retired per decision: all information should be retrievable via GraphQL API
+// todo: [Phase 4] All config data now fetched live via loadConfig in src/services/config.ts
 // =============================================================================
 // scripts/sync-project-config.ts
 // Reads the human-defined scrum.config.yml and syncs GitHub Projects v2 field

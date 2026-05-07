@@ -322,33 +322,33 @@ The surface is governed by five rules. Any change that violates one is a breakin
 
 These appear in arguments and return values across multiple tools. They are described semantically; the on-the-wire representation is a backend concern.
 
-| Type | Meaning |
-|---|---|
-| `StoryRef` | A reference to a single Story. Accepted forms: `{ "number": 42 }` (the user-facing reference, e.g., issue number, card ID) or `{ "id": "<opaque>" }` (the backend-native handle returned by previous calls). Tools accept either form. |
-| `SprintRef` | A reference to a sprint. Accepted forms: `"current"`, `"next"`, `null` (= no sprint, i.e., the backlog), or an explicit sprint name (e.g., `"Sprint 12"`). |
-| `ScrumField` | One of `status`, `sprint`, `story_points`, `priority`, `assignee`. The set is fixed; new field types are out of scope for v1. |
-| `StoryType` | One of `feature`, `bug`, `tech_debt`, `spike`. Drives the type label or category the backend applies. |
-| `Story` | The canonical entity. See full shape under [Story shape](#story-shape) below. |
+| Type         | Meaning                                                                                                                                                                                                                                |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `StoryRef`   | A reference to a single Story. Accepted forms: `{ "number": 42 }` (the user-facing reference, e.g., issue number, card ID) or `{ "id": "<opaque>" }` (the backend-native handle returned by previous calls). Tools accept either form. |
+| `SprintRef`  | A reference to a sprint. Accepted forms: `"current"`, `"next"`, `null` (= no sprint, i.e., the backlog), or an explicit sprint name (e.g., `"Sprint 12"`).                                                                             |
+| `ScrumField` | One of `status`, `sprint`, `story_points`, `priority`, `assignee`. The set is fixed; new field types are out of scope for v1.                                                                                                          |
+| `StoryType`  | One of `feature`, `bug`, `tech_debt`, `spike`. Drives the type label or category the backend applies.                                                                                                                                  |
+| `Story`      | The canonical entity. See full shape under [Story shape](#story-shape) below.                                                                                                                                                          |
 
 #### Story shape
 
 Every read tool that returns Stories returns objects of this shape (with optional fields populated when present):
 
-| Field | Meaning |
-|---|---|
-| `ref` | A `StoryRef` containing both `number` and `id` so the agent can use either. |
-| `title` | The story title. |
-| `body` | The story body, rendered as markdown. Includes user-story format, AC checklist, dependencies, technical notes — whatever the team wrote. |
-| `type` | `StoryType` resolved from the type label or category. |
-| `status` | The current status, in the team's vocabulary (e.g., `"In Progress"`). |
-| `sprint` | The current sprint name, or `null` if the story is in the backlog. |
-| `story_points` | Numeric estimate, or `null` if unestimated. |
-| `priority` | The team's priority value (e.g., `"Must"`), or `null`. |
-| `assignees` | Array of team member identifiers (login or display name as configured). |
-| `labels` | Array of label strings (excluding the `type:*` label, which is reflected in `type`). |
-| `epic` | Parent epic name or `null`. (V1 reads epic membership; does not write.) |
-| `created_at`, `updated_at` | ISO-8601 timestamps. |
-| `url` | Canonical URL to view the story in the backend's UI, when available. |
+| Field                      | Meaning                                                                                                                                  |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `ref`                      | A `StoryRef` containing both `number` and `id` so the agent can use either.                                                              |
+| `title`                    | The story title.                                                                                                                         |
+| `body`                     | The story body, rendered as markdown. Includes user-story format, AC checklist, dependencies, technical notes — whatever the team wrote. |
+| `type`                     | `StoryType` resolved from the type label or category.                                                                                    |
+| `status`                   | The current status, in the team's vocabulary (e.g., `"In Progress"`).                                                                    |
+| `sprint`                   | The current sprint name, or `null` if the story is in the backlog.                                                                       |
+| `story_points`             | Numeric estimate, or `null` if unestimated.                                                                                              |
+| `priority`                 | The team's priority value (e.g., `"Must"`), or `null`.                                                                                   |
+| `assignees`                | Array of team member identifiers (login or display name as configured).                                                                  |
+| `labels`                   | Array of label strings (excluding the `type:*` label, which is reflected in `type`).                                                     |
+| `epic`                     | Parent epic name or `null`. (V1 reads epic membership; does not write.)                                                                  |
+| `created_at`, `updated_at` | ISO-8601 timestamps.                                                                                                                     |
+| `url`                      | Canonical URL to view the story in the backend's UI, when available.                                                                     |
 
 ### Read tools
 
@@ -360,7 +360,7 @@ Returns the team's static Scrum configuration: Definition of Ready, Definition o
 
 **Arguments:** none.
 
-**Returns:** an object with fields `definition_of_ready` (array of strings), `definition_of_done` (array of strings), `status_vocabulary` (array of strings, in workflow order), `priority_vocabulary` (array of strings, ordered by importance), `story_point_values` (array of allowed numeric estimates), `sprint` (object with `length_weeks`, `start_day`), `team` (array of `{ login, name, role }`), `ceremony_records_backend` (string indicating where notes land).
+**Returns:** an object with fields `definition_of_re ady` (array of strings), `definition_of_done` (array of strings), `status_vocabulary` (array of strings, in workflow order), `priority_vocabulary` (array of strings, ordered by importance), `story_point_values` (array of allowed numeric estimates), `sprint` (object with `length_weeks`, `start_day`), `team` (array of `{ login, name, role }`), `ceremony_records_backend` (string indicating where notes land).
 
 **Notes:** This is the one place the agent learns the team's Scrum dialect — what "Done" is called, what priority tiers exist, who is on the team. All write tools that take vocabulary values (e.g., `scrum_set_field` with field `status`) accept values from this vocabulary.
 
@@ -371,6 +371,7 @@ Returns the team's static Scrum configuration: Definition of Ready, Definition o
 Returns the current Sprint Backlog as a snapshot: the sprint metadata, its goal, its capacity, and every Story currently assigned to it grouped by status, with story points summed per group.
 
 **Arguments:**
+
 - `sprint` (optional, `SprintRef`): defaults to `"current"`. Pass `"next"` to inspect the upcoming sprint, or an explicit sprint name to inspect a past sprint.
 
 **Returns:** an object with `sprint` (`{ name, goal, start_date, end_date, days_remaining, capacity_points }`), `groups` (array of `{ status, stories: Story[], points_sum }` in the order defined by `status_vocabulary`), `totals` (`{ committed_points, completed_points, in_flight_points, blocked_points }`).
@@ -384,6 +385,7 @@ Returns the current Sprint Backlog as a snapshot: the sprint metadata, its goal,
 Returns the Product Backlog: all Stories not assigned to any sprint and not yet `Done`, ordered by priority. Supports filtering so the agent can answer "is this a duplicate of something already tracked?"
 
 **Arguments:**
+
 - `search` (optional, string): free-text match against title and body.
 - `labels` (optional, array of strings): include only Stories carrying all of these labels.
 - `priority` (optional, string): include only Stories at this priority value or higher.
@@ -401,6 +403,7 @@ Returns the Product Backlog: all Stories not assigned to any sprint and not yet 
 Returns the full detail of one Story, including comments, sub-tasks if the backend supports them, linked PRs, and the full body content.
 
 **Arguments:**
+
 - `ref` (required, `StoryRef`).
 
 **Returns:** a `Story` object plus `comments` (array of `{ author, body, created_at, url }`), `linked_prs` (array of PR references with state), `sub_tasks` (array of `{ title, status }` if the backend exposes sub-tasks), `acceptance_criteria` (array of `{ text, checked }` parsed from the body).
@@ -414,6 +417,7 @@ Returns the full detail of one Story, including comments, sub-tasks if the backe
 Returns historical sprint completion data so the agent can compute capacity, trend, and confidence intervals.
 
 **Arguments:**
+
 - `window` (optional, integer, default 5): number of most recent closed sprints to include.
 
 **Returns:** an array of `{ sprint, committed_points, completed_points, completion_rate, started_count, completed_count }`, ordered most-recent-first. Plus an aggregate field `average_completed` over the window.
@@ -431,6 +435,7 @@ Write tools mutate state. The agent should call them only after confirming inten
 Creates a new Story and optionally places it on the board.
 
 **Arguments:**
+
 - `title` (required, string): the story title.
 - `body` (required, string, markdown): the full story body. The agent assembles the user-story format, AC checklist, dependencies, and technical notes into one markdown document before calling.
 - `type` (required, `StoryType`): drives the type label.
@@ -452,6 +457,7 @@ Creates a new Story and optionally places it on the board.
 Edits the content of an existing Story — title, body, labels, assignees, epic. Does not touch board fields (status, sprint, story points, priority); use `scrum_set_field` for those.
 
 **Arguments:**
+
 - `ref` (required, `StoryRef`).
 - `title` (optional, string).
 - `body` (optional, string, markdown): replaces the full body. The agent reads the current body via `scrum_get_story` first if it intends to append.
@@ -470,6 +476,7 @@ Edits the content of an existing Story — title, body, labels, assignees, epic.
 The single tool for board-field writes. Replaces 80% of what raw GitHub Projects field updates would otherwise require, with no IDs in the agent's context.
 
 **Arguments:**
+
 - `ref` (required, `StoryRef`).
 - `field` (required, `ScrumField`): one of `status`, `sprint`, `story_points`, `priority`, `assignee`.
 - `value` (required): semantic value matching the field:
@@ -490,6 +497,7 @@ The single tool for board-field writes. Replaces 80% of what raw GitHub Projects
 Bulk-assigns multiple Stories to a sprint in one atomic call. Used during sprint planning to commit the agreed scope after the team has discussed each item.
 
 **Arguments:**
+
 - `sprint` (required, `SprintRef`): typically `"next"` or an explicit name; `"current"` is allowed but represents a mid-sprint scope change.
 - `stories` (required, array of `StoryRef`): the items to commit.
 - `replace` (optional, boolean, default `false`): if `true`, clears any existing sprint assignment first; if `false`, adds to whatever's already there.
@@ -505,6 +513,7 @@ Bulk-assigns multiple Stories to a sprint in one atomic call. Used during sprint
 Creates a new Story typed `impediment` (or the team's equivalent label), links it to the affected story, and sets its status to `Blocked`.
 
 **Arguments:**
+
 - `description` (required, string, markdown): the impediment body.
 - `affects` (required, `StoryRef`): the Story this is blocking.
 - `raised_by` (optional, string): team member login of the person who surfaced it; defaults to the configured Scrum Master.
@@ -521,6 +530,7 @@ Creates a new Story typed `impediment` (or the team's equivalent label), links i
 Appends a comment or note to an existing Story. Used for ceremony artefacts (standup logs, retro entries, review feedback) and for the audit trail of decisions like sprint injection.
 
 **Arguments:**
+
 - `ref` (required, `StoryRef`).
 - `body` (required, string, markdown).
 - `kind` (optional, string, default `"comment"`): one of `"comment"`, `"standup"`, `"retro"`, `"review"`. Determines any tagging the backend applies for later filtering. Treat as a hint; the body is always preserved verbatim.
@@ -558,11 +568,11 @@ The two layers have strictly separate responsibilities. Confusion between them i
 
 ### Division of responsibilities
 
-| Layer | Owns |
-|---|---|
-| **Human** | Intent, content, scope decisions, approval of state-changing actions, anything the system cannot fetch from itself. |
+| Layer           | Owns                                                                                                                                                                                                              |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Human**       | Intent, content, scope decisions, approval of state-changing actions, anything the system cannot fetch from itself.                                                                                               |
 | **Agent skill** | Scrum knowledge, ceremony facilitation, DoR/DoD enforcement, mid-sprint scope-injection coaching, retro format selection, document drafting, asking the human the right questions, deciding when to call the MCP. |
-| **MCP server** | Atomic platform operations, name → backend ID resolution, board snapshots, velocity aggregation, write idempotence. |
+| **MCP server**  | Atomic platform operations, name → backend ID resolution, board snapshots, velocity aggregation, write idempotence.                                                                                               |
 
 Three rules follow from this split:
 
@@ -613,7 +623,7 @@ These belong to the agent skill, the human, or both. Anyone tempted to "just add
 
 ### Canonical example: mid-sprint UX research request
 
-The human says: *"Several players report the game interface is too complicated. My ideas to fix are a, b, c. I think b is most feasible to test before the end of this sprint."*
+The human says: _"Several players report the game interface is too complicated. My ideas to fix are a, b, c. I think b is most feasible to test before the end of this sprint."_
 
 What happens, by phase:
 

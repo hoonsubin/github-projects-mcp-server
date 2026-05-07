@@ -1,3 +1,13 @@
+// todo: [Phase 4] DELETE THIS FILE — fully superseded by scrum_* tools
+// todo: [Phase 1] Add domain types to src/types.ts
+// todo: [Phase 1] Add config loader to src/services/config.ts
+// todo: [Phase 1] Add resolvers to src/services/resolver.ts
+// todo: [Phase 2] Add scrum_get_config to src/tools/scrum-read.ts
+// todo: [Phase 2] Add scrum_get_board to src/tools/scrum-read.ts
+// todo: [Phase 2] Add scrum_get_backlog to src/tools/scrum-read.ts
+// todo: [Phase 2] Add scrum_get_velocity to src/tools/scrum-read.ts
+// todo: [Phase 2] Add scrum_get_story to src/tools/scrum-read.ts
+// todo: [Phase 2] Add scrum_get_story to src/tools/scrum-read.ts
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
 import { formatError, graphql } from "../services/github.ts";
 import { formatField, formatProject, PROJECT_CORE_FRAGMENT } from "../services/formatters.ts";
