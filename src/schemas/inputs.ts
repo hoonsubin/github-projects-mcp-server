@@ -14,6 +14,7 @@ export const OwnerTypeSchema = z.enum(["user", "org"]).default("user")
 
 // ── Projects ─────────────────────────────────────────────────────────────────
 
+// todo: [Phase 4] Remove — superseded by scrum_* schemas in src/schemas/scrum.ts
 export const ListProjectsSchema = z.object({
   owner: z.string().min(1).describe("GitHub username or organization login"),
   owner_type: OwnerTypeSchema,
@@ -22,6 +23,7 @@ export const ListProjectsSchema = z.object({
     .describe("Include closed projects in results"),
 }).strict();
 
+// todo: [Phase 4] Remove — superseded by scrum_get_config input (no args)
 export const GetProjectSchema = z.object({
   owner: z.string().min(1).describe("GitHub username or organization login"),
   owner_type: OwnerTypeSchema,
@@ -29,6 +31,7 @@ export const GetProjectSchema = z.object({
     .describe("The project number shown in the GitHub URL (e.g., 1 for /projects/1)"),
 }).strict();
 
+// todo: [Phase 4] Remove — superseded by scrum_* schemas
 export const UpdateProjectSchema = z.object({
   project_id: z.string().min(1)
     .describe("Node ID of the project (e.g., PVT_kwDO...)"),
@@ -46,6 +49,7 @@ export const UpdateProjectSchema = z.object({
 
 // ── Items ────────────────────────────────────────────────────────────────────
 
+// todo: [Phase 4] Remove — superseded by scrum_get_backlog schema
 export const ListItemsSchema = z.object({
   owner: z.string().min(1).describe("GitHub username or organization login"),
   owner_type: OwnerTypeSchema,
@@ -60,6 +64,7 @@ export const ListItemsSchema = z.object({
     .describe("Filter to items with a specific Status option ID (from github_get_project_fields)"),
 }).strict();
 
+// todo: [Phase 4] Remove — superseded by scrum_create_story schema
 export const AddItemSchema = z.object({
   project_id: z.string().min(1)
     .describe("Node ID of the project (e.g., PVT_kwDO...)"),
@@ -67,6 +72,7 @@ export const AddItemSchema = z.object({
     .describe("Node ID of the Issue or PullRequest to add (e.g., I_kwDO... or PR_kwDO...)"),
 }).strict();
 
+// todo: [Phase 4] Remove — superseded by scrum_create_story schema
 export const AddDraftIssueSchema = z.object({
   project_id: z.string().min(1)
     .describe("Node ID of the project"),
@@ -76,10 +82,9 @@ export const AddDraftIssueSchema = z.object({
     .describe("Markdown body for the draft issue"),
   assignee_ids: z.array(z.string()).max(10).optional()
     .describe("Array of user node IDs to assign"),
-  iteration_id: z.string().optional()
-    .describe("Iteration node ID to assign to a sprint immediately on creation"),
 }).strict();
 
+// todo: [Phase 4] Remove — superseded by scrum_set_field schema
 export const DeleteItemSchema = z.object({
   project_id: z.string().min(1)
     .describe("Node ID of the project"),
@@ -87,6 +92,7 @@ export const DeleteItemSchema = z.object({
     .describe("Node ID of the project item to delete (e.g., PVTI_lADO...)"),
 }).strict();
 
+// todo: [Phase 4] Remove — superseded by scrum_set_field schema
 export const ArchiveItemSchema = z.object({
   project_id: z.string().min(1)
     .describe("Node ID of the project"),
@@ -110,6 +116,7 @@ export const ArchiveItemSchema = z.object({
 // key the description says to set. Runtime enforcement of the required-key-per-type
 // constraint is done in each handler via `resolveFieldValue()` below.
 
+// todo: [Phase 4] Remove — FieldValueUnion is GitHub-specific; replaced by ScrumField + SprintRef in src/schemas/scrum.ts
 export const FieldValueUnion = z.object({
   type: z
     .enum(["text", "number", "date", "single_select", "iteration", "clear"])
@@ -140,7 +147,7 @@ export const FieldValueUnion = z.object({
     .string()
     .optional()
     .describe(
-      "Iteration (sprint) node ID — required when type is 'iteration' (get from scrum://config or github_get_project_fields)",
+      "Iteration (sprint) node ID — required when type is 'iteration' (get from github_get_project_fields or github_graphql)",
     ),
 });
 
@@ -195,7 +202,7 @@ export const resolveFieldValue = (
 
     case "iteration":
       if (!v.iteration_id) {
-        return "Error: field value type is 'iteration' but `iteration_id` was not provided. Get iteration IDs from scrum://config or github_get_project_fields.";
+        return "Error: field value type is 'iteration' but `iteration_id` was not provided. Get iteration IDs from github_get_project_fields or github_graphql.";
       }
       return { isClear: false, fieldValue: { iterationId: v.iteration_id } };
 
@@ -208,6 +215,7 @@ export const resolveFieldValue = (
   }
 };
 
+// todo: [Phase 4] Remove — superseded by scrum_set_field schema in src/schemas/scrum.ts
 export const UpdateFieldValueSchema = z.object({
   project_id: z.string().min(1)
     .describe("Node ID of the project"),
@@ -224,6 +232,7 @@ export const UpdateFieldValueSchema = z.object({
     ),
 }).strict();
 
+// todo: [Phase 4] Remove — superseded by scrum_get_config (no args) in src/schemas/scrum.ts
 export const GetProjectFieldsSchema = z.object({
   owner: z.string().min(1).describe("GitHub username or organization login"),
   owner_type: OwnerTypeSchema,
@@ -249,6 +258,7 @@ export const GetProjectFieldsSchema = z.object({
 
 // ── Sprint tools ──────────────────────────────────────────────────────────────
 
+// todo: [Phase 4] Remove — superseded by scrum_get_board schema in src/schemas/scrum.ts
 export const GetSprintStatusSchema = z.object({
   iteration_id: z.string().optional()
     .describe(
@@ -257,11 +267,13 @@ export const GetSprintStatusSchema = z.object({
     ),
 }).strict();
 
+// todo: [Phase 4] Remove — superseded by scrum_get_velocity schema in src/schemas/scrum.ts
 export const GetVelocitySchema = z.object({
   iterations_count: z.number().int().min(1).max(10).default(4)
     .describe("Number of completed iterations to include in the velocity series."),
 }).strict();
 
+// todo: [Phase 4] Remove — superseded by scrum_get_backlog schema in src/schemas/scrum.ts
 export const GetBacklogItemsSchema = z.object({
   include_estimated_only: z.boolean().default(false)
     .describe("Return only items that have a story points value set (sprint-ready candidates)."),
@@ -271,11 +283,12 @@ export const GetBacklogItemsSchema = z.object({
     .describe("Pagination cursor from a previous response."),
 }).strict();
 
+// todo: [Phase 4] Remove — superseded by scrum_set_field + scrum_plan_sprint schemas in src/schemas/scrum.ts
 export const BulkUpdateItemFieldSchema = z.object({
-  project_id: z.string().min(1).optional()
+  project_id: z.string().min(1)
     .describe(
       "Node ID of the project (PVT_kwDO…). " +
-        "Omit to auto-resolve from scrum://config (project-board.config.json must be present — run `deno task sync-config` first). " +
+        "Get it from github_get_project or github_graphql. " +
         "Do NOT pass owner or project_number here.",
     ),
   item_ids: z.array(z.string().min(1)).min(1).max(50)
@@ -291,6 +304,7 @@ export const BulkUpdateItemFieldSchema = z.object({
     .describe("Abort on first failure. Default false (best-effort across all items)."),
 }).strict();
 
+// todo: [Phase 4] Remove — superseded by scrum_plan_sprint schema in src/schemas/scrum.ts
 export const CloseSprintSchema = z.object({
   closing_iteration_id: z.string().min(1)
     .describe("Iteration node ID of the sprint being closed."),
@@ -308,6 +322,7 @@ export const CloseSprintSchema = z.object({
     ),
 }).strict();
 
+// todo: [Phase 4] Remove — superseded by scrum_* schemas in src/schemas/scrum.ts
 export const GenerateSprintReportSchema = z.object({
   iteration_id: z.string().optional()
     .describe("Iteration node ID. Omit to use the currently active iteration."),
@@ -317,6 +332,7 @@ export const GenerateSprintReportSchema = z.object({
 
 // ── Issue/PR lookup (needed to get node IDs) ─────────────────────────────────
 
+// todo: [Phase 4] Keep — backs github_get_issue_node_id tool used by new scrum_* handlers
 export const GetIssueNodeIdSchema = z.object({
   owner: z.string().min(1).describe("Repository owner (user or org)"),
   repo: z.string().min(1).describe("Repository name"),
@@ -325,6 +341,134 @@ export const GetIssueNodeIdSchema = z.object({
     .describe("Whether this is an issue or pull request"),
 }).strict();
 
+// todo: [Phase 4] Keep — backs github_get_user_node_id tool used by new scrum_* handlers
 export const GetUserNodeIdSchema = z.object({
   login: z.string().min(1).describe("GitHub username"),
+}).strict();
+
+// ── Repository tools ──────────────────────────────────────────────────────────
+
+/**
+ * Arbitrary read-only GraphQL query. Mutations are blocked at the handler level.
+ * Useful for ad-hoc lookups not covered by other tools (e.g. fetching node IDs,
+ * listing labels, resolving repo metadata).
+ */
+// todo: [Phase 4] Keep — backs deprecated github_graphql tool
+export const GraphQLQuerySchema = z.object({
+  query: z.string().min(1)
+    .describe(
+      "A read-only GraphQL query string. Must not contain the 'mutation' keyword. " +
+        "Use this for ad-hoc lookups: node IDs, labels, repo metadata, etc.",
+    ),
+  variables: z.record(z.string(), z.unknown()).optional()
+    .describe("Optional variables object for the query"),
+}).strict();
+
+/**
+ * Read a single file from a GitHub repository via GraphQL.
+ * Internally resolves to: repository { object(expression: \"<ref>:<path>\") { ... on Blob { text oid } } }
+ */
+// todo: [Phase 4] Keep — backs github_get_repo_file tool used by config loader
+export const GetRepoFileSchema = z.object({
+  owner: z.string().min(1).describe("Repository owner (user or org login)"),
+  repo: z.string().min(1).describe("Repository name"),
+  path: z.string().min(1)
+    .describe(
+      "File path relative to the repository root (e.g. '.github/scrum/config.yml')",
+    ),
+  ref: z.string().optional()
+    .describe("Git ref (branch, tag, or commit SHA) to read from. Defaults to HEAD."),
+}).strict();
+
+/**
+ * Create a new issue in a GitHub repository.
+ * Internally does a 2-step GraphQL sequence:
+ *   1. Look up the repository node ID via `repository { id }`.
+ *   2. Call the `createIssue` mutation with that ID.
+ */
+// todo: [Phase 4] Keep — backs github_create_issue used by scrum_create_story
+export const CreateIssueSchema = z.object({
+  owner: z.string().min(1).describe("Repository owner (user or org login)"),
+  repo: z.string().min(1).describe("Repository name"),
+  title: z.string().min(1).max(255).describe("Issue title"),
+  body: z.string().optional().describe("Issue body in Markdown"),
+  assignee_ids: z.array(z.string()).optional()
+    .describe(
+      "Array of user node IDs to assign (get IDs via github_get_user_node_id or github_graphql)",
+    ),
+  label_ids: z.array(z.string()).optional()
+    .describe(
+      "Array of label node IDs to apply (get IDs via github_graphql listing repository labels)",
+    ),
+}).strict();
+
+/**
+ * Update an existing issue — state, title, body, assignees, or labels.
+ * All fields are optional; only provided fields are changed.
+ */
+// todo: [Phase 4] Keep — backs github_update_issue used by scrum_update_story
+export const UpdateIssueSchema = z.object({
+  issue_node_id: z.string().min(1)
+    .describe(
+      "Node ID of the issue to update (e.g. I_kwDO...). " +
+        "Get it via github_get_issue_node_id or github_graphql.",
+    ),
+  state: z.enum(["OPEN", "CLOSED"]).optional()
+    .describe("New issue state. Omit to leave unchanged."),
+  title: z.string().min(1).max(255).optional()
+    .describe("New title. Omit to leave unchanged."),
+  body: z.string().optional()
+    .describe("New body in Markdown. Omit to leave unchanged."),
+  assignee_ids: z.array(z.string()).optional()
+    .describe(
+      "Replacement set of user node IDs. Omit to leave unchanged. " +
+        "Pass an empty array [] to clear all assignees.",
+    ),
+  label_ids: z.array(z.string()).optional()
+    .describe(
+      "Replacement set of label node IDs. Omit to leave unchanged. " +
+        "Pass an empty array [] to clear all labels.",
+    ),
+}).strict();
+
+/**
+ * Add a comment to an issue, pull request, or discussion.
+ * Issues and PRs use the `addComment` mutation (subject_id is the node ID).
+ * Discussions use the `addDiscussionComment` mutation.
+ */
+// todo: [Phase 4] Keep — backs github_create_comment used by scrum_post_note
+export const CreateCommentSchema = z.object({
+  subject_id: z.string().min(1)
+    .describe(
+      "Node ID of the issue (I_kwDO...), PR (PR_kwDO...), or discussion (D_kwDO...) to comment on",
+    ),
+  body: z.string().min(1).describe("Comment body in Markdown"),
+  type: z.enum(["issue", "pr", "discussion"])
+    .describe(
+      "Target type: 'issue' and 'pr' use the addComment mutation; " +
+        "'discussion' uses addDiscussionComment",
+    ),
+}).strict();
+
+/**
+ * Write (create or overwrite) a single file in a GitHub repository.
+ * Internally does a 2-step GraphQL sequence:
+ *   1. Fetch the current HEAD commit OID for `expectedHeadOid` (optimistic lock).
+ *   2. Call `createCommitOnBranch` with the file content base64-encoded.
+ * Plain text content is accepted; base64 encoding is handled internally.
+ */
+// todo: [Phase 4] Review — the sync script is retired, so the original use-case (config sync)
+//   is gone. Confirm whether any new tool uses github_write_repo_file before deciding to keep
+//   or remove. If no Phase 2/3 tool writes to the repo, remove this schema and its handler.
+export const WriteRepoFileSchema = z.object({
+  owner: z.string().min(1).describe("Repository owner (user or org login)"),
+  repo: z.string().min(1).describe("Repository name"),
+  branch: z.string().min(1)
+    .describe("Target branch to commit to (e.g. 'main'). Branch must already exist."),
+  path: z.string().min(1)
+    .describe("File path relative to the repository root (e.g. '.github/scrum/config.yml')"),
+  content: z.string()
+    .describe("Plain text file content. Base64 encoding is handled internally."),
+  commit_message: z.string().min(1)
+    .describe("Commit message headline (first line). Keep under 72 characters."),
 }).strict();

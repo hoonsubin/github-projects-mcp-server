@@ -160,8 +160,7 @@ Symptoms:
 - Sprint Planning is just re-labelling a pre-assigned task list
 - Retrospective feedback never reaches management
 
-Fix: Tie sprint outcomes to actual releases; give team real ownership of process; management attends
-Sprint Reviews.
+Fix: Tie sprint outcomes to actual releases; give team real ownership of process; management attends Sprint Reviews.
 
 ### Too Many Teams on One Codebase
 
@@ -181,8 +180,7 @@ Symptoms:
 - SM has no authority to remove blockers
 - Team reverts to waterfall habits
 
-Fix: SM and management alignment session on Scrum Master mandate; SM reports team health metrics,
-not individual output.
+Fix: SM and management alignment session on Scrum Master mandate; SM reports team health metrics, not individual output.
 
 ---
 

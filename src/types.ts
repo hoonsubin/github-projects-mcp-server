@@ -1,4 +1,61 @@
 // GitHub Projects v2 GraphQL API types
+//
+// ── Phase 1, step 1: add Scrum domain types ──────────────────────────────────
+// [COMPLETE] All five types implemented below.
+//
+// ── SCRUM DOMAIN TYPES ─────────────────────────────────────────────────────────
+
+/**
+ * A reference to a single Story.
+ * Accepted forms: `{ "number": 42 }` (user-facing reference, e.g., issue number)
+ * or `{ "id": "<opaque>" }` (backend-native handle returned by previous calls).
+ */
+export interface StoryRef {
+  number?: number; // user-facing issue number (e.g. GitHub issue #42)
+  id?: string; // opaque backend handle returned by a previous tool call
+}
+
+/**
+ * A reference to a sprint.
+ * Accepted forms: `"current"`, `"next"`, `null` (= no sprint, i.e., the backlog),
+ * or an explicit sprint name (e.g., `"Sprint 12"`).
+ */
+export type SprintRef = "current" | "next" | null | string;
+
+/**
+ * One of the five writable board fields.
+ * The set is fixed; new field types are out of scope for v1.
+ */
+export type ScrumField = "status" | "sprint" | "story_points" | "priority" | "assignee";
+
+/**
+ * Story type — drives the type label or category the backend applies.
+ * NOTE: There is no "impediment" StoryType. scrum_log_impediment uses type:"spike"
+ * plus an "impediment" label.
+ */
+export type StoryType = "feature" | "bug" | "tech_debt" | "spike";
+
+/**
+ * The canonical Story entity returned by every read tool.
+ *
+ * Epic IS writable in v1 (maps to GitHub Milestone).
+ */
+export interface Story {
+  ref: { number: number; id: string }; // always populated with both forms after a read
+  title: string;
+  body: string;
+  type: StoryType | null;
+  status: string | null; // team's vocabulary value, e.g. "In Progress"
+  sprint: string | null; // sprint name, or null if in backlog
+  story_points: number | null;
+  priority: string | null; // team's vocabulary value, e.g. "Must"
+  assignees: string[]; // GitHub logins
+  labels: string[]; // excludes type:* label (reflected in `type`)
+  epic: string | null; // GitHub Milestone title; null if unset
+  created_at: string; // ISO-8601
+  updated_at: string; // ISO-8601
+  url: string | null; // canonical URL in the backend UI
+}
 
 export interface PageInfo {
   hasNextPage: boolean;
@@ -247,6 +304,9 @@ export interface ScrumConfigYml {
     required: boolean;
     format: string;
   };
+  // field_names maps Scrum concepts to the actual field names used in this project's board.
+  // loadConfig (Phase 1, step 3) resolves these strings to GitHub field IDs at call time
+  // via RuntimeConfig.fields — no static binding needed.
   field_names: {
     sprint: string;
     status: string;
@@ -293,10 +353,13 @@ export interface ScrumConfigYml {
  * Extends IterationEntry so sprint tools can use IterationEntry helpers
  * on both active and completed sprints.
  */
+// todo: [Phase 4] Remove — SprintIteration becomes internal to new tool handlers
 export interface SprintIteration extends IterationEntry {
   completed?: boolean;
 }
 
+// todo: [Phase 4] Remove — BoardConfig is sync-script-specific; RuntimeConfig (src/services/config.ts)
+//   is its replacement. The sync script that writes project-board.config.json is also retired.
 /** Shape written to project-board.config.json by the sync script. */
 export interface BoardConfig {
   _comment?: string;
@@ -324,6 +387,9 @@ export interface BoardConfig {
   _assignee_field: { _field_id: string; dataType: string } | null;
 }
 
+// todo: [Phase 4] Remove entire section — GhFieldBase, GhSingleSelectField, GhIterationField,
+//   GhProjectResponse are sync-script-only shapes. The sync script is retired. Any remaining
+//   GraphQL response shape needs are served by src/generated/github-types.ts (codegen).
 // ── Sync script GraphQL shapes ────────────────────────────────────────────────
 
 export interface GhFieldBase {
@@ -383,6 +449,7 @@ export interface GhProjectResponse {
 
 // ── SCRUM runtime types ───────────────────────────────────────────────────────
 
+// todo: [Phase 4] Remove — MergedScrumConfig is replaced by RuntimeConfig in src/services/config.ts
 /**
  * Merged runtime configuration: scrum.config.yml (human-authored) overlaid
  * with project-board.config.json (GitHub-synced). The sprint tools operate
@@ -393,6 +460,7 @@ export interface MergedScrumConfig extends ScrumConfigYml {
   _board: BoardConfig;
 }
 
+// todo: [Phase 4] Remove — ResolvedScrumFields is replaced by RuntimeConfig in src/services/config.ts
 /**
  * Resolved field IDs after name → ID mapping via _fields_registry.
  * Produced by resolveFields() and consumed by all sprint tool helpers.
@@ -409,6 +477,7 @@ export interface ResolvedScrumFields {
   blockedOptionId: string | null;
 }
 
+// todo: [Phase 4] Remove — IterationVelocity is internal to scrum_get_velocity handler
 /** Per-iteration velocity entry used by github_get_velocity. */
 export interface IterationVelocity {
   iterationId: string;
@@ -422,6 +491,7 @@ export interface IterationVelocity {
   isCurrent: boolean;
 }
 
+// todo: [Phase 4] Remove — SprintStatusResult is internal to scrum_get_board handler
 /** Aggregated sprint health snapshot used by github_get_sprint_status. */
 export interface SprintStatusResult {
   iteration: {
@@ -439,6 +509,7 @@ export interface SprintStatusResult {
   carryOverItems: ProjectV2Item[];
 }
 
+// todo: [Phase 4] Remove — BulkUpdateResult is internal to scrum_plan_sprint handler
 /** Per-item result for bulk update and sprint close operations. */
 export interface BulkUpdateResult {
   item_id: string;

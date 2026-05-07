@@ -478,6 +478,59 @@ Deno.test(
   },
 );
 
+Deno.test(
+  "github_get_project_fields - ITERATION field: includes startDate, duration, and completedIterations",
+  async () => {
+    Deno.env.set("GITHUB_TOKEN", "test-token");
+    const restore = mockFetch({
+      user: {
+        projectV2: {
+          title: "My Project",
+          number: 1,
+          fields: {
+            nodes: [
+              {
+                id: "PVTIF_sprint",
+                name: "Sprint",
+                dataType: "ITERATION",
+                configuration: {
+                  iterations: [
+                    { id: "b1710bb8", title: "Sprint 1", startDate: "2026-04-14", duration: 14 },
+                    { id: "9085132c", title: "Sprint 2", startDate: "2026-04-28", duration: 14 },
+                  ],
+                  completedIterations: [
+                    { id: "aa000001", title: "Sprint 0", startDate: "2026-03-31", duration: 14 },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+    try {
+      const client = await makeTestClient();
+      const result = await client.callTool({
+        name: "github_get_project_fields",
+        arguments: {
+          owner: "hoonsubin",
+          owner_type: "user",
+          project_number: 1,
+          field_type: "ITERATION",
+        },
+      });
+      const text = (result.content[0] as { text: string }).text;
+      assertStringIncludes(text, "PVTIF_sprint");
+      assertStringIncludes(text, "`b1710bb8` Sprint 1 (starts 2026-04-14, 14d)");
+      assertStringIncludes(text, "`9085132c` Sprint 2 (starts 2026-04-28, 14d)");
+      assertStringIncludes(text, "Completed iterations");
+      assertStringIncludes(text, "`aa000001` Sprint 0 (starts 2026-03-31, 14d)");
+    } finally {
+      restore();
+    }
+  },
+);
+
 // ---------------------------------------------------------------------------
 // github_update_project
 // ---------------------------------------------------------------------------
