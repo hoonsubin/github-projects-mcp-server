@@ -1,51 +1,61 @@
 // GitHub Projects v2 GraphQL API types
 //
 // ── Phase 1, step 1: add Scrum domain types ──────────────────────────────────
+// [COMPLETE] All five types implemented below.
 //
-// StoryRef and SprintRef are currently scaffolded and exported from
-// src/services/resolver.ts as a temporary home. Before implementing loadConfig
-// or either resolver function, move them here and update resolver.ts to import
-// from "../types.ts" instead.
-//
-// todo: [Phase 1, step 1] Move StoryRef here from resolver.ts, then delete from resolver.ts:
-//   export interface StoryRef {
-//     number?: number; // user-facing issue number (e.g. GitHub issue #42)
-//     id?: string;     // opaque backend handle returned by a previous tool call
-//   }
-//
-// todo: [Phase 1, step 1] Move SprintRef here from resolver.ts, then delete from resolver.ts:
-//   export type SprintRef = "current" | "next" | null | string;
-//
-// todo: [Phase 1, step 1] Add ScrumField — the five writable board fields:
-//   export type ScrumField = "status" | "sprint" | "story_points" | "priority" | "assignee";
-//
-// todo: [Phase 1, step 1] Add StoryType — drives the type label applied by the backend:
-//   export type StoryType = "feature" | "bug" | "tech_debt" | "spike";
-//   NOTE: There is no "impediment" StoryType. scrum_log_impediment uses type:"spike"
-//   plus an "impediment" label. The README's scrum_log_impediment description says
-//   "typed impediment" — this is misleading shorthand, not a missing enum value.
-//
-// todo: [Phase 1, step 1] Add Story interface — canonical shape returned by every read tool:
-//   export interface Story {
-//     ref: { number: number; id: string }; // always populated with both forms after a read
-//     title: string;
-//     body: string;
-//     type: StoryType | null;
-//     status: string | null;       // team's vocabulary value, e.g. "In Progress"
-//     sprint: string | null;       // sprint name, or null if in backlog
-//     story_points: number | null;
-//     priority: string | null;     // team's vocabulary value, e.g. "Must"
-//     assignees: string[];         // GitHub logins
-//     labels: string[];            // excludes type:* label (reflected in `type`)
-//     epic: string | null;         // GitHub Milestone title; null if unset
-//     created_at: string;          // ISO-8601
-//     updated_at: string;          // ISO-8601
-//     url: string | null;          // canonical URL in the backend UI
-//   }
-//   NOTE: README story shape table says "(V1 reads epic membership; does not write)" —
-//   this is stale. scrum_create_story and scrum_update_story both accept epic as input
-//   (it maps to a GitHub Milestone). Epic IS writable in v1. The README table note
-//   should be removed.
+// ── SCRUM DOMAIN TYPES ─────────────────────────────────────────────────────────
+
+/**
+ * A reference to a single Story.
+ * Accepted forms: `{ "number": 42 }` (user-facing reference, e.g., issue number)
+ * or `{ "id": "<opaque>" }` (backend-native handle returned by previous calls).
+ */
+export interface StoryRef {
+  number?: number; // user-facing issue number (e.g. GitHub issue #42)
+  id?: string; // opaque backend handle returned by a previous tool call
+}
+
+/**
+ * A reference to a sprint.
+ * Accepted forms: `"current"`, `"next"`, `null` (= no sprint, i.e., the backlog),
+ * or an explicit sprint name (e.g., `"Sprint 12"`).
+ */
+export type SprintRef = "current" | "next" | null | string;
+
+/**
+ * One of the five writable board fields.
+ * The set is fixed; new field types are out of scope for v1.
+ */
+export type ScrumField = "status" | "sprint" | "story_points" | "priority" | "assignee";
+
+/**
+ * Story type — drives the type label or category the backend applies.
+ * NOTE: There is no "impediment" StoryType. scrum_log_impediment uses type:"spike"
+ * plus an "impediment" label.
+ */
+export type StoryType = "feature" | "bug" | "tech_debt" | "spike";
+
+/**
+ * The canonical Story entity returned by every read tool.
+ *
+ * Epic IS writable in v1 (maps to GitHub Milestone).
+ */
+export interface Story {
+  ref: { number: number; id: string }; // always populated with both forms after a read
+  title: string;
+  body: string;
+  type: StoryType | null;
+  status: string | null; // team's vocabulary value, e.g. "In Progress"
+  sprint: string | null; // sprint name, or null if in backlog
+  story_points: number | null;
+  priority: string | null; // team's vocabulary value, e.g. "Must"
+  assignees: string[]; // GitHub logins
+  labels: string[]; // excludes type:* label (reflected in `type`)
+  epic: string | null; // GitHub Milestone title; null if unset
+  created_at: string; // ISO-8601
+  updated_at: string; // ISO-8601
+  url: string | null; // canonical URL in the backend UI
+}
 
 export interface PageInfo {
   hasNextPage: boolean;

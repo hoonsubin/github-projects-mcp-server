@@ -13,7 +13,7 @@
 // startup config; pass them into each loadConfig call.
 // =============================================================================
 
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
+import type { McpServer as _McpServer } from "@modelcontextprotocol/sdk/server/mcp";
 
 // todo: [Phase 2] Uncomment imports as each tool is implemented:
 // import { loadConfig } from "../services/config.ts";

@@ -92,7 +92,7 @@ interface GitHubClient {
  * Load and merge scrum.config.yml with live GitHub project field metadata.
  * Called by every tool handler at invocation time. See implementation steps above.
  */
-export async function loadConfig(
+export function loadConfig(
   _github: GitHubClient,
   _owner: string,
   _ownerType: "user" | "org",

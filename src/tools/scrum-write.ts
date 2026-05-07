@@ -14,7 +14,7 @@
 //     13f. scrum_log_impediment (composes create_story + post_note)
 // =============================================================================
 
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
+import type { McpServer as _McpServer } from "@modelcontextprotocol/sdk/server/mcp";
 
 // todo: [Phase 3] Uncomment imports as each tool is implemented:
 // import { loadConfig } from "../services/config.ts";

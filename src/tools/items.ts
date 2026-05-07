@@ -1,16 +1,5 @@
 // todo: [Phase 4] DELETE THIS FILE — fully superseded by scrum_* tools
-// todo: [Phase 1] Add resolvers to src/services/resolver.ts
-// todo: [Phase 1] Add input schemas to src/schemas/scrum.ts
-// todo: [Phase 1] Add config loader to src/services/config.ts
-// todo: [Phase 2] Add scrum_get_board to src/tools/scrum-read.ts
-// todo: [Phase 2] Add scrum_get_backlog to src/tools/scrum-read.ts
-// todo: [Phase 2] Add scrum_get_story to src/tools/scrum-read.ts
-// todo: [Phase 3] Add scrum_set_field to src/tools/scrum-write.ts
-// todo: [Phase 3] Add scrum_create_story to src/tools/scrum-write.ts
-// todo: [Phase 3] Add scrum_update_story to src/tools/scrum-write.ts
-// todo: [Phase 3] Add scrum_plan_sprint to src/tools/scrum-write.ts
-// todo: [Phase 3] Add scrum_post_note to src/tools/scrum-write.ts
-// todo: [Phase 3] Add scrum_log_impediment to src/tools/scrum-write.ts
+// [Phase 1] All prerequisite types, config loader, resolvers, and input schemas are implemented.
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
 import { formatError, graphql } from "../services/github.ts";
 import {

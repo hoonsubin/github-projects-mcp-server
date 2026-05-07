@@ -1,27 +1,14 @@
 // =============================================================================
 // src/services/resolver.ts
 //
-// ── BEFORE implementing anything here ────────────────────────────────────────
-// StoryRef and SprintRef are temporarily defined and exported from this file.
-// Per plan step 1, they belong in src/types.ts. Move them there first, then
-// replace the definitions below with:
-//   import type { StoryRef, SprintRef } from "../types.ts";
-// (The RuntimeConfig import stays in this file.)
-//
 // ── Phase 1, step 4: implement resolveSprint ─────────────────────────────────
 // ── Phase 1, step 9: implement resolveStory ──────────────────────────────────
 // =============================================================================
 
 import type { RuntimeConfig } from "./config.ts";
+import type { SprintRef, StoryRef } from "../types.ts";
 
-// Temporary home — move to src/types.ts (step 1), then import from there.
-export interface StoryRef {
-  number?: number; // user-facing issue number (e.g. GitHub issue #42)
-  id?: string; // opaque backend handle returned by a previous tool call
-}
-
-// Temporary home — move to src/types.ts (step 1), then import from there.
-export type SprintRef = "current" | "next" | null | string;
+export type { SprintRef, StoryRef };
 
 /**
  * Resolved story — both node IDs the backend mutations need.
@@ -42,7 +29,7 @@ export interface ResolvedStory {
  *   - { id }     → treat id as project item ID (PVTI_...); query projectV2Item { content { ... on Issue { id, number } } }
  *   - Throw a descriptive error if the story is not found in the project
  */
-export async function resolveStory(
+export function resolveStory(
   _ref: StoryRef,
   _config: RuntimeConfig,
   _github: { graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> },
