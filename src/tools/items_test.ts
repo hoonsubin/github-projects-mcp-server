@@ -332,7 +332,9 @@ Deno.test(
   async () => {
     Deno.env.set("GITHUB_TOKEN", "test-token");
     // Board has 2 DRAFT_ISSUE items, but filter asks for Issue — should explain the mismatch.
-    const restore = mockFetch(wrapUserItems([makeDraftItem("PVTI_1", "A"), makeDraftItem("PVTI_2", "B")], 2));
+    const restore = mockFetch(
+      wrapUserItems([makeDraftItem("PVTI_1", "A"), makeDraftItem("PVTI_2", "B")], 2),
+    );
     try {
       const client = await makeTestClient();
       const result = await client.callTool({

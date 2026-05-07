@@ -74,9 +74,9 @@ fields:
   status: "Status" # SINGLE_SELECT type field
   story_points: "Story Points" # NUMBER type field
   priority: "Priority" # SINGLE_SELECT type field
-  # Add custom fields as needed:
-  # epic: "Epic"
-  # blocked_reason: "Blocked Reason"
+# Add custom fields as needed:
+# epic: "Epic"
+# blocked_reason: "Blocked Reason"
 
 # ── STATUS VOCABULARY ────────────────────────────────────────────────────────
 #

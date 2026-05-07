@@ -17,7 +17,7 @@ import type { RuntimeConfig } from "./config.ts";
 // Temporary home — move to src/types.ts (step 1), then import from there.
 export interface StoryRef {
   number?: number; // user-facing issue number (e.g. GitHub issue #42)
-  id?: string;     // opaque backend handle returned by a previous tool call
+  id?: string; // opaque backend handle returned by a previous tool call
 }
 
 // Temporary home — move to src/types.ts (step 1), then import from there.
@@ -28,8 +28,8 @@ export type SprintRef = "current" | "next" | null | string;
  * { number } path requires a GraphQL call; { id } path is a direct item lookup.
  */
 export interface ResolvedStory {
-  itemId: string;      // project item node ID (PVTI_...)
-  issueId: string;     // issue node ID (I_kwDO...)
+  itemId: string; // project item node ID (PVTI_...)
+  issueId: string; // issue node ID (I_kwDO...)
   issueNumber: number; // user-facing issue number
 }
 

@@ -113,11 +113,15 @@ export const formatItem = (item: ProjectV2Item): string => {
     if (c.__typename === "DraftIssue") {
       // Draft issues have no repository content node ID — they exist only in the project board.
       lines.push(`**Title**: ${c.title}`);
-      lines.push(`⚠️ Draft issue — no repository content node ID. Cannot be added to other projects or linked to PRs via github_add_item_to_project.`);
+      lines.push(
+        `⚠️ Draft issue — no repository content node ID. Cannot be added to other projects or linked to PRs via github_add_item_to_project.`,
+      );
       if (c.body) lines.push(`**Body**: ${c.body.slice(0, 200)}${c.body.length > 200 ? "…" : ""}`);
     } else if (c.__typename === "Issue" || c.__typename === "PullRequest") {
       // c.id is the content node ID (I_kwDO.../PR_kwDO...) — pass this to github_add_item_to_project.
-      lines.push(`**Content node ID**: \`${c.id}\` *(use as content_id in github_add_item_to_project)*`);
+      lines.push(
+        `**Content node ID**: \`${c.id}\` *(use as content_id in github_add_item_to_project)*`,
+      );
       lines.push(`**Title**: [${c.title}](${c.url}) (#${c.number})`);
       lines.push(`**State**: ${c.state}`);
       lines.push(`**Repo**: ${c.repository.nameWithOwner}`);
@@ -139,8 +143,9 @@ export const formatItem = (item: ProjectV2Item): string => {
       else if (fv.number !== undefined) value = String(fv.number);
       else if (fv.date !== undefined) value = fv.date;
       else if (fv.name !== undefined) value = fv.name; // single-select
-      else if (fv.title !== undefined) value = `${fv.title} (starts ${fv.startDate}, ${fv.duration}d) [id: ${fv.iterationId}]`; // iteration
-      else if (fv.users?.nodes) value = fv.users.nodes.map((u) => u.login).join(", ");
+      else if (fv.title !== undefined) {
+        value = `${fv.title} (starts ${fv.startDate}, ${fv.duration}d) [id: ${fv.iterationId}]`; // iteration
+      } else if (fv.users?.nodes) value = fv.users.nodes.map((u) => u.login).join(", ");
       else if (fv.labels?.nodes) value = fv.labels.nodes.map((l) => l.name).join(", ");
       else if (fv.milestone) value = fv.milestone.title;
       else if (fv.repository) value = fv.repository.nameWithOwner;

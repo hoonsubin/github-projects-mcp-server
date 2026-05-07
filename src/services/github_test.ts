@@ -64,7 +64,10 @@ Deno.test("enrichError - 401: includes token URL and permission list", () => {
 });
 
 Deno.test("enrichError - 403 rate-limited: instructs to wait until reset time", () => {
-  const err = new GitHubApiError("Rate limit or permission denied. Rate limit resets at 2026-01-01.", 403);
+  const err = new GitHubApiError(
+    "Rate limit or permission denied. Rate limit resets at 2026-01-01.",
+    403,
+  );
   const result = enrichError(err);
   assertStringIncludes(result, "→ Fix:");
   assertStringIncludes(result, "Wait until");

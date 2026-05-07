@@ -16,7 +16,7 @@ import { z } from "zod";
 export const StoryRefSchema = z
   .object({
     number: z.number().int().positive().optional(), // user-facing issue number
-    id: z.string().optional(),                      // opaque backend handle from a previous call
+    id: z.string().optional(), // opaque backend handle from a previous call
   })
   .refine((v) => v.number !== undefined || v.id !== undefined, {
     message: "StoryRef requires at least one of: number, id",
@@ -53,10 +53,10 @@ export const GetBoardSchema = z
 // scrum_get_backlog — all filters are optional; client-side filtering in handler
 export const GetBacklogSchema = z
   .object({
-    search: z.string().optional(),          // substring match on title+body
+    search: z.string().optional(), // substring match on title+body
     labels: z.array(z.string()).optional(), // include only stories carrying all these labels
-    priority: z.string().optional(),        // vocabulary value, e.g. "Must"
-    epic: z.string().optional(),            // Milestone title
+    priority: z.string().optional(), // vocabulary value, e.g. "Must"
+    epic: z.string().optional(), // Milestone title
     limit: z.number().int().positive().default(50),
   })
   .strict();
@@ -79,14 +79,14 @@ export const GetVelocitySchema = z
 export const CreateStorySchema = z
   .object({
     title: z.string().min(1),
-    body: z.string(),         // full markdown body; agent assembles user-story format + AC
+    body: z.string(), // full markdown body; agent assembles user-story format + AC
     type: StoryTypeSchema,
     priority: z.string().optional(),
     story_points: z.number().optional(),
     labels: z.array(z.string()).optional(),
-    epic: z.string().optional(),              // Milestone title; creates if not found
+    epic: z.string().optional(), // Milestone title; creates if not found
     assignees: z.array(z.string()).optional(), // GitHub logins
-    sprint: SprintRefSchema.optional(),       // if provided, placed on board immediately
+    sprint: SprintRefSchema.optional(), // if provided, placed on board immediately
   })
   .strict();
 
@@ -95,10 +95,10 @@ export const UpdateStorySchema = z
   .object({
     ref: StoryRefSchema,
     title: z.string().optional(),
-    body: z.string().optional(),            // replaces full body; agent reads first if appending
+    body: z.string().optional(), // replaces full body; agent reads first if appending
     labels: z.array(z.string()).optional(), // replaces label set (excludes type:* / priority:* managed elsewhere)
     assignees: z.array(z.string()).optional(), // replaces assignee set
-    epic: z.string().or(z.null()).optional(),  // null to detach from epic/Milestone
+    epic: z.string().or(z.null()).optional(), // null to detach from epic/Milestone
   })
   .strict();
 
@@ -125,9 +125,9 @@ export const PlanSprintSchema = z
 export const LogImpedimentSchema = z
   .object({
     description: z.string().min(1),
-    affects: StoryRefSchema,                // the story this impediment is blocking
-    raised_by: z.string().optional(),       // team member login; defaults to configured Scrum Master
-    priority: z.string().optional(),        // vocabulary value; defaults to highest tier
+    affects: StoryRefSchema, // the story this impediment is blocking
+    raised_by: z.string().optional(), // team member login; defaults to configured Scrum Master
+    priority: z.string().optional(), // vocabulary value; defaults to highest tier
   })
   .strict();
 

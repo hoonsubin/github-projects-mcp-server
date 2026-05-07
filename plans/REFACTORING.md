@@ -1,8 +1,6 @@
 # Refactoring Plan: `github_*` → `scrum_*` Tool Surface
 
-This document is the authoritative plan for refactoring the MCP server from its current
-GitHub-primitive tool surface to the backend-agnostic Scrum vocabulary defined in the README's
-**Tool Surface** section. Update this file as decisions are made or scope changes.
+This document is the authoritative plan for refactoring the MCP server from its current GitHub-primitive tool surface to the backend-agnostic Scrum vocabulary defined in the README's **Tool Surface** section. Update this file as decisions are made or scope changes.
 
 ---
 
@@ -10,11 +8,7 @@ GitHub-primitive tool surface to the backend-agnostic Scrum vocabulary defined i
 
 ### Why this refactoring
 
-The current 18 `github_*` tools expose GitHub GraphQL primitives directly — the agent has to manage
-project node IDs, field IDs, option IDs, iteration IDs, and user node IDs in its own context. The
-README's design requires the server to own all of that resolution so the agent speaks only Scrum
-vocabulary. A `StoryRef` of `{ "number": 42 }` must be enough; `"current"` must be enough to target
-the active sprint.
+The current 18 `github_*` tools expose GitHub GraphQL primitives directly — the agent has to manage project node IDs, field IDs, option IDs, iteration IDs, and user node IDs in its own context. The README's design requires the server to own all of that resolution so the agent speaks only Scrum vocabulary. A `StoryRef` of `{ "number": 42 }` must be enough; `"current"` must be enough to target the active sprint.
 
 ### Agreed decisions
 
@@ -29,8 +23,7 @@ the active sprint.
 
 ## Target Tool Surface
 
-Eleven tools. This is the complete, stable contract. No `github_*` tool outside `github_graphql`
-should be agent-callable after the cutover.
+Eleven tools. This is the complete, stable contract. No `github_*` tool outside `github_graphql` should be agent-callable after the cutover.
 
 ### Read tools (5)
 
@@ -63,13 +56,11 @@ should be agent-callable after the cutover.
 
 ## Phase 1 — Foundations
 
-No tool registrations change in this phase. The goal is to build the internal services and types
-that all eleven tools will share. Everything in Phase 1 is pure infrastructure.
+No tool registrations change in this phase. The goal is to build the internal services and types that all eleven tools will share. Everything in Phase 1 is pure infrastructure.
 
 ### 1a. New domain types — `src/types.ts`
 
-Add the canonical Scrum domain types. `SprintStatusResult` and `IterationVelocity` are partial
-predecessors that will be retired once the old tools are gone.
+Add the canonical Scrum domain types. `SprintStatusResult` and `IterationVelocity` are partial predecessors that will be retired once the old tools are gone.
 
 ```typescript
 // Accepted as input by any tool that takes a story reference.
@@ -114,20 +105,17 @@ export interface Story {
 }
 ```
 
-`SprintStatusResult`, `BulkUpdateResult`, and `IterationVelocity` become internal to their
-respective new tool handlers. Remove them from `types.ts` in Phase 4.
+`SprintStatusResult`, `BulkUpdateResult`, and `IterationVelocity` become internal to their respective new tool handlers. Remove them from `types.ts` in Phase 4.
 
 ### 1b. Config loader — `src/services/config.ts`
 
-A new service called by every tool handler at invocation time (stateless, per design principle 3).
-Replaces the pre-cached `BoardConfig` / `MergedScrumConfig` pattern.
+A new service called by every tool handler at invocation time (stateless, per design principle 3). Replaces the pre-cached `BoardConfig` / `MergedScrumConfig` pattern.
 
 **Responsibilities:**
 
 - Read `scrum.config.yml` from the repo path via the existing GitHub file service
 - Parse and validate against `ScrumConfigYml`
-- Fetch live field metadata from the GitHub project in a single `project.fields` call: field IDs,
-  single-select option IDs (status, priority, type, impediment), and the full iteration list
+- Fetch live field metadata from the GitHub project in a single `project.fields` call: field IDs, single-select option IDs (status, priority, type, impediment), and the full iteration list
 - Return a `RuntimeConfig` object that merges human config with resolved field metadata
 
 ```typescript
@@ -164,9 +152,7 @@ export async function loadConfig(
 ): Promise<RuntimeConfig>;
 ```
 
-**Caching policy:** no server-side cache. Each invocation fetches fresh. If round-trip latency
-becomes a problem in practice, a short-lived in-process TTL cache (≤60s) can be added later — but
-start without one to keep the stateless invariant clean.
+**Caching policy:** no server-side cache. Each invocation fetches fresh. If round-trip latency becomes a problem in practice, a short-lived in-process TTL cache (≤60s) can be added later — but start without one to keep the stateless invariant clean.
 
 ### 1c. Resolvers — `src/services/resolver.ts`
 
@@ -196,13 +182,11 @@ export function resolveSprint(
 ): string | null;
 ```
 
-`resolveSprint` is synchronous — it works on the iteration list already in `RuntimeConfig`.
-`resolveStory` is async because a number-based lookup requires a GraphQL call.
+`resolveSprint` is synchronous — it works on the iteration list already in `RuntimeConfig`. `resolveStory` is async because a number-based lookup requires a GraphQL call.
 
 ### 1d. Input schemas — `src/schemas/scrum.ts`
 
-Zod schemas for all eleven tools. No GitHub IDs, node IDs, or internal field identifiers appear
-in these schemas — Scrum vocabulary only.
+Zod schemas for all eleven tools. No GitHub IDs, node IDs, or internal field identifiers appear in these schemas — Scrum vocabulary only.
 
 **Primitive schemas (shared by multiple tools):**
 
@@ -320,31 +304,24 @@ export const PostNoteSchema = z
   .strict();
 ```
 
-The predecessor schemas to delete from `src/schemas/inputs.ts` in Phase 4:
-`GetSprintStatusSchema`, `GetVelocitySchema` (old), `GetBacklogItemsSchema`,
-`BulkUpdateItemFieldSchema`, `CloseSprintSchema`, `GenerateSprintReportSchema`.
+The predecessor schemas to delete from `src/schemas/inputs.ts` in Phase 4: `GetSprintStatusSchema`, `GetVelocitySchema` (old), `GetBacklogItemsSchema`, `BulkUpdateItemFieldSchema`, `CloseSprintSchema`, `GenerateSprintReportSchema`.
 
 ---
 
 ## Phase 2 — Read Tools
 
-New file: `src/tools/scrum-read.ts`. Exports a single `registerScrumReadTools(server, github)`
-function. Implement tools in the order below — each is independently testable.
+New file: `src/tools/scrum-read.ts`. Exports a single `registerScrumReadTools(server, github)` function. Implement tools in the order below — each is independently testable.
 
 ### `scrum_get_config`
 
 - Call `loadConfig(github, ...)`
-- Map `RuntimeConfig` to the return shape described in the README:
-  `definition_of_ready`, `definition_of_done`, `status_vocabulary`, `priority_vocabulary`,
-  `story_point_values`, `sprint` (`{ length_weeks, start_day }`), `team` (array of
-  `{ login, name, role }`), `ceremony_records_backend`
+- Map `RuntimeConfig` to the return shape described in the README: `definition_of_ready`, `definition_of_done`, `status_vocabulary`, `priority_vocabulary`, `story_point_values`, `sprint` (`{ length_weeks, start_day }`), `team` (array of `{ login, name, role }`), `ceremony_records_backend`
 - No additional GitHub calls beyond what `loadConfig` already makes
 
 ### `scrum_get_velocity`
 
 - Call `loadConfig` to get the completed iteration list
-- For each completed iteration in the requested `window`: fetch all project items assigned to that
-  iteration, sum `story_points` field values, split by whether status is the "Done" option
+- For each completed iteration in the requested `window`: fetch all project items assigned to that iteration, sum `story_points` field values, split by whether status is the "Done" option
 - Return the array described in the README plus `average_completed`
 
 Builds on the existing `IterationVelocity` type logic already sketched in the codebase.
@@ -353,14 +330,11 @@ Builds on the existing `IterationVelocity` type logic already sketched in the co
 
 - Call `loadConfig` to get the sprint field ID
 - Fetch all project items where the sprint field is unset (no iteration value)
-- Apply optional client-side filters: `search` (title+body substring), `labels`, `priority`, `epic`,
-  `limit` cap
-- Compute the `readiness` summary: count items that have story points set, have an AC checklist in
-  body, and have a priority value
+- Apply optional client-side filters: `search` (title+body substring), `labels`, `priority`, `epic`, `limit` cap
+- Compute the `readiness` summary: count items that have story points set, have an AC checklist in body, and have a priority value
 - Map each item to the `Story` shape
 
-Note: GitHub Projects v2 does not support server-side filtering on field absence. Retrieve all
-items and filter client-side. Use pagination; respect the `limit` cap.
+Note: GitHub Projects v2 does not support server-side filtering on field absence. Retrieve all items and filter client-side. Use pagination; respect the `limit` cap.
 
 ### `scrum_get_board`
 
@@ -376,8 +350,7 @@ The existing `SprintStatusResult` logic is the reference — port and adapt.
 
 - Accept `ref: StoryRef`
 - Call `resolveStory` to get the issue node ID
-- Fetch the issue with: body, comments (author/body/created_at/url), linked PRs (via the issue's
-  timeline or a `closingIssuesReferences` query), and current project field values
+- Fetch the issue with: body, comments (author/body/created_at/url), linked PRs (via the issue's timeline or a `closingIssuesReferences` query), and current project field values
 - Parse AC from the body by scanning for `- [ ]` / `- [x]` markdown checkboxes
 - Map to `Story` plus the extended fields: `comments`, `linked_prs`, `sub_tasks`, `acceptance_criteria`
 
@@ -385,8 +358,7 @@ The existing `SprintStatusResult` logic is the reference — port and adapt.
 
 ## Phase 3 — Write Tools
 
-New file: `src/tools/scrum-write.ts`. Exports `registerScrumWriteTools(server, github)`.
-Also registers the deprecated `github_graphql` tool here (or in a separate `registerDeprecatedTools`).
+New file: `src/tools/scrum-write.ts`. Exports `registerScrumWriteTools(server, github)`. Also registers the deprecated `github_graphql` tool here (or in a separate `registerDeprecatedTools`).
 
 ### `scrum_post_note` (implement first — simplest)
 
@@ -422,10 +394,8 @@ Returns the updated `Story`.
 
 - Create the issue via the `createIssue` mutation (repo from config)
 - Add the created issue to the project via `addProjectV2ItemById`
-- For each optional field provided (`priority`, `story_points`, `sprint`, `assignees`): call the
-  `scrum_set_field` logic inline
-- If issue creation succeeds but a field-set fails, return a structured error that includes the
-  partial `StoryRef` so the agent can retry field-sets rather than duplicating the story
+- For each optional field provided (`priority`, `story_points`, `sprint`, `assignees`): call the `scrum_set_field` logic inline
+- If issue creation succeeds but a field-set fails, return a structured error that includes the partial `StoryRef` so the agent can retry field-sets rather than duplicating the story
 - Return the new `Story`
 
 ### `scrum_plan_sprint`
@@ -440,10 +410,8 @@ Returns the updated `Story`.
 
 Composes existing primitives:
 
-1. `scrum_create_story` with `type = "spike"` (or the team's impediment label if distinct — check
-   config) and initial status set to `"Blocked"`
-2. `scrum_post_note` on the affected story with a cross-link: "Impediment #N opened against this
-   story."
+1. `scrum_create_story` with `type = "spike"` (or the team's impediment label if distinct — check config) and initial status set to `"Blocked"`
+2. `scrum_post_note` on the affected story with a cross-link: "Impediment #N opened against this story."
 3. `scrum_post_note` on the new impediment story back-linking to the affected story
 
 Returns the impediment as a `Story` plus `linked_to: StoryRef`.
@@ -473,33 +441,25 @@ registerScrumWriteTools(server, github); // includes deprecated github_graphql
 | `src/tools/items.ts`      | Delete — fully superseded                                                          |
 | `src/tools/repository.ts` | Gut tool registrations; keep any internal helper functions still used by new tools |
 
-The underlying service functions in `src/services/github.ts` and `src/services/formatters.ts`
-are not deleted — new tools call them internally.
+The underlying service functions in `src/services/github.ts` and `src/services/formatters.ts` are not deleted — new tools call them internally.
 
 ### Schemas cleanup — `src/schemas/inputs.ts`
 
-**Remove:** `GetSprintStatusSchema`, `GetVelocitySchema` (old version), `GetBacklogItemsSchema`,
-`BulkUpdateItemFieldSchema`, `CloseSprintSchema`, `GenerateSprintReportSchema`.
+**Remove:** `GetSprintStatusSchema`, `GetVelocitySchema` (old version), `GetBacklogItemsSchema`, `BulkUpdateItemFieldSchema`, `CloseSprintSchema`, `GenerateSprintReportSchema`.
 
-**Keep:** `GetIssueNodeIdSchema`, `GetUserNodeIdSchema`, `GraphQLQuerySchema`, `GetRepoFileSchema`,
-`WriteRepoFileSchema`, `CreateCommentSchema` — these back the new tool implementations and
-the deprecated `github_graphql` tool.
+**Keep:** `GetIssueNodeIdSchema`, `GetUserNodeIdSchema`, `GraphQLQuerySchema`, `GetRepoFileSchema`, `WriteRepoFileSchema`, `CreateCommentSchema` — these back the new tool implementations and the deprecated `github_graphql` tool.
 
 ### Types cleanup — `src/types.ts`
 
-Remove once old tools are gone: `SprintStatusResult`, `BulkUpdateResult` (implementation details
-that leaked into the shared type file).
+Remove once old tools are gone: `SprintStatusResult`, `BulkUpdateResult` (implementation details that leaked into the shared type file).
 
-`BoardConfig` and sync-script-specific types (`GhFieldBase`, `GhSingleSelectField`,
-`GhIterationField`, `GhProjectResponse`) can be removed if `scripts/sync-project-config.ts` is
-retired — confirm separately.
+`BoardConfig` and sync-script-specific types (`GhFieldBase`, `GhSingleSelectField`, `GhIterationField`, `GhProjectResponse`) can be removed if `scripts/sync-project-config.ts` is retired — confirm separately.
 
 ### `github_graphql` deprecation marker
 
 Update the tool description to read:
 
-> **DEPRECATED.** This tool is preserved for ad-hoc diagnostic GraphQL lookups but will be removed
-> in a future version. Prefer the `scrum_*` tools for all agent workflows. Mutations are blocked.
+> **DEPRECATED.** This tool is preserved for ad-hoc diagnostic GraphQL lookups but will be removed in a future version. Prefer the `scrum_*` tools for all agent workflows. Mutations are blocked.
 
 ---
 
@@ -531,8 +491,7 @@ src/
 
 ## Implementation Order (minimum functioning build)
 
-This sequence gets all 11 tools registered and the read path working end-to-end. Write tools are
-stubbed with a clear `"not yet implemented"` error until step 13.
+This sequence gets all 11 tools registered and the read path working end-to-end. Write tools are stubbed with a clear `"not yet implemented"` error until step 13.
 
 1. `src/types.ts` — add domain types (`Story`, `StoryRef`, `SprintRef`, `ScrumField`, `StoryType`)
 2. `src/schemas/scrum.ts` — all input schemas
@@ -545,8 +504,7 @@ stubbed with a clear `"not yet implemented"` error until step 13.
 9. `src/services/resolver.ts` — `resolveStory` (async; needed by remaining tools)
 10. `src/tools/scrum-read.ts` — `scrum_get_story`
 11. `src/tools/scrum-write.ts` — stubs for all 6 write tools + deprecated `github_graphql`
-12. `src/index.ts` — swap to new register calls; delete `projects.ts` and `items.ts`
-    ← **minimum functioning build: server starts, all 11 tools appear in tool list**
+12. `src/index.ts` — swap to new register calls; delete `projects.ts` and `items.ts` ← **minimum functioning build: server starts, all 11 tools appear in tool list**
 13. Write tool implementations in order:
     - `scrum_post_note` (simplest)
     - `scrum_set_field` (core primitive)
@@ -561,28 +519,18 @@ stubbed with a clear `"not yet implemented"` error until step 13.
 
 Resolve these before or during implementation — each affects a tool's design.
 
-**Epic field representation.** GitHub Projects v2 has no native "epic" concept. Confirm how epic
-membership is currently (or will be) modelled: custom single-select field on the project, a label
-on the issue, or a parent-issue relationship. This affects `scrum_create_story`, `scrum_update_story`,
-and the `epic` field in `Story`.
+**Epic field representation.** GitHub Projects v2 has no native "epic" concept. Confirm how epic membership is currently (or will be) modelled: custom single-select field on the project, a label on the issue, or a parent-issue relationship. This affects `scrum_create_story`, `scrum_update_story`, and the `epic` field in `Story`.
 
 > A: Epic should be using GitHub API's `Milestone` type
 
-**Sprint "next" resolution.** "Next" is defined as the scheduled iteration immediately after the
-active one, by iteration order in the GitHub Projects API response. Confirm this ordering is
-reliable and that there is at most one active iteration at a time.
+**Sprint "next" resolution.** "Next" is defined as the scheduled iteration immediately after the active one, by iteration order in the GitHub Projects API response. Confirm this ordering is reliable and that there is at most one active iteration at a time.
 
 > A: The MCP server should perform the check operation, and notify the AI agent that there is or isn't a `next` sprint. The MCP server only reports, it is up to the agent and the user to figure out if a sprint is missing or the current sprint is the last sprint.
 
-**Assignee field writes.** The GitHub Projects v2 `ASSIGNEES` field is a built-in field, not a
-custom field. Confirm whether `updateProjectV2ItemFieldValue` accepts it or whether assignee writes
-must go through the `updateIssue` mutation on the issue itself (and whether both are needed for
-project-item vs. issue-level assignee state).
+**Assignee field writes.** The GitHub Projects v2 `ASSIGNEES` field is a built-in field, not a custom field. Confirm whether `updateProjectV2ItemFieldValue` accepts it or whether assignee writes must go through the `updateIssue` mutation on the issue itself (and whether both are needed for project-item vs. issue-level assignee state).
 
 > A: Use the `updateIssue` built-in API for this function. Do not create a separate field for `ASSIGNEES`. The MCP should treat Issues, PRs, and ProjectsV2 project board under the same Scrum terminology without separating overlapping concepts for technical reasons.
 
-**Sync script fate.** `scripts/sync-project-config.ts` and `scripts/graphql-codegen.ts` — confirm
-whether the sync script is retired alongside `BoardConfig`, or kept as a development utility
-independent of the agent-facing surface.
+**Sync script fate.** `scripts/sync-project-config.ts` and `scripts/graphql-codegen.ts` — confirm whether the sync script is retired alongside `BoardConfig`, or kept as a development utility independent of the agent-facing surface.
 
 > A: The sync script is retired and not needed as all information should be contained in the subject repository, retrievable via the GraphQL API, or use the pre-fetched schema as the TypeScript type.

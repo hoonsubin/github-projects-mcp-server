@@ -1,6 +1,7 @@
 # Sprint Timelines & Release Roadmaps (Markwhen)
 
 ## Table of Contents
+
 1. [Single Sprint Timeline](#1-single-sprint-timeline)
 2. [Multi-Sprint Release Roadmap](#2-multi-sprint-release-roadmap)
 3. [Team Capacity Calendar](#3-team-capacity-calendar)
@@ -203,12 +204,14 @@ after last 2 weeks: Team B — Sprint 9 #TeamB
 **Rendering:** `mw sprint.mw output.html` — opens a self-contained Gantt+calendar.
 
 **Sprint template workflow:**
+
 1. Copy template 1 → fill in team name, sprint number, start date
 2. Adjust ceremony durations to match your team's actual timeboxes
 3. Commit `.mw` file to git alongside your sprint markdown artifacts
 4. Re-render each sprint for the team dashboard or stakeholder view
 
 **Naming convention (recommended):**
+
 ```
 docs/
   sprints/

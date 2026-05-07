@@ -55,7 +55,7 @@
 //   may be added later, but start without one.
 // =============================================================================
 
-import type { ScrumConfigYml, IterationEntry } from "../types.ts";
+import type { IterationEntry, ScrumConfigYml } from "../types.ts";
 
 // RuntimeConfig — merges human config (scrum.config.yml) with live GitHub field metadata.
 // Internal only — never exposed to the agent.
@@ -67,13 +67,13 @@ export interface RuntimeConfig {
     statusFieldId: string;
     storyPointsFieldId: string | null;
     priorityFieldId: string | null;
-    epicFieldId: string | null;    // maps to GitHub Milestone field
+    epicFieldId: string | null; // maps to GitHub Milestone field
     assigneeFieldId: string | null;
     typeFieldId: string | null;
   };
-  statusOptions: Record<string, string>;   // vocabulary name → GitHub option ID
+  statusOptions: Record<string, string>; // vocabulary name → GitHub option ID
   priorityOptions: Record<string, string>; // vocabulary name → GitHub option ID
-  typeOptions: Record<string, string>;     // StoryType value → GitHub option ID
+  typeOptions: Record<string, string>; // StoryType value → GitHub option ID
   // Uses IterationEntry from types.ts: { id, title, startDate, duration }
   iterations: {
     active: IterationEntry | null;
