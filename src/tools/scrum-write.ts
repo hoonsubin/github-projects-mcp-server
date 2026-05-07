@@ -1,17 +1,18 @@
 // =============================================================================
-// src/tools/scrum-write.ts — Phase 3: all 6 scrum_* write tools + deprecated github_graphql
+// src/tools/scrum-write.ts — Phase 3: all 5 scrum_* write tools + scrum_add_vocabulary
+//                           + deprecated github_graphql
 //
 // Implementation order (each builds on the previous):
-//   Step 11: Stub all 6 write tools with "not yet implemented" errors + register github_graphql
+//   Step 11: Stub all 5 write tools + scrum_add_vocabulary + register github_graphql
 //   Step 12: Swap index.ts to registerScrumReadTools + registerScrumWriteTools (server starts,
 //            all 11 tools appear in tool list — minimum functioning build checkpoint)
 //   Step 13: Implement write tools in this order:
-//     13a. scrum_post_note    (simplest — only needs resolveStory + addComment mutation)
-//     13b. scrum_set_field    (core primitive — all other write tools depend on it internally)
+//     13a. scrum_add_vocabulary  (simplest — single field/label mutation, no resolver needed)
+//     13b. scrum_set_field       (core primitive — all other write tools depend on it internally)
 //     13c. scrum_update_story
 //     13d. scrum_create_story
 //     13e. scrum_plan_sprint
-//     13f. scrum_log_impediment (composes create_story + post_note)
+//     13f. scrum_log_impediment  (composes create_story + a direct comment mutation)
 // =============================================================================
 
 import type { McpServer as _McpServer } from "@modelcontextprotocol/sdk/server/mcp";
@@ -19,24 +20,33 @@ import type { McpServer as _McpServer } from "@modelcontextprotocol/sdk/server/m
 // todo: [Phase 3] Uncomment imports as each tool is implemented:
 // import { loadConfig } from "../services/config.ts";
 // import { resolveStory, resolveSprint } from "../services/resolver.ts";
-// import { CreateStorySchema, UpdateStorySchema, SetFieldSchema } from "../schemas/scrum.ts";
-// import { PlanSprintSchema, LogImpedimentSchema, PostNoteSchema } from "../schemas/scrum.ts";
+// import { AddVocabularySchema, CreateStorySchema, UpdateStorySchema } from "../schemas/scrum.ts";
+// import { SetFieldSchema, PlanSprintSchema, LogImpedimentSchema } from "../schemas/scrum.ts";
 // import { GraphQLQuerySchema } from "../schemas/inputs.ts";
 // import type { Story, StoryRef } from "../types.ts";
 
 /**
- * Register all 6 scrum_* write tools + deprecated github_graphql on the MCP server.
+ * Register all scrum_* write tools + deprecated github_graphql on the MCP server.
  *
- * todo: [Phase 3, step 13a] scrum_post_note
- *   - Call resolveStory to get the issue node ID
- *   - If kind !== "comment", prefix body with a bold tag: "**[Standup]**\n\n{body}"
- *   - Call addComment mutation via CreateCommentSchema handler (subject_id = issueId, type = "issue")
- *   - Return: { url: string } — the canonical URL of the new comment
+ * todo: [Phase 3, step 13a] scrum_add_vocabulary  [implement first — no resolver needed]
+ *   Idempotent addition of a vocabulary entry to the platform schema.
+ *   - kind:"status_option"  → call updateProjectV2SingleSelectField mutation to append the new
+ *                             option to the Status field. Use config.fields.statusFieldId.
+ *                             Return { created: true, field: "status", value } or
+ *                             { created: false, message: "option already exists" } if present.
+ *   - kind:"priority_option"→ same pattern for config.fields.priorityFieldId.
+ *   - kind:"label"          → call createLabel mutation on the repo (name = value, auto-assign
+ *                             a colour from a fixed palette based on label name hash).
+ *                             If the label already exists, return { created: false }.
+ *   NOTE: Cannot create new project fields (structural setup). If statusFieldId or
+ *   priorityFieldId is null, return a structured error instructing the user to create
+ *   the field manually in the GitHub Projects UI before retrying.
  *
  * todo: [Phase 3, step 13b] scrum_set_field  [core primitive — implement before other write tools]
  *   Translates Scrum vocabulary to GitHub Projects v2 field mutations. Per field:
  *   - status:        resolve name → config.statusOptions[value]; call updateProjectV2ItemFieldValue
- *                    with singleSelectOptionId
+ *                    with singleSelectOptionId. Return structured error if value not in vocabulary
+ *                    (hint: "run scrum_add_vocabulary to add the missing option first").
  *   - sprint:        call resolveSprint → iteration ID or null; set or clear the iteration field
  *   - story_points:  set number field value, or clear if null
  *   - priority:      resolve name → config.priorityOptions[value]; set or clear singleSelectOptionId
@@ -55,7 +65,8 @@ import type { McpServer as _McpServer } from "@modelcontextprotocol/sdk/server/m
  *
  * todo: [Phase 3, step 13d] scrum_create_story
  *   - Create issue via CreateIssueSchema handler (title, body, assignee_ids, label_ids)
- *     NOTE: resolve type label name → label node ID before calling (create label if it doesn't exist)
+ *     NOTE: resolve type label name → label node ID before calling (create label if it doesn't
+ *     exist — reuse scrum_add_vocabulary label logic internally)
  *   - Add the new issue to the project via addProjectV2ItemById mutation
  *   - For each optional field (priority, story_points, sprint): call scrum_set_field logic inline
  *     (reuse the internal helper, not the registered tool — avoid double resolver calls)
@@ -70,15 +81,20 @@ import type { McpServer as _McpServer } from "@modelcontextprotocol/sdk/server/m
  *   - Collect results: assigned[] (succeeded) and skipped[] ({ ref, reason }) for failures
  *   - Return: { assigned: StoryRef[], skipped: [{ ref, reason }] }
  *
- * todo: [Phase 3, step 13f] scrum_log_impediment  [composes create_story + post_note]
+ * todo: [Phase 3, step 13f] scrum_log_impediment
  *   - Call scrum_create_story with:
  *       type: "spike"  (there is no "impediment" StoryType — use "spike" + "impediment" label)
- *       labels: ["impediment"]  (create label if it doesn't exist)
+ *       labels: ["impediment"]  (create label if it doesn't exist via scrum_add_vocabulary logic)
  *       status: "Blocked" (via set_field after creation, or inline)
  *       priority: args.priority ?? highest tier from config.yml
  *       raised_by: args.raised_by ?? configured Scrum Master login from config.yml
- *   - Call scrum_post_note on the *affected* story: "Impediment #N opened against this story."
- *   - Call scrum_post_note on the *new impediment* story: "This impediment affects story #M."
+ *   - Post a GitHub comment on the *affected* story via addComment mutation:
+ *       "Impediment #N opened against this story."
+ *   - Post a GitHub comment on the *new impediment* story via addComment mutation:
+ *       "This impediment affects story #M."
+ *   NOTE: scrum_log_impediment uses the addComment mutation directly — it does not depend on
+ *   scrum_post_note (which was removed from the tool surface). The addComment mutation is a
+ *   shared internal primitive, not an agent-callable tool.
  *   - Return: impediment as Story + { linked_to: StoryRef }
  *
  * todo: [Phase 3, step 11] github_graphql (deprecated — register first as part of step 11 stub pass)
@@ -94,6 +110,6 @@ import type { McpServer as _McpServer } from "@modelcontextprotocol/sdk/server/m
 // todo: [Phase 3]   github: { graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> },
 // todo: [Phase 3] ): void {
 // todo: [Phase 3]   // Step 11: stub each tool + register deprecated github_graphql
-// todo: [Phase 3]   // Step 13: implement in order: post_note → set_field → update_story
+// todo: [Phase 3]   // Step 13: implement in order: add_vocabulary → set_field → update_story
 // todo: [Phase 3]   //                               → create_story → plan_sprint → log_impediment
 // todo: [Phase 3] }

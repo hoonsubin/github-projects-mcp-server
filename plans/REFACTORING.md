@@ -15,7 +15,7 @@ The current 18 `github_*` tools expose GitHub GraphQL primitives directly — th
 | Question                                             | Decision                                                                                                                                                 |
 | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Config file location                                 | `.github/scrum/config.yml` in the repo — unchanged from current `ScrumConfigYml` assumption                                                              |
-| Project identity (owner, owner_type, project_number) | Provided in the agent's system prompt during testing; eventually the standard orient call (`scrum_get_config`) is how the agent acquires and caches this |
+| Project identity (owner, owner_type, project_number) | Provided in the agent's system prompt during testing; eventually the standard orient call (`scrum_orient`) is how the agent acquires and caches this |
 | Transition strategy                                  | Hard cutover — no side-by-side period. Build the minimum functioning `scrum_*` surface first; remove old tools in the same pass                          |
 | `github_graphql`                                     | Kept on the tool surface, marked deprecated in its description                                                                                           |
 
@@ -27,24 +27,24 @@ Eleven tools. This is the complete, stable contract. No `github_*` tool outside 
 
 ### Read tools (5)
 
-| Tool                 | One-line purpose                                                    |
-| -------------------- | ------------------------------------------------------------------- |
-| `scrum_get_config`   | Team's static Scrum configuration — DoR, DoD, vocabulary, roster    |
-| `scrum_get_board`    | Current sprint backlog snapshot grouped by status with point totals |
-| `scrum_get_backlog`  | All unsprinted stories, filterable, with readiness summary          |
-| `scrum_get_story`    | Full detail of one story: comments, linked PRs, parsed AC           |
-| `scrum_get_velocity` | Historical sprint completion data over a configurable window        |
+| Tool                 | One-line purpose                                                                              |
+| -------------------- | --------------------------------------------------------------------------------------------- |
+| `scrum_orient`       | Current platform state + declared vocabulary — the agent's entry point for any new project   |
+| `scrum_get_sprint`   | Current sprint backlog snapshot grouped by status with point totals                           |
+| `scrum_get_backlog`  | All unsprinted stories, filterable, with readiness summary                                    |
+| `scrum_get_story`    | Full detail of one story: comments, linked PRs, parsed AC                                     |
+| `scrum_get_history`  | Raw completed-sprint snapshots with per-sprint stories[] and summary stats                    |
 
 ### Write tools (6)
 
-| Tool                   | One-line purpose                                                   |
-| ---------------------- | ------------------------------------------------------------------ |
-| `scrum_create_story`   | Create a story and optionally place it on the board in one call    |
-| `scrum_update_story`   | Edit story content (title, body, labels, assignees, epic)          |
-| `scrum_set_field`      | Single entry point for all board-field mutations                   |
-| `scrum_plan_sprint`    | Bulk-assign stories to a sprint                                    |
-| `scrum_log_impediment` | Create a blocking impediment story linked to an affected story     |
-| `scrum_post_note`      | Append a comment/note to a story (audit trail, ceremony artefacts) |
+| Tool                   | One-line purpose                                                                             |
+| ---------------------- | -------------------------------------------------------------------------------------------- |
+| `scrum_create_story`   | Create a story and optionally place it on the board in one call                              |
+| `scrum_update_story`   | Edit story content (title, body, labels, assignees, epic)                                    |
+| `scrum_set_field`      | Single entry point for all story-level board-field mutations                                 |
+| `scrum_plan_sprint`    | Bulk-assign stories to a sprint                                                              |
+| `scrum_log_impediment` | Create a blocking impediment story linked to an affected story                               |
+| `scrum_add_vocabulary` | Idempotent addition of a vocabulary entry (field option or label) to the platform schema     |
 
 ### Deprecated (kept, not promoted)
 
@@ -223,7 +223,8 @@ export const StoryTypeSchema = z.enum(["feature", "bug", "tech_debt", "spike"]);
 
 ```typescript
 // Read tools
-export const GetBoardSchema = z
+// scrum_orient takes no arguments — uses z.object({}).strict().shape inline in the handler
+export const GetSprintSchema = z
   .object({ sprint: SprintRefSchema.optional() })
   .strict();
 export const GetBacklogSchema = z
@@ -236,12 +237,14 @@ export const GetBacklogSchema = z
   })
   .strict();
 export const GetStorySchema = z.object({ ref: StoryRefSchema }).strict();
-export const GetVelocitySchema = z
+export const GetHistorySchema = z
   .object({
     window: z.number().int().min(1).max(10).default(5),
   })
   .strict();
-// scrum_get_config takes no arguments — no schema needed
+export const GetBurndownSchema = z
+  .object({ sprint: SprintRefSchema.optional() })
+  .strict();
 
 // Write tools
 export const CreateStorySchema = z
@@ -273,7 +276,6 @@ export const SetFieldSchema = z
   .object({
     ref: StoryRefSchema,
     field: ScrumFieldSchema,
-    // Value shape depends on field — validated at runtime in the handler
     value: z.union([z.string(), z.number(), SprintRefSchema, z.null()]),
   })
   .strict();
@@ -295,11 +297,10 @@ export const LogImpedimentSchema = z
   })
   .strict();
 
-export const PostNoteSchema = z
+export const AddVocabularySchema = z
   .object({
-    ref: StoryRefSchema,
-    body: z.string().min(1),
-    kind: z.enum(["comment", "standup", "retro", "review"]).default("comment"),
+    kind: z.enum(["status_option", "priority_option", "label"]),
+    value: z.string().min(1),
   })
   .strict();
 ```
@@ -312,19 +313,22 @@ The predecessor schemas to delete from `src/schemas/inputs.ts` in Phase 4: `GetS
 
 New file: `src/tools/scrum-read.ts`. Exports a single `registerScrumReadTools(server, github)` function. Implement tools in the order below — each is independently testable.
 
-### `scrum_get_config`
+### `scrum_orient`
 
 - Call `loadConfig(github, ...)`
-- Map `RuntimeConfig` to the return shape described in the README: `definition_of_ready`, `definition_of_done`, `status_vocabulary`, `priority_vocabulary`, `story_point_values`, `sprint` (`{ length_weeks, start_day }`), `team` (array of `{ login, name, role }`), `ceremony_records_backend`
+- Map `RuntimeConfig` to two top-level keys:
+  - `platform_state`: fields (status, sprint, story_points, priority — each with `exists` bool and live options list), `labels` note, `iterations` (active, next, completed_count)
+  - `declared_vocabulary`: status map, priority map, story_point scale, sprint settings, team, DoR, DoD
+- Compute `missing_options` per field by diffing declared vocabulary values against live option names
 - No additional GitHub calls beyond what `loadConfig` already makes
 
-### `scrum_get_velocity`
+### `scrum_get_history`
 
 - Call `loadConfig` to get the completed iteration list
-- For each completed iteration in the requested `window`: fetch all project items assigned to that iteration, sum `story_points` field values, split by whether status is the "Done" option
-- Return the array described in the README plus `average_completed`
-
-Builds on the existing `IterationVelocity` type logic already sketched in the codebase.
+- For each completed iteration in the requested `window`: fetch all project items assigned to that iteration
+- Return per sprint: `stories[]` (lightweight: `{ number, title, points, status }`), `summary` (`{ committed_points, completed_points, carried_points, completion_rate, story_count, completed_count }`)
+- Top-level `window` field in the response (requested count vs. returned count may differ if fewer sprints exist)
+- **No** `average_completed` or any other derived aggregate — agent computes those from raw data
 
 ### `scrum_get_backlog`
 
@@ -336,7 +340,7 @@ Builds on the existing `IterationVelocity` type logic already sketched in the co
 
 Note: GitHub Projects v2 does not support server-side filtering on field absence. Retrieve all items and filter client-side. Use pagination; respect the `limit` cap.
 
-### `scrum_get_board`
+### `scrum_get_sprint`
 
 - Accept optional `sprint: SprintRef` (default `"current"`)
 - Call `loadConfig`, then `resolveSprint` to get the iteration ID
@@ -356,21 +360,31 @@ The existing `SprintStatusResult` logic is the reference — port and adapt.
 
 ---
 
+## Phase 2.5 — REST API + `scrum_get_burndown`
+
+See `plans/BURNDOWN.md` for the complete plan. Summary:
+
+- Add `rest<T>()` function to `src/services/github.ts` (single-request REST helper, same auth/timeout pattern as `graphql()`)
+- Add `GetBurndownSchema` to `src/schemas/scrum.ts` ✓ (already done)
+- Implement `scrum_get_burndown` inside `registerScrumReadTools` in `src/tools/scrum-read.ts`
+- Data source: Enterprise Audit Log preferred; falls back to Issue Close Proxy (one REST call per story) on 403
+
+---
+
 ## Phase 3 — Write Tools
 
 New file: `src/tools/scrum-write.ts`. Exports `registerScrumWriteTools(server, github)`. Also registers the deprecated `github_graphql` tool here (or in a separate `registerDeprecatedTools`).
 
-### `scrum_post_note` (implement first — simplest)
+### `scrum_add_vocabulary` (implement first — no resolver needed)
 
-- Accept `ref: StoryRef`, `body: string`, `kind`
-- Call `resolveStory` to get the issue node ID
-- Prefix the body with a kind tag when `kind !== "comment"` (e.g., `**[Standup]**\n\n{body}`)
-- Call the `addComment` mutation via the existing GitHub service
-- Return `{ url: string }`
+- Accept `kind` (`status_option` | `priority_option` | `label`) and `value`
+- `status_option` / `priority_option`: call `updateProjectV2SingleSelectField` mutation to append the option to the relevant field. If the field does not exist (`statusFieldId` / `priorityFieldId` is null in config), return a structured error describing the human action needed.
+- `label`: call `createLabel` mutation on the repo. Auto-assign a colour from a fixed palette (hash of the label name for determinism). Return `{ created: false }` if the label already exists.
+- Idempotent: safe to call if the entry already exists.
 
 ### `scrum_set_field` (implement second — used by most other write tools)
 
-The translation engine from Scrum vocabulary to GitHub field mutations.
+The translation engine from Scrum vocabulary to GitHub field mutations. If a vocabulary lookup fails (e.g. status value not in `statusOptions`), return a structured error citing the mismatch and hinting `scrum_add_vocabulary` as the fix.
 
 | `field`        | `value` type                              | Backend operation                                                                                              |
 | -------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
@@ -378,7 +392,7 @@ The translation engine from Scrum vocabulary to GitHub field mutations.
 | `sprint`       | `SprintRef`                               | Call `resolveSprint` → iteration ID or null; set or clear the iteration field                                  |
 | `story_points` | number or null                            | Set or clear the number field                                                                                  |
 | `priority`     | string from `priority_vocabulary` or null | Resolve name → option ID via `priorityOptions`; set or clear                                                   |
-| `assignee`     | login string or null                      | Resolve login → user node ID; set or clear the assignee field                                                  |
+| `assignee`     | login string or null                      | Resolve login → user node ID; set or clear via `updateIssue` mutation (not a project field)                    |
 
 Returns the updated `Story`.
 
@@ -387,15 +401,16 @@ Returns the updated `Story`.
 - Accept `ref`, optional `title`, `body`, `labels`, `assignees`, `epic`
 - Call `resolveStory` to get the issue and item node IDs
 - Call `updateIssue` mutation for title/body/assignees/labels
-- Epic: update the epic custom field on the project item (see open question below)
+- Epic: update the Milestone on the issue (see open question below)
 - Return the updated `Story`
 
 ### `scrum_create_story`
 
 - Create the issue via the `createIssue` mutation (repo from config)
 - Add the created issue to the project via `addProjectV2ItemById`
-- For each optional field provided (`priority`, `story_points`, `sprint`, `assignees`): call the `scrum_set_field` logic inline
-- If issue creation succeeds but a field-set fails, return a structured error that includes the partial `StoryRef` so the agent can retry field-sets rather than duplicating the story
+- For each optional field provided (`priority`, `story_points`, `sprint`, `assignees`): call the `scrum_set_field` logic inline (reuse the internal helper, not the registered tool)
+- Type label: resolve via `createLabel` if not yet present (reuse `scrum_add_vocabulary` label logic internally)
+- Partial failure: if issue creation succeeds but a field-set fails, return a structured error that includes the partial `StoryRef` so the agent can retry field-sets rather than duplicating the story
 - Return the new `Story`
 
 ### `scrum_plan_sprint`
@@ -411,8 +426,8 @@ Returns the updated `Story`.
 Composes existing primitives:
 
 1. `scrum_create_story` with `type = "spike"` (or the team's impediment label if distinct — check config) and initial status set to `"Blocked"`
-2. `scrum_post_note` on the affected story with a cross-link: "Impediment #N opened against this story."
-3. `scrum_post_note` on the new impediment story back-linking to the affected story
+2. `addComment` mutation (shared internal helper, **not** an agent-callable tool) on the affected story with a cross-link: "Impediment #N opened against this story."
+3. `addComment` mutation on the new impediment story back-linking to the affected story
 
 Returns the impediment as a `Story` plus `linked_to: StoryRef`.
 
@@ -474,7 +489,7 @@ src/
 │   ├── inputs.ts                [modify]  remove superseded schemas; keep helpers
 │   └── scrum.ts                 [new]     Zod schemas for all 11 scrum_* tools
 ├── services/
-│   ├── github.ts                [keep]    unchanged
+│   ├── github.ts                [modify]  add rest<T>() for Phase 2.5 (burndown)
 │   ├── logger.ts                [keep]    unchanged
 │   ├── formatters.ts            [keep]    GraphQL fragments, unchanged
 │   ├── config.ts                [new]     RuntimeConfig loader
@@ -497,16 +512,16 @@ This sequence gets all 11 tools registered and the read path working end-to-end.
 2. `src/schemas/scrum.ts` — all input schemas
 3. `src/services/config.ts` — `loadConfig` (unblocks everything)
 4. `src/services/resolver.ts` — `resolveSprint` (sync, no deps beyond `RuntimeConfig`)
-5. `src/tools/scrum-read.ts` — `scrum_get_config` (simplest read; good integration test checkpoint)
-6. `src/tools/scrum-read.ts` — `scrum_get_velocity`
+5. `src/tools/scrum-read.ts` — `scrum_orient` (entry-point read; good integration test checkpoint)
+6. `src/tools/scrum-read.ts` — `scrum_get_history`
 7. `src/tools/scrum-read.ts` — `scrum_get_backlog`
-8. `src/tools/scrum-read.ts` — `scrum_get_board`
+8. `src/tools/scrum-read.ts` — `scrum_get_sprint`
 9. `src/services/resolver.ts` — `resolveStory` (async; needed by remaining tools)
 10. `src/tools/scrum-read.ts` — `scrum_get_story`
 11. `src/tools/scrum-write.ts` — stubs for all 6 write tools + deprecated `github_graphql`
 12. `src/index.ts` — swap to new register calls; delete `projects.ts` and `items.ts` ← **minimum functioning build: server starts, all 11 tools appear in tool list**
 13. Write tool implementations in order:
-    - `scrum_post_note` (simplest)
+    - `scrum_add_vocabulary` (simplest — single field/label mutation, no resolver)
     - `scrum_set_field` (core primitive)
     - `scrum_update_story`
     - `scrum_create_story`

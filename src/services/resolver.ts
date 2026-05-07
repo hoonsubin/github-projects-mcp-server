@@ -1,14 +1,16 @@
 // =============================================================================
 // src/services/resolver.ts
 //
-// ── Phase 1, step 4: implement resolveSprint ─────────────────────────────────
-// ── Phase 1, step 9: implement resolveStory ──────────────────────────────────
+// ── Phase 1, step 4: resolveSprint — COMPLETE ────────────────────────────────
+// ── Phase 1, step 9: resolveStory  — COMPLETE ────────────────────────────────
 // =============================================================================
 
 import type { RuntimeConfig } from "./config.ts";
 import type { SprintRef, StoryRef } from "../types.ts";
 
 export type { SprintRef, StoryRef };
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 /**
  * Resolved story — both node IDs the backend mutations need.
@@ -20,37 +22,230 @@ export interface ResolvedStory {
   issueNumber: number; // user-facing issue number
 }
 
-/**
- * Resolve a StoryRef to the GitHub node IDs needed for mutations.
- *
- * todo: [Phase 1, step 9] Implement resolveStory:
- *   - { number } → query repository { issue(number:$n) { id, projectItems(first:10) { nodes { id, project { id } } } } }
- *                  filter projectItems to the item whose project.id === config.projectId
- *   - { id }     → treat id as project item ID (PVTI_...); query projectV2Item { content { ... on Issue { id, number } } }
- *   - Throw a descriptive error if the story is not found in the project
- */
-export function resolveStory(
-  _ref: StoryRef,
-  _config: RuntimeConfig,
-  _github: { graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> },
-): Promise<ResolvedStory> {
-  throw new Error("not yet implemented: resolveStory");
+/** Minimal GitHub client interface — matches what index.ts passes in. */
+interface GitHubClient {
+  graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T>;
 }
+
+// ── GraphQL queries ───────────────────────────────────────────────────────────
+
+/**
+ * Lookup by issue number: returns the issue node ID and all project items
+ * the issue belongs to (so we can filter to our project).
+ */
+const GET_ISSUE_BY_NUMBER_QUERY = `
+  query GetIssueByNumber($owner: String!, $repo: String!, $number: Int!) {
+    repository(owner: $owner, name: $repo) {
+      issue(number: $number) {
+        id
+        number
+        projectItems(first: 10) {
+          nodes {
+            id
+            project { id }
+          }
+        }
+      }
+    }
+  }
+`;
+
+interface IssueByNumberResponse {
+  repository?: {
+    issue?: {
+      id: string;
+      number: number;
+      projectItems: {
+        nodes: Array<{
+          id: string;
+          project: { id: string };
+        }>;
+      };
+    } | null;
+  } | null;
+}
+
+/**
+ * Lookup by project item ID (PVTI_...): returns the underlying issue ID
+ * and number so the write tools can call updateIssue.
+ */
+const GET_ITEM_BY_ID_QUERY = `
+  query GetProjectItemById($itemId: ID!) {
+    node(id: $itemId) {
+      ... on ProjectV2Item {
+        id
+        content {
+          ... on Issue {
+            id
+            number
+          }
+        }
+      }
+    }
+  }
+`;
+
+interface ItemByIdResponse {
+  node?: {
+    id: string;
+    content?: {
+      id: string;
+      number: number;
+    } | null;
+  } | null;
+}
+
+// ── resolveSprint ─────────────────────────────────────────────────────────────
 
 /**
  * Resolve a SprintRef to a GitHub iteration ID (or null to clear the sprint field).
  * Pure function — operates on the already-fetched RuntimeConfig; no network call.
  *
- * todo: [Phase 1, step 4] Implement resolveSprint:
- *   - "current" → config.iterations.active?.id  — throw if active is null (no active sprint)
- *   - "next"    → config.iterations.next?.id     — throw if next is null; error should tell the
- *                 agent "no next sprint is scheduled" so it can inform the user rather than retrying
- *   - null      → return null (caller passes this to clear/remove the sprint field on an item)
- *   - string    → case-insensitive title match against config.iterations.all; throw if no match
+ * - "current" → config.iterations.active?.id — throws if no active sprint
+ * - "next"    → config.iterations.next?.id   — throws with a user-readable message if none scheduled
+ * - null      → returns null (caller passes this to clear/remove the sprint field on an item)
+ * - string    → case-insensitive title match against config.iterations.all; throws if no match
  */
 export function resolveSprint(
-  _ref: SprintRef,
-  _config: RuntimeConfig,
+  ref: SprintRef,
+  config: RuntimeConfig,
 ): string | null {
-  throw new Error("not yet implemented: resolveSprint");
+  if (ref === null) {
+    return null;
+  }
+
+  if (ref === "current") {
+    if (!config.iterations.active) {
+      throw new Error(
+        "No active sprint found. There is no sprint currently running in this project. " +
+          "Check the Sprint field in GitHub Projects to ensure a sprint iteration is configured.",
+      );
+    }
+    return config.iterations.active.id;
+  }
+
+  if (ref === "next") {
+    if (!config.iterations.next) {
+      throw new Error(
+        "No next sprint is scheduled. " +
+          "Create a new sprint iteration in the GitHub Projects UI before assigning stories to it.",
+      );
+    }
+    return config.iterations.next.id;
+  }
+
+  // Explicit sprint name — case-insensitive title match against all known iterations
+  const normalised = ref.toLowerCase();
+  const match = config.iterations.all.find(
+    (iter) => iter.title.toLowerCase() === normalised,
+  );
+  if (!match) {
+    const known = config.iterations.all.map((i) => `"${i.title}"`).join(", ");
+    throw new Error(
+      `Sprint "${ref}" not found. Known sprints: ${known || "(none)"}. ` +
+        "Pass \"current\", \"next\", or an exact sprint title.",
+    );
+  }
+  return match.id;
+}
+
+// ── resolveStory ──────────────────────────────────────────────────────────────
+
+/**
+ * Resolve a StoryRef to the GitHub node IDs needed for mutations.
+ *
+ * Two resolution paths:
+ *
+ * { number } — lookup by issue number in the configured repository.
+ *   Queries `repository { issue(number:$n) { id, projectItems } }` and filters
+ *   the returned project items to the one whose project.id matches config.projectId.
+ *   Throws if the issue doesn't exist or isn't in this project.
+ *
+ * { id }     — treat id as a project item node ID (PVTI_...).
+ *   Queries `node(id:$itemId) { ... on ProjectV2Item { content { ... on Issue } } }`.
+ *   Throws if the item doesn't exist or its content is not an Issue (e.g., DraftIssue).
+ *
+ * At least one of { number, id } must be present; if both are provided, { id } wins
+ * (it saves a round-trip).
+ */
+export async function resolveStory(
+  ref: StoryRef,
+  config: RuntimeConfig,
+  github: GitHubClient,
+): Promise<ResolvedStory> {
+  if (!ref.number && !ref.id) {
+    throw new Error(
+      "StoryRef must contain at least one of { number } or { id }.",
+    );
+  }
+
+  // ── Path A: item ID provided — fastest, single node lookup ─────────────────
+  if (ref.id) {
+    const data = await github.graphql<ItemByIdResponse>(GET_ITEM_BY_ID_QUERY, {
+      itemId: ref.id,
+    });
+
+    const node = data.node;
+    if (!node) {
+      throw new Error(
+        `Project item "${ref.id}" not found. The ID may be stale or the item was deleted.`,
+      );
+    }
+    const issue = node.content;
+    if (!issue) {
+      throw new Error(
+        `Project item "${ref.id}" is not an Issue (it may be a Draft or Pull Request). ` +
+          "Only Issues are supported as Stories.",
+      );
+    }
+    return {
+      itemId: node.id,
+      issueId: issue.id,
+      issueNumber: issue.number,
+    };
+  }
+
+  // ── Path B: issue number provided — lookup via repository query ─────────────
+  const repo = Deno.env.get("GITHUB_REPO");
+  if (!repo) {
+    throw new Error(
+      "GITHUB_REPO environment variable is not set. " +
+        "Set it to the repository slug (e.g., 'github-projects-mcp-server').",
+    );
+  }
+
+  const owner = config.yml.project.owner;
+  const data = await github.graphql<IssueByNumberResponse>(
+    GET_ISSUE_BY_NUMBER_QUERY,
+    {
+      owner,
+      repo,
+      number: ref.number!,
+    },
+  );
+
+  const issue = data.repository?.issue;
+  if (!issue) {
+    throw new Error(
+      `Issue #${ref.number} not found in ${owner}/${repo}. ` +
+        "Verify the issue number and ensure the token has Contents: Read access.",
+    );
+  }
+
+  // Filter to the project item belonging to our project
+  const projectItem = issue.projectItems.nodes.find(
+    (item) => item.project.id === config.projectId,
+  );
+  if (!projectItem) {
+    throw new Error(
+      `Issue #${ref.number} exists in ${owner}/${repo} but is not part of project #${config.yml.project.project_number}. ` +
+        "Add the issue to the project before operating on it.",
+    );
+  }
+
+  return {
+    itemId: projectItem.id,
+    issueId: issue.id,
+    issueNumber: issue.number,
+  };
 }

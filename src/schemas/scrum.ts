@@ -45,8 +45,10 @@ export const StoryTypeSchema = z.enum(["feature", "bug", "tech_debt", "spike"]);
 
 // ── Read tool schemas ─────────────────────────────────────────────────────────
 
-// scrum_get_board — optional sprint ref, defaults to "current" in the handler
-export const GetBoardSchema = z
+// scrum_orient — no arguments; uses z.object({}).strict().shape inline in the handler
+
+// scrum_get_sprint — optional sprint ref, defaults to "current" in the handler
+export const GetSprintSchema = z
   .object({ sprint: SprintRefSchema.optional() })
   .strict();
 
@@ -64,14 +66,17 @@ export const GetBacklogSchema = z
 // scrum_get_story — single story by ref
 export const GetStorySchema = z.object({ ref: StoryRefSchema }).strict();
 
-// scrum_get_velocity — how many completed sprints to look back
-export const GetVelocitySchema = z
+// scrum_get_history — how many completed sprints to look back
+export const GetHistorySchema = z
   .object({
     window: z.number().int().min(1).max(10).default(5),
   })
   .strict();
 
-// scrum_get_config — no arguments needed
+// scrum_get_burndown — optional sprint ref, defaults to "current" in the handler
+export const GetBurndownSchema = z
+  .object({ sprint: SprintRefSchema.optional() })
+  .strict();
 
 // ── Write tool schemas ────────────────────────────────────────────────────────
 
@@ -102,8 +107,9 @@ export const UpdateStorySchema = z
   })
   .strict();
 
-// scrum_set_field — single entry point for all board-field mutations
-// value shape depends on field and is validated at runtime in the handler
+// scrum_set_field — single entry point for all story-level board-field mutations.
+// Operates on a specific story item; for board schema changes use scrum_add_vocabulary.
+// value shape depends on field and is validated at runtime in the handler.
 export const SetFieldSchema = z
   .object({
     ref: StoryRefSchema,
@@ -131,11 +137,13 @@ export const LogImpedimentSchema = z
   })
   .strict();
 
-// scrum_post_note — append-only comment; kind tags the note for filtering but body is preserved verbatim
-export const PostNoteSchema = z
+// scrum_add_vocabulary — idempotent addition of a vocabulary entry to the platform schema.
+// Adds a missing option to an existing project field (status, priority) or creates a missing
+// repo label (type labels, "impediment"). Cannot create new project fields — that requires
+// human action via the GitHub Projects UI.
+export const AddVocabularySchema = z
   .object({
-    ref: StoryRefSchema,
-    body: z.string().min(1),
-    kind: z.enum(["comment", "standup", "retro", "review"]).default("comment"),
+    kind: z.enum(["status_option", "priority_option", "label"]),
+    value: z.string().min(1), // display name to add (e.g. "Blocked", "Critical", "tech_debt")
   })
   .strict();
