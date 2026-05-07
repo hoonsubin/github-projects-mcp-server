@@ -432,22 +432,10 @@ Returns: Confirmation with item ID and new archived status.`,
     },
     async (params) => {
       try {
-        const mutation = `
-          mutation($input: ArchiveProjectV2ItemInput!) {
-            archiveProjectV2Item(input: $input) {
-              item { id isArchived }
-            }
-          }`;
+        const { id, isArchived } = params.archived
+          ? await archiveItem(params.project_id, params.item_id)
+          : await unarchiveItem(params.project_id, params.item_id);
 
-        const data = await graphql<ArchiveProjectItemData>(mutation, {
-          input: {
-            projectId: params.project_id,
-            itemId: params.item_id,
-            archived: params.archived,
-          },
-        });
-
-        const { id, isArchived } = data.archiveProjectV2Item.item;
         return {
           content: [{
             type: "text",
@@ -459,6 +447,46 @@ Returns: Confirmation with item ID and new archived status.`,
       }
     },
   );
+
+  // ── Internal helpers ─────────────────────────────────────────────────────────
+
+  async function archiveItem(
+    projectId: string,
+    itemId: string,
+  ): Promise<{ id: string; isArchived: boolean }> {
+    const mutation = `
+      mutation($input: ArchiveProjectV2ItemInput!) {
+        archiveProjectV2Item(input: $input) {
+          item { id isArchived }
+        }
+      }`;
+
+    const data = await graphql<ArchiveProjectItemData>(mutation, {
+      input: { projectId, itemId },
+    });
+
+    return data.archiveProjectV2Item.item;
+  }
+
+  async function unarchiveItem(
+    projectId: string,
+    itemId: string,
+  ): Promise<{ id: string; isArchived: boolean }> {
+    const mutation = `
+      mutation($input: UnarchiveProjectV2ItemInput!) {
+        unarchiveProjectV2Item(input: $input) {
+          item { id isArchived }
+        }
+      }`;
+
+    const data = await graphql<
+      { unarchiveProjectV2Item: { item: { id: string; isArchived: boolean } } }
+    >(mutation, {
+      input: { projectId, itemId },
+    });
+
+    return data.unarchiveProjectV2Item.item;
+  }
 
   // ── Delete Item ────────────────────────────────────────────────────────────
 

@@ -12,12 +12,12 @@ The current 18 `github_*` tools expose GitHub GraphQL primitives directly — th
 
 ### Agreed decisions
 
-| Question                                             | Decision                                                                                                                                                 |
-| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Config file location                                 | `.github/scrum/config.yml` in the repo — unchanged from current `ScrumConfigYml` assumption                                                              |
+| Question                                             | Decision                                                                                                                                             |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Config file location                                 | `.github/scrum/config.yml` in the repo — unchanged from current `ScrumConfigYml` assumption                                                          |
 | Project identity (owner, owner_type, project_number) | Provided in the agent's system prompt during testing; eventually the standard orient call (`scrum_orient`) is how the agent acquires and caches this |
-| Transition strategy                                  | Hard cutover — no side-by-side period. Build the minimum functioning `scrum_*` surface first; remove old tools in the same pass                          |
-| `github_graphql`                                     | Kept on the tool surface, marked deprecated in its description                                                                                           |
+| Transition strategy                                  | Hard cutover — no side-by-side period. Build the minimum functioning `scrum_*` surface first; remove old tools in the same pass                      |
+| `github_graphql`                                     | Kept on the tool surface, marked deprecated in its description                                                                                       |
 
 ---
 
@@ -27,24 +27,24 @@ Eleven tools. This is the complete, stable contract. No `github_*` tool outside 
 
 ### Read tools (5)
 
-| Tool                 | One-line purpose                                                                              |
-| -------------------- | --------------------------------------------------------------------------------------------- |
-| `scrum_orient`       | Current platform state + declared vocabulary — the agent's entry point for any new project   |
-| `scrum_get_sprint`   | Current sprint backlog snapshot grouped by status with point totals                           |
-| `scrum_get_backlog`  | All unsprinted stories, filterable, with readiness summary                                    |
-| `scrum_get_story`    | Full detail of one story: comments, linked PRs, parsed AC                                     |
-| `scrum_get_history`  | Raw completed-sprint snapshots with per-sprint stories[] and summary stats                    |
+| Tool                | One-line purpose                                                                           |
+| ------------------- | ------------------------------------------------------------------------------------------ |
+| `scrum_orient`      | Current platform state + declared vocabulary — the agent's entry point for any new project |
+| `scrum_get_sprint`  | Current sprint backlog snapshot grouped by status with point totals                        |
+| `scrum_get_backlog` | All unsprinted stories, filterable, with readiness summary                                 |
+| `scrum_get_story`   | Full detail of one story: comments, linked PRs, parsed AC                                  |
+| `scrum_get_history` | Raw completed-sprint snapshots with per-sprint stories[] and summary stats                 |
 
 ### Write tools (6)
 
-| Tool                   | One-line purpose                                                                             |
-| ---------------------- | -------------------------------------------------------------------------------------------- |
-| `scrum_create_story`   | Create a story and optionally place it on the board in one call                              |
-| `scrum_update_story`   | Edit story content (title, body, labels, assignees, epic)                                    |
-| `scrum_set_field`      | Single entry point for all story-level board-field mutations                                 |
-| `scrum_plan_sprint`    | Bulk-assign stories to a sprint                                                              |
-| `scrum_log_impediment` | Create a blocking impediment story linked to an affected story                               |
-| `scrum_add_vocabulary` | Idempotent addition of a vocabulary entry (field option or label) to the platform schema     |
+| Tool                   | One-line purpose                                                                         |
+| ---------------------- | ---------------------------------------------------------------------------------------- |
+| `scrum_create_story`   | Create a story and optionally place it on the board in one call                          |
+| `scrum_update_story`   | Edit story content (title, body, labels, assignees, epic)                                |
+| `scrum_set_field`      | Single entry point for all story-level board-field mutations                             |
+| `scrum_plan_sprint`    | Bulk-assign stories to a sprint                                                          |
+| `scrum_log_impediment` | Create a blocking impediment story linked to an affected story                           |
+| `scrum_add_vocabulary` | Idempotent addition of a vocabulary entry (field option or label) to the platform schema |
 
 ### Deprecated (kept, not promoted)
 
@@ -480,7 +480,7 @@ Update the tool description to read:
 
 ## File Map: Before → After
 
-```
+```text
 src/
 ├── index.ts                     [modify]  swap registerXxxTools calls
 ├── types.ts                     [modify]  add Story/StoryRef/SprintRef/ScrumField/StoryType;
