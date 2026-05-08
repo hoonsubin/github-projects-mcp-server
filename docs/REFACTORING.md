@@ -23,17 +23,18 @@ The current 18 `github_*` tools expose GitHub GraphQL primitives directly — th
 
 ## Target Tool Surface
 
-Eleven tools. This is the complete, stable contract. No `github_*` tool outside `github_graphql` should be agent-callable after the cutover.
+Twelve tools. This is the complete, stable contract. No `github_*` tool outside `github_graphql` should be agent-callable after the cutover.
 
-### Read tools (5)
+### Read tools (6)
 
-| Tool                | One-line purpose                                                                           |
-| ------------------- | ------------------------------------------------------------------------------------------ |
-| `scrum_orient`      | Current platform state + declared vocabulary — the agent's entry point for any new project |
-| `scrum_get_sprint`  | Current sprint backlog snapshot grouped by status with point totals                        |
-| `scrum_get_backlog` | All unsprinted stories, filterable, with readiness summary                                 |
-| `scrum_get_story`   | Full detail of one story: comments, linked PRs, parsed AC                                  |
-| `scrum_get_history` | Raw completed-sprint snapshots with per-sprint stories[] and summary stats                 |
+| Tool                   | One-line purpose                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------------ |
+| `scrum_orient`         | Current platform state + declared vocabulary — the agent's entry point for any new project |
+| `scrum_get_sprint`     | Current sprint backlog snapshot grouped by status with point totals                        |
+| `scrum_get_backlog`    | All unsprinted stories, filterable, with readiness summary                                 |
+| `scrum_get_story`      | Full detail of one story: comments, linked PRs, parsed AC                                  |
+| `scrum_get_history`    | Raw completed-sprint snapshots with per-sprint stories[] and summary stats                 |
+| `scrum_get_template`   | Fetch a project-configured ceremony artifact template, or signal agent to use skill default |
 
 ### Write tools (6)
 
@@ -56,7 +57,7 @@ Eleven tools. This is the complete, stable contract. No `github_*` tool outside 
 
 ## Phase 1 — Foundations
 
-No tool registrations change in this phase. The goal is to build the internal services and types that all eleven tools will share. Everything in Phase 1 is pure infrastructure.
+No tool registrations change in this phase. The goal is to build the internal services and types that all twelve tools will share. Everything in Phase 1 is pure infrastructure.
 
 ### 1a. New domain types — `src/types.ts`
 
@@ -84,6 +85,15 @@ export type ScrumField =
 
 // Story type — drives the type label applied by the backend.
 export type StoryType = "feature" | "bug" | "tech_debt" | "spike";
+
+// Ceremony artifact types for which the agent may produce a document.
+// Used as the key in config.yml `templates:` and as the argument to scrum_get_template.
+export type ArtifactType =
+  | "sprint_review"
+  | "retrospective"
+  | "standup"
+  | "sprint_planning"
+  | "refinement";
 
 // The canonical story shape returned by every read tool.
 // Optional fields are populated when present in the backend.
@@ -154,6 +164,28 @@ export async function loadConfig(
 
 **Caching policy:** no server-side cache. Each invocation fetches fresh. If round-trip latency becomes a problem in practice, a short-lived in-process TTL cache (≤60s) can be added later — but start without one to keep the stateless invariant clean.
 
+**`ScrumConfigYml` addition — `templates` section:**
+
+A new optional top-level section maps `ArtifactType` keys to repo-relative file paths. Absent keys and explicit `null` values both mean "use the agent's skill-level default." The server reads this map but never interprets it beyond fetching the file at the declared path.
+
+```yaml
+# .github/scrum/config.yml
+templates:
+  sprint_review: ".github/scrum/templates/sprint-review.md"
+  retrospective: ".github/scrum/templates/retro.md"
+  standup: null           # null → agent uses skill default
+  # sprint_planning omitted → agent uses skill default
+  # refinement omitted → agent uses skill default
+```
+
+In `ScrumConfigYml`:
+
+```typescript
+// Optional map of artifact type → repo-relative path, or null for skill default.
+// Any ArtifactType key not present is treated the same as null.
+templates?: Partial<Record<ArtifactType, string | null>>;
+```
+
 ### 1c. Resolvers — `src/services/resolver.ts`
 
 Two resolver functions shared across all tool handlers.
@@ -186,7 +218,7 @@ export function resolveSprint(
 
 ### 1d. Input schemas — `src/schemas/scrum.ts`
 
-Zod schemas for all eleven tools. No GitHub IDs, node IDs, or internal field identifiers appear in these schemas — Scrum vocabulary only.
+Zod schemas for all twelve tools. No GitHub IDs, node IDs, or internal field identifiers appear in these schemas — Scrum vocabulary only.
 
 **Primitive schemas (shared by multiple tools):**
 
@@ -303,6 +335,18 @@ export const AddVocabularySchema = z
     value: z.string().min(1),
   })
   .strict();
+
+export const ArtifactTypeSchema = z.enum([
+  "sprint_review",
+  "retrospective",
+  "standup",
+  "sprint_planning",
+  "refinement",
+]);
+
+export const GetTemplateSchema = z
+  .object({ artifact_type: ArtifactTypeSchema })
+  .strict();
 ```
 
 The predecessor schemas to delete from `src/schemas/inputs.ts` in Phase 4: `GetSprintStatusSchema`, `GetVelocitySchema` (old), `GetBacklogItemsSchema`, `BulkUpdateItemFieldSchema`, `CloseSprintSchema`, `GenerateSprintReportSchema`.
@@ -357,6 +401,44 @@ The existing `SprintStatusResult` logic is the reference — port and adapt.
 - Fetch the issue with: body, comments (author/body/created_at/url), linked PRs (via the issue's timeline or a `closingIssuesReferences` query), and current project field values
 - Parse AC from the body by scanning for `- [ ]` / `- [x]` markdown checkboxes
 - Map to `Story` plus the extended fields: `comments`, `linked_prs`, `sub_tasks`, `acceptance_criteria`
+
+---
+
+## Phase 2.6 — Template Management (`scrum_get_template`)
+
+Implement the sixth read tool inside the existing `src/tools/scrum-read.ts`. No new files or services are required — this tool reuses the `GET_REPO_FILE_QUERY` GraphQL query already present in `src/services/config.ts`.
+
+### `scrum_get_template`
+
+**Inputs:** `{ artifact_type: ArtifactType }` (validated by `GetTemplateSchema`).
+
+**Return shapes:**
+
+```typescript
+// Custom template found and fetched:
+{ content: string; source: "custom" }
+
+// No custom template declared — agent uses skill-level default:
+{ content: null; source: "default" }
+```
+
+**Implementation steps:**
+
+1. Call `loadConfig` to read `RuntimeConfig` (and thus `yml.templates`).
+2. Look up `yml.templates?.[artifact_type]`. If the key is absent or explicitly `null`, return `{ content: null, source: "default" }` immediately — no further GitHub calls.
+3. Otherwise, the value is a repo-relative file path string. Fetch the file using `GET_REPO_FILE_QUERY` (same helper used by `loadConfig`).
+4. If the file is not found at that path, return a structured error: `{ error: "template_not_found", path, artifact_type }`. Do **not** silently fall back to `source: "default"` — the team explicitly declared a path and the missing file is a configuration error.
+5. Return `{ content: blob.text, source: "custom" }`.
+
+**Error cases:**
+- Path declared but file missing at that ref → structured error (see step 4).
+- `artifact_type` not a valid enum value → Zod validation rejects before handler runs.
+- `loadConfig` fails → propagate as normal tool error (same behaviour as all read tools).
+
+**Design notes:**
+- The handler never interprets, validates, or parses the template content. It returns raw text.
+- `source: "default"` is not an error — it is the normal path for any artifact type without a custom template.
+- The agent checks `declared_vocabulary.templates` from `scrum_orient` before calling this tool to avoid an unnecessary round-trip when it already knows no custom path is declared.
 
 ---
 
@@ -498,7 +580,7 @@ src/
     ├── projects.ts              [delete]
     ├── items.ts                 [delete]
     ├── repository.ts            [modify]  gut registrations; keep any helpers still in use
-    ├── scrum-read.ts            [new]     5 read tools
+    ├── scrum-read.ts            [new]     6 read tools (including scrum_get_template)
     └── scrum-write.ts           [new]     6 write tools + deprecated github_graphql
 ```
 
@@ -518,6 +600,7 @@ This sequence gets all 11 tools registered and the read path working end-to-end.
 8. `src/tools/scrum-read.ts` — `scrum_get_sprint`
 9. `src/services/resolver.ts` — `resolveStory` (async; needed by remaining tools)
 10. `src/tools/scrum-read.ts` — `scrum_get_story`
+10a. `src/tools/scrum-read.ts` — `scrum_get_template` (no resolver needed; reuses `loadConfig` + `GET_REPO_FILE_QUERY`)
 11. `src/tools/scrum-write.ts` — stubs for all 6 write tools + deprecated `github_graphql`
 12. `src/index.ts` — swap to new register calls; delete `projects.ts` and `items.ts` ← **minimum functioning build: server starts, all 11 tools appear in tool list**
 13. Write tool implementations in order:

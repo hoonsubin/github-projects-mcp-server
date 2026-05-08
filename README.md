@@ -325,9 +325,9 @@ The surface is governed by six rules. Any change that violates one is a breaking
 
 ### Tool surface layers
 
-The eleven tools in this surface occupy three distinct conceptual layers. Understanding the layers is the fastest way to see why a proposed new tool does or does not belong here.
+The twelve tools in this surface occupy three distinct conceptual layers. Understanding the layers is the fastest way to see why a proposed new tool does or does not belong here.
 
-**Layer 1 — Artifact readers.** These tools return the current state of a Scrum primitive: the Product Backlog, the Sprint Backlog, a single Story, or the platform's current state and declared vocabulary. They make no assumptions about what the agent will do with the data.
+**Layer 1 — Artifact readers.** These tools return the current state of a Scrum primitive: the Product Backlog, the Sprint Backlog, a single Story, or the platform's current state and declared vocabulary. They make no assumptions about what the agent will do with the data. `scrum_get_template` also belongs here — it fetches the raw content of a project-configured artifact template from the repo, or returns a signal instructing the agent to fall back to its skill-level default. The server never applies or interprets templates; it only retrieves them.
 
 **Layer 2 — Artifact mutators.** These tools change the state of Scrum artifacts: creating stories, moving them between sprints, updating fields, logging impediments. Each mutation is one complete Scrum operation. `scrum_add_vocabulary` is a lightweight exception — it mutates the platform schema (adding a field option or label) rather than a story, but belongs here because the agent calls it autonomously in response to a detected vocabulary gap, without human involvement.
 
@@ -382,7 +382,7 @@ Returns the current platform state alongside the team's declared Scrum vocabular
 **Returns:** two top-level sections:
 
 - `platform_state` — what currently exists on the PM platform: which Scrum fields are present and their configured options, which repo labels exist, and the active/next/completed-count breakdown for sprint iterations.
-- `declared_vocabulary` — what the team's `config.yml` says the project should have: status vocabulary, priority vocabulary, story-point scale, sprint settings, team roster, Definition of Ready, and Definition of Done.
+- `declared_vocabulary` — what the team's `config.yml` says the project should have: status vocabulary, priority vocabulary, story-point scale, sprint settings, team roster, Definition of Ready, Definition of Done, and custom artifact template paths (a map of artifact type → repo-relative file path, or `null` if the agent's skill-level default should be used for that type).
 
 **Notes:** The agent uses its own Scrum knowledge as the reference standard and computes the gap between `platform_state` and `declared_vocabulary`. Structural gaps — a required field does not exist at all — require the human to create them in the platform UI. Vocabulary gaps — a field option or label is declared but missing — can be resolved autonomously by the agent via `scrum_add_vocabulary`. All write tools that accept vocabulary values (e.g. `scrum_set_field` with `status`) accept values from `declared_vocabulary`.
 
@@ -459,6 +459,25 @@ Returns raw data for the last N completed sprints so the agent can derive any ti
 **Notes:** This tool exposes facts. The agent derives insights from them: velocity (average `completed_points` over the window), throughput (average `completed_count`), predictability (fraction of sprints where goal was achieved), type breakdown, epic-level trends, and anything else the conversation demands. The MCP does not pre-select which metric matters — that is the agent's job. A backend only needs to support queryable completed-sprint item state to implement this tool.
 
 **Does not:** compute averages, project future velocity, surface per-member throughput, or return current-sprint data (use `scrum_get_sprint` for that).
+
+---
+
+#### `scrum_get_template`
+
+Fetches the raw content of a project-configured artifact template for a given ceremony type. If no custom template is declared in `config.yml` for the requested type, returns a signal instructing the agent to use its own skill-level default.
+
+**Arguments:**
+
+- `artifact_type` (required, enum): one of `sprint_review`, `retrospective`, `standup`, `sprint_planning`, `refinement`.
+
+**Returns:** one of two shapes:
+
+- `{ content: string, source: "custom" }` — a custom template was declared in `config.yml` and successfully fetched from the repo. `content` is the raw template text. The agent applies it by substituting dynamic data before writing the artifact to the ceremony backend.
+- `{ content: null, source: "default" }` — no custom template is declared for this artifact type (either the key is absent or explicitly set to `null` in `config.yml`). The agent uses its own built-in skill-level default for this type.
+
+**Notes:** The server never embeds default template content. Defaults are the agent's domain — they live in the scrum-agile-assistant skill (or equivalent system prompt) and may vary by deployment, ceremony format preference, or target output platform (a GitHub Discussion has a different structure from a Notion page or a Slack canvas). Custom templates are repo files fetched at invocation time from the path declared under `templates` in `config.yml`. The available paths are also returned by `scrum_orient` in `declared_vocabulary.templates` so the agent can inspect them without triggering a fetch.
+
+**Does not:** validate template syntax, interpolate variables, apply templates, or enforce any required template structure. Template content is opaque to the server — it is returned verbatim.
 
 ---
 
@@ -591,7 +610,9 @@ Idempotent addition of a vocabulary entry to the platform schema. Called by the 
 
 ### What this surface deliberately does NOT include
 
-The full Scrum domain (see the ER diagram above) is much richer than these eleven tools. The omissions are intentional.
+The full Scrum domain (see the ER diagram above) is much richer than these twelve tools. The omissions are intentional.
+
+**Default artifact templates.** Built-in template content for ceremony documents — sprint review write-ups, retro boards, standup summaries, planning notes — is not embedded in the server. Default templates are the agent's domain. They live in the scrum-agile-assistant skill and are adapted to the target output platform at the moment the agent produces an artifact. The server provides only `scrum_get_template`, a thin fetch mechanism for project-specific custom templates the team has checked into their repo. This keeps the server output-platform-agnostic: it has no knowledge of whether the artifact will be written to a GitHub Discussion, a Notion page, or a Slack canvas.
 
 **Ceremony record writes** (`scrum_post_note` and equivalents). Standup logs, retro entries, and review feedback are ceremony artefacts, not story mutations. They do not belong attached to individual stories as comments — that pollutes the story audit trail and is meaningless on backends that do not treat story comments as a structured record store. The agent drafts ceremony documents and stores them in the team's chosen ceremony backend (a file, a wiki, a discussion thread) directly, outside the MCP's scope.
 
@@ -621,11 +642,11 @@ This MCP is the action layer for an LLM agent acting as a Scrum Master. The agen
 
 ### Division of responsibilities
 
-| Layer           | Owns                                                                                                                                                                                                                 |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Human**       | Intent, content, scope decisions, approval of state-changing actions, anything the system cannot fetch from itself.                                                                                                  |
-| **Agent skill** | Scrum knowledge, ceremony facilitation, DoR/DoD enforcement, insight derivation (velocity, burndown, predictability), mid-sprint coaching, retro format selection, document drafting, deciding when to call the MCP. |
-| **MCP server**  | Atomic platform operations, name → backend ID resolution, artifact snapshots, raw sprint history, write idempotence.                                                                                                 |
+| Layer           | Owns                                                                                                                                                                                                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Human**       | Intent, content, scope decisions, approval of state-changing actions, anything the system cannot fetch from itself.                                                                                                                                                       |
+| **Agent skill** | Scrum knowledge, ceremony facilitation, DoR/DoD enforcement, insight derivation (velocity, burndown, predictability), mid-sprint coaching, retro format selection, document drafting, default artifact template ownership and application, deciding when to call the MCP. |
+| **MCP server**  | Atomic platform operations, name → backend ID resolution, artifact snapshots, raw sprint history, write idempotence, custom artifact template file retrieval.                                                                                                             |
 
 Three rules follow from this split:
 
@@ -704,4 +725,4 @@ The reason this division matters: the system survives change in three independen
 - **Skill changes.** Improving the agent's coaching, adding new ceremony formats, or supporting new derived insights is a skill-file edit. The MCP does not need a release.
 - **Domain changes.** If a future Scrum dialect needs new fields (say, a "confidence" rating on estimates), the team adds it as a custom field in the backend, declares it in `config.yml`, and the agent reads it from the Story body or from `scrum_get_config`. The tool surface does not grow.
 
-The eleven tools are the contract. Everything else is a moving part.
+The twelve tools are the contract. Everything else is a moving part.
