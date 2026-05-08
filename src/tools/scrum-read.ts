@@ -55,7 +55,7 @@ const getBootstrapConfig = (): BootstrapConfig => {
   if (!owner) {
     throw new Error(
       "GITHUB_OWNER environment variable is not set. " +
-        "Set it to the GitHub username or organisation login that owns the project.",
+        "Set it to the GitHub username or organization login that owns the project.",
     );
   }
   const ownerTypeRaw = Deno.env.get("GITHUB_OWNER_TYPE") ?? "user";
@@ -353,6 +353,74 @@ const fetchAllItems = async (
 
 const STORY_TYPES = new Set(["feature", "bug", "tech_debt", "spike"]);
 
+// ── Field-value minimal interface ──────────────────────────────────────────────
+
+/**
+ * Minimal interface for any field-value node that carries board fields.
+ * Works on both RawFieldValue (project-items query shape) and
+ * ProjectV2ItemFieldValue (GET_ITEM_FIELDS_QUERY shape) because both
+ * have the same structural shape for the fields we read.
+ */
+interface FieldValueNode {
+  field?: { id: string } | null;
+  name?: string; // single-select option display name
+  title?: string; // iteration title
+  number?: number; // number field value
+}
+
+/** Extracted board fields from any field-value node array. */
+interface BoardFields {
+  status: string | null;
+  sprint: string | null;
+  story_points: number | null;
+  priority: string | null;
+}
+
+/** Exported for testing. */
+export const extractBoardFields = (
+  nodes: FieldValueNode[],
+  fields: RuntimeConfig["fields"],
+): BoardFields => {
+  let status: string | null = null;
+  let sprint: string | null = null;
+  let story_points: number | null = null;
+  let priority: string | null = null;
+
+  for (const fv of nodes) {
+    const id = fv.field?.id;
+    if (!id) continue;
+    if (id === fields.statusFieldId && fv.name) {
+      status = fv.name;
+    } else if (id === fields.sprintFieldId && fv.title) {
+      sprint = fv.title;
+    } else if (
+      fields.storyPointsFieldId &&
+      id === fields.storyPointsFieldId &&
+      typeof fv.number === "number"
+    ) {
+      story_points = fv.number;
+    } else if (
+      fields.priorityFieldId &&
+      id === fields.priorityFieldId &&
+      fv.name
+    ) {
+      priority = fv.name;
+    }
+  }
+
+  return { status, sprint, story_points, priority };
+};
+
+// ── Label classification ───────────────────────────────────────────────────────
+
+/** Exported for testing. */
+export const classifyLabels = (
+  allLabels: string[],
+): { type: Story["type"]; labels: string[] } => ({
+  type: (allLabels.find((l) => STORY_TYPES.has(l)) as Story["type"]) ?? null,
+  labels: allLabels.filter((l) => !STORY_TYPES.has(l)),
+});
+
 /**
  * Build a Story from a raw project item node.
  * Returns null for DraftIssues (no issue number) and items without content.
@@ -361,45 +429,20 @@ const buildStoryFromRaw = (item: RawItem, config: RuntimeConfig): Story | null =
   const content = item.content;
   if (!content || typeof content.number !== "number") return null;
 
-  const { sprintFieldId, statusFieldId, storyPointsFieldId, priorityFieldId } = config.fields;
-
-  let status: string | null = null;
-  let sprint: string | null = null;
-  let story_points: number | null = null;
-  let priority: string | null = null;
-
-  for (const fv of item.fieldValues.nodes) {
-    const fieldId = fv.field?.id;
-    if (!fieldId) continue;
-    if (fieldId === statusFieldId && fv.name) {
-      status = fv.name;
-    } else if (fieldId === sprintFieldId && fv.title) {
-      sprint = fv.title;
-    } else if (
-      storyPointsFieldId &&
-      fieldId === storyPointsFieldId &&
-      typeof fv.number === "number"
-    ) {
-      story_points = fv.number;
-    } else if (priorityFieldId && fieldId === priorityFieldId && fv.name) {
-      priority = fv.name;
-    }
-  }
-
-  const allLabels = content.labels?.nodes.map((l) => l.name) ?? [];
-  const type = (allLabels.find((l) => STORY_TYPES.has(l)) as Story["type"]) ??
-    null;
-  const labels = allLabels.filter((l) => !STORY_TYPES.has(l));
+  const boardFields = extractBoardFields(item.fieldValues.nodes, config.fields);
+  const { type, labels } = classifyLabels(
+    content.labels?.nodes.map((l) => l.name) ?? [],
+  );
 
   return {
     ref: { number: content.number, id: item.id },
     title: content.title,
     body: content.body ?? "",
     type,
-    status,
-    sprint,
-    story_points,
-    priority,
+    status: boardFields.status,
+    sprint: boardFields.sprint,
+    story_points: boardFields.story_points,
+    priority: boardFields.priority,
     assignees: content.assignees?.nodes.map((a) => a.login) ?? [],
     labels,
     epic: content.milestone?.title ?? null,
@@ -566,6 +609,114 @@ export const computeSprintTotals = (
   };
 };
 
+// ── Comment and Linked PR types ────────────────────────────────────────────────
+
+interface Comment {
+  author: string;
+  body: string;
+  created_at: string;
+  url: string;
+}
+
+interface CommentNode {
+  author?: { login: string } | null;
+  body: string;
+  createdAt: string;
+  url: string;
+}
+
+/** Exported for testing. */
+export const buildCommentList = (nodes: CommentNode[]): Comment[] =>
+  nodes.map((c) => ({
+    author: c.author?.login ?? "(ghost)",
+    body: c.body,
+    created_at: c.createdAt,
+    url: c.url,
+  }));
+
+interface LinkedPr {
+  number: number;
+  title: string;
+  url: string;
+  state: string;
+  is_draft: boolean;
+}
+
+interface CrossReferencedEventNode {
+  source?: {
+    number?: number | null;
+    title?: string | null;
+    url?: string | null;
+    state?: string | null;
+    isDraft?: boolean | null;
+  } | null;
+}
+
+/** Exported for testing. */
+export const buildLinkedPrList = (nodes: CrossReferencedEventNode[]): LinkedPr[] =>
+  nodes
+    .filter((n) => n.source?.number != null)
+    .map((n) => ({
+      number: n.source!.number!,
+      title: n.source!.title ?? "",
+      url: n.source!.url ?? "",
+      state: n.source!.state ?? "UNKNOWN",
+      is_draft: n.source!.isDraft ?? false,
+    }));
+
+// ── Enriched Story builder ─────────────────────────────────────────────────────
+
+/** Typed inner node from GET_ISSUE_DETAILS_QUERY response. */
+interface IssueDetailsNode {
+  id: string;
+  number: number;
+  title: string | null;
+  body: string | null;
+  url: string | null;
+  createdAt: string;
+  updatedAt: string;
+  assignees?: { nodes: Array<{ login: string }> };
+  labels?: { nodes: Array<{ name: string }> };
+  milestone?: { title: string } | null;
+  comments?: { nodes: CommentNode[] };
+  timelineItems?: { nodes: CrossReferencedEventNode[] };
+}
+
+/** Exported for testing. */
+export const buildEnrichedStory = (
+  issueNode: IssueDetailsNode,
+  itemId: string,
+  fieldValueNodes: FieldValueNode[],
+  config: RuntimeConfig,
+): Story => {
+  const boardFields = extractBoardFields(fieldValueNodes, config.fields);
+  const { type, labels } = classifyLabels(
+    issueNode.labels?.nodes.map((l) => l.name) ?? [],
+  );
+
+  return {
+    ref: { number: issueNode.number, id: itemId },
+    title: issueNode.title ?? "",
+    body: issueNode.body ?? "",
+    type,
+    status: boardFields.status,
+    sprint: boardFields.sprint,
+    story_points: boardFields.story_points,
+    priority: boardFields.priority,
+    assignees: issueNode.assignees?.nodes.map((a) => a.login) ?? [],
+    labels,
+    epic: issueNode.milestone?.title ?? null,
+    created_at: issueNode.createdAt ?? "",
+    updated_at: issueNode.updatedAt ?? "",
+    url: issueNode.url ?? null,
+  };
+};
+
+/** Named helper for the "issue not found" error message. */
+const missingIssueMessage = (issueId: string): string =>
+  `Issue ${issueId} could not be fetched. ` +
+  "It may have been deleted or the token lacks Issues: Read access.";
+
 // ── Acceptance criteria parser ─────────────────────────────────────────────────
 
 interface AcceptanceCriterion {
@@ -573,7 +724,8 @@ interface AcceptanceCriterion {
   checked: boolean;
 }
 
-const parseAcceptanceCriteria = (body: string): AcceptanceCriterion[] => {
+/** Exported for testing. */
+export const parseAcceptanceCriteria = (body: string): AcceptanceCriterion[] => {
   const ac: AcceptanceCriterion[] = [];
   const checkboxRe = /^[ \t]*-[ \t]+\[([ xX])\][ \t]+(.+)$/gm;
   let match: RegExpExecArray | null;
@@ -1188,78 +1340,18 @@ Comments include notes posted by scrum_log_impediment (bidirectional impediment 
 
         const issue = issueData.node;
         if (!issue || issue.number === null) {
-          throw new Error(
-            `Issue ${resolved.issueId} could not be fetched. ` +
-              "It may have been deleted or the token lacks Issues: Read access.",
-          );
+          throw new Error(missingIssueMessage(resolved.issueId));
         }
 
-        // Extract board field values from the project item
-        const fieldValues = itemData.node?.fieldValues?.nodes ?? [];
-        const { sprintFieldId, statusFieldId, storyPointsFieldId, priorityFieldId } = config.fields;
-
-        let status: string | null = null;
-        let sprint: string | null = null;
-        let story_points: number | null = null;
-        let priority: string | null = null;
-
-        for (const fv of fieldValues) {
-          const fieldId = fv.field?.id;
-          if (!fieldId) continue;
-          if (fieldId === statusFieldId && fv.name) {
-            status = fv.name;
-          } else if (fieldId === sprintFieldId && fv.title) {
-            sprint = fv.title;
-          } else if (
-            storyPointsFieldId &&
-            fieldId === storyPointsFieldId &&
-            typeof fv.number === "number"
-          ) {
-            story_points = fv.number;
-          } else if (priorityFieldId && fieldId === priorityFieldId && fv.name) {
-            priority = fv.name;
-          }
-        }
-
-        const allLabels = issue.labels?.nodes.map((l) => l.name) ?? [];
-        const type = (allLabels.find((l) => STORY_TYPES.has(l)) as Story["type"]) ??
-          null;
-        const labels = allLabels.filter((l) => !STORY_TYPES.has(l));
-
-        const story: Story = {
-          ref: { number: issue.number!, id: resolved.itemId },
-          title: issue.title ?? "",
-          body: issue.body ?? "",
-          type,
-          status,
-          sprint,
-          story_points,
-          priority,
-          assignees: issue.assignees?.nodes.map((a) => a.login) ?? [],
-          labels,
-          epic: issue.milestone?.title ?? null,
-          created_at: issue.createdAt ?? "",
-          updated_at: issue.updatedAt ?? "",
-          url: issue.url ?? null,
-        };
-
-        const comments = (issue.comments?.nodes ?? []).map((c) => ({
-          author: c.author?.login ?? "(ghost)",
-          body: c.body,
-          created_at: c.createdAt,
-          url: c.url,
-        }));
-
-        const linked_prs = (issue.timelineItems?.nodes ?? [])
-          .filter((n) => n.source?.number !== null)
-          .map((n) => ({
-            number: n.source!.number!,
-            title: n.source!.title ?? "",
-            url: n.source!.url ?? "",
-            state: n.source!.state ?? "UNKNOWN",
-            is_draft: n.source!.isDraft ?? false,
-          }));
-
+        // Delegate to extracted helpers — handler reads as orchestration only
+        const story = buildEnrichedStory(
+          issue as IssueDetailsNode,
+          resolved.itemId,
+          itemData.node?.fieldValues?.nodes ?? [],
+          config,
+        );
+        const comments = buildCommentList(issue.comments?.nodes ?? []);
+        const linked_prs = buildLinkedPrList(issue.timelineItems?.nodes ?? []);
         const acceptance_criteria = parseAcceptanceCriteria(story.body);
 
         return {
