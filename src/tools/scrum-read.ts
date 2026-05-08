@@ -933,8 +933,6 @@ can be resolved autonomously via scrum_add_vocabulary.`,
     },
   );
 
-  // ── Step 6: scrum_get_history ─────────────────────────────────────────────────
-  //
   // Returns raw sprint snapshots for the last N completed sprints. The agent
   // derives velocity, trends, and recommendations from this data — the server
   // returns observable facts only (per design principle #6).
