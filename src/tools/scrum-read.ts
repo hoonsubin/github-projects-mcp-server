@@ -281,6 +281,25 @@ const GET_ITEM_FIELDS_QUERY = `
   }
 `;
 
+/** Fetch repository labels for story typing verification. */
+const GET_REPO_LABELS_QUERY = `
+  query GetRepoLabels($owner: String!, $repo: String!) {
+    repository(owner: $owner, name: $repo) {
+      labels(first: 50) {
+        nodes { name color description }
+      }
+    }
+  }
+`;
+
+interface RepoLabelsResponse {
+  repository?: {
+    labels?: {
+      nodes: Array<{ name: string; color: string; description: string }>;
+    };
+  };
+}
+
 // ── Pagination helper ──────────────────────────────────────────────────────────
 
 /**
@@ -536,6 +555,14 @@ can be resolved autonomously via scrum_add_vocabulary.`,
         // Type labels the agent needs for story classification
         const typeLabels = ["feature", "bug", "tech_debt", "spike", "impediment"];
 
+        // Fetch repo labels to report which type labels exist/are missing
+        const labelsResult = await gh.graphql<RepoLabelsResponse>(
+          GET_REPO_LABELS_QUERY,
+          { owner, repo: getRepo() },
+        );
+        const existingLabels = labelsResult?.repository?.labels?.nodes.map((l) => l.name) ?? [];
+        const missingLabels = typeLabels.filter((l) => !existingLabels.includes(l));
+
         const result = {
           platform_state: {
             fields: {
@@ -556,14 +583,10 @@ can be resolved autonomously via scrum_add_vocabulary.`,
                 missing_options: missingPriorityOptions,
               },
             },
-            // Labels are not fetched by loadConfig — the agent should note which
-            // type labels exist by calling scrum_get_story or by the platform's
-            // label list. Flagged as a Phase 4 improvement (add a repo labels query
-            // to loadConfig so scrum_orient can report label gaps directly).
             labels: {
-              note: "Label presence not yet verified by scrum_orient. " +
-                `Expected labels for story typing: ${typeLabels.join(", ")}. ` +
-                "Use scrum_add_vocabulary to create any that are missing.",
+              existing: existingLabels,
+              expected: typeLabels,
+              missing: missingLabels,
             },
             iterations: {
               active: config.iterations.active
@@ -586,10 +609,14 @@ can be resolved autonomously via scrum_add_vocabulary.`,
           declared_vocabulary: {
             status: statusVocab,
             priority: priorityVocab,
-            story_points: yml.story_points?.scale ?? null,
+            story_points: {
+              scale: yml.sprint?.story_point_scale ?? null,
+              values: yml.sprint?.story_point_values ?? null,
+            },
             sprint: {
               duration_days: yml.sprint?.duration_days ?? null,
               velocity_window: yml.sprint?.velocity_window ?? 5,
+              length_weeks: yml.sprint?.length_weeks ?? null,
             },
             team: yml.team ?? null,
             definition_of_ready: yml.definition_of_ready ?? null,

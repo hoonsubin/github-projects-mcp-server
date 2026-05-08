@@ -335,6 +335,10 @@ export interface ScrumConfigYml {
     carry_over_threshold_days?: number;
     report_submit_time?: string;
     report_recipient?: string | null;
+    story_point_scale?: string;
+    story_point_values?: number[];
+    length_weeks?: number;
+    start_day?: string;
   };
   impediment?: {
     escalation_threshold_days?: number;
@@ -516,4 +520,41 @@ export interface BulkUpdateResult {
   title: string;
   success: boolean;
   error?: string;
+}
+
+// ── SCRUM history types (scrum_get_history) ────────────────────────────────────
+
+/** Response shape for scrum_get_history tool. */
+export interface SprintHistoryResponse {
+  window: number;
+  sprints: SprintSnapshot[];
+  message?: string; // present when no sprints available
+}
+
+/** A single sprint snapshot returned by scrum_get_history. */
+export interface SprintSnapshot {
+  name: string;
+  start_date: string; // ISO date (YYYY-MM-DD)
+  end_date: string;   // ISO date (YYYY-MM-DD)
+  duration_days: number;
+  stories: SprintStory[];
+  summary: SprintSummary;
+}
+
+/** Lightweight story entry within a sprint snapshot. */
+export interface SprintStory {
+  number: number;
+  title: string;
+  points: number;
+  status: string | null;
+}
+
+/** Aggregated summary for a sprint snapshot. */
+export interface SprintSummary {
+  committed_points: number;
+  completed_points: number;
+  carried_points: number;
+  completion_rate: number; // 0–1, rounded to 2 decimals
+  story_count: number;
+  completed_count: number;
 }
