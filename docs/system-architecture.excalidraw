@@ -554,8 +554,8 @@
       "index": "bEt",
       "roundness": null,
       "seed": 1849954336,
-      "version": 71,
-      "versionNonce": 42379433,
+      "version": 72,
+      "versionNonce": 1096766774,
       "isDeleted": false,
       "boundElements": [
         {
@@ -563,7 +563,7 @@
           "id": "6-ykocLbGr5EczmZc4xWN"
         }
       ],
-      "updated": 1778237876034,
+      "updated": 1778241773610,
       "link": null,
       "locked": false,
       "points": [
@@ -613,9 +613,9 @@
     {
       "id": "6-ykocLbGr5EczmZc4xWN",
       "type": "text",
-      "x": 612.5666625976562,
-      "y": 553.5,
-      "width": 155,
+      "x": 661.530062866211,
+      "y": 577.5,
+      "width": 166.83987426757812,
       "height": 25,
       "angle": 0,
       "strokeColor": "#1e1e1e",
@@ -630,20 +630,20 @@
       "index": "bEu",
       "roundness": null,
       "seed": 1268927968,
-      "version": 20,
-      "versionNonce": 309642646,
+      "version": 52,
+      "versionNonce": 1981653930,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1778008169578,
+      "updated": 1778241772687,
       "link": null,
       "locked": false,
-      "text": "Docker compose",
+      "text": "Streamable/stdio",
       "fontSize": 20,
       "fontFamily": 5,
       "textAlign": "center",
       "verticalAlign": "middle",
       "containerId": "bCWbgcMPqCFQKXq-GRI_r",
-      "originalText": "Docker compose",
+      "originalText": "Streamable/stdio",
       "autoResize": true,
       "lineHeight": 1.25
     },

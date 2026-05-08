@@ -1,6 +1,6 @@
 // =============================================================================
 // src/tools/scrum-read.ts — Phase 2: all 5 scrum_* read tools
-// [Phase 2, steps 5–10 — COMPLETE]
+// [Phase 2, steps 5-10 — COMPLETE]
 //
 // All tools call loadConfig at invocation time — no shared server state.
 // Bootstrap env vars required: GITHUB_OWNER, GITHUB_OWNER_TYPE (default "user"),
@@ -26,7 +26,7 @@ import {
   GetStorySchema,
 } from "../schemas/scrum.ts";
 import { z } from "zod";
-import type { GetBacklogResult, Story } from "../types.ts";
+import type { GetBacklogResult, IterationEntry, Story } from "../types.ts";
 
 // ── Bootstrap helpers ─────────────────────────────────────────────────────────
 
@@ -434,6 +434,138 @@ const findStatusDisplayName = (
   return entry ? entry[1] : fallback;
 };
 
+// ── Sprint helpers ───────────────────────────────────────────────────────────────
+
+/**
+ * Sprint metadata header returned to the agent.
+ */
+interface SprintMeta {
+  name: string;
+  start_date?: string;
+  end_date?: string;
+  duration_days?: number;
+  days_remaining?: number;
+}
+
+/**
+ * Sum story points across stories matching the given predicate.
+ * Treats null story_points as 0.
+ */
+/** Exported for testing. */
+export const sumPointsWhere = (
+  stories: Story[],
+  predicate: (s: Story) => boolean,
+): number => stories.filter(predicate).reduce((acc, s) => acc + (s.story_points ?? 0), 0);
+
+/**
+ * Build the sprint metadata header for the response.
+ * When iterEntry is available, returns full date/duration fields.
+ * Falls back to { name: "(sprint not found)" } so the agent receives a
+ * descriptive label rather than the internal SprintRef address ("current").
+ */
+/** Exported for testing. */
+export const buildSprintMeta = (iterEntry: IterationEntry | null): SprintMeta => {
+  if (!iterEntry) return { name: "(sprint not found)" };
+
+  const endDate = new Date(iterEntry.startDate);
+  endDate.setDate(endDate.getDate() + iterEntry.duration);
+  endDate.setHours(0, 0, 0, 0); // normalize to avoid timezone edge cases
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const daysRemaining = Math.max(
+    0,
+    Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
+  );
+
+  return {
+    name: iterEntry.title,
+    start_date: iterEntry.startDate,
+    end_date: endDate.toISOString().slice(0, 10),
+    duration_days: iterEntry.duration,
+    days_remaining: daysRemaining,
+  };
+};
+
+/**
+ * Group stories by their status display name, ordered by the team's declared
+ * status vocabulary. Statuses not present in the vocabulary are appended at the end.
+ */
+/** Exported for testing. */
+export const groupStoriesByStatus = (
+  stories: Story[],
+  config: RuntimeConfig,
+): Array<{ status: string; stories: Story[]; points_sum: number }> => {
+  // Build the raw group map first
+  const groupMap = new Map<string, Story[]>();
+  for (const story of stories) {
+    const key = story.status ?? "(No Status)";
+    if (!groupMap.has(key)) groupMap.set(key, []);
+    groupMap.get(key)!.push(story);
+  }
+
+  // Order by declared vocabulary
+  const statusOrder = Object.values(
+    (config.yml.status as Record<string, string>) ?? {},
+  );
+  const orderedGroups = statusOrder
+    .filter((statusName) => groupMap.has(statusName))
+    .map((statusName) => ({
+      status: statusName,
+      stories: groupMap.get(statusName)!,
+      points_sum: sumPointsWhere(groupMap.get(statusName)!, () => true),
+    }));
+
+  // Append any statuses not in the vocabulary (e.g., options added after config was written)
+  const knownStatuses = new Set(statusOrder);
+  for (const [status, groupStories] of groupMap) {
+    if (!knownStatuses.has(status)) {
+      orderedGroups.push({
+        status,
+        stories: groupStories,
+        points_sum: sumPointsWhere(groupStories, () => true),
+      });
+    }
+  }
+
+  return orderedGroups;
+};
+
+/**
+ * Compute sprint point totals using vocabulary-based status identification.
+ * The "done", "in progress", and "blocked" buckets are matched by keyword
+ * against the team's declared status vocabulary — not hardcoded strings.
+ */
+/** Exported for testing. */
+export const computeSprintTotals = (
+  stories: Story[],
+  config: RuntimeConfig,
+): {
+  committed_points: number;
+  completed_points: number;
+  in_flight_points: number;
+  blocked_points: number;
+} => {
+  const doneDisplay = findStatusDisplayName(config, "done", "Done");
+  const inProgressDisplay = findStatusDisplayName(
+    config,
+    "progress",
+    "In Progress",
+  );
+  const blockedDisplay = findStatusDisplayName(config, "block", "Blocked");
+
+  return {
+    committed_points: sumPointsWhere(stories, () => true),
+    completed_points: sumPointsWhere(stories, (s) => s.status === doneDisplay),
+    in_flight_points: sumPointsWhere(
+      stories,
+      (s) => s.status === inProgressDisplay,
+    ),
+    blocked_points: sumPointsWhere(stories, (s) => s.status === blockedDisplay),
+  };
+};
+
 // ── Acceptance criteria parser ─────────────────────────────────────────────────
 
 interface AcceptanceCriterion {
@@ -651,7 +783,7 @@ can be resolved autonomously via scrum_add_vocabulary.`,
       description: `Return raw sprint snapshots for the last N completed sprints.
 
 Args:
-  window (integer 1–10, default 5) — how many completed sprints to include
+  window (integer 1-10, default 5) — how many completed sprints to include
 
 Returns:
   window                 — number of sprints requested
@@ -662,7 +794,7 @@ Returns:
     duration_days        — calendar days in the sprint
     stories[]            — lightweight story list: { number, title, points, status }
     summary              — { committed_points, completed_points, carried_points,
-                             completion_rate (0–1), story_count, completed_count }
+                             completion_rate (0-1), story_count, completed_count }
 
 Use this to give the agent the raw data it needs to reason about velocity trends,
 team throughput, and sprint commitment calibration. The agent computes averages,
@@ -966,9 +1098,7 @@ and "block" respectively.`,
           };
         }
 
-        // Sprint metadata for the response header
         const iterEntry = config.iterations.all.find((i) => i.id === iterationId);
-
         const allItems = await fetchAllItems(config, owner, ownerType);
         const { sprintFieldId } = config.fields;
 
@@ -984,59 +1114,15 @@ and "block" respectively.`,
           .map((item) => buildStoryFromRaw(item, config))
           .filter((s): s is Story => s !== null);
 
-        // Group by status display name
-        const groupMap = new Map<string, Story[]>();
-        for (const story of stories) {
-          const key = story.status ?? "(No Status)";
-          if (!groupMap.has(key)) groupMap.set(key, []);
-          groupMap.get(key)!.push(story);
-        }
-
-        const groups = [...groupMap.entries()].map(([status, groupStories]) => ({
-          status,
-          stories: groupStories,
-          points_sum: groupStories.reduce((sum, s) => sum + (s.story_points ?? 0), 0),
-        }));
-
-        // Vocabulary-based status lookups for totals
-        const doneDisplay = findStatusDisplayName(config, "done", "Done");
-        const inProgressDisplay = findStatusDisplayName(config, "progress", "In Progress");
-        const blockedDisplay = findStatusDisplayName(config, "block", "Blocked");
-
-        const sum = (filter: (s: Story) => boolean) =>
-          stories.filter(filter).reduce((acc, s) => acc + (s.story_points ?? 0), 0);
-
-        const totals = {
-          committed_points: stories.reduce((acc, s) => acc + (s.story_points ?? 0), 0),
-          completed_points: sum((s) => s.status === doneDisplay),
-          in_flight_points: sum((s) => s.status === inProgressDisplay),
-          blocked_points: sum((s) => s.status === blockedDisplay),
-        };
-
-        // Sprint header
-        let sprintMeta: Record<string, unknown> = { name: String(sprintRef) };
-        if (iterEntry) {
-          const endDate = new Date(iterEntry.startDate);
-          endDate.setDate(endDate.getDate() + iterEntry.duration);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const daysRemaining = Math.max(
-            0,
-            Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
-          );
-          sprintMeta = {
-            name: iterEntry.title,
-            start_date: iterEntry.startDate,
-            end_date: endDate.toISOString().slice(0, 10),
-            duration_days: iterEntry.duration,
-            days_remaining: daysRemaining,
-          };
-        }
+        // Delegate to named helpers — handler reads as orchestration only
+        const groups = groupStoriesByStatus(stories, config);
+        const totals = computeSprintTotals(stories, config);
+        const sprint = buildSprintMeta(iterEntry ?? null);
 
         return {
           content: [{
             type: "text" as const,
-            text: JSON.stringify({ sprint: sprintMeta, groups, totals }, null, 2),
+            text: JSON.stringify({ sprint, groups, totals }, null, 2),
           }],
         };
       } catch (err: unknown) {

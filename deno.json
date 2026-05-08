@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "dev": "deno run --env-file --watch --allow-net --allow-read src/index.ts",
+    "dev": "deno run --env-file --allow-env --watch --allow-net --allow-read src/index.ts",
     "start": "deno run --env-file --allow-env --allow-net --allow-read src/index.ts",
     "inspector": "deno run --allow-env --allow-net --allow-read --allow-run src/index.ts",
     "test": "GITHUB_TOKEN=test-token deno test --allow-env=DEBUG,GITHUB_TOKEN --allow-net src/"

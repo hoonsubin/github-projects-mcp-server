@@ -27,14 +27,14 @@ Twelve tools. This is the complete, stable contract. No `github_*` tool outside 
 
 ### Read tools (6)
 
-| Tool                   | One-line purpose                                                                           |
-| ---------------------- | ------------------------------------------------------------------------------------------ |
-| `scrum_orient`         | Current platform state + declared vocabulary — the agent's entry point for any new project |
-| `scrum_get_sprint`     | Current sprint backlog snapshot grouped by status with point totals                        |
-| `scrum_get_backlog`    | All unsprinted stories, filterable, with readiness summary                                 |
-| `scrum_get_story`      | Full detail of one story: comments, linked PRs, parsed AC                                  |
-| `scrum_get_history`    | Raw completed-sprint snapshots with per-sprint stories[] and summary stats                 |
-| `scrum_get_template`   | Fetch a project-configured ceremony artifact template, or signal agent to use skill default |
+| Tool                 | One-line purpose                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------- |
+| `scrum_orient`       | Current platform state + declared vocabulary — the agent's entry point for any new project  |
+| `scrum_get_sprint`   | Current sprint backlog snapshot grouped by status with point totals                         |
+| `scrum_get_backlog`  | All unsprinted stories, filterable, with readiness summary                                  |
+| `scrum_get_story`    | Full detail of one story: comments, linked PRs, parsed AC                                   |
+| `scrum_get_history`  | Raw completed-sprint snapshots with per-sprint stories[] and summary stats                  |
+| `scrum_get_template` | Fetch a project-configured ceremony artifact template, or signal agent to use skill default |
 
 ### Write tools (6)
 
@@ -173,7 +173,7 @@ A new optional top-level section maps `ArtifactType` keys to repo-relative file 
 templates:
   sprint_review: ".github/scrum/templates/sprint-review.md"
   retrospective: ".github/scrum/templates/retro.md"
-  standup: null           # null → agent uses skill default
+  standup: null # null → agent uses skill default
   # sprint_planning omitted → agent uses skill default
   # refinement omitted → agent uses skill default
 ```
@@ -416,10 +416,16 @@ Implement the sixth read tool inside the existing `src/tools/scrum-read.ts`. No 
 
 ```typescript
 // Custom template found and fetched:
-{ content: string; source: "custom" }
+{
+  content: string;
+  source: "custom";
+}
 
 // No custom template declared — agent uses skill-level default:
-{ content: null; source: "default" }
+{
+  content: null;
+  source: "default";
+}
 ```
 
 **Implementation steps:**
@@ -431,11 +437,13 @@ Implement the sixth read tool inside the existing `src/tools/scrum-read.ts`. No 
 5. Return `{ content: blob.text, source: "custom" }`.
 
 **Error cases:**
+
 - Path declared but file missing at that ref → structured error (see step 4).
 - `artifact_type` not a valid enum value → Zod validation rejects before handler runs.
 - `loadConfig` fails → propagate as normal tool error (same behaviour as all read tools).
 
 **Design notes:**
+
 - The handler never interprets, validates, or parses the template content. It returns raw text.
 - `source: "default"` is not an error — it is the normal path for any artifact type without a custom template.
 - The agent checks `declared_vocabulary.templates` from `scrum_orient` before calling this tool to avoid an unnecessary round-trip when it already knows no custom path is declared.
@@ -444,7 +452,7 @@ Implement the sixth read tool inside the existing `src/tools/scrum-read.ts`. No 
 
 ## Phase 2.5 — REST API + `scrum_get_burndown`
 
-See `plans/BURNDOWN.md` for the complete plan. Summary:
+See `docs/BURNDOWN.md` for the complete plan. Summary:
 
 - Add `rest<T>()` function to `src/services/github.ts` (single-request REST helper, same auth/timeout pattern as `graphql()`)
 - Add `GetBurndownSchema` to `src/schemas/scrum.ts` ✓ (already done)
@@ -590,26 +598,22 @@ src/
 
 This sequence gets all 11 tools registered and the read path working end-to-end. Write tools are stubbed with a clear `"not yet implemented"` error until step 13.
 
-1. `src/types.ts` — add domain types (`Story`, `StoryRef`, `SprintRef`, `ScrumField`, `StoryType`)
-2. `src/schemas/scrum.ts` — all input schemas
-3. `src/services/config.ts` — `loadConfig` (unblocks everything)
-4. `src/services/resolver.ts` — `resolveSprint` (sync, no deps beyond `RuntimeConfig`)
-5. `src/tools/scrum-read.ts` — `scrum_orient` (entry-point read; good integration test checkpoint)
-6. `src/tools/scrum-read.ts` — `scrum_get_history`
-7. `src/tools/scrum-read.ts` — `scrum_get_backlog`
-8. `src/tools/scrum-read.ts` — `scrum_get_sprint`
-9. `src/services/resolver.ts` — `resolveStory` (async; needed by remaining tools)
-10. `src/tools/scrum-read.ts` — `scrum_get_story`
-10a. `src/tools/scrum-read.ts` — `scrum_get_template` (no resolver needed; reuses `loadConfig` + `GET_REPO_FILE_QUERY`)
-11. `src/tools/scrum-write.ts` — stubs for all 6 write tools + deprecated `github_graphql`
-12. `src/index.ts` — swap to new register calls; delete `projects.ts` and `items.ts` ← **minimum functioning build: server starts, all 11 tools appear in tool list**
-13. Write tool implementations in order:
-    - `scrum_add_vocabulary` (simplest — single field/label mutation, no resolver)
-    - `scrum_set_field` (core primitive)
-    - `scrum_update_story`
-    - `scrum_create_story`
-    - `scrum_plan_sprint`
-    - `scrum_log_impediment`
+| #   | Task                                             | Status     | Notes                                                                                                                                  |
+| --- | ------------------------------------------------ | ---------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `src/types.ts` — add domain types                | ✅ Done    | `Story`, `StoryRef`, `SprintRef`, `ScrumField`, `StoryType`                                                                            |
+| 2   | `src/schemas/scrum.ts` — all input schemas       | ✅ Done    | All 11 tool schemas                                                                                                                    |
+| 3   | `src/services/config.ts` — `loadConfig`          | ✅ Done    | Unblocks everything                                                                                                                    |
+| 4   | `src/services/resolver.ts` — `resolveSprint`     | ✅ Done    | Sync, no deps beyond `RuntimeConfig`                                                                                                   |
+| 5   | `src/tools/scrum-read.ts` — `scrum_orient`       | ✅ Done    | Entry-point read                                                                                                                       |
+| 6   | `src/tools/scrum-read.ts` — `scrum_get_history`  | ✅ Done    |                                                                                                                                        |
+| 7   | `src/tools/scrum-read.ts` — `scrum_get_backlog`  | ✅ Done    |                                                                                                                                        |
+| 8   | `src/tools/scrum-read.ts` — `scrum_get_sprint`   | ✅ Done    | Story 8 complete: refactored to use named helpers (`sumPointsWhere`, `buildSprintMeta`, `groupStoriesByStatus`, `computeSprintTotals`) |
+| 9   | `src/services/resolver.ts` — `resolveStory`      | ✅ Done    | Async; needed by remaining tools                                                                                                       |
+| 10  | `src/tools/scrum-read.ts` — `scrum_get_story`    | ✅ Done    |                                                                                                                                        |
+| 10a | `src/tools/scrum-read.ts` — `scrum_get_template` | ⏸️ Pending | Separate story                                                                                                                         |
+| 11  | `src/tools/scrum-write.ts` — stubs               | ⏸️ Pending |                                                                                                                                        |
+| 12  | `src/index.ts` — swap register calls             | ⏸️ Pending |                                                                                                                                        |
+| 13  | Write tool implementations                       | ⏸️ Pending |                                                                                                                                        |
 
 ---
 
