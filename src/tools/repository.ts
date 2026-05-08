@@ -80,14 +80,14 @@ const toBase64 = (text: string): string => {
 export const registerRepositoryTools = (server: McpServer): void => {
   // ── Arbitrary GraphQL query ───────────────────────────────────────────────
 
-  // todo: [Phase 4] Update description — mark as DEPRECATED, add deprecation notice
+  // todo: [Phase 4] Update description — mark as DEPRECATED, add deprecation notice ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
   server.registerTool(
-    // todo: [Phase 4] Move to scrum-write.ts as deprecated tool
+    // todo: [Phase 4] Move to scrum-write.ts as deprecated tool ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
     "github_graphql",
     {
-      // todo: [Phase 4] Update tool description to: "DEPRECATED. Preserved for ad-hoc diagnostic GraphQL lookups. Prefer scrum_* tools."
+      // todo: [Phase 4] Update tool description to: "DEPRECATED. Preserved for ad-hoc diagnostic GraphQL lookups. Prefer scrum_* tools." ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
       title: "GitHub GraphQL Query",
-      // todo: [Phase 4] Update description — mutations already blocked; add deprecation note
+      // todo: [Phase 4] Update description — mutations already blocked; add deprecation note ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
       description: `Execute a read-only GraphQL query against the GitHub API.
 
 Use this tool for ad-hoc lookups not covered by other tools:

@@ -8,8 +8,6 @@
 import type { RuntimeConfig } from "./config.ts";
 import type { SprintRef, StoryRef } from "../types.ts";
 
-export type { SprintRef, StoryRef };
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 /**
@@ -106,10 +104,10 @@ interface ItemByIdResponse {
  * - null      → returns null (caller passes this to clear/remove the sprint field on an item)
  * - string    → case-insensitive title match against config.iterations.all; throws if no match
  */
-export function resolveSprint(
+export const resolveSprint = (
   ref: SprintRef,
   config: RuntimeConfig,
-): string | null {
+): string | null => {
   if (ref === null) {
     return null;
   }
@@ -143,11 +141,11 @@ export function resolveSprint(
     const known = config.iterations.all.map((i) => `"${i.title}"`).join(", ");
     throw new Error(
       `Sprint "${ref}" not found. Known sprints: ${known || "(none)"}. ` +
-        "Pass \"current\", \"next\", or an exact sprint title.",
+        'Pass "current", "next", or an exact sprint title.',
     );
   }
   return match.id;
-}
+};
 
 // ── resolveStory ──────────────────────────────────────────────────────────────
 
@@ -167,12 +165,15 @@ export function resolveSprint(
  *
  * At least one of { number, id } must be present; if both are provided, { id } wins
  * (it saves a round-trip).
+ *
+ * @param repoOwner - Owner of the repository (defaults to config.yml.project.owner for backward compat)
  */
-export async function resolveStory(
+export const resolveStory = async (
   ref: StoryRef,
   config: RuntimeConfig,
   github: GitHubClient,
-): Promise<ResolvedStory> {
+  repoOwner?: string,
+): Promise<ResolvedStory> => {
   if (!ref.number && !ref.id) {
     throw new Error(
       "StoryRef must contain at least one of { number } or { id }.",
@@ -214,11 +215,14 @@ export async function resolveStory(
     );
   }
 
-  const owner = config.yml.project.owner;
+  // Use explicit repoOwner if provided; otherwise fall back to config.yml.project.owner.
+  // This allows callers to specify a different repo owner when the project and repo
+  // have different owners (e.g., an org-owned project on a user-owned repo).
+  const repoOwnerResolved = repoOwner ?? config.yml.project.owner;
   const data = await github.graphql<IssueByNumberResponse>(
     GET_ISSUE_BY_NUMBER_QUERY,
     {
-      owner,
+      owner: repoOwnerResolved,
       repo,
       number: ref.number!,
     },
@@ -227,7 +231,7 @@ export async function resolveStory(
   const issue = data.repository?.issue;
   if (!issue) {
     throw new Error(
-      `Issue #${ref.number} not found in ${owner}/${repo}. ` +
+      `Issue #${ref.number} not found in ${repoOwnerResolved}/${repo}. ` +
         "Verify the issue number and ensure the token has Contents: Read access.",
     );
   }
@@ -238,7 +242,7 @@ export async function resolveStory(
   );
   if (!projectItem) {
     throw new Error(
-      `Issue #${ref.number} exists in ${owner}/${repo} but is not part of project #${config.yml.project.project_number}. ` +
+      `Issue #${ref.number} exists in ${repoOwnerResolved}/${repo} but is not part of project #${config.yml.project.project_number}. ` +
         "Add the issue to the project before operating on it.",
     );
   }
@@ -248,4 +252,4 @@ export async function resolveStory(
     issueId: issue.id,
     issueNumber: issue.number,
   };
-}
+};

@@ -1,5 +1,5 @@
 ---
-name: scrum-master-assistant
+name: scrum-master-agent
 description: >
   Full Scrum Master skill. Use whenever the user asks anything related to Scrum, agile methodology,
   or team delivery — whether they are acting AS the Scrum Master or need support for their SM role.

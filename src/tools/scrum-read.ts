@@ -16,6 +16,7 @@ import { formatError, graphql } from "../services/github.ts";
 import { loadConfig } from "../services/config.ts";
 import type { RuntimeConfig } from "../services/config.ts";
 import { resolveSprint, resolveStory } from "../services/resolver.ts";
+
 import {
   GetBacklogSchema,
   GetHistorySchema,
@@ -30,13 +31,24 @@ import type { Story } from "../types.ts";
 /** GitHub client wrapper — matches the interface loadConfig/resolveStory expect. */
 const gh = { graphql };
 
+/** Get the repo slug from environment — centralized to avoid duplication. */
+const getRepo = (): string => {
+  const repo = Deno.env.get("GITHUB_REPO");
+  if (!repo) {
+    throw new Error(
+      "GITHUB_REPO environment variable is not set. " +
+        "Set it to the repository slug (e.g., 'github-projects-mcp-server').",
+    );
+  }
+  return repo;
+};
 interface BootstrapConfig {
   owner: string;
   ownerType: "user" | "org";
   projectNumber: number;
 }
 
-function getBootstrapConfig(): BootstrapConfig {
+const getBootstrapConfig = (): BootstrapConfig => {
   const owner = Deno.env.get("GITHUB_OWNER");
   if (!owner) {
     throw new Error(
@@ -61,7 +73,7 @@ function getBootstrapConfig(): BootstrapConfig {
     );
   }
   return { owner, ownerType: ownerTypeRaw as "user" | "org", projectNumber };
-}
+};
 
 // ── Raw GraphQL response types ─────────────────────────────────────────────────
 
@@ -276,14 +288,14 @@ const GET_ITEM_FIELDS_QUERY = `
  * GitHub Projects v2 has no server-side field filtering, so all filtering is
  * done client-side after this call.
  *
- * todo: [Phase 4] Support org-owned projects by adding an org-root variant of
- * GET_PROJECT_ITEMS_QUERY and branching on ownerType here.
+ * todo: [Phase 4] Support org-owned projects by adding an org-root variant of ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
+ * GET_PROJECT_ITEMS_QUERY and branching on ownerType here. ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
  */
-async function fetchAllItems(
+const fetchAllItems = async (
   config: RuntimeConfig,
   owner: string,
   ownerType: "user" | "org",
-): Promise<RawItem[]> {
+): Promise<RawItem[]> => {
   if (ownerType === "org") {
     throw new Error(
       "Org-owned projects are not yet supported by the scrum_* read tools. " +
@@ -314,7 +326,7 @@ async function fetchAllItems(
   }
 
   return all;
-}
+};
 
 // ── Story builder ──────────────────────────────────────────────────────────────
 
@@ -324,12 +336,11 @@ const STORY_TYPES = new Set(["feature", "bug", "tech_debt", "spike"]);
  * Build a Story from a raw project item node.
  * Returns null for DraftIssues (no issue number) and items without content.
  */
-function buildStoryFromRaw(item: RawItem, config: RuntimeConfig): Story | null {
+const buildStoryFromRaw = (item: RawItem, config: RuntimeConfig): Story | null => {
   const content = item.content;
   if (!content || typeof content.number !== "number") return null;
 
-  const { sprintFieldId, statusFieldId, storyPointsFieldId, priorityFieldId } =
-    config.fields;
+  const { sprintFieldId, statusFieldId, storyPointsFieldId, priorityFieldId } = config.fields;
 
   let status: string | null = null;
   let sprint: string | null = null;
@@ -346,7 +357,7 @@ function buildStoryFromRaw(item: RawItem, config: RuntimeConfig): Story | null {
     } else if (
       storyPointsFieldId &&
       fieldId === storyPointsFieldId &&
-      fv.number != null
+      typeof fv.number === "number"
     ) {
       story_points = fv.number;
     } else if (priorityFieldId && fieldId === priorityFieldId && fv.name) {
@@ -375,7 +386,7 @@ function buildStoryFromRaw(item: RawItem, config: RuntimeConfig): Story | null {
     updated_at: content.updatedAt ?? "",
     url: content.url ?? null,
   };
-}
+};
 
 // ── Vocabulary helpers ─────────────────────────────────────────────────────────
 
@@ -387,11 +398,11 @@ function buildStoryFromRaw(item: RawItem, config: RuntimeConfig): Story | null {
  *   → searches yml.status for a key like "done", "Done", "is_done", etc.
  *   → returns the mapped display value, e.g. "Done" or "Completed"
  */
-function findStatusDisplayName(
+const findStatusDisplayName = (
   config: RuntimeConfig,
   keyHint: string,
   fallback: string,
-): string {
+): string => {
   // yml.status is not in the ScrumConfigYml type signature; it comes from the
   // user's YAML and is caught by [key: string]: unknown.
   const vocab = config.yml.status as Record<string, string> | undefined;
@@ -400,7 +411,7 @@ function findStatusDisplayName(
     k.toLowerCase().includes(keyHint.toLowerCase())
   );
   return entry ? entry[1] : fallback;
-}
+};
 
 // ── Acceptance criteria parser ─────────────────────────────────────────────────
 
@@ -409,7 +420,7 @@ interface AcceptanceCriterion {
   checked: boolean;
 }
 
-function parseAcceptanceCriteria(body: string): AcceptanceCriterion[] {
+const parseAcceptanceCriteria = (body: string): AcceptanceCriterion[] => {
   const ac: AcceptanceCriterion[] = [];
   const checkboxRe = /^[ \t]*-[ \t]+\[([ xX])\][ \t]+(.+)$/gm;
   let match: RegExpExecArray | null;
@@ -417,7 +428,7 @@ function parseAcceptanceCriteria(body: string): AcceptanceCriterion[] {
     ac.push({ checked: match[1].trim() !== "", text: match[2].trim() });
   }
   return ac;
-}
+};
 
 // ── Readiness classifier ───────────────────────────────────────────────────────
 
@@ -429,19 +440,19 @@ type ReadinessLevel = "sprint_ready" | "in_refinement" | "future_candidate";
  * in_refinement:      has at least one but not all three
  * future_candidate:   has none of the three
  */
-function classifyReadiness(story: Story): ReadinessLevel {
-  const hasPoints = story.story_points != null && story.story_points > 0;
+const classifyReadiness = (story: Story): ReadinessLevel => {
+  const hasPoints = story.story_points !== null && story.story_points > 0;
   const hasAC = /^[ \t]*-[ \t]+\[([ xX])\]/m.test(story.body);
-  const hasPriority = story.priority != null;
+  const hasPriority = story.priority !== null;
   const score = [hasPoints, hasAC, hasPriority].filter(Boolean).length;
   if (score === 3) return "sprint_ready";
   if (score > 0) return "in_refinement";
   return "future_candidate";
-}
+};
 
 // ── Tool registration ──────────────────────────────────────────────────────────
 
-export function registerScrumReadTools(server: McpServer): void {
+export const registerScrumReadTools = (server: McpServer): void => {
   // ── Step 5: scrum_orient ─────────────────────────────────────────────────────
   //
   // Entry point for the agent on any new project. Returns two things:
@@ -458,7 +469,8 @@ export function registerScrumReadTools(server: McpServer): void {
     "scrum_orient",
     {
       title: "Orient to Project",
-      description: `Return the current platform state and declared Scrum vocabulary for this project.
+      description:
+        `Return the current platform state and declared Scrum vocabulary for this project.
 
 No arguments required. Call this first when connecting to a new project, before sprint
 planning, or any time the agent needs to verify the board is configured correctly.
@@ -495,12 +507,17 @@ can be resolved autonomously via scrum_add_vocabulary.`,
     async () => {
       try {
         const { owner, ownerType, projectNumber } = getBootstrapConfig();
-        const config = await loadConfig(gh, owner, ownerType, projectNumber);
+        const config = await loadConfig({
+          github: gh,
+          owner,
+          ownerType,
+          projectNumber,
+          repo: getRepo(),
+        });
         const yml = config.yml;
 
         const statusVocab = (yml.status as Record<string, string> | undefined) ?? null;
-        const priorityVocab =
-          (yml.priority as Record<string, string> | undefined) ?? null;
+        const priorityVocab = (yml.priority as Record<string, string> | undefined) ?? null;
 
         // Derive which declared status options are present/missing in the live field
         const liveStatusOptions = Object.values(config.statusOptions);
@@ -632,7 +649,13 @@ trends, and recommendations — this tool returns the facts.`,
     async (params: z.infer<typeof GetHistorySchema>) => {
       try {
         const { owner, ownerType, projectNumber } = getBootstrapConfig();
-        const config = await loadConfig(gh, owner, ownerType, projectNumber);
+        const config = await loadConfig({
+          github: gh,
+          owner,
+          ownerType,
+          projectNumber,
+          repo: getRepo(),
+        });
 
         // Most-recent-first slice of completed iterations
         const completedSorted = [...config.iterations.completed].sort(
@@ -644,11 +667,15 @@ trends, and recommendations — this tool returns the facts.`,
           return {
             content: [{
               type: "text" as const,
-              text: JSON.stringify({
-                window: params.window,
-                sprints: [],
-                message: "No completed sprints found in the project.",
-              }, null, 2),
+              text: JSON.stringify(
+                {
+                  window: params.window,
+                  sprints: [],
+                  message: "No completed sprints found in the project.",
+                },
+                null,
+                2,
+              ),
             }],
           };
         }
@@ -771,7 +798,13 @@ Readiness criteria:
     async (params: z.infer<typeof GetBacklogSchema>) => {
       try {
         const { owner, ownerType, projectNumber } = getBootstrapConfig();
-        const config = await loadConfig(gh, owner, ownerType, projectNumber);
+        const config = await loadConfig({
+          github: gh,
+          owner,
+          ownerType,
+          projectNumber,
+          repo: getRepo(),
+        });
 
         const allItems = await fetchAllItems(config, owner, ownerType);
         const { sprintFieldId } = config.fields;
@@ -798,9 +831,7 @@ Readiness criteria:
           );
         }
         if (params.labels && params.labels.length > 0) {
-          stories = stories.filter((s) =>
-            params.labels!.every((l) => s.labels.includes(l))
-          );
+          stories = stories.filter((s) => params.labels!.every((l) => s.labels.includes(l)));
         }
         if (params.priority) {
           stories = stories.filter((s) => s.priority === params.priority);
@@ -842,7 +873,8 @@ Readiness criteria:
     "scrum_get_sprint",
     {
       title: "Get Sprint Board",
-      description: `Return the sprint board: all stories for a sprint, grouped by status with point totals.
+      description:
+        `Return the sprint board: all stories for a sprint, grouped by status with point totals.
 
 Args:
   sprint ("current"|"next"|null|sprint-name, optional, default "current")
@@ -871,7 +903,13 @@ and "block" respectively.`,
     async (params: z.infer<typeof GetSprintSchema>) => {
       try {
         const { owner, ownerType, projectNumber } = getBootstrapConfig();
-        const config = await loadConfig(gh, owner, ownerType, projectNumber);
+        const config = await loadConfig({
+          github: gh,
+          owner,
+          ownerType,
+          projectNumber,
+          repo: getRepo(),
+        });
 
         const sprintRef = params.sprint ?? "current";
         const iterationId = resolveSprint(sprintRef, config);
@@ -880,10 +918,14 @@ and "block" respectively.`,
           return {
             content: [{
               type: "text" as const,
-              text: JSON.stringify({
-                message:
-                  "Backlog view is not supported by scrum_get_sprint. Use scrum_get_backlog instead.",
-              }, null, 2),
+              text: JSON.stringify(
+                {
+                  message:
+                    "Backlog view is not supported by scrum_get_sprint. Use scrum_get_backlog instead.",
+                },
+                null,
+                2,
+              ),
             }],
           };
         }
@@ -976,7 +1018,8 @@ and "block" respectively.`,
     "scrum_get_story",
     {
       title: "Get Story Details",
-      description: `Return full details for a single story: content, board fields, comments, linked PRs, and AC.
+      description:
+        `Return full details for a single story: content, board fields, comments, linked PRs, and AC.
 
 Args:
   ref — { number: int } or { id: string } — at least one required.
@@ -1001,7 +1044,13 @@ Comments include notes posted by scrum_log_impediment (bidirectional impediment 
     async (params: z.infer<typeof GetStorySchema>) => {
       try {
         const { owner, ownerType, projectNumber } = getBootstrapConfig();
-        const config = await loadConfig(gh, owner, ownerType, projectNumber);
+        const config = await loadConfig({
+          github: gh,
+          owner,
+          ownerType,
+          projectNumber,
+          repo: getRepo(),
+        });
 
         const resolved = await resolveStory(params.ref, config, gh);
 
@@ -1016,7 +1065,7 @@ Comments include notes posted by scrum_log_impediment (bidirectional impediment 
         ]);
 
         const issue = issueData.node;
-        if (!issue || issue.number == null) {
+        if (!issue || issue.number === null) {
           throw new Error(
             `Issue ${resolved.issueId} could not be fetched. ` +
               "It may have been deleted or the token lacks Issues: Read access.",
@@ -1025,8 +1074,7 @@ Comments include notes posted by scrum_log_impediment (bidirectional impediment 
 
         // Extract board field values from the project item
         const fieldValues = itemData.node?.fieldValues?.nodes ?? [];
-        const { sprintFieldId, statusFieldId, storyPointsFieldId, priorityFieldId } =
-          config.fields;
+        const { sprintFieldId, statusFieldId, storyPointsFieldId, priorityFieldId } = config.fields;
 
         let status: string | null = null;
         let sprint: string | null = null;
@@ -1043,7 +1091,7 @@ Comments include notes posted by scrum_log_impediment (bidirectional impediment 
           } else if (
             storyPointsFieldId &&
             fieldId === storyPointsFieldId &&
-            fv.number != null
+            typeof fv.number === "number"
           ) {
             story_points = fv.number;
           } else if (priorityFieldId && fieldId === priorityFieldId && fv.name) {
@@ -1057,7 +1105,7 @@ Comments include notes posted by scrum_log_impediment (bidirectional impediment 
         const labels = allLabels.filter((l) => !STORY_TYPES.has(l));
 
         const story: Story = {
-          ref: { number: issue.number, id: resolved.itemId },
+          ref: { number: issue.number!, id: resolved.itemId },
           title: issue.title ?? "",
           body: issue.body ?? "",
           type,
@@ -1081,7 +1129,7 @@ Comments include notes posted by scrum_log_impediment (bidirectional impediment 
         }));
 
         const linked_prs = (issue.timelineItems?.nodes ?? [])
-          .filter((n) => n.source?.number != null)
+          .filter((n) => n.source?.number !== null)
           .map((n) => ({
             number: n.source!.number!,
             title: n.source!.title ?? "",
@@ -1110,4 +1158,4 @@ Comments include notes posted by scrum_log_impediment (bidirectional impediment 
       }
     },
   );
-}
+};

@@ -1,9 +1,6 @@
 # Integration Plan: REST API + `scrum_get_burndown`
 
-This document is the authoritative plan for adding GitHub REST API support and a
-`scrum_get_burndown` read tool to the MCP server. It is a standalone extension to
-`REFACTORING.md` — all decisions here are additive; nothing in the existing 11-tool
-surface changes.
+This document is the authoritative plan for adding GitHub REST API support and a `scrum_get_burndown` read tool to the MCP server. It is a standalone extension to `REFACTORING.md` — all decisions here are additive; nothing in the existing 11-tool surface changes.
 
 ---
 
@@ -11,29 +8,24 @@ surface changes.
 
 ### Why REST, and why now
 
-The GraphQL API is the right transport for project structure queries (fields, items,
-iterations). It is the wrong transport for **event history** — GitHub does not expose
-intra-sprint project field change history via GraphQL for any plan tier. REST's issue
-timeline endpoint and (for Enterprise) the Audit Log endpoint do expose this data.
+The GraphQL API is the right transport for project structure queries (fields, items, iterations). It is the wrong transport for **event history** — GitHub does not expose intra-sprint project field change history via GraphQL for any plan tier. REST's issue timeline endpoint and (for Enterprise) the Audit Log endpoint do expose this data.
 
-Adding a `rest()` helper alongside the existing `graphql()` helper in
-`services/github.ts` is a one-function change that unlocks a new class of tool. The
-`scrum_get_burndown` tool is the first consumer.
+Adding a `rest()` helper alongside the existing `graphql()` helper in `services/github.ts` is a one-function change that unlocks a new class of tool. The `scrum_get_burndown` tool is the first consumer.
 
 ### Agreed decisions
 
-| Question | Decision |
-|---|---|
-| New tool name | `scrum_get_burndown` — consistent with existing `scrum_get_*` naming |
-| Where the tool lives | Added to `registerScrumReadTools` in `src/tools/scrum-read.ts` |
-| Data source priority | Try Enterprise Audit Log first; fall back to Issue Close Proxy if 403 |
-| Free/Team proxy validity | Issue close timestamps are a valid proxy **only if** the team closes issues when moving to Done. Tool description and response warn the agent explicitly. |
-| `data_source` field | Always returned so the agent can cite the accuracy level to the user |
-| Ideal line | Always computed from sprint start/end and committed points — no data dependency |
-| Pagination | REST timeline: `per_page=100`, one page is sufficient for typical stories. Audit log: paginate via `Link` header until sprint window is exhausted. |
-| Rate limits | 5 000 REST requests/hour for authenticated users. Worst case: 1 call per story (timeline proxy path) + 1 audit-log page = N+1 calls. Acceptable for sprints ≤ 200 items. |
-| Retry / backoff | Not implemented in v1. If rate-limited, tool returns the 403 error text so the agent can inform the user. |
-| Sequence relative to refactoring | Implement after Phase 2 (read tools done), before Phase 3 (write tools). This is Phase 2.5. |
+| Question                         | Decision                                                                                                                                                                 |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| New tool name                    | `scrum_get_burndown` — consistent with existing `scrum_get_*` naming                                                                                                     |
+| Where the tool lives             | Added to `registerScrumReadTools` in `src/tools/scrum-read.ts`                                                                                                           |
+| Data source priority             | Try Enterprise Audit Log first; fall back to Issue Close Proxy if 403                                                                                                    |
+| Free/Team proxy validity         | Issue close timestamps are a valid proxy **only if** the team closes issues when moving to Done. Tool description and response warn the agent explicitly.                |
+| `data_source` field              | Always returned so the agent can cite the accuracy level to the user                                                                                                     |
+| Ideal line                       | Always computed from sprint start/end and committed points — no data dependency                                                                                          |
+| Pagination                       | REST timeline: `per_page=100`, one page is sufficient for typical stories. Audit log: paginate via `Link` header until sprint window is exhausted.                       |
+| Rate limits                      | 5 000 REST requests/hour for authenticated users. Worst case: 1 call per story (timeline proxy path) + 1 audit-log page = N+1 calls. Acceptable for sprints ≤ 200 items. |
+| Retry / backoff                  | Not implemented in v1. If rate-limited, tool returns the 403 error text so the agent can inform the user.                                                                |
+| Sequence relative to refactoring | Implement after Phase 2 (read tools done), before Phase 3 (write tools). This is Phase 2.5.                                                                              |
 
 ---
 
@@ -50,8 +42,7 @@ export const GetBurndownSchema = z
   .strict();
 ```
 
-No other input is needed. The tool derives sprint dates, story list, and vocabulary
-from `loadConfig` + `resolveSprint` (same bootstrap as the other read tools).
+No other input is needed. The tool derives sprint dates, story list, and vocabulary from `loadConfig` + `resolveSprint` (same bootstrap as the other read tools).
 
 ### Output shape
 
@@ -89,9 +80,7 @@ from `loadConfig` + `resolveSprint` (same bootstrap as the other read tools).
 }
 ```
 
-The `series` and `ideal` arrays together are what a charting agent (or any downstream
-visualisation) needs to render a burndown. The agent can also describe the chart in
-prose using just `series`.
+The `series` and `ideal` arrays together are what a charting agent (or any downstream visualisation) needs to render a burndown. The agent can also describe the chart in prose using just `series`.
 
 ---
 
@@ -99,15 +88,14 @@ prose using just `series`.
 
 ### File changes (complete list)
 
-| File | Change |
-|---|---|
-| `src/services/github.ts` | Add `rest<T>()` function; add REST-specific entries to `REQUIRED_PERMISSION` map |
-| `src/schemas/scrum.ts` | Add `GetBurndownSchema` and export |
+| File                      | Change                                                                                                                         |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `src/services/github.ts`  | Add `rest<T>()` function; add REST-specific entries to `REQUIRED_PERMISSION` map                                               |
+| `src/schemas/scrum.ts`    | Add `GetBurndownSchema` and export                                                                                             |
 | `src/tools/scrum-read.ts` | Add `scrum_get_burndown` registration inside `registerScrumReadTools`; add REST GraphQL types for timeline/audit-log responses |
-| `plans/BURNDOWN.md` | This file |
+| `plans/BURNDOWN.md`       | This file                                                                                                                      |
 
-No other files change. `index.ts` does not need updating — `registerScrumReadTools`
-already exports the function; adding a tool inside it is transparent to the caller.
+No other files change. `index.ts` does not need updating — `registerScrumReadTools` already exports the function; adding a tool inside it is transparent to the caller.
 
 ---
 
@@ -137,8 +125,7 @@ export const rest = async <T>(
 - Same 30 s timeout + AbortController pattern as `graphql()`
 - Same 401 / 403 / non-2xx error classification as `graphql()`
 - Returns `response.json() as T` — no `data` wrapper (REST responses are top-level, unlike GraphQL)
-- Pagination: callers handle it; `rest()` is single-request only. The burndown tool
-  implements its own `while (nextLink)` loop using the `Link` response header.
+- Pagination: callers handle it; `rest()` is single-request only. The burndown tool implements its own `while (nextLink)` loop using the `Link` response header.
 
 ### `REQUIRED_PERMISSION` additions
 
@@ -163,11 +150,9 @@ Find the `IterationEntry` to get `startDate` and `duration`.
 
 ### Step 2 — Fetch sprint stories
 
-Reuse `fetchAllItems` (already in `scrum-read.ts`), filter to the target `iterationId`
-the same way `scrum_get_board` does. Extract issue numbers and story points.
+Reuse `fetchAllItems` (already in `scrum-read.ts`), filter to the target `iterationId` the same way `scrum_get_board` does. Extract issue numbers and story points.
 
-Stories with no story points are included in the list but contribute 0 to the series —
-the agent's description should note unpointed stories separately.
+Stories with no story points are included in the list but contribute 0 to the series — the agent's description should note unpointed stories separately.
 
 ### Step 3 — Determine completion timestamps
 
@@ -181,6 +166,7 @@ GET /orgs/{org}/audit-log
 ```
 
 Filter response entries where:
+
 - `data.field_type === "single_select"`
 - `data.field_name` matches the configured status field name
 - `data.value` (new value) matches the "Done" display name from `config.yml.status`
@@ -188,26 +174,21 @@ Filter response entries where:
 
 Extract `created_at` as the completion timestamp for the matching story.
 
-Paginate via `Link: <url>; rel="next"` header until `created_at` of the last entry
-exceeds `sprint.end_date` (no point fetching beyond the sprint window).
+Paginate via `Link: <url>; rel="next"` header until `created_at` of the last entry exceeds `sprint.end_date` (no point fetching beyond the sprint window).
 
-If the endpoint returns HTTP 403: fall through to Path B and set
-`data_source: "issue_close_proxy"`.
+If the endpoint returns HTTP 403: fall through to Path B and set `data_source: "issue_close_proxy"`.
 
 **Path B — Issue Close Proxy (free/Team plans)**
 
 For each story, call:
+
 ```
 GET /repos/{owner}/{repo}/issues/{number}/timeline?per_page=100
 ```
 
-Scan events for the last `closed` event whose `created_at` falls within
-`[sprint.startDate, sprint.endDate]`. That timestamp is the proxy completion time.
+Scan events for the last `closed` event whose `created_at` falls within `[sprint.startDate, sprint.endDate]`. That timestamp is the proxy completion time.
 
-If an issue has no `closed` event in the sprint window (e.g., it was done but not
-closed, or it was closed before the sprint started), `completed_at` is null. The agent
-must warn the user when this count is non-zero: "N stories appear Done on the board
-but have no close event in the sprint window — their points may be misattributed."
+If an issue has no `closed` event in the sprint window (e.g., it was done but not closed, or it was closed before the sprint started), `completed_at` is null. The agent must warn the user when this count is non-zero: "N stories appear Done on the board but have no close event in the sprint window — their points may be misattributed."
 
 ### Step 4 — Build the day series
 
@@ -239,16 +220,15 @@ Return the full response shape defined in the **Tool Contract** section above.
 
 ## Rate Limit Analysis
 
-| Scenario | REST calls | GraphQL calls | Total |
-|---|---|---|---|
-| Enterprise, 20-story sprint | 1 (audit log, likely 1 page) | ~3 (loadConfig + fetchAllItems) | ~4 |
-| Free plan, 20-story sprint | 20 (1 timeline per story) | ~3 | ~23 |
-| Free plan, 50-story sprint | 50 | ~5 | ~55 |
+| Scenario                    | REST calls                   | GraphQL calls                   | Total |
+| --------------------------- | ---------------------------- | ------------------------------- | ----- |
+| Enterprise, 20-story sprint | 1 (audit log, likely 1 page) | ~3 (loadConfig + fetchAllItems) | ~4    |
+| Free plan, 20-story sprint  | 20 (1 timeline per story)    | ~3                              | ~23   |
+| Free plan, 50-story sprint  | 50                           | ~5                              | ~55   |
 
 All well within the 5 000 req/hr REST limit and 5 000 point/hr GraphQL limit.
 
-For very large projects (> 100 stories in a sprint), parallelise timeline calls in
-batches of 10 using `Promise.all` with a concurrency limiter. Not needed for v1.
+For very large projects (> 100 stories in a sprint), parallelise timeline calls in batches of 10 using `Promise.all` with a concurrency limiter. Not needed for v1.
 
 ---
 
@@ -256,12 +236,12 @@ batches of 10 using `Promise.all` with a concurrency limiter. Not needed for v1.
 
 This is Phase 2.5 — after Phase 2 read tools are complete, before Phase 3 write tools.
 
-| Step | File | What |
-|---|---|---|
-| 2.5a | `src/services/github.ts` | Add `rest<T>()` function |
-| 2.5b | `src/schemas/scrum.ts` | Add `GetBurndownSchema` |
+| Step | File                      | What                                                 |
+| ---- | ------------------------- | ---------------------------------------------------- |
+| 2.5a | `src/services/github.ts`  | Add `rest<T>()` function                             |
+| 2.5b | `src/schemas/scrum.ts`    | Add `GetBurndownSchema`                              |
 | 2.5c | `src/tools/scrum-read.ts` | Add `scrum_get_burndown` in `registerScrumReadTools` |
-| 2.5d | Type-check entire project | `deno check src/index.ts` must pass clean |
+| 2.5d | Type-check entire project | `deno check src/index.ts` must pass clean            |
 
 Each step is independently type-checkable. Implement and check in order.
 
@@ -269,9 +249,9 @@ Each step is independently type-checkable. Implement and check in order.
 
 ## Open Questions
 
-| Question | Status |
-|---|---|
-| Does `projects_v2_item.field_value_updated` exist in the audit log for GHEC? | Needs verification against live schema — structure inferred from GitHub changelog |
-| Should `scrum_get_burndown` accept a `include_weekends: boolean` flag to skip non-working days in the series? | Deferred — v1 includes all calendar days |
+| Question                                                                                                        | Status                                                                                 |
+| --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Does `projects_v2_item.field_value_updated` exist in the audit log for GHEC?                                    | Needs verification against live schema — structure inferred from GitHub changelog      |
+| Should `scrum_get_burndown` accept a `include_weekends: boolean` flag to skip non-working days in the series?   | Deferred — v1 includes all calendar days                                               |
 | Should the ideal line use team capacity (from `config.yml.sprint.velocity_window`) rather than a straight line? | Deferred — straight line is the Scrum standard; capacity-adjusted ideal is a v2 option |
-| Should unpointed stories show in the series as 0-pt or be excluded entirely? | Included at 0 pt — exclusion would hide scope changes from the chart |
+| Should unpointed stories show in the series as 0-pt or be excluded entirely?                                    | Included at 0 pt — exclusion would hide scope changes from the chart                   |

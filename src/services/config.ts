@@ -39,6 +39,17 @@ interface GitHubClient {
   graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T>;
 }
 
+/** Config loader parameters — passed explicitly to maintain stateless design. */
+export interface ConfigParams {
+  github: GitHubClient;
+  owner: string;
+  ownerType: "user" | "org";
+  projectNumber: number;
+  repo: string;
+}
+
+// todo: [Phase 4] Consider moving RuntimeConfig to src/types.ts for consistency with other domain types ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
+
 /** Single-select field node from the GraphQL response. */
 interface SingleSelectFieldNode {
   __typename: "ProjectV2SingleSelectField";
@@ -139,10 +150,10 @@ const GET_PROJECT_FIELDS_QUERY = `
  * - completed: all from completedIterations[]
  * - all: deduplicated union of active, remaining future, and completed
  */
-export function classifyIterations(
+export const classifyIterations = (
   activeIterations: IterationEntry[],
   completedIterations: IterationEntry[],
-): RuntimeConfig["iterations"] {
+): RuntimeConfig["iterations"] => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -208,7 +219,7 @@ export function classifyIterations(
   );
 
   return { active, next, completed, all };
-}
+};
 
 // ── Main function ────────────────────────────────────────────────────────────
 
@@ -224,22 +235,13 @@ export function classifyIterations(
  *   5. Build statusOptions, priorityOptions, typeOptions maps
  *   6. Classify iterations (active, next, completed, all)
  *   7. Return RuntimeConfig
+ *
+ * @param params - Configuration parameters (stateless, no env-var coupling)
  */
-export async function loadConfig(
-  github: GitHubClient,
-  owner: string,
-  ownerType: "user" | "org",
-  projectNumber: number,
-): Promise<RuntimeConfig> {
-  // Step 1: Fetch scrum.config.yml from the repository
-  const repo = Deno.env.get("GITHUB_REPO");
-  if (!repo) {
-    throw new Error(
-      "GITHUB_REPO environment variable is not set. " +
-        "Set it to the repository slug (e.g., 'github-projects-mcp-server').",
-    );
-  }
+export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> => {
+  const { github, owner, ownerType, projectNumber, repo } = params;
 
+  // Step 1: Fetch scrum.config.yml from the repository
   const ref = Deno.env.get("GITHUB_REF") ?? "HEAD";
   const filePath = ".github/scrum/config.yml";
   const expression = `${ref}:${filePath}`;
@@ -299,10 +301,9 @@ export async function loadConfig(
   }
 
   // Step 4: Match field names from config.yml to resolve field IDs
-  // The YAML parser returns unknown; cast to ScrumConfigYml for typed access.
-  // Note: The actual config.yml uses `fields` (not `field_names`) for field name mappings.
+  // Use `field_names` as defined in ScrumConfigYml type (supports fallback to `fields` for backward compat).
   const ymlTyped = yml as ScrumConfigYml & { fields?: Record<string, string> };
-  const fieldNames = ymlTyped.fields ?? ({} as Record<string, string>);
+  const fieldNames = ymlTyped.field_names ?? ymlTyped.fields ?? ({} as Record<string, string>);
   const sprintFieldName = fieldNames.sprint ?? "Sprint";
   const statusFieldName = fieldNames.status ?? "Status";
   const storyPointsFieldName = fieldNames.story_points ?? "Story Points";
@@ -333,15 +334,16 @@ export async function loadConfig(
       case priorityFieldName:
         priorityFieldId = node.id;
         break;
-      case epicFieldName ?? "":
-        epicFieldId = node.id;
-        break;
-      case assigneeFieldName ?? "":
-        assigneeFieldId = node.id;
-        break;
-      case typeFieldName ?? "":
-        typeFieldId = node.id;
-        break;
+    }
+    // Guard against null field names to avoid matching empty-string field names
+    if (epicFieldName && node.name === epicFieldName) {
+      epicFieldId = node.id;
+    }
+    if (assigneeFieldName && node.name === assigneeFieldName) {
+      assigneeFieldId = node.id;
+    }
+    if (typeFieldName && node.name === typeFieldName) {
+      typeFieldId = node.id;
     }
   }
 
@@ -433,4 +435,4 @@ export async function loadConfig(
     typeOptions,
     iterations,
   };
-}
+};

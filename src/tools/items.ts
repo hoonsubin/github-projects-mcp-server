@@ -1,5 +1,5 @@
-// todo: [Phase 4] DELETE THIS FILE — fully superseded by scrum_* tools
-// [Phase 1] All prerequisite types, config loader, resolvers, and input schemas are implemented.
+// todo: [Phase 4] DELETE THIS FILE — fully superseded by scrum_* tools ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
+// [Phase 1] All prerequisite types ([#5](https://github.com/hoonsubin/github-projects-mcp-server/issues/5)), config loader ([#6](https://github.com/hoonsubin/github-projects-mcp-server/issues/6)), resolvers, and input schemas are implemented.
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
 import { formatError, graphql } from "../services/github.ts";
 import {
@@ -450,10 +450,10 @@ Returns: Confirmation with item ID and new archived status.`,
 
   // ── Internal helpers ─────────────────────────────────────────────────────────
 
-  async function archiveItem(
+  const archiveItem = async (
     projectId: string,
     itemId: string,
-  ): Promise<{ id: string; isArchived: boolean }> {
+  ): Promise<{ id: string; isArchived: boolean }> => {
     const mutation = `
       mutation($input: ArchiveProjectV2ItemInput!) {
         archiveProjectV2Item(input: $input) {
@@ -466,12 +466,12 @@ Returns: Confirmation with item ID and new archived status.`,
     });
 
     return data.archiveProjectV2Item.item;
-  }
+  };
 
-  async function unarchiveItem(
+  const unarchiveItem = async (
     projectId: string,
     itemId: string,
-  ): Promise<{ id: string; isArchived: boolean }> {
+  ): Promise<{ id: string; isArchived: boolean }> => {
     const mutation = `
       mutation($input: UnarchiveProjectV2ItemInput!) {
         unarchiveProjectV2Item(input: $input) {
@@ -486,7 +486,7 @@ Returns: Confirmation with item ID and new archived status.`,
     });
 
     return data.unarchiveProjectV2Item.item;
-  }
+  };
 
   // ── Delete Item ────────────────────────────────────────────────────────────
 

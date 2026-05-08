@@ -353,12 +353,12 @@ export interface ScrumConfigYml {
  * Extends IterationEntry so sprint tools can use IterationEntry helpers
  * on both active and completed sprints.
  */
-// todo: [Phase 4] Remove — SprintIteration becomes internal to new tool handlers
+// todo: [Phase 4] Remove — SprintIteration becomes internal to new tool handlers ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
 export interface SprintIteration extends IterationEntry {
   completed?: boolean;
 }
 
-// todo: [Phase 4] Remove — BoardConfig is sync-script-specific; RuntimeConfig (src/services/config.ts)
+// todo: [Phase 4] Remove — BoardConfig is sync-script-specific; RuntimeConfig (src/services/config.ts) ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
 //   is its replacement. The sync script that writes project-board.config.json is also retired.
 /** Shape written to project-board.config.json by the sync script. */
 export interface BoardConfig {
@@ -387,7 +387,7 @@ export interface BoardConfig {
   _assignee_field: { _field_id: string; dataType: string } | null;
 }
 
-// todo: [Phase 4] Remove entire section — GhFieldBase, GhSingleSelectField, GhIterationField,
+// todo: [Phase 4] Remove entire section — GhFieldBase, GhSingleSelectField, GhIterationField, ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
 //   GhProjectResponse are sync-script-only shapes. The sync script is retired. Any remaining
 //   GraphQL response shape needs are served by src/generated/github-types.ts (codegen).
 // ── Sync script GraphQL shapes ────────────────────────────────────────────────
@@ -449,7 +449,7 @@ export interface GhProjectResponse {
 
 // ── SCRUM runtime types ───────────────────────────────────────────────────────
 
-// todo: [Phase 4] Remove — MergedScrumConfig is replaced by RuntimeConfig in src/services/config.ts
+// todo: [Phase 4] Remove — MergedScrumConfig is replaced by RuntimeConfig in src/services/config.ts ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
 /**
  * Merged runtime configuration: scrum.config.yml (human-authored) overlaid
  * with project-board.config.json (GitHub-synced). The sprint tools operate
@@ -460,7 +460,7 @@ export interface MergedScrumConfig extends ScrumConfigYml {
   _board: BoardConfig;
 }
 
-// todo: [Phase 4] Remove — ResolvedScrumFields is replaced by RuntimeConfig in src/services/config.ts
+// todo: [Phase 4] Remove — ResolvedScrumFields is replaced by RuntimeConfig in src/services/config.ts ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
 /**
  * Resolved field IDs after name → ID mapping via _fields_registry.
  * Produced by resolveFields() and consumed by all sprint tool helpers.
@@ -477,7 +477,7 @@ export interface ResolvedScrumFields {
   blockedOptionId: string | null;
 }
 
-// todo: [Phase 4] Remove — IterationVelocity is internal to scrum_get_velocity handler
+// todo: [Phase 4] Remove — IterationVelocity is internal to scrum_get_velocity handler ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
 /** Per-iteration velocity entry used by github_get_velocity. */
 export interface IterationVelocity {
   iterationId: string;
@@ -491,7 +491,7 @@ export interface IterationVelocity {
   isCurrent: boolean;
 }
 
-// todo: [Phase 4] Remove — SprintStatusResult is internal to scrum_get_board handler
+// todo: [Phase 4] Remove — SprintStatusResult is internal to scrum_get_board handler ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
 /** Aggregated sprint health snapshot used by github_get_sprint_status. */
 export interface SprintStatusResult {
   iteration: {
@@ -509,7 +509,7 @@ export interface SprintStatusResult {
   carryOverItems: ProjectV2Item[];
 }
 
-// todo: [Phase 4] Remove — BulkUpdateResult is internal to scrum_plan_sprint handler
+// todo: [Phase 4] Remove — BulkUpdateResult is internal to scrum_plan_sprint handler ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
 /** Per-item result for bulk update and sprint close operations. */
 export interface BulkUpdateResult {
   item_id: string;

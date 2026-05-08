@@ -17,7 +17,7 @@
 
 import type { McpServer as _McpServer } from "@modelcontextprotocol/sdk/server/mcp";
 
-// todo: [Phase 3] Uncomment imports as each tool is implemented:
+// todo: [Phase 3] Uncomment imports as each tool is implemented: ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
 // import { loadConfig } from "../services/config.ts";
 // import { resolveStory, resolveSprint } from "../services/resolver.ts";
 // import { AddVocabularySchema, CreateStorySchema, UpdateStorySchema } from "../schemas/scrum.ts";
@@ -28,7 +28,7 @@ import type { McpServer as _McpServer } from "@modelcontextprotocol/sdk/server/m
 /**
  * Register all scrum_* write tools + deprecated github_graphql on the MCP server.
  *
- * todo: [Phase 3, step 13a] scrum_add_vocabulary  [implement first — no resolver needed]
+ * todo: [Phase 3, step 13a] scrum_add_vocabulary ([#12](https://github.com/hoonsubin/github-projects-mcp-server/issues/12)) [implement first — no resolver needed]
  *   Idempotent addition of a vocabulary entry to the platform schema.
  *   - kind:"status_option"  → call updateProjectV2SingleSelectField mutation to append the new
  *                             option to the Status field. Use config.fields.statusFieldId.
@@ -42,7 +42,7 @@ import type { McpServer as _McpServer } from "@modelcontextprotocol/sdk/server/m
  *   priorityFieldId is null, return a structured error instructing the user to create
  *   the field manually in the GitHub Projects UI before retrying.
  *
- * todo: [Phase 3, step 13b] scrum_set_field  [core primitive — implement before other write tools]
+ * todo: [Phase 3, step 13b] scrum_set_field ([#13](https://github.com/hoonsubin/github-projects-mcp-server/issues/13)) [core primitive — implement before other write tools]
  *   Translates Scrum vocabulary to GitHub Projects v2 field mutations. Per field:
  *   - status:        resolve name → config.statusOptions[value]; call updateProjectV2ItemFieldValue
  *                    with singleSelectOptionId. Return structured error if value not in vocabulary
@@ -55,7 +55,7 @@ import type { McpServer as _McpServer } from "@modelcontextprotocol/sdk/server/m
  *                    Setting null → pass empty array [] to clear all assignees.
  *   Return: the updated Story (call a shared readStoryFields helper to fetch current state)
  *
- * todo: [Phase 3, step 13c] scrum_update_story
+ * todo: [Phase 3, step 13c] scrum_update_story ([#14](https://github.com/hoonsubin/github-projects-mcp-server/issues/14))
  *   - Call resolveStory to get issueId and itemId
  *   - Call updateIssue mutation for any of: title, body, assignees (resolve logins to node IDs),
  *     labels (resolve label names to node IDs via graphql listing repo labels)
@@ -63,7 +63,7 @@ import type { McpServer as _McpServer } from "@modelcontextprotocol/sdk/server/m
  *           Pass null to detach (set milestoneId: null in the mutation)
  *   - Return: the updated Story
  *
- * todo: [Phase 3, step 13d] scrum_create_story
+ * todo: [Phase 3, step 13d] scrum_create_story ([#16](https://github.com/hoonsubin/github-projects-mcp-server/issues/16))
  *   - Create issue via CreateIssueSchema handler (title, body, assignee_ids, label_ids)
  *     NOTE: resolve type label name → label node ID before calling (create label if it doesn't
  *     exist — reuse scrum_add_vocabulary label logic internally)
@@ -74,14 +74,14 @@ import type { McpServer as _McpServer } from "@modelcontextprotocol/sdk/server/m
  *     that includes the partial StoryRef so the agent can retry field-sets without duplicating the story
  *   - Return: the newly created Story
  *
- * todo: [Phase 3, step 13e] scrum_plan_sprint
+ * todo: [Phase 3, step 13e] scrum_plan_sprint ([#17](https://github.com/hoonsubin/github-projects-mcp-server/issues/17))
  *   - If replace:true — fetch all items currently in the target sprint and call resolveSprint +
  *     scrum_set_field(sprint: null) on each to clear them first
  *   - For each story in stories[]: call resolveStory, then apply scrum_set_field sprint logic
  *   - Collect results: assigned[] (succeeded) and skipped[] ({ ref, reason }) for failures
  *   - Return: { assigned: StoryRef[], skipped: [{ ref, reason }] }
  *
- * todo: [Phase 3, step 13f] scrum_log_impediment
+ * todo: [Phase 3, step 13f] scrum_log_impediment ([#18](https://github.com/hoonsubin/github-projects-mcp-server/issues/18))
  *   - Call scrum_create_story with:
  *       type: "spike"  (there is no "impediment" StoryType — use "spike" + "impediment" label)
  *       labels: ["impediment"]  (create label if it doesn't exist via scrum_add_vocabulary logic)
@@ -97,7 +97,7 @@ import type { McpServer as _McpServer } from "@modelcontextprotocol/sdk/server/m
  *   shared internal primitive, not an agent-callable tool.
  *   - Return: impediment as Story + { linked_to: StoryRef }
  *
- * todo: [Phase 3, step 11] github_graphql (deprecated — register first as part of step 11 stub pass)
+ * todo: [Phase 3, step 11] github_graphql (deprecated — register first as part of step 11 stub pass) ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
  *   - Schema: GraphQLQuerySchema from src/schemas/inputs.ts
  *   - Block any query string containing the word "mutation" (case-insensitive) — return an error
  *   - Otherwise forward the query to the GitHub GraphQL API and return the raw response
@@ -105,11 +105,11 @@ import type { McpServer as _McpServer } from "@modelcontextprotocol/sdk/server/m
  *       "DEPRECATED. Preserved for ad-hoc diagnostic GraphQL lookups only. Will be removed in a
  *        future version. Prefer the scrum_* tools for all agent workflows. Mutations are blocked."
  */
-// todo: [Phase 3, step 11] export function registerScrumWriteTools(
-// todo: [Phase 3]   server: McpServer,
-// todo: [Phase 3]   github: { graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> },
-// todo: [Phase 3] ): void {
-// todo: [Phase 3]   // Step 11: stub each tool + register deprecated github_graphql
-// todo: [Phase 3]   // Step 13: implement in order: add_vocabulary → set_field → update_story
-// todo: [Phase 3]   //                               → create_story → plan_sprint → log_impediment
-// todo: [Phase 3] }
+// todo: [Phase 3, step 11] export function registerScrumWriteTools( ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
+// todo: [Phase 3]   server: McpServer, ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
+// todo: [Phase 3]   github: { graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> }, ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
+// todo: [Phase 3] ): void { ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
+// todo: [Phase 3]   // Step 11: stub each tool + register deprecated github_graphql ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
+// todo: [Phase 3]   // Step 13: implement in order: add_vocabulary → set_field → update_story ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
+// todo: [Phase 3]   //                               → create_story → plan_sprint → log_impediment ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
+// todo: [Phase 3] } ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
