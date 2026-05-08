@@ -1,10 +1,10 @@
 # Story 8: Implement scrum_get_sprint Read Tool
 
-**Issue:** [#10](https://github.com/hoonsubin/github-projects-mcp-server/issues/10)  
-**Priority:** Should  
-**Size:** M  
-**Story Points:** 5  
-**Sprint:** Sprint 2  
+**Issue:** [#10](https://github.com/hoonsubin/github-projects-mcp-server/issues/10)\
+**Priority:** Should\
+**Size:** M\
+**Story Points:** 5\
+**Sprint:** Sprint 2\
 **Status:** In Progress
 
 ---
@@ -45,13 +45,7 @@ Implement the `scrum_get_sprint` read tool that returns the sprint board: all st
 
 ### Phase 1: Schema and Type Setup (Already Complete)
 
-| Task                                          | Status  | Notes                                                       |
-| --------------------------------------------- | ------- | ----------------------------------------------------------- | ------ | ---- | ------- |
-| `GetSprintSchema` in `src/schemas/scrum.ts`   | ✅ Done | `z.object({ sprint: SprintRefSchema.optional() }).strict()` |
-| `Story` type in `src/types.ts`                | ✅ Done | Canonical story shape with all required fields              |
-| `SprintRef` type in `src/types.ts`            | ✅ Done | `"current"                                                  | "next" | null | string` |
-| `RuntimeConfig` in `src/services/config.ts`   | ✅ Done | Provides `iterations`, `fields`, `statusOptions`            |
-| `resolveSprint` in `src/services/resolver.ts` | ✅ Done | Sync function resolving `SprintRef` → iteration ID          |
+| Task | Status | Notes | | --------------------------------------------- | ------- | ----------------------------------------------------------- | ------ | ---- | ------- | | `GetSprintSchema` in `src/schemas/scrum.ts` | ✅ Done | `z.object({ sprint: SprintRefSchema.optional() }).strict()` | | `Story` type in `src/types.ts` | ✅ Done | Canonical story shape with all required fields | | `SprintRef` type in `src/types.ts` | ✅ Done | `"current"                                                  | "next" | null | string` | | `RuntimeConfig` in `src/services/config.ts` | ✅ Done | Provides `iterations`, `fields`, `statusOptions` | | `resolveSprint` in `src/services/resolver.ts` | ✅ Done | Sync function resolving `SprintRef` → iteration ID |
 
 ### Phase 2a: Refactor Existing Handler (Do This Before Gap Fixes)
 
@@ -73,8 +67,7 @@ The reduce expression `stories.reduce((acc, s) => acc + (s.story_points ?? 0), 0
 const sumPointsWhere = (
   stories: Story[],
   predicate: (s: Story) => boolean,
-): number =>
-  stories.filter(predicate).reduce((acc, s) => acc + (s.story_points ?? 0), 0);
+): number => stories.filter(predicate).reduce((acc, s) => acc + (s.story_points ?? 0), 0);
 ```
 
 Then update the handler to use it consistently:

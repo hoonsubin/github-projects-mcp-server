@@ -652,17 +652,28 @@ interface CrossReferencedEventNode {
   } | null;
 }
 
-/** Exported for testing. */
+/**
+ * Extract linked pull requests from cross-referenced events.
+ *
+ * Safely handles null/undefined source values with sensible defaults.
+ * Entries without a valid source or number are skipped.
+ *
+ * @param nodes - Cross-referenced events from the GitHub GraphQL API
+ * @returns Array of simplified PR objects
+ */
 export const buildLinkedPrList = (nodes: CrossReferencedEventNode[]): LinkedPr[] =>
-  nodes
-    .filter((n) => n.source?.number != null)
-    .map((n) => ({
-      number: n.source!.number!,
-      title: n.source!.title ?? "",
-      url: n.source!.url ?? "",
-      state: n.source!.state ?? "UNKNOWN",
-      is_draft: n.source!.isDraft ?? false,
-    }));
+  nodes.flatMap((n) => {
+    const source = n.source;
+    // Skip entries without a source or without a number
+    if (!source || typeof source.number !== "number") return [];
+    return [{
+      number: source.number,
+      title: source.title ?? "",
+      url: source.url ?? "",
+      state: source.state ?? "UNKNOWN",
+      is_draft: source.isDraft ?? false,
+    }];
+  });
 
 // ── Enriched Story builder ─────────────────────────────────────────────────────
 

@@ -1,64 +1,40 @@
 # Story 9: Implement scrum_get_story Read Tool
 
-**Issue:** [#11](https://github.com/hoonsubin/github-projects-mcp-server/issues/11)
-**Priority:** Should
-**Size:** M
-**Story Points:** 5
-**Sprint:** Sprint 2
-**Status:** In Progress
+**Issue:** [#11](https://github.com/hoonsubin/github-projects-mcp-server/issues/11) **Priority:** Should **Size:** M **Story Points:** 5 **Sprint:** Sprint 2 **Status:** In Progress
 
 ---
 
 ## Goal
 
-The `scrum_get_story` tool is already registered and functional. This story is about
-**refactoring** the existing handler into a clean, testable structure — and adding the test
-coverage it currently lacks. No new observable behaviour changes.
+The `scrum_get_story` tool is already registered and functional. This story is about **refactoring** the existing handler into a clean, testable structure — and adding the test coverage it currently lacks. No new observable behaviour changes.
 
 The handler currently works, but it violates three core clean code principles:
 
-1. **DRY** — the field-extraction loop and label/type-classification logic duplicate what
-   `buildStoryFromRaw` does, just operating on a different GraphQL response shape.
-2. **Functions do one thing** — the handler body fetches data, assembles a `Story`, maps
-   comments, maps linked PRs, and parses AC — all inline. Each of those is a distinct
-   responsibility.
-3. **Handler should read as orchestration** — once extracted, the handler should be a
-   five-line sequence of named calls, with zero inline logic.
+1. **DRY** — the field-extraction loop and label/type-classification logic duplicate what `buildStoryFromRaw` does, just operating on a different GraphQL response shape.
+2. **Functions do one thing** — the handler body fetches data, assembles a `Story`, maps comments, maps linked PRs, and parses AC — all inline. Each of those is a distinct responsibility.
+3. **Handler should read as orchestration** — once extracted, the handler should be a five-line sequence of named calls, with zero inline logic.
 
 ---
 
 ## Acceptance Criteria
 
-1. **Tool contract is unchanged** — `scrum_get_story` accepts `{ ref: StoryRef }` and
-   returns `{ story, comments, linked_prs, acceptance_criteria }` with the same field shapes
-   as today. Nothing the agent observes changes.
+1. **Tool contract is unchanged** — `scrum_get_story` accepts `{ ref: StoryRef }` and returns `{ story, comments, linked_prs, acceptance_criteria }` with the same field shapes as today. Nothing the agent observes changes.
 
-2. **`buildEnrichedStory` extracted** — a named, pure function assembles a `Story` from the
-   issue node and field-value array. It does not call the network. It reuses `STORY_TYPES` and
-   field-ID resolution from `RuntimeConfig`.
+2. **`buildEnrichedStory` extracted** — a named, pure function assembles a `Story` from the issue node and field-value array. It does not call the network. It reuses `STORY_TYPES` and field-ID resolution from `RuntimeConfig`.
 
 3. **`buildCommentList` extracted** — maps raw comment nodes to `Comment[]`. Pure. No network.
 
-4. **`buildLinkedPrList` extracted** — maps raw timeline nodes to `LinkedPr[]`. Filters out
-   non-PR cross-references. Pure. No network.
+4. **`buildLinkedPrList` extracted** — maps raw timeline nodes to `LinkedPr[]`. Filters out non-PR cross-references. Pure. No network.
 
-5. **`parseAcceptanceCriteria` exported** — the existing implementation is correct; it only
-   needs to be exported so tests can import it directly.
+5. **`parseAcceptanceCriteria` exported** — the existing implementation is correct; it only needs to be exported so tests can import it directly.
 
-6. **Handler reads as orchestration** — after refactor, the handler body contains only:
-   config loading, `resolveStory`, parallel fetch, and calls to the four named helpers above.
-   No inline field loops or object construction.
+6. **Handler reads as orchestration** — after refactor, the handler body contains only: config loading, `resolveStory`, parallel fetch, and calls to the four named helpers above. No inline field loops or object construction.
 
-7. **No duplication with `buildStoryFromRaw`** — the two build functions serve different
-   source shapes; they must not share a code path. But they must share `STORY_TYPES` and the
-   field-ID resolution pattern without duplicating either.
+7. **No duplication with `buildStoryFromRaw`** — the two build functions serve different source shapes; they must not share a code path. But they must share `STORY_TYPES` and the field-ID resolution pattern without duplicating either.
 
-8. **Named response interfaces** — `GetIssueDetailsResponse` and `GetItemFieldsResponse` are
-   declared as named interfaces in the file, not inlined at call sites.
+8. **Named response interfaces** — `GetIssueDetailsResponse` and `GetItemFieldsResponse` are declared as named interfaces in the file, not inlined at call sites.
 
-9. **Unit tests** in `src/tools/scrum-read_test.ts` cover all four extracted helpers and key
-   handler paths. Each helper is tested without registering an MCP server or mocking a GitHub
-   client.
+9. **Unit tests** in `src/tools/scrum-read_test.ts` cover all four extracted helpers and key handler paths. Each helper is tested without registering an MCP server or mocking a GitHub client.
 
 10. **Type-check passes** — `deno check src/index.ts` returns no errors after all changes.
 
@@ -66,29 +42,22 @@ The handler currently works, but it violates three core clean code principles:
 
 ## Current Implementation Audit
 
-The implementation lives in `src/tools/scrum-read.ts` at the `// ── Step 10` comment
-(around line 1137). Here is what each section currently does and what is wrong with it.
+The implementation lives in `src/tools/scrum-read.ts` at the `// ── Step 10` comment (around line 1137). Here is what each section currently does and what is wrong with it.
 
 ### What is already right
 
-- `resolveStory` is called correctly and its two resolution paths (by `number` and by `id`)
-  work as designed.
-- The parallel `Promise.all` fetch of issue data and item field values is the correct
-  approach — there is no dependency between them.
-- The `parseAcceptanceCriteria` regex is correct and handles both checked (`[x]`) and
-  unchecked (`[ ]`) boxes.
+- `resolveStory` is called correctly and its two resolution paths (by `number` and by `id`) work as designed.
+- The parallel `Promise.all` fetch of issue data and item field values is the correct approach — there is no dependency between them.
+- The `parseAcceptanceCriteria` regex is correct and handles both checked (`[x]`) and unchecked (`[ ]`) boxes.
 - Error handling falls through to `formatError` consistently.
 
 ### Clean code issues
 
 #### Issue 1 — Handler body does more than one thing (Functions, SRP)
 
-The handler closure currently: resolves the story, fires two GraphQL calls, loops over field
-values, constructs a `Story` inline, maps comments, maps linked PRs, parses AC, and assembles
-the return value. That is six responsibilities in one function.
+The handler closure currently: resolves the story, fires two GraphQL calls, loops over field values, constructs a `Story` inline, maps comments, maps linked PRs, parses AC, and assembles the return value. That is six responsibilities in one function.
 
-**Rule violated:** _A function should do one thing. If you can extract a meaningful named
-function from it, the original function does more than one thing._
+**Rule violated:** _A function should do one thing. If you can extract a meaningful named function from it, the original function does more than one thing._
 
 #### Issue 2 — Field-extraction loop duplicates `buildStoryFromRaw` (DRY)
 
@@ -107,19 +76,11 @@ for (const fv of fieldValues) {
 }
 ```
 
-This is byte-for-byte the same pattern as the loop inside `buildStoryFromRaw` (lines
-371–387). The only difference is the variable source: `buildStoryFromRaw` reads from a
-`RawItem` (project-items query shape); the handler reads from a separate `GetItemFieldsResponse`
-node. The extraction _logic_ is identical.
+This is byte-for-byte the same pattern as the loop inside `buildStoryFromRaw` (lines 371–387). The only difference is the variable source: `buildStoryFromRaw` reads from a `RawItem` (project-items query shape); the handler reads from a separate `GetItemFieldsResponse` node. The extraction _logic_ is identical.
 
-**Rule violated:** _Duplication is the root of most software evil. Every time you see
-duplication, it represents a missed opportunity for abstraction._
+**Rule violated:** _Duplication is the root of most software evil. Every time you see duplication, it represents a missed opportunity for abstraction._
 
-The fix is not to merge the two code paths — they operate on different shapes. The fix is to
-name each one clearly: `buildStoryFromRaw` (for the project-items path, used by
-`scrum_get_sprint` and `scrum_get_backlog`) and a new `buildEnrichedStory` (for the
-`scrum_get_story` path that fetches issue+item separately). The extraction _pattern_ is then
-clearly encapsulated in each named function.
+The fix is not to merge the two code paths — they operate on different shapes. The fix is to name each one clearly: `buildStoryFromRaw` (for the project-items path, used by `scrum_get_sprint` and `scrum_get_backlog`) and a new `buildEnrichedStory` (for the `scrum_get_story` path that fetches issue+item separately). The extraction _pattern_ is then clearly encapsulated in each named function.
 
 #### Issue 3 — `Story` assembly is inline with `let`/mutation pattern (Functions)
 
@@ -130,8 +91,7 @@ let sprint: string | null = null;
 const story: Story = { ref: ..., title: ..., status, sprint, ... };
 ```
 
-Mutable locals and imperative assembly make it hard to test the shape logic in isolation.
-Extracting into `buildEnrichedStory` converts this to a single pure-function return.
+Mutable locals and imperative assembly make it hard to test the shape logic in isolation. Extracting into `buildEnrichedStory` converts this to a single pure-function return.
 
 #### Issue 4 — `STORY_TYPES.has(l)` appears twice in the handler (DRY)
 
@@ -142,8 +102,7 @@ const type   = (allLabels.find((l) => STORY_TYPES.has(l)) ...) ?? null;
 const labels =  allLabels.filter((l) => !STORY_TYPES.has(l));
 ```
 
-This exact two-liner also appears inside `buildStoryFromRaw` (lines 390–392). The logic
-belongs in a named helper:
+This exact two-liner also appears inside `buildStoryFromRaw` (lines 390–392). The logic belongs in a named helper:
 
 ```typescript
 // Pure utility — splits label array into { type, labels }.
@@ -155,19 +114,15 @@ const classifyLabels = (
 });
 ```
 
-`buildStoryFromRaw` and `buildEnrichedStory` both call `classifyLabels` — the duplication
-collapses.
+`buildStoryFromRaw` and `buildEnrichedStory` both call `classifyLabels` — the duplication collapses.
 
 #### Issue 5 — `parseAcceptanceCriteria` is not exported (Testability)
 
-The function exists at module scope and is correct, but because it is not exported,
-unit tests cannot import it directly. It must be exported.
+The function exists at module scope and is correct, but because it is not exported, unit tests cannot import it directly. It must be exported.
 
 #### Issue 6 — No unit tests (Kent Beck's Rule 1: Runs all the tests)
 
-The entire `scrum_get_story` handler has no test coverage. The absence of tests for the
-extracted helpers is the most actionable gap, since each helper is independently testable
-without a GitHub client mock.
+The entire `scrum_get_story` handler has no test coverage. The absence of tests for the extracted helpers is the most actionable gap, since each helper is independently testable without a GitHub client mock.
 
 ---
 
@@ -195,10 +150,7 @@ Then update `buildStoryFromRaw` to call it, eliminating those two lines there.
 
 ### Refactor 2 — Extract `extractBoardFields`
 
-The field-value loop that produces `{ status, sprint, story_points, priority }` appears in
-both `buildStoryFromRaw` and the `scrum_get_story` handler. The input type differs
-(`RawItemFieldValue` vs `ProjectV2ItemFieldValue`) but the _shape_ of both types is
-structurally equivalent for the fields we need: `{ field?: { id: string }, name?: string,
+The field-value loop that produces `{ status, sprint, story_points, priority }` appears in both `buildStoryFromRaw` and the `scrum_get_story` handler. The input type differs (`RawItemFieldValue` vs `ProjectV2ItemFieldValue`) but the _shape_ of both types is structurally equivalent for the fields we need: `{ field?: { id: string }, name?: string,
 title?: string, number?: number }`.
 
 Rather than creating a union, define the helper against a minimal interface:
@@ -458,15 +410,13 @@ const missingIssueMessage = (issueId: string): string =>
 | `src/tools/scrum-read.ts`      | Add `classifyLabels`, `extractBoardFields`, `buildEnrichedStory`, `buildCommentList`, `buildLinkedPrList`, `missingIssueMessage`; add named interfaces `IssueDetailsNode`, `CommentNode`, `CrossReferencedEventNode`, `Comment`, `LinkedPr`, `FieldValueNode`, `BoardFields`; export `parseAcceptanceCriteria`; update `buildStoryFromRaw` to call `classifyLabels` and `extractBoardFields`; simplify `scrum_get_story` handler to orchestration only |
 | `src/tools/scrum-read_test.ts` | Add unit tests for all extracted helpers                                                                                                                                                                                                                                                                                                                                                                                                               |
 
-No other files change. `index.ts`, `types.ts`, `schemas/scrum.ts`, and `services/` are
-untouched — this refactor is entirely within `scrum-read.ts` and its test file.
+No other files change. `index.ts`, `types.ts`, `schemas/scrum.ts`, and `services/` are untouched — this refactor is entirely within `scrum-read.ts` and its test file.
 
 ---
 
 ## Testing Plan
 
-All tests go in `src/tools/scrum-read_test.ts`. Import extracted helpers directly — no MCP
-server registration, no GitHub client mock needed.
+All tests go in `src/tools/scrum-read_test.ts`. Import extracted helpers directly — no MCP server registration, no GitHub client mock needed.
 
 ### `classifyLabels`
 
@@ -529,10 +479,8 @@ server registration, no GitHub client mock needed.
 ## Implementation Order
 
 1. **Add `classifyLabels`** — add helper; update `buildStoryFromRaw` to call it (10 min)
-2. **Add `FieldValueNode`, `BoardFields`, `extractBoardFields`** — add interfaces and helper;
-   update `buildStoryFromRaw` to call it (15 min)
-3. **Add `IssueDetailsNode`, `CommentNode`, `CrossReferencedEventNode`, `GetIssueDetailsResponse`
-   interfaces** — replace inline type assertions in the query responses (10 min)
+2. **Add `FieldValueNode`, `BoardFields`, `extractBoardFields`** — add interfaces and helper; update `buildStoryFromRaw` to call it (15 min)
+3. **Add `IssueDetailsNode`, `CommentNode`, `CrossReferencedEventNode`, `GetIssueDetailsResponse` interfaces** — replace inline type assertions in the query responses (10 min)
 4. **Add `Comment`, `LinkedPr`, `buildCommentList`, `buildLinkedPrList`** — pure mappers (10 min)
 5. **Add `buildEnrichedStory`** — depends on steps 1–4 (15 min)
 6. **Add `missingIssueMessage`; export `parseAcceptanceCriteria`** (5 min)
@@ -570,13 +518,7 @@ server registration, no GitHub client mock needed.
 
 ## Notes
 
-- `buildStoryFromRaw` is not deleted or renamed. It remains the correct function for
-  the project-items list path (`scrum_get_sprint`, `scrum_get_backlog`). The distinction
-  between "list query" and "per-item query" shapes is a real structural difference, not
-  an accident of the current code.
+- `buildStoryFromRaw` is not deleted or renamed. It remains the correct function for the project-items list path (`scrum_get_sprint`, `scrum_get_backlog`). The distinction between "list query" and "per-item query" shapes is a real structural difference, not an accident of the current code.
 - `sub_tasks` is listed in the README as a return field (`sub_tasks: array of { title,
-status } if the backend exposes sub-tasks`). GitHub Projects v2 does not natively expose
-  sub-issues in GraphQL as of v1 scope. The field is omitted from the current implementation
-  — this is correct, not a gap. Do not add it here.
-- The `scrum_get_template` tool mentioned in earlier stories remains out of scope for
-  Story 9.
+status } if the backend exposes sub-tasks`). GitHub Projects v2 does not natively expose sub-issues in GraphQL as of v1 scope. The field is omitted from the current implementation — this is correct, not a gap. Do not add it here.
+- The `scrum_get_template` tool mentioned in earlier stories remains out of scope for Story 9.
