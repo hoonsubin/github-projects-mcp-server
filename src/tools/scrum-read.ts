@@ -16,6 +16,8 @@ import { formatError, graphql } from "../services/github.ts";
 import { loadConfig } from "../services/config.ts";
 import type { RuntimeConfig } from "../services/config.ts";
 import { resolveSprint, resolveStory } from "../services/resolver.ts";
+import { isBacklogItem, PaginatedProjectItemFetcher } from "../services/pagination.ts";
+import { computeReadinessSummary } from "../services/readiness.ts";
 
 import {
   GetBacklogSchema,
@@ -24,7 +26,7 @@ import {
   GetStorySchema,
 } from "../schemas/scrum.ts";
 import { z } from "zod";
-import type { Story } from "../types.ts";
+import type { GetBacklogResult, Story } from "../types.ts";
 
 // ── Bootstrap helpers ─────────────────────────────────────────────────────────
 
@@ -459,7 +461,7 @@ type ReadinessLevel = "sprint_ready" | "in_refinement" | "future_candidate";
  * in_refinement:      has at least one but not all three
  * future_candidate:   has none of the three
  */
-const classifyReadiness = (story: Story): ReadinessLevel => {
+const _classifyReadiness = (story: Story): ReadinessLevel => {
   const hasPoints = story.story_points !== null && story.story_points > 0;
   const hasAC = /^[ \t]*-[ \t]+\[([ xX])\]/m.test(story.body);
   const hasPriority = story.priority !== null;
@@ -833,16 +835,19 @@ Readiness criteria:
           repo: getRepo(),
         });
 
-        const allItems = await fetchAllItems(config, owner, ownerType);
-        const { sprintFieldId } = config.fields;
-
-        // Items with no sprint field value → backlog
-        const backlogItems = allItems.filter((item) => {
-          const fv = item.fieldValues.nodes.find(
-            (v) => v.field?.id === sprintFieldId,
-          );
-          return !fv || !fv.title; // no iteration assigned
+        // Use PaginatedProjectItemFetcher for efficient pagination
+        const fetcher = new PaginatedProjectItemFetcher(config, gh, {
+          sprintFieldIds: [config.fields.sprintFieldId],
+          includeIssueContent: true,
+          includePRContent: false,
+          includeDraftIssueContent: false,
+          pageSize: 100,
         });
+
+        // Collect only backlog items (no sprint assigned)
+        const backlogItems = await fetcher.collect((item) =>
+          isBacklogItem(item, config.fields.sprintFieldId)
+        );
 
         let stories = backlogItems
           .map((item) => buildStoryFromRaw(item, config))
@@ -868,21 +873,25 @@ Readiness criteria:
         }
 
         const totalCount = stories.length;
-        stories = stories.slice(0, params.limit);
+        const limitedStories = stories.slice(0, params.limit);
 
-        const readiness = {
-          sprint_ready: 0,
-          in_refinement: 0,
-          future_candidate: 0,
+        const readinessSummary = computeReadinessSummary(
+          limitedStories.map((story) => ({
+            body: story.body,
+            story_points: story.story_points,
+          })),
+        );
+
+        const result: GetBacklogResult = {
+          stories: limitedStories,
+          total_count: totalCount,
+          readiness: readinessSummary,
         };
-        for (const s of stories) {
-          readiness[classifyReadiness(s)]++;
-        }
 
         return {
           content: [{
             type: "text" as const,
-            text: JSON.stringify({ stories, total_count: totalCount, readiness }, null, 2),
+            text: JSON.stringify(result, null, 2),
           }],
         };
       } catch (err: unknown) {

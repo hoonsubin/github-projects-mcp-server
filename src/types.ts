@@ -535,7 +535,7 @@ export interface SprintHistoryResponse {
 export interface SprintSnapshot {
   name: string;
   start_date: string; // ISO date (YYYY-MM-DD)
-  end_date: string;   // ISO date (YYYY-MM-DD)
+  end_date: string; // ISO date (YYYY-MM-DD)
   duration_days: number;
   stories: SprintStory[];
   summary: SprintSummary;
@@ -557,4 +557,30 @@ export interface SprintSummary {
   completion_rate: number; // 0–1, rounded to 2 decimals
   story_count: number;
   completed_count: number;
+}
+
+// ── Backlog types (scrum_get_backlog) ─────────────────────────────────────────
+
+/** Readiness assessment for a backlog story against Definition of Ready. */
+export interface StoryReadiness {
+  /** Has story points assigned and acceptance criteria checklist present */
+  has_estimation_and_ac: boolean;
+  /** Has some but not all DoR criteria met */
+  partially_ready: boolean;
+  /** Has none of the DoR criteria */
+  not_ready: boolean;
+}
+
+/** Response shape for scrum_get_backlog. */
+export interface GetBacklogResult {
+  stories: Story[];
+  total_count: number;
+  readiness: {
+    /** Stories with all DoR criteria met */
+    ready: number;
+    /** Stories with partial DoR criteria */
+    partially_ready: number;
+    /** Stories with no DoR criteria */
+    not_ready: number;
+  };
 }
