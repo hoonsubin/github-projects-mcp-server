@@ -135,7 +135,7 @@ So that I can quickly add tasks without multiple round-trips.
 1. Resolve type label → label node ID; create label if not found (reuse `scrum_add_vocabulary` label logic internally)
 2. Call `createIssue` mutation with `title`, `body`, `labelIds`, `assigneeIds`
 3. Call `addProjectV2ItemById` to add to project board
-4. For each optional field (`priority`, `story_points`, `sprint`): apply `scrum_set_field` logic inline via internal helper
+4. For each optional field (`priority`, `story_points`, `sprint`): call `backend.setField(ref, field, value)` — do **not** call the registered `scrum_set_field` tool to avoid double resolver overhead
 5. Partial failure: if issue creation succeeds but field-set fails, return structured error with partial `StoryRef`
 6. Return the newly created `Story`
 
@@ -201,20 +201,24 @@ So that blockers are visible and traceable without manual setup.
 
 **Acceptance Criteria:**
 
-1. Call `createStory` internally with:
-   - `type: "spike"` (no "impediment" StoryType)
-   - `labels: ["impediment"]` (create label if missing via `addVocabulary` label path)
+1. Call `backend.createStory(...)` with:
+   - `type: "spike"` (there is no `"impediment"` StoryType)
+   - `labels: ["impediment"]` (create label if missing via `backend.addVocabulary` label path)
    - `status: "Blocked"` (from vocabulary)
-   - `priority`: `raised_by` param, falling back to Scrum Master's highest priority tier from `config.yml`
-2. Call `addComment` on the **affected** story: `"Impediment #N opened against this story."`
-3. Call `addComment` on the **new impediment** story: `"This impediment affects story #M."`
-4. `addComment` uses `addComment` GraphQL mutation directly — shared internal primitive
-5. Return: `{ impediment: Story, linked_to: StoryRef }`
+   - `priority`: the `priority` parameter from the tool input (a vocabulary display name such as `"high"`), falling back to the highest-priority tier declared in `config.yml` when not provided
+2. Call `backend.addComment(affectedRef, "Impediment #N opened against this story.")`
+3. Call `backend.addComment(impedimentRef, "This impediment affects story #M.")`
+4. Return: `{ impediment: Story, linked_to: StoryRef }`
+
+> **Parameter note:** The tool accepts a `priority` input (a vocabulary display name, e.g. `"high"`).
+> If omitted, the use case reads the first entry in `yml.priority` (the highest configured tier) as
+> the default. There is no `raised_by` parameter — who logged the impediment is captured in the
+> story body, not as a priority signal.
 
 **Implementation Notes:**
 
 - This tool composes earlier primitives — implement last
-- `addComment` is a shared internal primitive, not an agent-callable tool
+- `backend.addComment` is the correct call site; it is a method on `ProjectBackend`, not an agent-callable tool
 - The impediment story is created with `type: "spike"` and `labels: ["impediment"]`
 
 **Files:**
@@ -248,13 +252,13 @@ So that I can debug issues without risking accidental mutations through the depr
 
 ## Verification Checklist
 
-- [ ] C1: `scrum_add_vocabulary` implemented and tested
-- [ ] C2: `scrum_set_field` implemented and tested
-- [ ] C3: `scrum_update_story` implemented and tested
-- [ ] C4: `scrum_create_story` implemented and tested
-- [ ] C5: `scrum_plan_sprint` implemented and tested
-- [ ] C6: `scrum_log_impediment` implemented and tested
-- [ ] C7: `github_graphql` registered with deprecation marker
+- [ ] C1: `scrum_add_vocabulary` implemented; at least one unit test with a stubbed `ProjectBackend`
+- [ ] C2: `scrum_set_field` implemented; at least one unit test per field type (status, sprint, story_points, priority, assignee)
+- [ ] C3: `scrum_update_story` implemented; at least one unit test covering title/body update and epic detach
+- [ ] C4: `scrum_create_story` implemented; at least one unit test covering partial-failure path
+- [ ] C5: `scrum_plan_sprint` implemented; at least one unit test covering `replace: true` and a skipped story
+- [ ] C6: `scrum_log_impediment` implemented; at least one unit test verifying both `backend.addComment` calls are made
+- [ ] C7: `github_graphql` registered with deprecation marker; mutation-blocking verified with a test query containing "mutation"
 - [ ] `deno check src/index.ts` passes clean
 - [ ] All existing tests pass
-- [ ] All tools use `ProjectBackend` interface (no direct GitHub API calls)
+- [ ] All tools use `ProjectBackend` interface (no direct GitHub API calls in handlers or use cases)

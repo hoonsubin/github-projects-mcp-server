@@ -77,7 +77,7 @@ So that there is no risk of type mismatch between incompatible casts of `yml.sta
 **Acceptance Criteria:**
 
 1. Audit the actual `config.yml` schema to determine the correct `yml.status` type
-2. Create `resolveStatusDisplayName(config, keyHint, fallback)` helper
+2. Create `resolveStatusDisplayName(config, statusKey, fallback)` helper
 3. Replace all callers of both `findStatusDisplayName` and `findDoneStatusName` with the new helper
 4. Delete the unused function
 5. `deno check src/index.ts` passes
@@ -101,11 +101,17 @@ So that each handler reduces to one expressive line and the code is DRY.
 4. `deno check src/index.ts` passes
 5. No behavioral change
 
+> **Lifecycle note:** `loadRuntimeConfig()` is temporary scaffolding. In Story B (step B5), it is
+> superseded by `getBootstrapConfig()` + `loadConfig()` from `src/adapters/github/config-loader.ts`
+> and is deleted. Do not over-engineer this helper — its only job is eliminating the 4-line
+> repetition until the backend abstraction is wired in.
+
 ---
 
 ## Verification Checklist
 
 - [ ] A1: Tool description corrected
+- [ ] A1: Regression verified — invoke `scrum_get_backlog` and confirm response contains `ready`, `partially_ready`, `not_ready` keys (not the old `sprint_ready`, `in_refinement`, `future_candidate`)
 - [ ] A2: Dead code deleted
 - [ ] A3: Status resolution consolidated
 - [ ] A4: Bootstrap helper extracted

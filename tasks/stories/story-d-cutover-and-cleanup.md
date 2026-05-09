@@ -18,12 +18,13 @@ So that the codebase is clean, the new architecture is complete, and there is no
 
 1. `index.ts` registers `registerScrumReadTools` and `registerScrumWriteTools` instead of legacy tool registrations
 2. Legacy tool files (`projects.ts`, `items.ts`, `repository.ts`) are deleted
-3. Dead schemas removed from `schemas/inputs.ts`
-4. Legacy types removed from `types.ts`; domain types moved to `src/domain/`
-5. `github_graphql` tool has deprecation marker
-6. `deno check src/index.ts` passes clean
-7. All existing tests pass
-8. Server starts and all 13 tools (7 read + 6 write) respond correctly
+3. Service files gutted by Story B (`services/config.ts`, `services/resolver.ts`) are deleted
+4. Dead schemas removed from `schemas/inputs.ts`
+5. Legacy types removed from `types.ts`; domain types moved to `src/domain/`
+6. `github_graphql` tool has deprecation marker
+7. `deno check src/index.ts` passes clean
+8. All existing tests pass
+9. Server starts and all 13 tools (7 read + 6 write) respond correctly
 
 ---
 
@@ -91,14 +92,18 @@ So that there is no confusion about which tools are active.
 1. `src/tools/projects.ts` deleted entirely
 2. `src/tools/items.ts` deleted entirely
 3. `src/tools/repository.ts` gutted — delete if no helpers remain
-4. No remaining code references these files
-5. `deno check src/index.ts` passes
+4. `src/services/config.ts` deleted — its contents (`loadConfig`, `RuntimeConfig`, `getBootstrapConfig`, `getRepo`) were moved to `src/adapters/github/config-loader.ts` in Story B (step B5)
+5. `src/services/resolver.ts` deleted — its contents (`resolveSprint`, `resolveStory`) were moved to `src/adapters/github/backend.ts` as private methods in step B5
+6. No remaining code references any of these files
+7. `deno check src/index.ts` passes
 
 **Files to Delete:**
 
 - `src/tools/projects.ts`
 - `src/tools/items.ts`
 - `src/tools/repository.ts` (if empty after gutting)
+- `src/services/config.ts` (gutted by B5)
+- `src/services/resolver.ts` (gutted by B5)
 
 ---
 
@@ -113,7 +118,7 @@ So that the schema file is clean and only contains relevant definitions.
 **Acceptance Criteria:**
 
 1. Remove: `GetSprintStatusSchema`, `GetVelocitySchema` (old), `GetBacklogItemsSchema`, `BulkUpdateItemFieldSchema`, `CloseSprintSchema`, `GenerateSprintReportSchema`
-2. Keep temporarily: `GetIssueNodeIdSchema`, `GetUserNodeIdSchema`, `GraphQLQuerySchema`, `GetRepoFileSchema` — delete once confirmed unused
+2. For the "keep temporarily" schemas, run the verification command below and delete any with zero usages
 3. No remaining code references the removed schemas
 4. `deno check src/index.ts` passes
 
@@ -126,12 +131,18 @@ So that the schema file is clean and only contains relevant definitions.
 - `CloseSprintSchema`
 - `GenerateSprintReportSchema`
 
-**Schemas to Keep (temporarily):**
+**Schemas to Verify Before Keeping:**
 
-- `GetIssueNodeIdSchema`
-- `GetUserNodeIdSchema`
-- `GraphQLQuerySchema`
-- `GetRepoFileSchema`
+Run this command to check each for active usages. Delete any that return zero hits outside of `inputs.ts` itself:
+
+```bash
+grep -rn "GetIssueNodeIdSchema\|GetUserNodeIdSchema\|GraphQLQuerySchema\|GetRepoFileSchema" src/ \
+  | grep -v "src/schemas/inputs.ts"
+```
+
+Expected survivors after write tools are implemented:
+- `GraphQLQuerySchema` — used by the deprecated `github_graphql` tool registration in `scrum-write.ts`
+- `GetIssueNodeIdSchema`, `GetUserNodeIdSchema`, `GetRepoFileSchema` — delete if no write-tool internals reference them
 
 **Files:**
 
@@ -234,8 +245,11 @@ So that agents know to prefer `scrum_*` tools and understand the tool's limited 
 ## Verification Checklist
 
 - [ ] D1: `index.ts` swapped to register `scrum_*` tools
-- [ ] D2: Legacy tool files deleted
+- [ ] D2: Legacy tool files deleted (`projects.ts`, `items.ts`, `repository.ts`)
+- [ ] D2: `src/services/config.ts` deleted
+- [ ] D2: `src/services/resolver.ts` deleted
 - [ ] D3: Dead schemas removed from `schemas/inputs.ts`
+- [ ] D3: "Keep temporarily" schemas verified via grep — unused ones deleted
 - [ ] D4: `types.ts` cleaned up — legacy types removed, domain types moved
 - [ ] D5: `github_graphql` deprecation marker updated
 - [ ] `deno check src/index.ts` passes clean

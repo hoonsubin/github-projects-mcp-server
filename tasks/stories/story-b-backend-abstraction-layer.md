@@ -167,13 +167,13 @@ So that the dependency rule is enforced by TypeScript and backend switching is s
 1. Create `src/scrum/ports.ts` with full `ProjectBackend` interface (from §7 of REFACTORING.md)
 2. Create `src/adapters/github/config-loader.ts` with `loadConfig`, `RuntimeConfig`, `getBootstrapConfig`, `getRepo`
 3. Create `src/adapters/github/backend.ts` with `GitHubProjectBackend implements ProjectBackend`
-4. All read methods implemented; write methods are stubs (`throw "not yet implemented"`)
+4. All read methods implemented; write methods are stubs (`throw new Error("not yet implemented")`)
 5. `GitHubProjectBackend` constructor accepts `RuntimeConfig`, `gh`, `owner`, `ownerType`, `repo`
 6. `resolveSprint` and `resolveStory` are private methods on the class
 7. Update `index.ts` to construct `GitHubProjectBackend` and pass it to tool registration
 8. Server starts successfully
 9. All 7 read tools respond correctly
-10. Write stubs return "not yet implemented"
+10. Write stubs throw `new Error("not yet implemented")` and return an MCP error response
 
 **Files Created:**
 
@@ -267,9 +267,10 @@ So that the architecture is production-ready and future backends can be added sa
 2. No handler imports `graphql`, `rest`, `loadConfig`, `resolveSprint`, or any GitHub raw type
 3. `src/adapters/github/backend.ts` imports no MCP SDK types
 4. `src/scrum/*.ts` imports no adapter types
-5. `deno check src/index.ts` passes clean
-6. All existing tests pass
-7. At least one new unit test per use case that stubs `ProjectBackend` with a fake implementation
+5. Temporary re-exports added in B1 are removed from `src/tools/scrum-read.ts`
+6. `deno check src/index.ts` passes clean
+7. All existing tests pass
+8. At least one new unit test per use case that stubs `ProjectBackend` with a fake implementation
 
 **Verification Commands:**
 
@@ -294,6 +295,7 @@ deno test
 - [ ] B6.5: `get-backlog.ts` use case extracted
 - [ ] B6.6: `get-history.ts` use case extracted
 - [ ] B6.7: `get-burndown.ts` use case extracted
+- [ ] B7: B1 temporary re-exports removed from `src/tools/scrum-read.ts`
 - [ ] B7: All verifications pass, tests added
 - [ ] `deno check src/index.ts` passes clean
 - [ ] All existing tests pass
