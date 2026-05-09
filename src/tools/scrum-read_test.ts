@@ -659,3 +659,363 @@ More text
   assertEquals(result[2].text, "Third criterion");
   assertEquals(result[2].checked, false);
 });
+
+// =============================================================================
+// Story 10: Unit tests for burndown helpers
+// =============================================================================
+
+import {
+  buildBurndownStoryInput,
+  buildDaySeries,
+  buildIdealLine,
+  buildSprintWindow,
+  extractLinkHeader,
+} from "./scrum-read.ts";
+
+// ── extractLinkHeader tests ─────────────────────────────────────────────────────
+
+Deno.test("extractLinkHeader — single next link", () => {
+  const result = extractLinkHeader('<https://api.github.com/page2>; rel="next"');
+  assertEquals(result, "https://api.github.com/page2");
+});
+
+Deno.test("extractLinkHeader — last page (no next)", () => {
+  const result = extractLinkHeader('<https://api.github.com/last>; rel="last"');
+  assertEquals(result, null);
+});
+
+Deno.test("extractLinkHeader — null header", () => {
+  const result = extractLinkHeader(null);
+  assertEquals(result, null);
+});
+
+Deno.test("extractLinkHeader — multiple rels", () => {
+  const result = extractLinkHeader(
+    '<https://api.github.com/page2>; rel="next", <https://api.github.com/last>; rel="last"',
+  );
+  assertEquals(result, "https://api.github.com/page2");
+});
+
+Deno.test("extractLinkHeader — extra whitespace around semicolon", () => {
+  const result = extractLinkHeader('<https://api.github.com/page2>;\t rel="next"');
+  assertEquals(result, "https://api.github.com/page2");
+});
+
+// ── buildSprintWindow tests ─────────────────────────────────────────────────────
+
+Deno.test("buildSprintWindow — active sprint has positive daysRemaining", () => {
+  const iterEntry: IterationEntry = {
+    id: "sprint-future",
+    title: "Future Sprint",
+    startDate: "2030-01-01",
+    duration: 14,
+  };
+  const window = buildSprintWindow(iterEntry);
+  assertEquals(window.name, "Future Sprint");
+  assertEquals(window.durationDays, 14);
+  // 2030-01-01 is in the future, so daysRemaining should be positive
+  assertEquals(window.daysRemaining > 0, true);
+  // Verify startDate is normalised to UTC midnight
+  assertEquals(window.startDate.getUTCHours(), 0);
+  assertEquals(window.startDate.getUTCMinutes(), 0);
+  assertEquals(window.startDate.getUTCSeconds(), 0);
+  assertEquals(window.startDate.getUTCMilliseconds(), 0);
+});
+
+Deno.test("buildSprintWindow — endDate = startDate + duration", () => {
+  const iterEntry: IterationEntry = {
+    id: "sprint-duration",
+    title: "Duration Test",
+    startDate: "2024-01-01",
+    duration: 14,
+  };
+  const window = buildSprintWindow(iterEntry);
+  const expectedEnd = new Date("2024-01-15");
+  assertEquals(window.endDate.toISOString().slice(0, 10), expectedEnd.toISOString().slice(0, 10));
+});
+
+Deno.test("buildSprintWindow — daysRemaining is 0 when sprint ended yesterday", () => {
+  const pastStart = new Date();
+  pastStart.setUTCDate(pastStart.getUTCDate() - 14);
+  const iterEntry: IterationEntry = {
+    id: "sprint-past",
+    title: "Past Sprint",
+    startDate: pastStart.toISOString().slice(0, 10),
+    duration: 14,
+  };
+  const window = buildSprintWindow(iterEntry);
+  assertEquals(window.daysRemaining, 0);
+});
+
+// ── buildIdealLine tests ─────────────────────────────────────────────────────────
+
+Deno.test("buildIdealLine — 10-day sprint, 20 points", () => {
+  const window: SprintWindow = {
+    name: "Test Sprint",
+    startDate: new Date("2024-01-01"),
+    endDate: new Date("2024-01-11"),
+    durationDays: 10,
+    daysRemaining: 5,
+  };
+  const ideal = buildIdealLine(window, 20);
+  assertEquals(ideal.length, 11); // 10 days + 1
+  assertEquals(ideal[0].remaining_points, 20);
+  assertEquals(ideal[10].remaining_points, 0);
+});
+
+Deno.test("buildIdealLine — 0 committed points", () => {
+  const window: SprintWindow = {
+    name: "Empty Sprint",
+    startDate: new Date("2024-01-01"),
+    endDate: new Date("2024-01-11"),
+    durationDays: 10,
+    daysRemaining: 5,
+  };
+  const ideal = buildIdealLine(window, 0);
+  for (const point of ideal) {
+    assertEquals(point.remaining_points, 0);
+  }
+});
+
+Deno.test("buildIdealLine — rounding to 1 decimal", () => {
+  const window: SprintWindow = {
+    name: "Rounding Test",
+    startDate: new Date("2024-01-01"),
+    endDate: new Date("2024-01-04"),
+    durationDays: 3,
+    daysRemaining: 2,
+  };
+  const ideal = buildIdealLine(window, 10);
+  // Day 0: 10 * (1 - 0/3) = 10
+  // Day 1: 10 * (1 - 1/3) = 6.666... → 6.7
+  // Day 2: 10 * (1 - 2/3) = 3.333... → 3.3
+  // Day 3: 10 * (1 - 3/3) = 0
+  assertEquals(ideal[0].remaining_points, 10);
+  assertEquals(ideal[1].remaining_points, 6.7);
+  assertEquals(ideal[2].remaining_points, 3.3);
+  assertEquals(ideal[3].remaining_points, 0);
+});
+
+// ── buildDaySeries tests ─────────────────────────────────────────────────────────
+
+interface BurndownStoryInput {
+  number: number;
+  title: string;
+  points: number;
+  status: string | null;
+}
+
+Deno.test("buildDaySeries — no completions", () => {
+  const window: SprintWindow = {
+    name: "Test Sprint",
+    startDate: new Date("2030-01-01"),
+    endDate: new Date("2030-01-05"),
+    durationDays: 4,
+    daysRemaining: 4,
+  };
+  const stories: BurndownStoryInput[] = [
+    { number: 1, title: "Story 1", points: 5, status: "Todo" },
+    { number: 2, title: "Story 2", points: 3, status: "Todo" },
+  ];
+  const completions = new Map<number, string>();
+  const series = buildDaySeries(stories, completions, window, 8);
+  for (const point of series) {
+    assertEquals(point.completed_points, 0);
+    assertEquals(point.remaining_points, 8);
+  }
+});
+
+Deno.test("buildDaySeries — story completes on day 3", () => {
+  // Use dates relative to today so the series is non-empty
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const startDate = new Date(today);
+  startDate.setUTCDate(startDate.getUTCDate() - 4); // 4 days ago
+  const endDate = new Date(today);
+  endDate.setUTCDate(endDate.getUTCDate() + 1); // tomorrow
+  const window: SprintWindow = {
+    name: "Test Sprint",
+    startDate,
+    endDate,
+    durationDays: 5,
+    daysRemaining: 1,
+  };
+  const stories: BurndownStoryInput[] = [
+    { number: 1, title: "Story 1", points: 5, status: "Todo" },
+    { number: 2, title: "Story 2", points: 3, status: "Todo" },
+  ];
+  const completions = new Map<number, string>();
+  // Complete story 1 on day 2 (2 days after start)
+  const completionDate = new Date(startDate);
+  completionDate.setUTCDate(completionDate.getUTCDate() + 2);
+  completionDate.setUTCHours(12, 0, 0, 0);
+  completions.set(1, completionDate.toISOString());
+  const series = buildDaySeries(stories, completions, window, 8);
+  // Days 0-1: completed_points = 0, remaining = 8
+  assertEquals(series[0].completed_points, 0);
+  assertEquals(series[0].remaining_points, 8);
+  assertEquals(series[1].completed_points, 0);
+  assertEquals(series[1].remaining_points, 8);
+  // Day 2 onward: completed_points = 5, remaining = 3
+  assertEquals(series[2].completed_points, 5);
+  assertEquals(series[2].remaining_points, 3);
+});
+
+Deno.test("buildDaySeries — sprint already ended", () => {
+  const window: SprintWindow = {
+    name: "Past Sprint",
+    startDate: new Date("2020-01-01"),
+    endDate: new Date("2020-01-05"),
+    durationDays: 4,
+    daysRemaining: 0,
+  };
+  const stories: BurndownStoryInput[] = [
+    { number: 1, title: "Story 1", points: 5, status: "Todo" },
+  ];
+  const completions = new Map<number, string>();
+  const series = buildDaySeries(stories, completions, window, 5);
+  // Series should end at endDate (2020-01-05), not today
+  assertEquals(series.length, 5);
+  assertEquals(series[4].date, "2020-01-05");
+});
+
+Deno.test("buildDaySeries — multiple completions same day", () => {
+  // Use dates relative to today so the series is non-empty
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const startDate = new Date(today);
+  startDate.setUTCDate(startDate.getUTCDate() - 3); // 3 days ago
+  const endDate = new Date(today);
+  endDate.setUTCDate(endDate.getUTCDate() + 2); // 2 days from now
+  const window: SprintWindow = {
+    name: "Test Sprint",
+    startDate,
+    endDate,
+    durationDays: 5,
+    daysRemaining: 2,
+  };
+  const stories: BurndownStoryInput[] = [
+    { number: 1, title: "Story 1", points: 3, status: "Todo" },
+    { number: 2, title: "Story 2", points: 5, status: "Todo" },
+  ];
+  // Complete both stories on day 1 (1 day after start)
+  const completionDate = new Date(startDate);
+  completionDate.setUTCDate(completionDate.getUTCDate() + 1);
+  completionDate.setUTCHours(12, 0, 0, 0);
+  const completions = new Map<number, string>();
+  completions.set(1, completionDate.toISOString());
+  completions.set(2, completionDate.toISOString());
+  const series = buildDaySeries(stories, completions, window, 8);
+  // Day 0: completed = 0, remaining = 8
+  assertEquals(series[0].completed_points, 0);
+  assertEquals(series[0].remaining_points, 8);
+  // Day 1 onward: both completed, completed = 8, remaining = 0
+  assertEquals(series[1].completed_points, 8);
+  assertEquals(series[1].remaining_points, 0);
+});
+
+Deno.test("buildDaySeries — 0-pt story completes", () => {
+  // Use dates relative to today so the series is non-empty
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const startDate = new Date(today);
+  startDate.setUTCDate(startDate.getUTCDate() - 2); // 2 days ago
+  const endDate = new Date(today);
+  endDate.setUTCDate(endDate.getUTCDate() + 3); // 3 days from now
+  const window: SprintWindow = {
+    name: "Test Sprint",
+    startDate,
+    endDate,
+    durationDays: 5,
+    daysRemaining: 3,
+  };
+  const stories: BurndownStoryInput[] = [
+    { number: 1, title: "Story 1", points: 0, status: "Todo" },
+    { number: 2, title: "Story 2", points: 5, status: "Todo" },
+  ];
+  // Complete story 1 (0 points) on day 1
+  const completionDate = new Date(startDate);
+  completionDate.setUTCDate(completionDate.getUTCDate() + 1);
+  completionDate.setUTCHours(12, 0, 0, 0);
+  const completions = new Map<number, string>();
+  completions.set(1, completionDate.toISOString());
+  const series = buildDaySeries(stories, completions, window, 5);
+  // completed_points should still be 0 because story 1 has 0 points
+  // story 2 is not completed, so remaining = 5
+  assertEquals(series[1].completed_points, 0);
+  assertEquals(series[1].remaining_points, 5);
+});
+
+// ── buildBurndownStoryInput tests ────────────────────────────────────────────────
+
+interface RawItem {
+  id: string;
+  content: { id: string; number: number; title: string } | null;
+  fieldValues: { nodes: Array<{ field?: { id: string }; name?: string; number?: number }> };
+}
+
+Deno.test("buildBurndownStoryInput — normal issue item", () => {
+  const item: RawItem = {
+    id: "PVTI_test_1",
+    content: { id: "issue_1", number: 42, title: "Test Story" },
+    fieldValues: {
+      nodes: [
+        { field: { id: "single_select_field_1" }, name: "In Progress" },
+        { field: { id: "number_field_1" }, number: 5 },
+      ],
+    },
+  };
+  const config = makeConfig();
+  const result = buildBurndownStoryInput(item, config);
+  assertEquals(result?.number, 42);
+  assertEquals(result?.title, "Test Story");
+  assertEquals(result?.points, 5);
+  assertEquals(result?.status, "In Progress");
+});
+
+Deno.test("buildBurndownStoryInput — DraftIssue (no number) returns null", () => {
+  const item: RawItem = {
+    id: "PVTI_draft_1",
+    content: { id: "draft_1", title: "Draft" } as unknown as {
+      id: string;
+      number: number;
+      title: string;
+    },
+    fieldValues: { nodes: [] },
+  };
+  const config = makeConfig();
+  const result = buildBurndownStoryInput(item, config);
+  assertEquals(result, null);
+});
+
+Deno.test("buildBurndownStoryInput — unpointed story returns points: 0", () => {
+  const item: RawItem = {
+    id: "PVTI_test_2",
+    content: { id: "issue_2", number: 43, title: "Unpointed" },
+    fieldValues: { nodes: [] },
+  };
+  const config = makeConfig();
+  const result = buildBurndownStoryInput(item, config);
+  assertEquals(result?.points, 0);
+});
+
+Deno.test("buildBurndownStoryInput — null content returns null", () => {
+  const item: RawItem = {
+    id: "PVTI_test_3",
+    content: null,
+    fieldValues: { nodes: [] },
+  };
+  const config = makeConfig();
+  const result = buildBurndownStoryInput(item, config);
+  assertEquals(result, null);
+});
+
+// ── Helper type for SprintWindow (needed in tests) ──────────────────────────────
+
+interface SprintWindow {
+  name: string;
+  startDate: Date;
+  endDate: Date;
+  durationDays: number;
+  daysRemaining: number;
+}

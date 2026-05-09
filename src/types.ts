@@ -584,3 +584,46 @@ export interface GetBacklogResult {
     not_ready: number;
   };
 }
+
+// ── Burndown types (scrum_get_burndown) ──────────────────────────────────────
+
+/** Response shape for scrum_get_burndown. */
+export interface BurndownResponse {
+  sprint: BurndownSprintMeta;
+  data_source: "audit_log" | "issue_close_proxy";
+  warning?: string;
+  series: BurndownDayPoint[];
+  ideal: IdealDayPoint[];
+  stories: BurndownStory[];
+}
+
+/** Sprint window metadata returned alongside the burndown series. */
+export interface BurndownSprintMeta {
+  name: string;
+  start_date: string; // YYYY-MM-DD
+  end_date: string; // YYYY-MM-DD
+  duration_days: number;
+  days_remaining: number;
+}
+
+/** One entry in the actual burndown series — one per calendar day. */
+export interface BurndownDayPoint {
+  date: string; // YYYY-MM-DD
+  remaining_points: number;
+  completed_points: number;
+}
+
+/** One entry in the ideal burndown line — one per calendar day. */
+export interface IdealDayPoint {
+  date: string; // YYYY-MM-DD
+  remaining_points: number;
+}
+
+/** Lightweight per-story summary in the burndown response. */
+export interface BurndownStory {
+  number: number;
+  title: string;
+  points: number; // 0 if the story has no points assigned
+  status: string | null;
+  completed_at: string | null; // ISO-8601 timestamp, or null if not yet done
+}

@@ -12,7 +12,8 @@
 // =============================================================================
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { formatError, graphql } from "../services/github.ts";
+import { formatError, GitHubApiError, graphql, rest } from "../services/github.ts";
+import type { RestResponse } from "../services/github.ts";
 import { loadConfig } from "../services/config.ts";
 import type { RuntimeConfig } from "../services/config.ts";
 import { resolveSprint, resolveStory } from "../services/resolver.ts";
@@ -21,12 +22,22 @@ import { computeReadinessSummary } from "../services/readiness.ts";
 
 import {
   GetBacklogSchema,
+  GetBurndownSchema,
   GetHistorySchema,
   GetSprintSchema,
   GetStorySchema,
 } from "../schemas/scrum.ts";
 import { z } from "zod";
-import type { GetBacklogResult, IterationEntry, Story } from "../types.ts";
+import type {
+  BurndownDayPoint,
+  BurndownResponse,
+  BurndownSprintMeta,
+  BurndownStory,
+  GetBacklogResult,
+  IdealDayPoint,
+  IterationEntry,
+  Story,
+} from "../types.ts";
 
 // ── Bootstrap helpers ─────────────────────────────────────────────────────────
 
@@ -766,6 +777,409 @@ const _classifyReadiness = (story: Story): ReadinessLevel => {
   return "future_candidate";
 };
 
+// ── Burndown helpers ───────────────────────────────────────────────────────────
+
+// ── Local-only interfaces (burndown internals) ─────────────────────────────────
+
+/** Result of the completion-timestamp resolution step. */
+interface CompletionResult {
+  /** Issue number → ISO-8601 completion timestamp. Only includes done stories. */
+  completions: Map<number, string>;
+  data_source: "audit_log" | "issue_close_proxy";
+  warning?: string;
+}
+
+/** Minimal story projection needed for burndown series computation. */
+interface BurndownStoryInput {
+  number: number;
+  title: string;
+  points: number;
+  status: string | null;
+}
+
+/** Computed sprint window — pure derivation of an IterationEntry. */
+interface SprintWindow {
+  name: string;
+  startDate: Date;
+  endDate: Date;
+  durationDays: number;
+  daysRemaining: number;
+}
+
+// ── Pure helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * Parse a GitHub REST API `Link` response header and return the URL for
+ * rel="next", or null if absent or on the last page.
+ *
+ * Link header format: <url>; rel="next", <url>; rel="last"
+ */
+export const extractLinkHeader = (linkHeader: string | null): string | null => {
+  if (!linkHeader) return null;
+  const match = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+  return match ? match[1] : null;
+};
+
+/**
+ * Compute the sprint window from an IterationEntry.
+ * All Date objects are normalised to UTC midnight to guarantee
+ * consistent day-boundary arithmetic regardless of the server's timezone.
+ */
+export const buildSprintWindow = (iterEntry: IterationEntry): SprintWindow => {
+  const startDate = new Date(iterEntry.startDate);
+  startDate.setUTCHours(0, 0, 0, 0);
+
+  const endDate = new Date(startDate);
+  endDate.setUTCDate(endDate.getUTCDate() + iterEntry.duration);
+
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const daysRemaining = Math.max(
+    0,
+    Math.ceil((endDate.getTime() - today.getTime()) / msPerDay),
+  );
+
+  return {
+    name: iterEntry.title,
+    startDate,
+    endDate,
+    durationDays: iterEntry.duration,
+    daysRemaining,
+  };
+};
+
+/**
+ * Compute the ideal burndown line: one entry per calendar day from
+ * start_date to end_date inclusive.
+ *
+ * Values are rounded to one decimal place to avoid floating-point noise
+ * in JSON output (e.g., 13.333333... → 13.3).
+ */
+export const buildIdealLine = (
+  window: SprintWindow,
+  committedPoints: number,
+): IdealDayPoint[] => {
+  const ideal: IdealDayPoint[] = [];
+  const cursor = new Date(window.startDate);
+
+  for (let dayIndex = 0; dayIndex <= window.durationDays; dayIndex++) {
+    const date = cursor.toISOString().slice(0, 10);
+    const remaining = committedPoints * (1 - dayIndex / window.durationDays);
+    ideal.push({ date, remaining_points: Math.round(remaining * 10) / 10 });
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  return ideal;
+};
+
+/**
+ * Build the actual burndown series: one entry per calendar day from
+ * sprint.start_date to min(today, sprint.end_date).
+ *
+ * A story counts as completed on day D if its completed_at timestamp
+ * falls on or before the end of day D (UTC 23:59:59.999).
+ */
+export const buildDaySeries = (
+  stories: BurndownStoryInput[],
+  completions: Map<number, string>,
+  window: SprintWindow,
+  committedPoints: number,
+): BurndownDayPoint[] => {
+  const series: BurndownDayPoint[] = [];
+  const today = new Date();
+  today.setUTCHours(23, 59, 59, 999);
+
+  const seriesEnd = window.endDate < today ? window.endDate : today;
+  const cursor = new Date(window.startDate);
+
+  while (cursor <= seriesEnd) {
+    const endOfDay = new Date(cursor);
+    endOfDay.setUTCHours(23, 59, 59, 999);
+    const dateStr = cursor.toISOString().slice(0, 10);
+
+    let completedPoints = 0;
+    for (const story of stories) {
+      const completedAt = completions.get(story.number);
+      if (completedAt && new Date(completedAt) <= endOfDay) {
+        completedPoints += story.points;
+      }
+    }
+
+    series.push({
+      date: dateStr,
+      remaining_points: committedPoints - completedPoints,
+      completed_points: completedPoints,
+    });
+
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  return series;
+};
+
+// ── Vocabulary and projection helpers ──────────────────────────────────────────
+
+/**
+ * Resolve the display name for the "done" status from config vocabulary.
+ * Falls back to "Done" if the vocabulary entry is missing or has no display_name.
+ */
+const findDoneStatusName = (config: RuntimeConfig): string => {
+  const statusVocab = config.yml.status as
+    | Record<string, { display_name?: string } | undefined>
+    | undefined;
+  if (!statusVocab) return "Done";
+  const doneEntry = Object.entries(statusVocab).find(([key]) => key.toLowerCase().includes("done"));
+  return doneEntry?.[1]?.display_name ?? "Done";
+};
+
+/**
+ * Project a RawItem to the four fields burndown computation needs.
+ * Returns null for DraftIssues and items with no issue content.
+ *
+ * Distinct from buildStoryFromRaw: burndown needs only number, title,
+ * points, and status — not body, URL, epic, assignees, or timestamps.
+ * Reusing buildStoryFromRaw would resolve fields that are never consumed.
+ */
+export const buildBurndownStoryInput = (
+  item: RawItem,
+  config: RuntimeConfig,
+): BurndownStoryInput | null => {
+  const content = item.content;
+  if (!content || typeof content.number !== "number") return null;
+
+  const { status, story_points } = extractBoardFields(
+    item.fieldValues.nodes,
+    config.fields,
+  );
+
+  return {
+    number: content.number,
+    title: content.title,
+    points: story_points ?? 0,
+    status,
+  };
+};
+
+// ── Network-bound helpers ──────────────────────────────────────────────────────
+
+/** @internal Network-bound. Throws GitHubApiError(403) on non-Enterprise accounts. */
+const fetchAuditLogCompletions = async (
+  nodeIdToNumber: Map<string, number>,
+  window: SprintWindow,
+  org: string,
+  doneStatusName: string,
+  statusFieldName: string,
+): Promise<Map<number, string>> => {
+  let url =
+    `/orgs/${org}/audit-log?phrase=action:projects_v2_item.field_value_updated&order=asc&per_page=100`;
+  const completions = new Map<number, string>();
+
+  while (url) {
+    const response: RestResponse<unknown> = await rest(url.split("?")[0], {
+      params: Object.fromEntries(new URLSearchParams(url.split("?")[1] ?? "")),
+    });
+
+    const entries = (response.data as {
+      total_count: number;
+      data: Array<{
+        created_at: string;
+        field_type: string;
+        field_name: string;
+        value: string;
+        project_item_node_id: string;
+      }>;
+    })?.data ?? [];
+
+    for (const entry of entries) {
+      if (
+        entry.field_type === "single_select" &&
+        entry.field_name === statusFieldName &&
+        entry.value === doneStatusName
+      ) {
+        const issueNumber = nodeIdToNumber.get(entry.project_item_node_id);
+        if (issueNumber !== undefined) {
+          // Last "moved to Done" wins if a story moved to Done more than once
+          completions.set(issueNumber, entry.created_at);
+        }
+      }
+
+      // Stop if we've passed the sprint end
+      if (new Date(entry.created_at) > window.endDate) {
+        return completions;
+      }
+    }
+
+    // Check if there are more pages
+    if (entries.length === 0) break;
+    const nextUrl = extractLinkHeader(response.linkHeader);
+    if (!nextUrl) break;
+    url = nextUrl;
+  }
+
+  return completions;
+};
+
+/** @internal Network-bound. Available on all GitHub plan tiers. */
+const fetchIssueCloseCompletions = async (
+  stories: BurndownStoryInput[],
+  window: SprintWindow,
+  owner: string,
+  repo: string,
+): Promise<Map<number, string>> => {
+  const completions = new Map<number, string>();
+
+  for (const story of stories) {
+    try {
+      const response: RestResponse<{
+        events: Array<{
+          id: number;
+          event: string;
+          created_at: string;
+        }>;
+      }> = await rest(
+        `repos/${owner}/${repo}/issues/${story.number}/timeline`,
+        { params: { per_page: "100" } },
+      );
+
+      const events = response.data?.events ?? [];
+
+      // Find the last 'closed' event within the sprint window
+      let lastCloseAt: string | null = null;
+      for (const event of events) {
+        if (
+          event.event === "closed" &&
+          new Date(event.created_at) >= window.startDate &&
+          new Date(event.created_at) <= window.endDate
+        ) {
+          lastCloseAt = event.created_at;
+        }
+      }
+
+      if (lastCloseAt) {
+        completions.set(story.number, lastCloseAt);
+      }
+    } catch {
+      // Silently skip stories that can't be fetched (rate limiting, permissions)
+      continue;
+    }
+  }
+
+  return completions;
+};
+
+/**
+ * Resolve completion timestamps for sprint stories.
+ * Tries the Enterprise Audit Log first; falls back to issue close events on 403.
+ *
+ * The handler delegates all data-path branching here so its own body
+ * remains a linear orchestration sequence with no conditional logic.
+ */
+const resolveCompletionTimestamps = async (
+  stories: BurndownStoryInput[],
+  nodeIdToNumber: Map<string, number>,
+  window: SprintWindow,
+  config: RuntimeConfig,
+  owner: string,
+  repo: string,
+): Promise<CompletionResult> => {
+  const doneStatusName = findDoneStatusName(config);
+  const statusFieldName = config.yml.field_names.status;
+
+  try {
+    const completions = await fetchAuditLogCompletions(
+      nodeIdToNumber,
+      window,
+      owner,
+      doneStatusName,
+      statusFieldName,
+    );
+    return { completions, data_source: "audit_log" };
+  } catch (err) {
+    if (!(err instanceof GitHubApiError) || err.statusCode !== 403) throw err;
+    // 403 = not an Enterprise account; degrade gracefully to the proxy path
+  }
+
+  const completions = await fetchIssueCloseCompletions(stories, window, owner, repo);
+  return {
+    completions,
+    data_source: "issue_close_proxy",
+    warning: "Burndown timestamps are inferred from issue close events, not board field changes. " +
+      "This is accurate only if your team closes GitHub Issues when moving stories to Done. " +
+      "Stories marked Done but not closed will appear with completed_at: null.",
+  };
+};
+
+// ── Module-private helpers for the burndown handler ────────────────────────────
+
+/** Keeps the handler free of inline branching for the backlog-ref guard. */
+const burndownBacklogError = (): {
+  content: Array<{ type: "text"; text: string }>;
+  isError: true;
+} => ({
+  content: [{
+    type: "text" as const,
+    text: JSON.stringify({
+      message: "scrum_get_burndown requires a sprint reference. " +
+        "Pass a sprint name or omit the field to default to the current sprint. " +
+        "Burndown charts do not apply to the backlog.",
+    }),
+  }],
+  isError: true,
+});
+
+/** Keeps the iteration filter readable at the call site. */
+const itemIsInIteration = (
+  item: RawItem,
+  iterationId: string,
+  config: RuntimeConfig,
+): boolean => {
+  const fv = item.fieldValues.nodes.find(
+    (v) => v.field?.id === config.fields.sprintFieldId,
+  );
+  return fv?.iterationId === iterationId;
+};
+
+/** Builds the node-ID → issue-number lookup table from the same allItems fetch. */
+const buildNodeIdMap = (items: RawItem[]): Map<string, number> =>
+  new Map(
+    items
+      .filter((item) => typeof item.content?.number === "number")
+      .map((item) => [item.id, item.content!.number!]),
+  );
+
+/** Assembles the final BurndownResponse — keeps object construction out of the handler. */
+const assembleBurndownResponse = (
+  window: SprintWindow,
+  data_source: "audit_log" | "issue_close_proxy",
+  warning: string | undefined,
+  series: BurndownDayPoint[],
+  ideal: IdealDayPoint[],
+  stories: BurndownStoryInput[],
+  completions: Map<number, string>,
+): BurndownResponse => {
+  const sprint: BurndownSprintMeta = {
+    name: window.name,
+    start_date: window.startDate.toISOString().slice(0, 10),
+    end_date: window.endDate.toISOString().slice(0, 10),
+    duration_days: window.durationDays,
+    days_remaining: window.daysRemaining,
+  };
+
+  const burndownStories: BurndownStory[] = stories.map((s) => ({
+    number: s.number,
+    title: s.title,
+    points: s.points,
+    status: s.status,
+    completed_at: completions.get(s.number) ?? null,
+  }));
+
+  return warning
+    ? { sprint, data_source, warning, series, ideal, stories: burndownStories }
+    : { sprint, data_source, series, ideal, stories: burndownStories };
+};
+
 // ── Tool registration ──────────────────────────────────────────────────────────
 
 export const registerScrumReadTools = (server: McpServer): void => {
@@ -1378,6 +1792,111 @@ Comments include notes posted by scrum_log_impediment (bidirectional impediment 
           content: [{ type: "text" as const, text: formatError(err) }],
           isError: true,
         };
+      }
+    },
+  );
+
+  // ── Step 11: scrum_get_burndown ───────────────────────────────────────────────
+
+  server.registerTool(
+    "scrum_get_burndown",
+    {
+      title: "Get Sprint Burndown",
+      description:
+        `Return a day-by-day burndown chart for a sprint, including an ideal line and per-story completion breakdown.
+
+Args:
+  sprint ("current"|"next"|null|sprint-name, optional, default "current")
+    The sprint to compute the burndown for. Omit to default to the current sprint.
+    Burndown does not apply to the backlog.
+
+Returns:
+  sprint                 — { name, start_date, end_date, duration_days, days_remaining }
+  data_source            — "audit_log" or "issue_close_proxy"
+  warning?               — present when data_source is "issue_close_proxy"
+  series[]               — actual burndown: { date, remaining_points, completed_points }
+  ideal[]                — ideal burndown line: { date, remaining_points }
+  stories[]              — per-story summary: { number, title, points, status, completed_at }
+
+data_source indicates how completion timestamps were determined:
+  "audit_log"       — Enterprise Audit Log (precise field-change timestamps)
+  "issue_close_proxy" — Issue close events (accurate only if issues are closed when moved to Done)
+
+When data_source is "issue_close_proxy", a warning is included telling the agent
+to communicate accuracy caveats to the user before presenting the chart.`,
+      inputSchema: GetBurndownSchema.shape,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    async (params: z.infer<typeof GetBurndownSchema>) => {
+      try {
+        const { owner, ownerType, projectNumber } = getBootstrapConfig();
+        const repo = getRepo();
+        const config = await loadConfig({
+          github: gh,
+          owner,
+          ownerType,
+          projectNumber,
+          repo,
+        });
+
+        // Step 1 — Resolve sprint
+        const sprintRef = params.sprint ?? "current";
+        const iterationId = resolveSprint(sprintRef, config);
+        if (iterationId === null) {
+          return burndownBacklogError();
+        }
+        const iterEntry = config.iterations.all.find((i) => i.id === iterationId);
+        if (!iterEntry) {
+          throw new Error(`Sprint "${sprintRef}" resolved to an unknown iteration ID.`);
+        }
+
+        // Step 2 — Fetch sprint stories
+        const allItems = await fetchAllItems(config, owner, ownerType);
+        const sprintItems = allItems.filter((item) => itemIsInIteration(item, iterationId, config));
+
+        const stories = sprintItems
+          .map((item) => buildBurndownStoryInput(item, config))
+          .filter((s): s is BurndownStoryInput => s !== null);
+
+        const nodeIdToNumber = buildNodeIdMap(sprintItems);
+
+        // Step 3 — Compute sprint geometry
+        const window = buildSprintWindow(iterEntry);
+        const committedPoints = stories.reduce((sum, s) => sum + s.points, 0);
+
+        // Step 4 — Resolve completion timestamps (audit log → proxy fallback)
+        const { completions, data_source, warning } = await resolveCompletionTimestamps(
+          stories,
+          nodeIdToNumber,
+          window,
+          config,
+          owner,
+          repo,
+        );
+
+        // Step 5 — Build series and ideal line
+        const series = buildDaySeries(stories, completions, window, committedPoints);
+        const ideal = buildIdealLine(window, committedPoints);
+
+        // Step 6 — Assemble and return
+        const response = assembleBurndownResponse(
+          window,
+          data_source,
+          warning,
+          series,
+          ideal,
+          stories,
+          completions,
+        );
+
+        return { content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }] };
+      } catch (err: unknown) {
+        return { content: [{ type: "text" as const, text: formatError(err) }], isError: true };
       }
     },
   );
