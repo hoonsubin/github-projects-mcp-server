@@ -306,6 +306,45 @@ It is designed to be used with the `skill/scrum-master-assistant/` agentic skill
 
 To test the functionality of the tools, [this project is managed using itself](https://github.com/users/hoonsubin/projects/5) as the tool.
 
+## Server Architecture
+
+The server is built in three layers separated by a `ProjectBackend` port interface. The tool surface and use cases are platform-agnostic; only the adapter changes when the backend changes.
+
+```mermaid
+flowchart TB
+    agent["🤖 LLM Agent\nscrum-agile-assistant skill"]
+
+    subgraph server["MCP Server  ·  Deno / TypeScript"]
+        direction TB
+
+        surface["Tool Surface\n13 scrum_* tools  ·  Zod-validated  ·  stateless per-call handlers"]
+
+        usecases["Use Cases\none per tool  ·  pure domain logic  ·  no I/O"]
+
+        port(["&lt;&lt;interface&gt;&gt;\nProjectBackend\n13 methods in Scrum vocabulary\nowned by the use-case layer"])
+
+        subgraph adapters["Adapters"]
+            direction LR
+            gh["GitHubProjectBackend\nGraphQL · REST\nfield mapping · ID resolution"]
+            future["Future backends\nTrello · Notion · Linear · …"]
+        end
+    end
+
+    ghapi["GitHub Projects v2\nGraphQL API  ·  REST API"]
+
+    agent      <-->|"MCP protocol  ·  stdio or Streamable HTTP"| surface
+    surface     --> usecases
+    usecases    --> port
+    port        --> gh
+    port       -.->|"add a new backend here\nwithout changing the\ntool surface or use cases"| future
+    gh          --> ghapi
+
+    style future stroke-dasharray: 5 5
+    style future fill:#f9f9f9
+```
+
+**Dependency rule:** source-code arrows point only inward — adapters depend on the `ProjectBackend` interface; the interface and use cases know nothing about GitHub. Adding a Trello or Notion backend means creating one new adapter directory and updating one import in `index.ts`.
+
 ## Tool Surface
 
 This section defines the public MCP interface — the tools an LLM agent can call. It is the stable contract of the project: backend implementations, data types, and storage details may change underneath, but every tool listed here retains the same name, semantic arguments, and return meaning.
@@ -321,27 +360,6 @@ The surface is governed by six rules. Any change that violates one is a breaking
 5. **The MCP is amoral.** It does not enforce Definition of Ready, Definition of Done, sprint-injection policy, or any other Scrum judgement. Those live in the agent skill. If the agent asks the MCP to assign an unrefined item to a sprint, the MCP complies. The skill is responsible for not asking.
 6. **Artifact reads, not insight derivation.** Read tools expose the state of Scrum artifacts. They do not pre-compute reports, metrics, or recommendations. Velocity, burndown, throughput, predictability, and all other derived insights are **agent capabilities** — the agent reasons over raw artifact data to produce them. The server returns observable facts; the agent interprets them.
 
-### System Layers
-
-```mermaid
-flowchart TD
-    subgraph FRAMEWORK["FRAMEWORK LAYER — src/tools/"]
-        F["MCP tool registration · thin handlers · Zod param parsing\nDepends on: use-case functions, ScrumConfigYml"]
-    end
-
-    subgraph USECASE["USE-CASE LAYER — src/scrum/ + src/domain/"]
-        U["Scrum orchestration · domain rules · pure computation\nDepends on: ProjectBackend interface, domain types"]
-        PORT["«interface» ProjectBackend  (src/scrum/ports.ts)\nThe only crossing point between use cases and backends"]
-    end
-
-    subgraph ADAPTER["ADAPTER LAYER — src/adapters/github/"]
-        A["GitHubProjectBackend implements ProjectBackend\nAll GraphQL queries · field-ID resolution · raw type mapping\nDepends on: ProjectBackend interface + domain types + services"]
-    end
-
-    FRAMEWORK -->|"calls use-case functions"| USECASE
-    USECASE -->|"implements ↑  (Dependency Inversion)"| ADAPTER
-```
-
 ### Tool surface layers
 
 The thirteen tools in this surface occupy three distinct conceptual layers. Understanding the layers is the fastest way to see why a proposed new tool does or does not belong here.
@@ -353,6 +371,34 @@ The thirteen tools in this surface occupy three distinct conceptual layers. Unde
 **Layer 3 — Sprint history and burndown.** `scrum_get_history` and `scrum_get_burndown` are the two read tools that span time rather than returning a single snapshot. `scrum_get_history` exposes raw completed-sprint data so the agent can derive any time-based insight it needs — velocity trends, throughput, predictability index, sprint goal achievement rate — without the server deciding which metric matters. `scrum_get_burndown` exposes the day-by-day completion series for one sprint so the agent can render or describe a burndown without recomputing it from raw event data.
 
 Ceremony records (standup logs, retro entries, review feedback) are **not** a layer of this surface. They are documents the agent produces and stores in the team's chosen ceremony backend — a file, a wiki page, a discussion thread — outside the MCP's scope. Attaching ceremony records to individual stories as comments is an anti-pattern: it pollutes the story audit trail and breaks when the backend changes.
+
+```mermaid
+flowchart LR
+    subgraph L1["Layer 1 · Artifact Readers"]
+        direction TB
+        orient["scrum_orient"]
+        get_sprint["scrum_get_sprint"]
+        get_backlog["scrum_get_backlog"]
+        get_story["scrum_get_story"]
+        get_template["scrum_get_template"]
+    end
+
+    subgraph L3["Layer 3 · History & Burndown"]
+        direction TB
+        get_history["scrum_get_history"]
+        get_burndown["scrum_get_burndown"]
+    end
+
+    subgraph L2["Layer 2 · Artifact Mutators"]
+        direction TB
+        create["scrum_create_story"]
+        update["scrum_update_story"]
+        set_field["scrum_set_field"]
+        plan["scrum_plan_sprint"]
+        log_imp["scrum_log_impediment"]
+        add_vocab["scrum_add_vocabulary"]
+    end
+```
 
 ### Common types
 
@@ -386,8 +432,6 @@ Every read tool that returns Stories returns objects of this shape:
 | `created_at`, `updated_at` | ISO-8601 timestamps.                                                                                                                         |
 | `url`                      | Canonical URL to view the story in the backend UI, when available.                                                                           |
 
----
-
 ### Read tools
 
 Read tools are the agent's eyes. They are cheap, idempotent, and safe to call as often as needed.
@@ -407,8 +451,6 @@ Returns the current platform state alongside the team's declared Scrum vocabular
 
 **Does not:** return live sprint story data (use `scrum_get_sprint`), historical sprint data (use `scrum_get_history`), or platform identifiers.
 
----
-
 #### `scrum_get_sprint`
 
 Returns the Sprint Backlog as a snapshot: the sprint metadata, its goal, its capacity, and every Story currently assigned to it grouped by status with points summed per group.
@@ -422,8 +464,6 @@ Returns the Sprint Backlog as a snapshot: the sprint metadata, its goal, its cap
 **Notes:** This is the agent's primary orient call for any in-sprint ceremony. The grouped structure means the agent doesn't have to bucket Stories itself — a compact model especially benefits from receiving pre-grouped data. The tool reads the Sprint Backlog artifact; it does not compute trends or projections (use `scrum_get_history` for those).
 
 **Does not:** include backlog items; surface burndown timeseries; resolve dependencies between stories.
-
----
 
 #### `scrum_get_backlog`
 
@@ -443,8 +483,6 @@ Returns the Product Backlog: all Stories not assigned to any sprint, ordered by 
 
 **Does not:** modify ordering; create or estimate items; mark items as ready.
 
----
-
 #### `scrum_get_story`
 
 Returns the full detail of one Story, including comments, linked PRs, and parsed acceptance criteria.
@@ -458,8 +496,6 @@ Returns the full detail of one Story, including comments, linked PRs, and parsed
 **Notes:** Use when the agent needs deep context on a single item — assessing DoR compliance, drafting a status update, or diagnosing a blocked item. Comments include impediment cross-links posted by `scrum_log_impediment`, making this the primary tool for tracing blockers.
 
 **Does not:** return diff content of linked PRs, render image attachments, or follow links to other stories transitively.
-
----
 
 #### `scrum_get_history`
 
@@ -478,8 +514,6 @@ Returns raw data for the last N completed sprints so the agent can derive any ti
 **Notes:** This tool exposes facts. The agent derives insights from them: velocity (average `completed_points` over the window), throughput (average `completed_count`), predictability (fraction of sprints where goal was achieved), type breakdown, epic-level trends, and anything else the conversation demands. The MCP does not pre-select which metric matters — that is the agent's job. A backend only needs to support queryable completed-sprint item state to implement this tool.
 
 **Does not:** compute averages, project future velocity, surface per-member throughput, or return current-sprint data (use `scrum_get_sprint` for that).
-
----
 
 #### `scrum_get_burndown`
 
@@ -502,8 +536,6 @@ Returns a day-by-day burndown chart for one sprint: the actual remaining-points 
 
 **Does not:** compute velocity, project remaining work beyond the sprint end date, or return burndown for the backlog.
 
----
-
 #### `scrum_get_template`
 
 Fetches the raw content of a project-configured artifact template for a given ceremony type. If no custom template is declared in `config.yml` for the requested type, returns a signal instructing the agent to use its own skill-level default.
@@ -520,8 +552,6 @@ Fetches the raw content of a project-configured artifact template for a given ce
 **Notes:** The server never embeds default template content. Defaults are the agent's domain — they live in the scrum-agile-assistant skill (or equivalent system prompt) and may vary by deployment, ceremony format preference, or target output platform (a GitHub Discussion has a different structure from a Notion page or a Slack canvas). Custom templates are repo files fetched at invocation time from the path declared under `templates` in `config.yml`. The available paths are also returned by `scrum_orient` in `declared_vocabulary.templates` so the agent can inspect them without triggering a fetch.
 
 **Does not:** validate template syntax, interpolate variables, apply templates, or enforce any required template structure. Template content is opaque to the server — it is returned verbatim.
-
----
 
 ### Write tools
 
@@ -549,8 +579,6 @@ Creates a new Story and optionally places it on the board in a single call.
 
 **Does not:** validate DoR, check sprint capacity, notify anyone, or create sub-tasks.
 
----
-
 #### `scrum_update_story`
 
 Edits the content of an existing Story — title, body, labels, assignees, epic. Does not touch board fields (status, sprint, story points, priority); use `scrum_set_field` for those.
@@ -567,8 +595,6 @@ Edits the content of an existing Story — title, body, labels, assignees, epic.
 **Returns:** the updated `Story`.
 
 **Does not:** modify board state, change story type, archive or close the story.
-
----
 
 #### `scrum_set_field`
 
@@ -591,8 +617,6 @@ The single entry point for board-field mutations. No backend IDs required.
 
 **Does not:** validate that value transitions make Scrum sense. The skill enforces Scrum rules; this tool executes decisions.
 
----
-
 #### `scrum_plan_sprint`
 
 Bulk-assigns multiple Stories to a sprint in one call. Used at sprint planning to commit the agreed scope after the team has discussed each item.
@@ -608,8 +632,6 @@ Bulk-assigns multiple Stories to a sprint in one call. Used at sprint planning t
 **Notes:** Convenience over `scrum_set_field` in a loop, but with a clear partial-success contract: `skipped` tells the agent exactly which refs failed and why without aborting the rest.
 
 **Does not:** check capacity, enforce DoR, or set the Sprint Goal.
-
----
 
 #### `scrum_log_impediment`
 
@@ -628,8 +650,6 @@ Creates a new impediment Story, links it bidirectionally to the affected Story, 
 
 **Does not:** notify the impediment owner, escalate after N days (the agent's standup ceremony does this), or close the affected story.
 
----
-
 #### `scrum_add_vocabulary`
 
 Idempotent addition of a vocabulary entry to the platform schema. Called by the agent when `scrum_orient` reveals a declared vocabulary value that is missing from the live platform.
@@ -647,8 +667,6 @@ Idempotent addition of a vocabulary entry to the platform schema. Called by the 
 **Notes:** This tool handles vocabulary gaps — entries declared in `config.yml` that are not yet present in the platform. It cannot create new project fields (a structural gap requiring human action via the platform UI). If the target field does not exist, the tool returns a structured error that describes exactly what the human needs to create.
 
 **Does not:** rename or delete existing options, reorder options, change field types, create sprint iterations, or provision project fields.
-
----
 
 ### What this surface deliberately does NOT include
 
@@ -676,8 +694,6 @@ The full Scrum domain (see the ER diagram above) is much richer than these thirt
 
 If a future workflow requires something on this list, the right move is agent skill behaviour or a separate CLI task — not growing the MCP tool surface.
 
----
-
 ## How this MCP is used with the agent skill
 
 This MCP is the action layer for an LLM agent acting as a Scrum Master. The agent's reasoning, coaching, and ceremony facilitation come from the [`scrum-agile-assistant`](https://github.com/anthropics/skills/tree/main/scrum-agile-assistant) skill (or any equivalent system prompt). The MCP's job is to make that reasoning effective on a real platform.
@@ -699,6 +715,36 @@ Three rules follow from this split:
 ### The five-phase interaction pattern
 
 Every non-trivial workflow follows the same shape.
+
+```mermaid
+sequenceDiagram
+    actor H as Human
+    participant A as LLM Agent
+    participant M as MCP Server
+
+    Note over H,M: Phase 1 — Orient (silent)
+    A->>M: scrum_orient()
+    M-->>A: platform_state · declared_vocabulary
+    A->>M: scrum_get_sprint()
+    M-->>A: sprint snapshot · story groups · totals
+
+    Note over H,A: Phase 2 — Coach
+    A->>H: surfaces DoR gaps · risks · missing context
+    H->>A: answers questions · clarifies intent
+
+    Note over H,A: Phase 3 — Confirm
+    A->>H: restates planned changes
+    H->>A: approves
+
+    Note over A,M: Phase 4 — Execute
+    A->>M: scrum_create_story(title, body, type, points, sprint)
+    M-->>A: Story · StoryRef { number, id }
+    A->>M: scrum_set_field(ref, "sprint", null)
+    M-->>A: updated Story
+
+    Note over H,A: Phase 5 — Report
+    A->>H: plain-language summary · links to changed stories
+```
 
 **Phase 1 — Orient.** The agent reads world state with `scrum_orient`, `scrum_get_sprint`, and (when context demands) `scrum_get_backlog` or `scrum_get_history`. These calls happen silently. The skill uses the results to ground the conversation in real numbers and to verify the platform is Scrum-ready before proceeding.
 

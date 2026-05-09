@@ -1,11 +1,6 @@
 # Refactoring Plan: MCP Server Architecture
 
-**Last updated:** 2026-05-09\
-**Status:** Phases 1 – 2.6 complete. Phase 3 (write tools), Phase 4 (cutover), and Phase 5 (backend abstraction) pending.
-
 This document is the authoritative source of truth for the MCP server's architecture and refactoring roadmap. It is designed to be picked up by any coding agent at any point — it describes the full intended state, the current state, and the exact steps to close the gap. Update this file whenever a phase is completed, a decision is changed, or new scope is added.
-
----
 
 ## Table of Contents
 
@@ -47,38 +42,35 @@ This property is achieved through a `ProjectBackend` interface that sits between
 - Complete specifications for all pending phases (3, 4, 5)
 - All resolved design decisions and open questions
 
----
-
 ## 2. Architecture Vision
 
 ### Three-layer model
 
 The server is organised into three layers with a strict dependency rule: **dependencies flow inward only.** Outer layers depend on inner layers; inner layers never import from outer layers.
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│  FRAMEWORK LAYER   src/tools/                                   │
-│  MCP tool registration; thin handlers; Zod param parsing        │
-│  Depends on: use-case functions, ScrumConfigYml                 │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │ calls use-case functions
-┌───────────────────────────▼─────────────────────────────────────┐
-│  USE-CASE LAYER   src/scrum/  +  src/domain/                    │
-│  Scrum orchestration; domain rules; pure computation            │
-│  Depends on: ProjectBackend interface (owned here), domain types│
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │  interface ProjectBackend   (src/scrum/ports.ts)         │   │
-│  │  The only crossing point between use cases and backends  │   │
-│  └──────────────────────────────────────────────────────────┘   │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │ implements ↑  (Dependency Inversion)
-┌───────────────────────────▼─────────────────────────────────────┐
-│  ADAPTER LAYER   src/adapters/github/                           │
-│  GitHubProjectBackend implements ProjectBackend                 │
-│  All GraphQL queries; field-ID resolution; raw type mapping     │
-│  Depends on: ProjectBackend interface + domain types + services │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+
+  subgraph Framework["FRAMEWORK LAYER<br/>src/tools/"]
+    direction TB
+    FW["MCP tool registration<br/>thin handlers<br/>Zod param parsing<br/><br/>Depends on:<br/>use-case functions<br/>ScrumConfigYml"]
+  end
+
+  subgraph UseCase["USE-CASE LAYER<br/>src/scrum/ + src/domain/"]
+    direction TB
+    UC["Scrum orchestration<br/>domain rules<br/>pure computation<br/><br/>Depends on:<br/>ProjectBackend interface (owned here)<br/>domain types"]
+
+    PB["interface ProjectBackend<br/>(src/scrum/ports.ts)<br/><br/>The only crossing point between<br/>use cases and backends"]
+  end
+
+  subgraph Adapter["ADAPTER LAYER<br/>src/adapters/github/"]
+    direction TB
+    AD["GitHubProjectBackend implements ProjectBackend<br/><br/>All GraphQL queries<br/>field-ID resolution<br/>raw type mapping<br/><br/>Depends on:<br/>ProjectBackend interface<br/>domain types<br/>services"]
+  end
+
+  FW -->|calls use-case functions| UC
+  UC -->|depends on| PB
+  AD -.->|implements<br/>Dependency Inversion| PB
 ```
 
 ### The Dependency Rule applied
@@ -100,8 +92,6 @@ The server is organised into three layers with a strict dependency rule: **depen
 3. Adjust environment variables
 
 Nothing else changes. The agent prompt, Scrum skill, tool descriptions, schemas, use cases, and domain rules are backend-agnostic by design.
-
----
 
 ## 3. Stable Tool Surface
 
@@ -135,8 +125,6 @@ This is the public contract. These tool names, parameter schemas, and return sha
 | Tool             | Status                                                                                         |
 | ---------------- | ---------------------------------------------------------------------------------------------- |
 | `github_graphql` | Kept for diagnostic GraphQL lookups; mutations blocked; to be removed in a future cleanup pass |
-
----
 
 ## 4. Current Implementation State
 
@@ -173,8 +161,6 @@ This is the public contract. These tool names, parameter schemas, and return sha
 | `src/tools/projects.ts`      | ⚠️ Legacy       | Delete in Phase 4                                                                                        |
 | `src/tools/items.ts`         | ⚠️ Legacy       | Delete in Phase 4                                                                                        |
 | `src/tools/repository.ts`    | ⚠️ Legacy       | Gut in Phase 4                                                                                           |
-
----
 
 ## 5. Known Quality Issues
 
@@ -219,8 +205,6 @@ const config = await loadConfig({
 ```
 
 **Fix:** Extract to a single `loadRuntimeConfig()` helper returning `{ config, owner, ownerType, repo }`. Each handler becomes one expressive line. This is a prerequisite for Phase 5 — after Phase 5, the handler receives `backend` and `yml` via injection rather than constructing them inline.
-
----
 
 ## 6. Target Directory Structure
 
@@ -308,8 +292,6 @@ server.registerTool(
 
 `backend` and `yml` are injected at server startup by `index.ts`. The handler contains no orchestration, no GitHub imports, no config loading.
 
----
-
 ## 7. ProjectBackend Port Interface
 
 This interface is the entire surface area that separates Scrum policy from platform details. It lives in `src/scrum/ports.ts` and is owned by the use-case layer — implementations depend on it, not the other way around.
@@ -319,7 +301,13 @@ All types that cross this boundary are domain types defined in `src/domain/`. No
 ```typescript
 // src/scrum/ports.ts
 
-import type { ArtifactType, ScrumField, SprintRef, Story, StoryRef } from "../domain/story.ts";
+import type {
+  ArtifactType,
+  ScrumField,
+  SprintRef,
+  Story,
+  StoryRef,
+} from "../domain/story.ts";
 
 // ── Supporting types that cross the boundary ──────────────────────────────────
 
@@ -533,8 +521,6 @@ export interface ProjectBackend {
 }
 ```
 
----
-
 ## 8. Migration Ledger
 
 Where each piece of code currently lives and where it moves in Phase 5.
@@ -644,8 +630,6 @@ Composes earlier primitives:
 `addComment` uses the `addComment` GraphQL mutation directly — it is a shared internal primitive, not an agent-callable tool.
 
 Return: `{ impediment: Story, linked_to: StoryRef }`.
-
----
 
 ## 10. Phase 4 — Cutover and Cleanup
 
@@ -850,8 +834,6 @@ After all 7 use cases are extracted:
 - `deno check src/index.ts` passes clean.
 - Run all tests. Write at least one new unit test per use case that stubs `ProjectBackend` with a fake implementation.
 
----
-
 ## 12. Recommended Execution Order
 
 Phases are not strictly sequential — Phase 5 should precede Phase 3 to avoid building write tools on the old architecture. The recommended order:
@@ -867,8 +849,6 @@ Phase 4 — Cutover, delete legacy, cleanup types
 ```
 
 Within Phase 5, steps 5.2–5.5 can be done as a batch (they are pure file moves). Step 5.6 is the critical structural step and should be its own commit. Steps 5.7 and 5.8 can proceed one use case at a time.
-
----
 
 ## 13. Design Decisions
 
@@ -890,8 +870,6 @@ All decisions below are resolved. Do not re-open without explicit sign-off from 
 | **Backend config format**              | Per-adapter configuration lives in adapter-specific env vars (e.g., `GITHUB_TOKEN`, `GITHUB_PROJECT_NUMBER`). The `config.yml` carries Scrum-vocabulary config only; no backend-specific fields appear there.                  |
 | **`StoryReadiness` interface**         | To be replaced with `type ReadinessLevel = "ready" \| "partially_ready" \| "not_ready"` in Phase 5 (the three-boolean struct is an awkward encoding of a three-state enum).                                                    |
 | **`scrum_get_backlog` readiness keys** | Wire format uses `ready`, `partially_ready`, `not_ready`. The tool description currently says `sprint_ready`, `in_refinement`, `future_candidate` — this is a bug to fix in step 5.1.                                          |
-
----
 
 ## 14. Open Questions
 
