@@ -147,3 +147,16 @@ export const AddVocabularySchema = z
     value: z.string().min(1), // display name to add (e.g. "Blocked", "Critical", "tech_debt")
   })
   .strict();
+
+// scrum_get_template — fetch a ceremony artifact template by type
+export const GetTemplateSchema = z
+  .object({
+    artifact_type: z.enum([
+      "sprint_review",
+      "retrospective",
+      "standup",
+      "sprint_planning",
+      "refinement",
+    ]),
+  })
+  .strict();

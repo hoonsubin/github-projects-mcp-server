@@ -12,7 +12,7 @@
 // =============================================================================
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { formatError, GitHubApiError, graphql, rest } from "../services/github.ts";
+import { fetchRepoFile, formatError, GitHubApiError, graphql, rest } from "../services/github.ts";
 import type { RestResponse } from "../services/github.ts";
 import { loadConfig } from "../services/config.ts";
 import type { RuntimeConfig } from "../services/config.ts";
@@ -26,9 +26,11 @@ import {
   GetHistorySchema,
   GetSprintSchema,
   GetStorySchema,
+  GetTemplateSchema,
 } from "../schemas/scrum.ts";
 import { z } from "zod";
 import type {
+  ArtifactType,
   BurndownDayPoint,
   BurndownResponse,
   BurndownSprintMeta,
@@ -36,7 +38,9 @@ import type {
   GetBacklogResult,
   IdealDayPoint,
   IterationEntry,
+  ScrumConfigYml,
   Story,
+  TemplateResponse,
 } from "../types.ts";
 
 // ── Bootstrap helpers ─────────────────────────────────────────────────────────
@@ -1180,6 +1184,27 @@ const assembleBurndownResponse = (
     : { sprint, data_source, series, ideal, stories: burndownStories };
 };
 
+// ── Template helpers (scrum_get_template) ──────────────────────────────────────
+
+/**
+ * Look up the configured file path for an artifact type.
+ * Returns the path string if declared and non-null, or null if the team
+ * has not configured a custom template for this type.
+ */
+const resolveTemplatePath = (
+  yml: ScrumConfigYml,
+  artifactType: ArtifactType,
+): string | null => yml.templates?.[artifactType] ?? null;
+
+/**
+ * Build the "use your built-in default" response.
+ * Named to make the handler's intent readable at the call site.
+ */
+const buildDefaultResponse = (): TemplateResponse => ({
+  content: null,
+  source: "default",
+});
+
 // ── Tool registration ──────────────────────────────────────────────────────────
 
 export const registerScrumReadTools = (server: McpServer): void => {
@@ -1332,6 +1357,13 @@ can be resolved autonomously via scrum_add_vocabulary.`,
             team: yml.team ?? null,
             definition_of_ready: yml.definition_of_ready ?? null,
             definition_of_done: yml.definition_of_done ?? null,
+            templates: {
+              sprint_review: yml.templates?.sprint_review ?? null,
+              retrospective: yml.templates?.retrospective ?? null,
+              standup: yml.templates?.standup ?? null,
+              sprint_planning: yml.templates?.sprint_planning ?? null,
+              refinement: yml.templates?.refinement ?? null,
+            },
           },
         };
 
@@ -1894,6 +1926,59 @@ to communicate accuracy caveats to the user before presenting the chart.`,
           completions,
         );
 
+        return { content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }] };
+      } catch (err: unknown) {
+        return { content: [{ type: "text" as const, text: formatError(err) }], isError: true };
+      }
+    },
+  );
+
+  // ── Step 11: scrum_get_template ──────────────────────────────────────────────
+  //
+  // Fetch a ceremony artifact template by type. The server never interprets,
+  // validates, or interpolates templates — content is returned verbatim.
+  // If no custom template is declared, the agent uses its built-in default.
+
+  server.registerTool(
+    "scrum_get_template",
+    {
+      title: "Get Ceremony Template",
+      description: `Fetch a ceremony artifact template by type.\n\n` +
+        `Args:\n` +
+        `  artifact_type — one of: sprint_review, retrospective, standup, sprint_planning, refinement\n\n` +
+        `Returns:\n` +
+        `  If a custom template is declared in config.yml: { content: "<raw template text>", source: "custom" }\n` +
+        `  If no custom template is declared: { content: null, source: "default" }\n\n` +
+        `The agent applies the raw template text to the target output platform.`,
+      inputSchema: GetTemplateSchema.shape,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    async (params: z.infer<typeof GetTemplateSchema>) => {
+      try {
+        const { owner, ownerType, projectNumber } = getBootstrapConfig();
+        const repo = getRepo();
+        const config = await loadConfig({
+          github: gh,
+          owner,
+          ownerType,
+          projectNumber,
+          repo,
+        });
+
+        const path = resolveTemplatePath(config.yml, params.artifact_type);
+
+        if (path === null) {
+          const response: TemplateResponse = buildDefaultResponse();
+          return { content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }] };
+        }
+
+        const fileContent = await fetchRepoFile(owner, repo, path);
+        const response: TemplateResponse = { content: fileContent, source: "custom" };
         return { content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }] };
       } catch (err: unknown) {
         return { content: [{ type: "text" as const, text: formatError(err) }], isError: true };

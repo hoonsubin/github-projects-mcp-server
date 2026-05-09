@@ -349,6 +349,11 @@ export interface ScrumConfigYml {
   };
   definition_of_ready?: DefinitionCriteria;
   definition_of_done?: DefinitionCriteria;
+  /**
+   * Template file paths for each ceremony artifact type.
+   * null means no custom template — the agent should use its built-in default.
+   */
+  templates?: Partial<Record<ArtifactType, string | null>>;
   [key: string]: unknown;
 }
 
@@ -627,3 +632,31 @@ export interface BurndownStory {
   status: string | null;
   completed_at: string | null; // ISO-8601 timestamp, or null if not yet done
 }
+
+// ── Template types (scrum_get_template) ──────────────────────────────────────
+
+/**
+ * The five ceremony artifact types for which custom templates can be declared.
+ * Used in ScrumConfigYml.templates, GetTemplateSchema, and TemplateResponse.
+ */
+export type ArtifactType =
+  | "sprint_review"
+  | "retrospective"
+  | "standup"
+  | "sprint_planning"
+  | "refinement";
+
+/**
+ * Discriminated union response for scrum_get_template.
+ *
+ * source: "custom"  — a custom template was fetched from the repo.
+ *                     content is the raw template text; the agent applies it.
+ * source: "default" — no custom template is declared for this artifact type.
+ *                     content is null; the agent uses its own built-in default.
+ *
+ * Invalid states (e.g. content: null with source: "custom") are structurally
+ * excluded by the discriminated union — the compiler enforces the contract.
+ */
+export type TemplateResponse =
+  | { content: string; source: "custom" }
+  | { content: null; source: "default" };

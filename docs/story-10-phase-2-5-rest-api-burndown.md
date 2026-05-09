@@ -16,16 +16,16 @@ This is the first and only REST API usage in the server. Everything else is Grap
 
 Before starting, verify the following are in place (all completed in Phases 1 and 2):
 
-| Item | File | Status |
-|---|---|---|
-| `GetBurndownSchema` | `src/schemas/scrum.ts` | ✅ Done |
-| `resolveSprint` | `src/services/resolver.ts` | ✅ Done |
-| `loadConfig` / `RuntimeConfig` | `src/services/config.ts` | ✅ Done |
-| `fetchAllItems` (paginated) | `src/tools/scrum-read.ts` | ✅ Done |
-| `classifyLabels` | `src/tools/scrum-read.ts` | ✅ Done (Story 9) |
-| `extractBoardFields` | `src/tools/scrum-read.ts` | ✅ Done (Story 9) |
-| `GitHubApiError` class | `src/services/github.ts` | ✅ Done |
-| `graphql()` helper | `src/services/github.ts` | ✅ Reference implementation for `rest()` |
+| Item                           | File                       | Status                                   |
+| ------------------------------ | -------------------------- | ---------------------------------------- |
+| `GetBurndownSchema`            | `src/schemas/scrum.ts`     | ✅ Done                                  |
+| `resolveSprint`                | `src/services/resolver.ts` | ✅ Done                                  |
+| `loadConfig` / `RuntimeConfig` | `src/services/config.ts`   | ✅ Done                                  |
+| `fetchAllItems` (paginated)    | `src/tools/scrum-read.ts`  | ✅ Done                                  |
+| `classifyLabels`               | `src/tools/scrum-read.ts`  | ✅ Done (Story 9)                        |
+| `extractBoardFields`           | `src/tools/scrum-read.ts`  | ✅ Done (Story 9)                        |
+| `GitHubApiError` class         | `src/services/github.ts`   | ✅ Done                                  |
+| `graphql()` helper             | `src/services/github.ts`   | ✅ Reference implementation for `rest()` |
 
 Story 10 adds everything that is **not** on this list. No previously merged code changes.
 
@@ -45,8 +45,7 @@ The `data_source` field is always returned — the agent uses it to communicate 
 
 ## Clean Code Analysis — Refactoring as Implementation Design
 
-> _"The ratio of time spent reading versus writing code is well over 10:1."_
-> — Robert C. Martin, *Clean Code*
+> _"The ratio of time spent reading versus writing code is well over 10:1."_ — Robert C. Martin, _Clean Code_
 
 Phase 2.5 is the most algorithmically complex handler in the server. Left unaddressed, all of its logic — REST calls, fallback branching, two independent series computations, per-story aggregation — would produce a 150-line handler that reads as a wall of imperative code and cannot be tested without a live GitHub connection.
 
@@ -67,6 +66,7 @@ The refactoring work in this story is **proactive** rather than corrective. Inst
 > _"Side effects are lies. Your function promises to do one thing, but it also does other hidden things."_
 
 **The fix:** Three functions with strictly separated concerns:
+
 - `resolveCompletionTimestamps` — network, branching between data paths, returns a `CompletionResult`
 - `buildDaySeries` — pure arithmetic, no network, takes a `Map<number, string>` as input
 - `buildIdealLine` — pure arithmetic, no inputs from the network at all
@@ -147,22 +147,22 @@ export interface BurndownResponse {
 /** Sprint window metadata returned alongside the burndown series. */
 export interface BurndownSprintMeta {
   name: string;
-  start_date: string;        // YYYY-MM-DD
-  end_date: string;          // YYYY-MM-DD
+  start_date: string; // YYYY-MM-DD
+  end_date: string; // YYYY-MM-DD
   duration_days: number;
   days_remaining: number;
 }
 
 /** One entry in the actual burndown series — one per calendar day. */
 export interface BurndownDayPoint {
-  date: string;              // YYYY-MM-DD
+  date: string; // YYYY-MM-DD
   remaining_points: number;
   completed_points: number;
 }
 
 /** One entry in the ideal burndown line — one per calendar day. */
 export interface IdealDayPoint {
-  date: string;              // YYYY-MM-DD
+  date: string; // YYYY-MM-DD
   remaining_points: number;
 }
 
@@ -170,7 +170,7 @@ export interface IdealDayPoint {
 export interface BurndownStory {
   number: number;
   title: string;
-  points: number;            // 0 if the story has no points assigned
+  points: number; // 0 if the story has no points assigned
   status: string | null;
   completed_at: string | null; // ISO-8601 timestamp, or null if not yet done
 }
@@ -233,7 +233,7 @@ export const rest = async <T>(
 - `params` appended as a query string via `URLSearchParams`
 - Non-GET: `body` JSON-serialised; `Content-Type: application/json` added
 - Body parsed as `response.json() as T` — no `data` wrapper (REST responses are top-level, unlike GraphQL)
-- Log lines: `log.debug(\`→ rest:GET ${path}\`, params)` on entry; `← rest:GET ${path} OK (${ms}ms)` on success
+- Log lines: `log.debug(\`→ rest:GET ${path}\`, params)`on entry;`← rest:GET ${path} OK (${ms}ms)` on success
 - Error handling mirrors `graphql()` exactly: `AbortError` → 30 s timeout message, `401` → auth failed, `403` → rate limit / permission denied, non-2xx → generic HTTP error
 
 ### `REQUIRED_PERMISSION` additions
@@ -304,7 +304,13 @@ export const buildSprintWindow = (iterEntry: IterationEntry): SprintWindow => {
     Math.ceil((endDate.getTime() - today.getTime()) / msPerDay),
   );
 
-  return { name: iterEntry.title, startDate, endDate, durationDays: iterEntry.duration, daysRemaining };
+  return {
+    name: iterEntry.title,
+    startDate,
+    endDate,
+    durationDays: iterEntry.duration,
+    daysRemaining,
+  };
 };
 ```
 
@@ -461,6 +467,7 @@ const fetchAuditLogCompletions = async (
 ```
 
 Internal contract:
+
 - `GET /orgs/{org}/audit-log?phrase=action:projects_v2_item.field_value_updated&order=asc&per_page=100`
 - Filter entries where `data.field_type === "single_select"`, `data.field_name === statusFieldName`, `data.value === doneStatusName`
 - Translate `data.project_item_node_id` → issue number via `nodeIdToNumber`
@@ -483,6 +490,7 @@ const fetchIssueCloseCompletions = async (
 ```
 
 Internal contract:
+
 - For each story: `GET /repos/{owner}/{repo}/issues/{number}/timeline?per_page=100`
 - Find the **last** `closed` event whose `created_at` falls within `[window.startDate, window.endDate]`
 - Stories with no qualifying close event get no entry (their `completed_at` will be `null`)
@@ -513,7 +521,11 @@ const resolveCompletionTimestamps = async (
 
   try {
     const completions = await fetchAuditLogCompletions(
-      nodeIdToNumber, window, owner, doneStatusName, statusFieldName,
+      nodeIdToNumber,
+      window,
+      owner,
+      doneStatusName,
+      statusFieldName,
     );
     return { completions, data_source: "audit_log" };
   } catch (err) {
@@ -525,8 +537,7 @@ const resolveCompletionTimestamps = async (
   return {
     completions,
     data_source: "issue_close_proxy",
-    warning:
-      "Burndown timestamps are inferred from issue close events, not board field changes. " +
+    warning: "Burndown timestamps are inferred from issue close events, not board field changes. " +
       "This is accurate only if your team closes GitHub Issues when moving stories to Done. " +
       "Stories marked Done but not closed will appear with completed_at: null.",
   };
@@ -669,12 +680,12 @@ const assembleBurndownResponse = (
 
 ## File Changes
 
-| File | Change |
-|---|---|
-| `src/services/github.ts` | Add `RestResponse<T>` interface; add `rest<T>()` function; add `get_issue_timeline` and `get_audit_log` to `REQUIRED_PERMISSION` |
-| `src/types.ts` | Add `BurndownResponse`, `BurndownSprintMeta`, `BurndownDayPoint`, `IdealDayPoint`, `BurndownStory` in a new `// ── Burndown types ──` section |
-| `src/tools/scrum-read.ts` | Add import for `rest`, `RestResponse` from `../services/github.ts`; add import for burndown types from `../types.ts`; add import for `GetBurndownSchema` from `../schemas/scrum.ts`; add all local interfaces and helpers in `// ── Burndown helpers ──` section; register `scrum_get_burndown` in `registerScrumReadTools` |
-| `src/tools/scrum-read_test.ts` | Add unit tests for `extractLinkHeader`, `buildSprintWindow`, `buildIdealLine`, `buildDaySeries`, `buildBurndownStoryInput` |
+| File                           | Change                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/services/github.ts`       | Add `RestResponse<T>` interface; add `rest<T>()` function; add `get_issue_timeline` and `get_audit_log` to `REQUIRED_PERMISSION`                                                                                                                                                                                            |
+| `src/types.ts`                 | Add `BurndownResponse`, `BurndownSprintMeta`, `BurndownDayPoint`, `IdealDayPoint`, `BurndownStory` in a new `// ── Burndown types ──` section                                                                                                                                                                               |
+| `src/tools/scrum-read.ts`      | Add import for `rest`, `RestResponse` from `../services/github.ts`; add import for burndown types from `../types.ts`; add import for `GetBurndownSchema` from `../schemas/scrum.ts`; add all local interfaces and helpers in `// ── Burndown helpers ──` section; register `scrum_get_burndown` in `registerScrumReadTools` |
+| `src/tools/scrum-read_test.ts` | Add unit tests for `extractLinkHeader`, `buildSprintWindow`, `buildIdealLine`, `buildDaySeries`, `buildBurndownStoryInput`                                                                                                                                                                                                  |
 
 `src/schemas/scrum.ts` and `src/index.ts` are **untouched** — `GetBurndownSchema` is already present; adding a tool inside `registerScrumReadTools` is transparent to `index.ts`.
 
@@ -686,69 +697,69 @@ All tests in `src/tools/scrum-read_test.ts`. Network-bound helpers (`fetchAuditL
 
 ### `extractLinkHeader`
 
-| Test case | Input | Expected |
-|---|---|---|
-| Single `next` link | `'<https://api.github.com/page2>; rel="next"'` | `"https://api.github.com/page2"` |
-| Last page (no `next`) | `'<url>; rel="last"'` | `null` |
-| Null header | `null` | `null` |
-| Multiple rels | `'<url1>; rel="prev", <url2>; rel="next"'` | `"url2"` |
-| Extra whitespace around `;` | `'<url>;\t rel="next"'` | `"url"` |
+| Test case                   | Input                                          | Expected                         |
+| --------------------------- | ---------------------------------------------- | -------------------------------- |
+| Single `next` link          | `'<https://api.github.com/page2>; rel="next"'` | `"https://api.github.com/page2"` |
+| Last page (no `next`)       | `'<url>; rel="last"'`                          | `null`                           |
+| Null header                 | `null`                                         | `null`                           |
+| Multiple rels               | `'<url1>; rel="prev", <url2>; rel="next"'`     | `"url2"`                         |
+| Extra whitespace around `;` | `'<url>;\t rel="next"'`                        | `"url"`                          |
 
 ### `buildSprintWindow`
 
-| Test case | Scenario |
-|---|---|
-| Active sprint | `daysRemaining > 0`; `endDate = startDate + duration` |
-| Sprint ended yesterday | `daysRemaining === 0` |
-| Timezone boundary | UTC midnight normalisation applied; `days_remaining` is not off by ±1 |
+| Test case              | Scenario                                                              |
+| ---------------------- | --------------------------------------------------------------------- |
+| Active sprint          | `daysRemaining > 0`; `endDate = startDate + duration`                 |
+| Sprint ended yesterday | `daysRemaining === 0`                                                 |
+| Timezone boundary      | UTC midnight normalisation applied; `days_remaining` is not off by ±1 |
 
 ### `buildIdealLine`
 
-| Test case | Scenario |
-|---|---|
+| Test case             | Scenario                                                                                    |
+| --------------------- | ------------------------------------------------------------------------------------------- |
 | 10-day sprint, 20 pts | `ideal[0].remaining_points === 20`; `ideal[10].remaining_points === 0`; array length === 11 |
-| 0 committed points | All entries are `remaining_points: 0` |
-| Rounding | Values rounded to 1 decimal place (e.g. 13.333... → 13.3) |
+| 0 committed points    | All entries are `remaining_points: 0`                                                       |
+| Rounding              | Values rounded to 1 decimal place (e.g. 13.333... → 13.3)                                   |
 
 ### `buildDaySeries`
 
-| Test case | Scenario |
-|---|---|
-| No completions | All entries: `completed_points: 0`, `remaining_points: committedPoints` |
-| Story completes on day 3 | Days 0–2 unaffected; day 3 onward reflects completion |
-| Sprint already ended | Series ends at `endDate`, not today |
-| Multiple completions same day | Both deducted in that day's entry |
-| 0-pt story completes | `completed_points` and `remaining_points` unaffected |
-| Story completed before sprint start | Not counted (timestamp outside sprint window) |
+| Test case                           | Scenario                                                                |
+| ----------------------------------- | ----------------------------------------------------------------------- |
+| No completions                      | All entries: `completed_points: 0`, `remaining_points: committedPoints` |
+| Story completes on day 3            | Days 0–2 unaffected; day 3 onward reflects completion                   |
+| Sprint already ended                | Series ends at `endDate`, not today                                     |
+| Multiple completions same day       | Both deducted in that day's entry                                       |
+| 0-pt story completes                | `completed_points` and `remaining_points` unaffected                    |
+| Story completed before sprint start | Not counted (timestamp outside sprint window)                           |
 
 ### `buildBurndownStoryInput`
 
-| Test case | Scenario |
-|---|---|
-| Normal issue item | Returns `{ number, title, points, status }` |
-| DraftIssue (no `number`) | Returns `null` |
-| Unpointed story | Returns `points: 0` |
-| `storyPointsFieldId` is null in config | No crash; returns `points: 0` |
+| Test case                              | Scenario                                    |
+| -------------------------------------- | ------------------------------------------- |
+| Normal issue item                      | Returns `{ number, title, points, status }` |
+| DraftIssue (no `number`)               | Returns `null`                              |
+| Unpointed story                        | Returns `points: 0`                         |
+| `storyPointsFieldId` is null in config | No crash; returns `points: 0`               |
 
 ---
 
 ## Implementation Order
 
-| Step | File | What | Est. |
-|---|---|---|---|
-| 1 | `src/services/github.ts` | Add `RestResponse<T>` interface; implement `rest<T>()`; add `REQUIRED_PERMISSION` entries | 20 min |
-| 2 | `src/types.ts` | Add burndown types block | 10 min |
-| 3 | `src/tools/scrum-read.ts` | Add local interfaces: `CompletionResult`, `BurndownStoryInput`, `SprintWindow` | 5 min |
-| 4 | `src/tools/scrum-read.ts` | Add pure helpers: `buildSprintWindow`, `buildIdealLine`, `buildDaySeries`, `extractLinkHeader` | 25 min |
-| 5 | `src/tools/scrum-read.ts` | Add `findDoneStatusName`, `buildBurndownStoryInput` | 10 min |
-| 6 | `src/tools/scrum-read.ts` | Add `fetchIssueCloseCompletions` (proxy path) | 20 min |
-| 7 | `src/tools/scrum-read.ts` | Add `fetchAuditLogCompletions` with `nodeIdToNumber` map (audit log path) | 25 min |
-| 8 | `src/tools/scrum-read.ts` | Add `resolveCompletionTimestamps` orchestrator | 10 min |
-| 9 | `src/tools/scrum-read.ts` | Add module-private helpers: `burndownBacklogError`, `itemIsInIteration`, `buildNodeIdMap`, `assembleBurndownResponse` | 15 min |
-| 10 | `src/tools/scrum-read.ts` | Register `scrum_get_burndown` in `registerScrumReadTools` | 15 min |
-| 11 | — | `deno check src/index.ts` — must pass clean | 5 min |
-| 12 | `src/tools/scrum-read_test.ts` | Write unit tests for all five exported pure helpers | 45 min |
-| 13 | — | Cross-check response shape against `docs/BURNDOWN.md` tool contract | 5 min |
+| Step | File                           | What                                                                                                                  | Est.   |
+| ---- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------- | ------ |
+| 1    | `src/services/github.ts`       | Add `RestResponse<T>` interface; implement `rest<T>()`; add `REQUIRED_PERMISSION` entries                             | 20 min |
+| 2    | `src/types.ts`                 | Add burndown types block                                                                                              | 10 min |
+| 3    | `src/tools/scrum-read.ts`      | Add local interfaces: `CompletionResult`, `BurndownStoryInput`, `SprintWindow`                                        | 5 min  |
+| 4    | `src/tools/scrum-read.ts`      | Add pure helpers: `buildSprintWindow`, `buildIdealLine`, `buildDaySeries`, `extractLinkHeader`                        | 25 min |
+| 5    | `src/tools/scrum-read.ts`      | Add `findDoneStatusName`, `buildBurndownStoryInput`                                                                   | 10 min |
+| 6    | `src/tools/scrum-read.ts`      | Add `fetchIssueCloseCompletions` (proxy path)                                                                         | 20 min |
+| 7    | `src/tools/scrum-read.ts`      | Add `fetchAuditLogCompletions` with `nodeIdToNumber` map (audit log path)                                             | 25 min |
+| 8    | `src/tools/scrum-read.ts`      | Add `resolveCompletionTimestamps` orchestrator                                                                        | 10 min |
+| 9    | `src/tools/scrum-read.ts`      | Add module-private helpers: `burndownBacklogError`, `itemIsInIteration`, `buildNodeIdMap`, `assembleBurndownResponse` | 15 min |
+| 10   | `src/tools/scrum-read.ts`      | Register `scrum_get_burndown` in `registerScrumReadTools`                                                             | 15 min |
+| 11   | —                              | `deno check src/index.ts` — must pass clean                                                                           | 5 min  |
+| 12   | `src/tools/scrum-read_test.ts` | Write unit tests for all five exported pure helpers                                                                   | 45 min |
+| 13   | —                              | Cross-check response shape against `docs/BURNDOWN.md` tool contract                                                   | 5 min  |
 
 **Estimated total effort: ~3.5 hours**
 
@@ -756,35 +767,35 @@ All tests in `src/tools/scrum-read_test.ts`. Network-bound helpers (`fetchAuditL
 
 ## Dependencies
 
-| Dependency | Status | Notes |
-|---|---|---|
-| `GetBurndownSchema` in `src/schemas/scrum.ts` | ✅ Done | `z.object({ sprint: SprintRefSchema.optional() }).strict()` |
-| `resolveSprint` in `src/services/resolver.ts` | ✅ Done | Resolves `SprintRef` → iteration ID or `null` |
-| `loadConfig` / `RuntimeConfig` | ✅ Done | Provides field IDs, iteration entries, vocabulary |
-| `fetchAllItems` in `src/tools/scrum-read.ts` | ✅ Done | Returns all project items, paginated |
+| Dependency                                        | Status  | Notes                                                               |
+| ------------------------------------------------- | ------- | ------------------------------------------------------------------- |
+| `GetBurndownSchema` in `src/schemas/scrum.ts`     | ✅ Done | `z.object({ sprint: SprintRefSchema.optional() }).strict()`         |
+| `resolveSprint` in `src/services/resolver.ts`     | ✅ Done | Resolves `SprintRef` → iteration ID or `null`                       |
+| `loadConfig` / `RuntimeConfig`                    | ✅ Done | Provides field IDs, iteration entries, vocabulary                   |
+| `fetchAllItems` in `src/tools/scrum-read.ts`      | ✅ Done | Returns all project items, paginated                                |
 | `extractBoardFields` in `src/tools/scrum-read.ts` | ✅ Done | Shared field-value extraction; `buildBurndownStoryInput` calls this |
-| `GitHubApiError` class | ✅ Done | Used for REST error classification and the 403 fallback trigger |
-| `graphql()` in `src/services/github.ts` | ✅ Done | Reference implementation — `rest()` mirrors its patterns exactly |
+| `GitHubApiError` class                            | ✅ Done | Used for REST error classification and the 403 fallback trigger     |
+| `graphql()` in `src/services/github.ts`           | ✅ Done | Reference implementation — `rest()` mirrors its patterns exactly    |
 
 ---
 
 ## Risk Assessment
 
-| Risk | Impact | Mitigation |
-|---|---|---|
-| Audit log `projects_v2_item.field_value_updated` action doesn't exist or differs on GHEC | High | Treat a zero-result audit log (not a 403) as a graceful fallback; add `data_source_note` field if needed |
-| Issues not closed when moved to Done (proxy path inaccuracy) | Medium | `warning` field explicitly tells the agent; agent must surface this before presenting the chart |
-| Audit log returns node IDs not matching `allItems` node IDs | Medium | `buildNodeIdMap` is built from the same `allItems` fetch — the mapping is always in sync |
-| `days_remaining` timezone off-by-one | Low | `setUTCHours(0,0,0,0)` applied consistently; unit test covers this boundary |
-| `rest<T>()` called with a non-JSON response (e.g., 204 No Content) | Low | Burndown only calls endpoints that return JSON; document this constraint in the function JSDoc |
-| Large sprint (> 100 stories) on proxy path | Low | Sequential calls; 100 stories = ~100 REST calls, well within 5,000/hr limit; document the trade-off |
+| Risk                                                                                     | Impact | Mitigation                                                                                               |
+| ---------------------------------------------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------- |
+| Audit log `projects_v2_item.field_value_updated` action doesn't exist or differs on GHEC | High   | Treat a zero-result audit log (not a 403) as a graceful fallback; add `data_source_note` field if needed |
+| Issues not closed when moved to Done (proxy path inaccuracy)                             | Medium | `warning` field explicitly tells the agent; agent must surface this before presenting the chart          |
+| Audit log returns node IDs not matching `allItems` node IDs                              | Medium | `buildNodeIdMap` is built from the same `allItems` fetch — the mapping is always in sync                 |
+| `days_remaining` timezone off-by-one                                                     | Low    | `setUTCHours(0,0,0,0)` applied consistently; unit test covers this boundary                              |
+| `rest<T>()` called with a non-JSON response (e.g., 204 No Content)                       | Low    | Burndown only calls endpoints that return JSON; document this constraint in the function JSDoc           |
+| Large sprint (> 100 stories) on proxy path                                               | Low    | Sequential calls; 100 stories = ~100 REST calls, well within 5,000/hr limit; document the trade-off      |
 
 ---
 
 ## Open Questions (Carried from `docs/BURNDOWN.md`)
 
-| Question | Status |
-|---|---|
-| Does `projects_v2_item.field_value_updated` exist in the audit log for GHEC? | Needs verification against a live Enterprise account before Step 7 |
-| Should `include_weekends: boolean` be added to skip non-working days? | Deferred — v1 includes all calendar days |
-| Should the ideal line use team capacity rather than a straight line? | Deferred — straight line is the Scrum standard; capacity-adjusted ideal is a v2 option |
+| Question                                                                     | Status                                                                                 |
+| ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Does `projects_v2_item.field_value_updated` exist in the audit log for GHEC? | Needs verification against a live Enterprise account before Step 7                     |
+| Should `include_weekends: boolean` be added to skip non-working days?        | Deferred — v1 includes all calendar days                                               |
+| Should the ideal line use team capacity rather than a straight line?         | Deferred — straight line is the Scrum standard; capacity-adjusted ideal is a v2 option |
