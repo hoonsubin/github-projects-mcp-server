@@ -113,13 +113,38 @@ const makeStory = (overrides: Partial<Story> = {}): Story => ({
   ...overrides,
 });
 
-// Import helpers from scrum-read.ts
+// Import helpers from their new locations
 import {
+  buildDaySeries,
+  buildIdealLine,
   buildSprintMeta,
+  buildSprintWindow,
   computeSprintTotals,
   groupStoriesByStatus,
-  sumPointsWhere,
-} from "./scrum-read.ts";
+} from "../scrum/sprint-math.ts";
+import { classifyLabels } from "../domain/rules/labels.ts";
+import { parseAcceptanceCriteria } from "../domain/rules/acceptance-criteria.ts";
+import {
+  buildBurndownStoryInput,
+  buildCommentList,
+  buildEnrichedStory,
+  buildLinkedPrList,
+  buildStoryFromRaw as _buildStoryFromRaw,
+  extractBoardFields,
+} from "../adapters/github/mappers.ts";
+
+// ── Local helpers not exported from the codebase ────────────────────────────────
+
+/** Sum story points where predicate matches. */
+const sumPointsWhere = (stories: Story[], predicate: (s: Story) => boolean): number =>
+  stories.filter(predicate).reduce((acc, s) => acc + (s.story_points ?? 0), 0);
+
+/** Extract `next` link from a GitHub Link header. */
+const extractLinkHeader = (header: string | null): string | null => {
+  if (!header) return null;
+  const match = header.match(/<([^>]+)>;\s*rel="next"/);
+  return match ? match[1] : null;
+};
 
 // ── sumPointsWhere tests ───────────────────────────────────────────────────────
 
@@ -208,7 +233,8 @@ Deno.test("groupStoriesByStatus — groups by status in vocabulary order", () =>
     makeStory({ status: "Todo", story_points: 2 }),
     makeStory({ status: "Done", story_points: 1 }),
   ];
-  const groups = groupStoriesByStatus(stories, config);
+  const statusOrder = config.yml.status ? Object.values(config.yml.status) : [];
+  const groups = groupStoriesByStatus(stories, statusOrder);
 
   assertEquals(groups.length, 3);
   assertEquals(groups[0].status, "Todo");
@@ -226,7 +252,8 @@ Deno.test("groupStoriesByStatus — unknown statuses appended at end", () => {
     makeStory({ status: "Unknown Status", story_points: 5 }),
     makeStory({ status: "Todo", story_points: 2 }),
   ];
-  const groups = groupStoriesByStatus(stories, config);
+  const statusOrder = config.yml.status ? Object.values(config.yml.status) : [];
+  const groups = groupStoriesByStatus(stories, statusOrder);
 
   // Only 3 groups: Todo, Done (from vocabulary), and Unknown Status (appended)
   // "In Progress" and "Blocked" are not in the stories, so they won't appear
@@ -242,7 +269,8 @@ Deno.test("groupStoriesByStatus — unknown statuses appended at end", () => {
 
 Deno.test("groupStoriesByStatus — empty stories returns empty array", () => {
   const config = makeConfig();
-  const groups = groupStoriesByStatus([], config);
+  const statusOrder = config.yml.status ? Object.values(config.yml.status) : [];
+  const groups = groupStoriesByStatus([], statusOrder);
   assertEquals(groups.length, 0);
 });
 
@@ -252,7 +280,8 @@ Deno.test("groupStoriesByStatus — null status becomes (No Status)", () => {
     makeStory({ status: null, story_points: 3 }),
     makeStory({ status: "Todo", story_points: 2 }),
   ];
-  const groups = groupStoriesByStatus(stories, config);
+  const statusOrder = config.yml.status ? Object.values(config.yml.status) : [];
+  const groups = groupStoriesByStatus(stories, statusOrder);
 
   assertEquals(groups.length, 2);
   const noStatusGroup = groups.find(
@@ -265,7 +294,6 @@ Deno.test("groupStoriesByStatus — null status becomes (No Status)", () => {
 // ── computeSprintTotals tests ──────────────────────────────────────────────────
 
 Deno.test("computeSprintTotals — correct totals for mixed sprint", () => {
-  const config = makeConfig();
   const stories: Story[] = [
     makeStory({ status: "Done", story_points: 5 }),
     makeStory({ status: "Done", story_points: 3 }),
@@ -273,7 +301,12 @@ Deno.test("computeSprintTotals — correct totals for mixed sprint", () => {
     makeStory({ status: "Blocked", story_points: 2 }),
     makeStory({ status: "Todo", story_points: 1 }),
   ];
-  const totals = computeSprintTotals(stories, config);
+  const totals = computeSprintTotals(
+    stories,
+    "Done",
+    "In Progress",
+    "Blocked",
+  );
 
   assertEquals(totals.committed_points, 19);
   assertEquals(totals.completed_points, 8);
@@ -282,8 +315,8 @@ Deno.test("computeSprintTotals — correct totals for mixed sprint", () => {
 });
 
 Deno.test("computeSprintTotals — empty sprint returns all zeros", () => {
-  const config = makeConfig();
-  const totals = computeSprintTotals([], config);
+  const _config = makeConfig();
+  const totals = computeSprintTotals([], "Done", "In Progress", "Blocked");
 
   assertEquals(totals.committed_points, 0);
   assertEquals(totals.completed_points, 0);
@@ -292,20 +325,17 @@ Deno.test("computeSprintTotals — empty sprint returns all zeros", () => {
 });
 
 Deno.test("computeSprintTotals — uses vocabulary-based status names", () => {
-  // Custom vocabulary with keys that CONTAIN the hint strings ("done", "progress", "block")
-  // findStatusDisplayName searches for keys containing the hint
-  const customConfig = makeConfig({
-    "todo_state": "To Do",
-    "is_done": "Completed", // contains "done" → matched for completed_points
-    "in_progress": "Working on It", // contains "progress" → matched for in_flight_points
-    "is_blocked": "Stuck", // contains "block" → matched for blocked_points
-  });
   const stories: Story[] = [
     makeStory({ status: "Completed", story_points: 5 }),
     makeStory({ status: "Working on It", story_points: 3 }),
     makeStory({ status: "Stuck", story_points: 2 }),
   ];
-  const totals = computeSprintTotals(stories, customConfig);
+  const totals = computeSprintTotals(
+    stories,
+    "Completed",
+    "Working on It",
+    "Stuck",
+  );
 
   assertEquals(totals.committed_points, 10);
   assertEquals(totals.completed_points, 5);
@@ -314,12 +344,11 @@ Deno.test("computeSprintTotals — uses vocabulary-based status names", () => {
 });
 
 Deno.test("computeSprintTotals — null story_points treated as 0", () => {
-  const config = makeConfig();
   const stories: Story[] = [
     makeStory({ status: "Done", story_points: null }),
     makeStory({ status: "In Progress", story_points: 5 }),
   ];
-  const totals = computeSprintTotals(stories, config);
+  const totals = computeSprintTotals(stories, "Done", "In Progress", "Blocked");
 
   assertEquals(totals.committed_points, 5);
   assertEquals(totals.completed_points, 0);
@@ -337,15 +366,6 @@ Deno.test("buildSprintMeta — null iterEntry produces minimal sprint header", (
 // =============================================================================
 // Story 9: Unit tests for extracted helpers
 // =============================================================================
-
-import {
-  buildCommentList,
-  buildEnrichedStory,
-  buildLinkedPrList,
-  classifyLabels,
-  extractBoardFields,
-  parseAcceptanceCriteria,
-} from "./scrum-read.ts";
 
 // ── classifyLabels tests ───────────────────────────────────────────────────────
 
@@ -663,14 +683,6 @@ More text
 // =============================================================================
 // Story 10: Unit tests for burndown helpers
 // =============================================================================
-
-import {
-  buildBurndownStoryInput,
-  buildDaySeries,
-  buildIdealLine,
-  buildSprintWindow,
-  extractLinkHeader,
-} from "./scrum-read.ts";
 
 // ── extractLinkHeader tests ─────────────────────────────────────────────────────
 

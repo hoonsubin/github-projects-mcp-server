@@ -4,14 +4,10 @@ description: >-
   Expert coding assistant grounded in Robert C. Martin's Clean Code. Use when
   writing new code, reviewing or refactoring existing code, naming variables/
   functions/classes, designing class structures, handling errors, or writing
-  tests. Trigger on: "is this clean?", "how do I improve this?", code pasted
-  for feedback, "this is a mess", "can you clean this up", "what's wrong with
-  my function". Apply Clean Code principles proactively — don't wait for
-  explicit requests.
-modeSlugs:
-  - code
-  - orchestrator
-  - security-review
+  tests. Trigger on: "is this clean?", "how do I improve this?", code pasted for
+  feedback, "this is a mess", "can you clean this up", "what's wrong with my
+  function". Apply Clean Code principles proactively — don't wait for explicit
+  requests.
 ---
 
 # Clean Code Assistant

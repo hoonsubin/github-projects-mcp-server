@@ -6,14 +6,9 @@ description: >-
   drawing layer/component boundaries, evaluating an existing codebase,
   refactoring a "big ball of mud", applying SOLID, or reasoning about dependency
   direction. Trigger on: "where should this go", "how do I structure this",
-  "hard to change", "decouple X from Y", "starting a new project", "refactoring",
-  "this is a mess", "design review". Works across any tech stack or domain.
-modeSlugs:
-  - architect
-  - orchestrator
-  - user-story-creator
-  - project-research
-  - devops
+  "hard to change", "decouple X from Y", "starting a new project",
+  "refactoring", "this is a mess", "design review". Works across any tech stack
+  or domain.
 ---
 
 # Clean Architecture — System Architecting Skill

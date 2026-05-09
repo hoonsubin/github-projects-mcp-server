@@ -101,10 +101,7 @@ So that each handler reduces to one expressive line and the code is DRY.
 4. `deno check src/index.ts` passes
 5. No behavioral change
 
-> **Lifecycle note:** `loadRuntimeConfig()` is temporary scaffolding. In Story B (step B5), it is
-> superseded by `getBootstrapConfig()` + `loadConfig()` from `src/adapters/github/config-loader.ts`
-> and is deleted. Do not over-engineer this helper — its only job is eliminating the 4-line
-> repetition until the backend abstraction is wired in.
+> **Lifecycle note:** `loadRuntimeConfig()` is temporary scaffolding. In Story B (step B5), it is superseded by `getBootstrapConfig()` + `loadConfig()` from `src/adapters/github/config-loader.ts` and is deleted. Do not over-engineer this helper — its only job is eliminating the 4-line repetition until the backend abstraction is wired in.
 
 ---
 

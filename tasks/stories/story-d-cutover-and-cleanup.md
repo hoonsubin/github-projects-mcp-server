@@ -141,6 +141,7 @@ grep -rn "GetIssueNodeIdSchema\|GetUserNodeIdSchema\|GraphQLQuerySchema\|GetRepo
 ```
 
 Expected survivors after write tools are implemented:
+
 - `GraphQLQuerySchema` — used by the deprecated `github_graphql` tool registration in `scrum-write.ts`
 - `GetIssueNodeIdSchema`, `GetUserNodeIdSchema`, `GetRepoFileSchema` — delete if no write-tool internals reference them
 

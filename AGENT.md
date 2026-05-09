@@ -1,7 +1,6 @@
 # AGENT.md
 
-Guidance for coding agents working in this repository.
-Concise by design — see linked documents for depth.
+Guidance for coding agents working in this repository. Concise by design — see linked documents for depth.
 
 ## Reference Documents
 
@@ -15,13 +14,11 @@ Concise by design — see linked documents for depth.
 
 ## Managing This Project with Its Own Tools
 
-This server registers itself as its own MCP client — see [`.roo/mcp.json`](.roo/mcp.json).
-The active tool surface changes as migration phases complete — **always discover before acting**:
+This server registers itself as its own MCP client — see [`.roo/mcp.json`](.roo/mcp.json). The active tool surface changes as migration phases complete — **always discover before acting**:
 
 1. Call `tools/list` to see what is currently registered
 2. Check [`src/index.ts`](src/index.ts) to confirm which tool modules are wired
-3. Check [`tasks/REFACTORING.md`](tasks/REFACTORING.md) for phase status — it defines what is
-   implemented, what is a stub, and what is planned
+3. Check [`tasks/REFACTORING.md`](tasks/REFACTORING.md) for phase status — it defines what is implemented, what is a stub, and what is planned
 4. Use whatever tools are available; do not assume a specific tool exists until confirmed
 
 **Stable interaction pattern regardless of surface:**

@@ -113,3 +113,21 @@ import type { McpServer as _McpServer } from "@modelcontextprotocol/sdk/server/m
 // todo: [Phase 3]   // Step 13: implement in order: add_vocabulary → set_field → update_story ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
 // todo: [Phase 3]   //                               → create_story → plan_sprint → log_impediment ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
 // todo: [Phase 3] } ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
+
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { ProjectBackend } from "../scrum/ports.ts";
+import type { ScrumConfigYml } from "../types.ts";
+
+/**
+ * Register all scrum_* write tools + deprecated github_graphql on the MCP server.
+ *
+ * Write tool implementations are deferred to Phase 3.
+ */
+export function registerScrumWriteTools(
+  _server: McpServer,
+  _backend: ProjectBackend,
+  _yml: ScrumConfigYml,
+): void {
+  void _backend;
+  void _yml;
+}

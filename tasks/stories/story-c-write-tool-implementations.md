@@ -210,10 +210,7 @@ So that blockers are visible and traceable without manual setup.
 3. Call `backend.addComment(impedimentRef, "This impediment affects story #M.")`
 4. Return: `{ impediment: Story, linked_to: StoryRef }`
 
-> **Parameter note:** The tool accepts a `priority` input (a vocabulary display name, e.g. `"high"`).
-> If omitted, the use case reads the first entry in `yml.priority` (the highest configured tier) as
-> the default. There is no `raised_by` parameter — who logged the impediment is captured in the
-> story body, not as a priority signal.
+> **Parameter note:** The tool accepts a `priority` input (a vocabulary display name, e.g. `"high"`). If omitted, the use case reads the first entry in `yml.priority` (the highest configured tier) as the default. There is no `raised_by` parameter — who logged the impediment is captured in the story body, not as a priority signal.
 
 **Implementation Notes:**
 

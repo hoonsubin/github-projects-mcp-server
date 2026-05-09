@@ -301,13 +301,7 @@ All types that cross this boundary are domain types defined in `src/domain/`. No
 ```typescript
 // src/scrum/ports.ts
 
-import type {
-  ArtifactType,
-  ScrumField,
-  SprintRef,
-  Story,
-  StoryRef,
-} from "../domain/story.ts";
+import type { ArtifactType, ScrumField, SprintRef, Story, StoryRef } from "../domain/story.ts";
 
 // ── Supporting types that cross the boundary ──────────────────────────────────
 
