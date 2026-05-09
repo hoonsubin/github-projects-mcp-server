@@ -1,5 +1,5 @@
-// todo: [Phase 4] DELETE THIS FILE — fully superseded by scrum_* tools
-// [Phase 1] All prerequisite types, config loader, resolvers, and input schemas are implemented.
+// todo: [Phase 4] DELETE THIS FILE — fully superseded by scrum_* tools ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
+// [Phase 1] All prerequisite types ([#5](https://github.com/hoonsubin/github-projects-mcp-server/issues/5)), config loader ([#6](https://github.com/hoonsubin/github-projects-mcp-server/issues/6)), resolvers, and input schemas are implemented.
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
 import { formatError, graphql } from "../services/github.ts";
 import {
@@ -432,22 +432,10 @@ Returns: Confirmation with item ID and new archived status.`,
     },
     async (params) => {
       try {
-        const mutation = `
-          mutation($input: ArchiveProjectV2ItemInput!) {
-            archiveProjectV2Item(input: $input) {
-              item { id isArchived }
-            }
-          }`;
+        const { id, isArchived } = params.archived
+          ? await archiveItem(params.project_id, params.item_id)
+          : await unarchiveItem(params.project_id, params.item_id);
 
-        const data = await graphql<ArchiveProjectItemData>(mutation, {
-          input: {
-            projectId: params.project_id,
-            itemId: params.item_id,
-            archived: params.archived,
-          },
-        });
-
-        const { id, isArchived } = data.archiveProjectV2Item.item;
         return {
           content: [{
             type: "text",
@@ -459,6 +447,46 @@ Returns: Confirmation with item ID and new archived status.`,
       }
     },
   );
+
+  // ── Internal helpers ─────────────────────────────────────────────────────────
+
+  const archiveItem = async (
+    projectId: string,
+    itemId: string,
+  ): Promise<{ id: string; isArchived: boolean }> => {
+    const mutation = `
+      mutation($input: ArchiveProjectV2ItemInput!) {
+        archiveProjectV2Item(input: $input) {
+          item { id isArchived }
+        }
+      }`;
+
+    const data = await graphql<ArchiveProjectItemData>(mutation, {
+      input: { projectId, itemId },
+    });
+
+    return data.archiveProjectV2Item.item;
+  };
+
+  const unarchiveItem = async (
+    projectId: string,
+    itemId: string,
+  ): Promise<{ id: string; isArchived: boolean }> => {
+    const mutation = `
+      mutation($input: UnarchiveProjectV2ItemInput!) {
+        unarchiveProjectV2Item(input: $input) {
+          item { id isArchived }
+        }
+      }`;
+
+    const data = await graphql<
+      { unarchiveProjectV2Item: { item: { id: string; isArchived: boolean } } }
+    >(mutation, {
+      input: { projectId, itemId },
+    });
+
+    return data.unarchiveProjectV2Item.item;
+  };
 
   // ── Delete Item ────────────────────────────────────────────────────────────
 

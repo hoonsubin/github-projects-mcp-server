@@ -335,6 +335,10 @@ export interface ScrumConfigYml {
     carry_over_threshold_days?: number;
     report_submit_time?: string;
     report_recipient?: string | null;
+    story_point_scale?: string;
+    story_point_values?: number[];
+    length_weeks?: number;
+    start_day?: string;
   };
   impediment?: {
     escalation_threshold_days?: number;
@@ -345,6 +349,11 @@ export interface ScrumConfigYml {
   };
   definition_of_ready?: DefinitionCriteria;
   definition_of_done?: DefinitionCriteria;
+  /**
+   * Template file paths for each ceremony artifact type.
+   * null means no custom template — the agent should use its built-in default.
+   */
+  templates?: Partial<Record<ArtifactType, string | null>>;
   [key: string]: unknown;
 }
 
@@ -353,12 +362,12 @@ export interface ScrumConfigYml {
  * Extends IterationEntry so sprint tools can use IterationEntry helpers
  * on both active and completed sprints.
  */
-// todo: [Phase 4] Remove — SprintIteration becomes internal to new tool handlers
+// todo: [Phase 4] Remove — SprintIteration becomes internal to new tool handlers ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
 export interface SprintIteration extends IterationEntry {
   completed?: boolean;
 }
 
-// todo: [Phase 4] Remove — BoardConfig is sync-script-specific; RuntimeConfig (src/services/config.ts)
+// todo: [Phase 4] Remove — BoardConfig is sync-script-specific; RuntimeConfig (src/services/config.ts) ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
 //   is its replacement. The sync script that writes project-board.config.json is also retired.
 /** Shape written to project-board.config.json by the sync script. */
 export interface BoardConfig {
@@ -387,7 +396,7 @@ export interface BoardConfig {
   _assignee_field: { _field_id: string; dataType: string } | null;
 }
 
-// todo: [Phase 4] Remove entire section — GhFieldBase, GhSingleSelectField, GhIterationField,
+// todo: [Phase 4] Remove entire section — GhFieldBase, GhSingleSelectField, GhIterationField, ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
 //   GhProjectResponse are sync-script-only shapes. The sync script is retired. Any remaining
 //   GraphQL response shape needs are served by src/generated/github-types.ts (codegen).
 // ── Sync script GraphQL shapes ────────────────────────────────────────────────
@@ -449,7 +458,7 @@ export interface GhProjectResponse {
 
 // ── SCRUM runtime types ───────────────────────────────────────────────────────
 
-// todo: [Phase 4] Remove — MergedScrumConfig is replaced by RuntimeConfig in src/services/config.ts
+// todo: [Phase 4] Remove — MergedScrumConfig is replaced by RuntimeConfig in src/services/config.ts ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
 /**
  * Merged runtime configuration: scrum.config.yml (human-authored) overlaid
  * with project-board.config.json (GitHub-synced). The sprint tools operate
@@ -460,7 +469,7 @@ export interface MergedScrumConfig extends ScrumConfigYml {
   _board: BoardConfig;
 }
 
-// todo: [Phase 4] Remove — ResolvedScrumFields is replaced by RuntimeConfig in src/services/config.ts
+// todo: [Phase 4] Remove — ResolvedScrumFields is replaced by RuntimeConfig in src/services/config.ts ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
 /**
  * Resolved field IDs after name → ID mapping via _fields_registry.
  * Produced by resolveFields() and consumed by all sprint tool helpers.
@@ -477,7 +486,7 @@ export interface ResolvedScrumFields {
   blockedOptionId: string | null;
 }
 
-// todo: [Phase 4] Remove — IterationVelocity is internal to scrum_get_velocity handler
+// todo: [Phase 4] Remove — IterationVelocity is internal to scrum_get_velocity handler ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
 /** Per-iteration velocity entry used by github_get_velocity. */
 export interface IterationVelocity {
   iterationId: string;
@@ -491,7 +500,7 @@ export interface IterationVelocity {
   isCurrent: boolean;
 }
 
-// todo: [Phase 4] Remove — SprintStatusResult is internal to scrum_get_board handler
+// todo: [Phase 4] Remove — SprintStatusResult is internal to scrum_get_board handler ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
 /** Aggregated sprint health snapshot used by github_get_sprint_status. */
 export interface SprintStatusResult {
   iteration: {
@@ -509,7 +518,7 @@ export interface SprintStatusResult {
   carryOverItems: ProjectV2Item[];
 }
 
-// todo: [Phase 4] Remove — BulkUpdateResult is internal to scrum_plan_sprint handler
+// todo: [Phase 4] Remove — BulkUpdateResult is internal to scrum_plan_sprint handler ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
 /** Per-item result for bulk update and sprint close operations. */
 export interface BulkUpdateResult {
   item_id: string;
@@ -517,3 +526,137 @@ export interface BulkUpdateResult {
   success: boolean;
   error?: string;
 }
+
+// ── SCRUM history types (scrum_get_history) ────────────────────────────────────
+
+/** Response shape for scrum_get_history tool. */
+export interface SprintHistoryResponse {
+  window: number;
+  sprints: SprintSnapshot[];
+  message?: string; // present when no sprints available
+}
+
+/** A single sprint snapshot returned by scrum_get_history. */
+export interface SprintSnapshot {
+  name: string;
+  start_date: string; // ISO date (YYYY-MM-DD)
+  end_date: string; // ISO date (YYYY-MM-DD)
+  duration_days: number;
+  stories: SprintStory[];
+  summary: SprintSummary;
+}
+
+/** Lightweight story entry within a sprint snapshot. */
+export interface SprintStory {
+  number: number;
+  title: string;
+  points: number;
+  status: string | null;
+}
+
+/** Aggregated summary for a sprint snapshot. */
+export interface SprintSummary {
+  committed_points: number;
+  completed_points: number;
+  carried_points: number;
+  completion_rate: number; // 0–1, rounded to 2 decimals
+  story_count: number;
+  completed_count: number;
+}
+
+// ── Backlog types (scrum_get_backlog) ─────────────────────────────────────────
+
+/** Readiness assessment for a backlog story against Definition of Ready. */
+export interface StoryReadiness {
+  /** Has story points assigned and acceptance criteria checklist present */
+  has_estimation_and_ac: boolean;
+  /** Has some but not all DoR criteria met */
+  partially_ready: boolean;
+  /** Has none of the DoR criteria */
+  not_ready: boolean;
+}
+
+/** Response shape for scrum_get_backlog. */
+export interface GetBacklogResult {
+  stories: Story[];
+  total_count: number;
+  readiness: {
+    /** Stories with all DoR criteria met */
+    ready: number;
+    /** Stories with partial DoR criteria */
+    partially_ready: number;
+    /** Stories with no DoR criteria */
+    not_ready: number;
+  };
+}
+
+// ── Burndown types (scrum_get_burndown) ──────────────────────────────────────
+
+/** Response shape for scrum_get_burndown. */
+export interface BurndownResponse {
+  sprint: BurndownSprintMeta;
+  data_source: "audit_log" | "issue_close_proxy";
+  warning?: string;
+  series: BurndownDayPoint[];
+  ideal: IdealDayPoint[];
+  stories: BurndownStory[];
+}
+
+/** Sprint window metadata returned alongside the burndown series. */
+export interface BurndownSprintMeta {
+  name: string;
+  start_date: string; // YYYY-MM-DD
+  end_date: string; // YYYY-MM-DD
+  duration_days: number;
+  days_remaining: number;
+}
+
+/** One entry in the actual burndown series — one per calendar day. */
+export interface BurndownDayPoint {
+  date: string; // YYYY-MM-DD
+  remaining_points: number;
+  completed_points: number;
+}
+
+/** One entry in the ideal burndown line — one per calendar day. */
+export interface IdealDayPoint {
+  date: string; // YYYY-MM-DD
+  remaining_points: number;
+}
+
+/** Lightweight per-story summary in the burndown response. */
+export interface BurndownStory {
+  number: number;
+  title: string;
+  points: number; // 0 if the story has no points assigned
+  status: string | null;
+  completed_at: string | null; // ISO-8601 timestamp, or null if not yet done
+}
+
+// ── Template types (scrum_get_template) ──────────────────────────────────────
+
+/**
+ * The five ceremony artifact types for which custom templates can be declared.
+ * Used in ScrumConfigYml.templates, GetTemplateSchema, and TemplateResponse.
+ */
+export type ArtifactType =
+  | "sprint_review"
+  | "retrospective"
+  | "standup"
+  | "sprint_planning"
+  | "refinement";
+
+/**
+ * Discriminated union response for scrum_get_template.
+ *
+ * source: "custom"  — a custom template was fetched from the repo.
+ *                     content is the raw template text; the agent applies it.
+ * source: "default" — no custom template is declared for this artifact type.
+ *                     content is null; the agent uses its own built-in default.
+ *
+ * Invalid states (e.g. content: null with source: "custom") are structurally
+ * excluded by the discriminated union — the compiler enforces the contract.
+ */
+export type TemplateResponse =
+  | { content: string; source: "custom" }
+  | { content: null; source: "default" };

@@ -1,5 +1,5 @@
-// todo: [Phase 4] DELETE THIS FILE — fully superseded by scrum_* tools
-// [Phase 1] All prerequisite types, config loader, and resolvers are implemented.
+// todo: [Phase 4] DELETE THIS FILE — fully superseded by scrum_* tools ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
+// [Phase 1] All prerequisite types ([#5](https://github.com/hoonsubin/github-projects-mcp-server/issues/5)), config loader ([#6](https://github.com/hoonsubin/github-projects-mcp-server/issues/6)), and resolvers are implemented.
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
 import { formatError, graphql } from "../services/github.ts";
 import { formatField, formatProject, PROJECT_CORE_FRAGMENT } from "../services/formatters.ts";

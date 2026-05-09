@@ -2,7 +2,22 @@ import type { GraphQLResponse } from "../types.ts";
 import { log } from "./logger.ts";
 
 export const GITHUB_API_URL = "https://api.github.com/graphql";
+const REST_API_URL = "https://api.github.com";
 const REQUEST_TIMEOUT_MS = 30_000;
+
+// ── REST API response wrapper ───────────────────────────────────────────────────
+
+/**
+ * Typed wrapper for REST API responses.
+ *
+ * Returns both `data` and `linkHeader` so callers can paginate via the
+ * Link header without a second HTTP round-trip. Non-paginating callers
+ * simply ignore `linkHeader`.
+ */
+export interface RestResponse<T> {
+  data: T;
+  linkHeader: string | null;
+}
 
 export class GitHubApiError extends Error {
   constructor(
@@ -135,6 +150,123 @@ export const graphql = async <T>(
   return json.data;
 };
 
+// ── REST API helper ─────────────────────────────────────────────────────────────
+
+/**
+ * Make a single GitHub REST API request.
+ *
+ * Base URL: https://api.github.com
+ * Auth:     Bearer GITHUB_TOKEN (same env var as graphql())
+ * Timeout:  30 s via AbortController (same pattern as graphql())
+ *
+ * Returns { data, linkHeader } so callers can paginate via the Link header
+ * without a second HTTP round-trip.
+ *
+ * Throws GitHubApiError on 401, 403, and non-2xx responses —
+ * same classification as graphql().
+ */
+export const rest = async <T>(
+  path: string,
+  options: {
+    method?: "GET" | "POST" | "PATCH" | "DELETE";
+    params?: Record<string, string>;
+    body?: unknown;
+    accept?: string;
+  } = {},
+): Promise<RestResponse<T>> => {
+  const token = getToken();
+  const method = options.method ?? "GET";
+  const t0 = performance.now();
+
+  log.debug(`→ rest:${method} ${path}`, options.params);
+
+  // Build URL with query params
+  const url = new URL(`${REST_API_URL}/${path}`);
+  if (options.params) {
+    for (const [key, value] of Object.entries(options.params)) {
+      url.searchParams.set(key, value);
+    }
+  }
+
+  // Build headers
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    "User-Agent": "github-projects-mcp-server/1.0.0",
+    "X-GitHub-Api-Version": "2022-11-28",
+    ...options.accept ? { Accept: options.accept } : { Accept: "application/vnd.github+json" },
+  };
+
+  // Build body for non-GET requests
+  let body: string | undefined;
+  if (options.body && method !== "GET") {
+    body = JSON.stringify(options.body);
+    headers["Content-Type"] = "application/json";
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(url.toString(), {
+      method,
+      headers,
+      body,
+      signal: controller.signal,
+    });
+  } catch (err: unknown) {
+    const ms = Math.round(performance.now() - t0);
+    if (err instanceof Error && err.name === "AbortError") {
+      log.error(`✗ rest:${method} ${path} timed out after ${ms}ms`);
+      throw new GitHubApiError("Request timed out after 30s");
+    }
+    log.error(`✗ rest:${method} ${path} network error (${ms}ms)`, err);
+    throw new GitHubApiError(
+      `Network error: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  const ms = Math.round(performance.now() - t0);
+
+  if (response.status === 401) {
+    log.error(`✗ rest:${method} ${path} 401 Unauthorized (${ms}ms)`);
+    throw new GitHubApiError(
+      "Authentication failed. Check that GITHUB_TOKEN is valid and has the required scopes.",
+      401,
+    );
+  }
+  if (response.status === 403) {
+    const rateLimitReset = response.headers.get("x-ratelimit-reset");
+    const resetTime = rateLimitReset
+      ? new Date(Number(rateLimitReset) * 1000).toISOString()
+      : "unknown";
+    log.error(
+      `✗ rest:${method} ${path} 403 rate-limited (${ms}ms), resets ${resetTime}`,
+    );
+    throw new GitHubApiError(
+      `Rate limit or permission denied. Rate limit resets at ${resetTime}.`,
+      403,
+    );
+  }
+  if (!response.ok) {
+    log.error(`✗ rest:${method} ${path} HTTP ${response.status} (${ms}ms)`);
+    throw new GitHubApiError(
+      `GitHub API error: HTTP ${response.status} ${response.statusText}`,
+      response.status,
+    );
+  }
+
+  // Extract Link header before parsing JSON
+  const linkHeader = response.headers.get("Link") ?? null;
+
+  const data = (await response.json()) as T;
+
+  log.debug(`← rest:${method} ${path} OK (${ms}ms)`);
+  return { data, linkHeader };
+};
+
 /** Format a GitHubApiError into a human-readable MCP tool error string. */
 export const formatError = (err: unknown): string => {
   if (err instanceof GitHubApiError) {
@@ -175,6 +307,8 @@ const REQUIRED_PERMISSION: Record<string, string> = {
   update_issue: "Issues: Read and write",
   create_comment: "Issues: Read and write",
   write_repo_file: "Contents: Read and write",
+  get_issue_timeline: "Issues: Read",
+  get_audit_log: "Organization: Read (Enterprise only — requires GHES or GHEC)",
 };
 
 const TOKEN_URL = "https://github.com/settings/tokens";
@@ -269,4 +403,84 @@ export const enrichError = (err: unknown, ctx: EnrichErrorContext = {}): string 
   const base = `Error: ${err.message}`;
   const hint = resolveHint(err, ctx);
   return hint ? `${base}\n\n→ Fix: ${hint}` : base;
+};
+
+// ── GitHub Contents API types and helpers ─────────────────────────────────────
+
+/**
+ * GitHub REST endpoint `GET /repos/{owner}/{repo}/contents/{path}` response
+ * for a single file hit. On a directory, it returns an array instead.
+ * On 404, the existing `rest<T>()` error classification fires:
+ * `GitHubApiError(404, ...)`.
+ */
+export interface RepoFileResponse {
+  type: "file";
+  encoding: "base64";
+  content: string; // base64-encoded, may include newlines
+  name: string;
+  path: string;
+  size: number;
+  sha: string;
+  url: string;
+  html_url: string;
+  download_url: string | null;
+}
+
+/**
+ * Decode a base64-encoded file body returned by the GitHub Contents API.
+ *
+ * GitHub's API includes newline characters in the base64 string for readability.
+ * These must be stripped before decoding — atob() rejects strings with whitespace.
+ *
+ * Exported for unit testing.
+ */
+export const decodeRepoFileContent = (encoded: string): string => atob(encoded.replace(/\s/g, ""));
+
+/**
+ * Fetch the content of a single file from the repo via the GitHub Contents API.
+ *
+ * Returns the decoded UTF-8 file content as a string.
+ *
+ * Throws GitHubApiError with an actionable message if:
+ *   - The file does not exist (404) — with a hint to add the file or
+ *     set the template path to null in config.yml.
+ *   - The path resolves to a directory rather than a file.
+ *   - Any other GitHub API error (permissions, rate limit, etc.).
+ */
+/**
+ * Fetch the content of a single file from the repo via the GitHub Contents API.
+ * Exported for use by scrum_get_template handler.
+ */
+export const fetchRepoFile = async (
+  owner: string,
+  repo: string,
+  path: string,
+): Promise<string> => {
+  let response: RepoFileResponse | RepoFileResponse[];
+
+  try {
+    const result = await rest<RepoFileResponse | RepoFileResponse[]>(
+      `/repos/${owner}/${repo}/contents/${path}`,
+    );
+    response = result.data;
+  } catch (err) {
+    if (err instanceof GitHubApiError && err.statusCode === 404) {
+      throw new GitHubApiError(
+        `Template file "${path}" is declared in config.yml but was not found ` +
+          `in the repository. Either add the file or set the template path to null ` +
+          `in config.yml under the templates section.`,
+        404,
+      );
+    }
+    throw err;
+  }
+
+  if (Array.isArray(response)) {
+    throw new GitHubApiError(
+      `Template path "${path}" resolves to a directory, not a file. ` +
+        `Provide the path to a specific file in config.yml.`,
+    );
+  }
+
+  return decodeRepoFileContent(response.content);
 };

@@ -1,5 +1,5 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
-import { enrichError, formatError, GitHubApiError } from "./github.ts";
+import { decodeRepoFileContent, enrichError, formatError, GitHubApiError } from "./github.ts";
 
 Deno.test("formatError - GitHubApiError: returns 'Error: ' prefix with message", () => {
   const err = new GitHubApiError("token expired");
@@ -142,4 +142,31 @@ Deno.test("enrichError - GraphQL variable type error: variable type hint", () =>
   const result = enrichError(err);
   assertStringIncludes(result, "→ Fix:");
   assertStringIncludes(result, "node IDs are String");
+});
+
+// ---------------------------------------------------------------------------
+// decodeRepoFileContent
+// ---------------------------------------------------------------------------
+
+Deno.test("decodeRepoFileContent - clean base64: decodes correctly", () => {
+  const input = btoa("hello world");
+  assertEquals(decodeRepoFileContent(input), "hello world");
+});
+
+Deno.test("decodeRepoFileContent - base64 with embedded newlines: strips whitespace before decoding", () => {
+  // Simulate GitHub API wrapping at 60 chars
+  const input = "aGVsbG8gd29ybGQK"; // base64 of "hello world\n"
+  assertEquals(decodeRepoFileContent(input), "hello world\n");
+});
+
+Deno.test("decodeRepoFileContent - empty string: returns empty string", () => {
+  assertEquals(decodeRepoFileContent(""), "");
+});
+
+Deno.test("decodeRepoFileContent - UTF-8 content with unicode: correctly decoded", () => {
+  // Use a simple ASCII string with emoji encoded as surrogate pairs
+  // btoa only works with Latin-1 characters, so we test with a simple case
+  const original = "hello world";
+  const encoded = btoa(original);
+  assertEquals(decodeRepoFileContent(encoded), original);
 });

@@ -8,11 +8,11 @@ import type {
 } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage, MessageExtraInfo } from "@modelcontextprotocol/sdk/types.js";
 import express, { type Request, type Response } from "express";
-// todo: [Phase 4] Remove + replace with: import { registerScrumReadTools } from "./tools/scrum-read.ts";
+// todo: [Phase 4] Remove + replace with: import { registerScrumReadTools } from "./tools/scrum-read.ts"; ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
 import { registerProjectTools } from "./tools/projects.ts";
-// todo: [Phase 4] Remove + replace with: import { registerScrumWriteTools } from "./tools/scrum-write.ts";
+// todo: [Phase 4] Remove + replace with: import { registerScrumWriteTools } from "./tools/scrum-write.ts"; ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
 import { registerItemTools } from "./tools/items.ts";
-// todo: [Phase 4] Gut registrations — keep file only if any internal helpers are still referenced.
+// todo: [Phase 4] Gut registrations — keep file only if any internal helpers are still referenced. ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
 //   After Phase 4, repository.ts should register nothing (github_graphql moves to scrum-write.ts).
 import { registerRepositoryTools } from "./tools/repository.ts";
 import { log } from "./services/logger.ts";
@@ -107,11 +107,11 @@ const createMcpServer = (): McpServer => {
     log.debug("tool-call logging enabled");
   }
 
-  // todo: [Phase 4] Remove — replaced by registerScrumReadTools(server, github)
+  // todo: [Phase 4] Remove — replaced by registerScrumReadTools(server, github) ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
   registerProjectTools(server);
-  // todo: [Phase 4] Remove — replaced by registerScrumWriteTools(server, github)
+  // todo: [Phase 4] Remove — replaced by registerScrumWriteTools(server, github) ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
   registerItemTools(server);
-  // todo: [Phase 4] Gut — registerRepositoryTools will be empty after github_graphql moves to scrum-write.ts
+  // todo: [Phase 4] Gut — registerRepositoryTools will be empty after github_graphql moves to scrum-write.ts ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
   registerRepositoryTools(server);
 
   return server;
