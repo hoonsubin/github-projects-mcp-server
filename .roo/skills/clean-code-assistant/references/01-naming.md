@@ -1,15 +1,8 @@
 # Meaningful Names (Ch. 2)
 
-Source: *Clean Code*, Chapter 2 — Tim Ottinger
+Names must answer: _why it exists, what it does, how it is used._ If a name requires a comment to explain it, the name is wrong.
 
-Names are the primary communication tool in code. A name is a tiny act of documentation.
-
----
-
-## The Rules
-
-### Use Intention-Revealing Names
-The name must answer: *why it exists, what it does, and how it is used.*
+## Intention-Revealing Names
 
 ```python
 # Bad
@@ -17,56 +10,34 @@ d = 0          # elapsed time in days
 
 # Good
 elapsed_time_in_days = 0
-days_since_modification = 0
 ```
 
-If a name requires a comment to explain it, the name is wrong.
+## Avoid Disinformation
 
----
+- Don't use `account_list` unless it is actually a `List`. Use `accounts`.
+- Never use `l`, `O`, or `I` as variable names (look like `1` and `0`).
 
-### Avoid Disinformation
-- Don't use `account_list` unless it is actually a `List` type. Use `account_group` or `accounts`.
-- Don't use names that differ only in subtle ways: `XYZControllerForEfficientHandlingOfStrings` vs. `XYZControllerForEfficientStorageOfStrings` — readers will miss this.
-- Never use `l` (lowercase L), `O` (uppercase oh), or `I` (uppercase i) as variable names.
+## Make Meaningful Distinctions
 
----
+Noise words add no meaning: `ProductInfo` vs. `ProductData` — what's the difference? None.
+Don't suffix with `a`, `an`, `the`, `1`, `2` to avoid naming conflicts.
 
-### Make Meaningful Distinctions
-Don't add noise words that add no meaning:
-- `ProductInfo` vs. `ProductData` — what's the difference? There is none.
-- Don't suffix with `a`, `an`, `the`, `1`, `2` just to avoid conflicts.
-- Avoid `variable` in a variable name, `table` in a table name.
-
-```java
-// Bad: which one do I call?
-getActiveAccount()
-getActiveAccounts()
-getActiveAccountInfo()
-
-// Good: only one, named clearly
-getActiveAccount()
-```
-
----
-
-### Use Pronounceable Names
-You talk about code. You should be able to say the names.
+## Use Pronounceable Names
 
 ```java
 // Bad
-private Date genymdhms;   // generation year month day hour minute second
+private Date genymdhms;
 
 // Good
 private Date generationTimestamp;
 ```
 
----
+## Use Searchable Names
 
-### Use Searchable Names
-Single letters and magic numbers are impossible to grep for.
+Single letters and magic numbers can't be grepped. Name length should correspond to scope size.
 
 ```python
-# Bad — what is 4? what is 5?
+# Bad
 for j in range(34):
     s += (t[j] * 4) / 5
 
@@ -74,44 +45,26 @@ for j in range(34):
 REAL_DAYS_PER_IDEAL_DAY = 4
 WORK_DAYS_PER_WEEK = 5
 for j in range(NUMBER_OF_TASKS):
-    real_task_days = task_estimate[j] * REAL_DAYS_PER_IDEAL_DAY
-    real_task_weeks = real_task_days / WORK_DAYS_PER_WEEK
+    real_task_weeks = (task_estimate[j] * REAL_DAYS_PER_IDEAL_DAY) / WORK_DAYS_PER_WEEK
     sum += real_task_weeks
 ```
 
-**Rule:** The length of a name should correspond to the size of its scope. Short names are only OK for very small scopes (e.g., `i` in a 3-line loop).
+## Avoid Encodings
 
----
+No Hungarian notation: `m_description` → `description`. No interface prefixes: `IShapeFactory` → `ShapeFactory`.
 
-### Avoid Encodings
-Don't encode type or scope in names. IDEs handle this.
-- No Hungarian notation: `m_description` → `description`
-- No interface prefixes: `IShapeFactory` → `ShapeFactory`
+## Pick One Word per Concept
 
----
+Choose one word per abstract concept and stick with it: pick `get` or `fetch` or `retrieve` — never all three in the same codebase.
 
-### Pick One Word per Concept
-Choose one word for one abstract concept — and stick with it across the codebase.
+## Use Solution and Problem Domain Names
 
-```
-fetch / retrieve / get     ← pick ONE for "return a value"
-controller / manager / driver  ← pick ONE for "coordinator"
-```
+Use CS terms where appropriate (`JobQueue`, `AccountVisitor`). When no CS term fits, use the business domain name. Keep solution vocabulary and domain vocabulary in different places.
 
----
-
-### Use Solution and Problem Domain Names
-- Use CS terms when appropriate: `JobQueue`, `AccountVisitor`, `NameParser`
-- When no CS term exists, use the **problem domain** name (business language)
-- Separate solution vocabulary from domain vocabulary by keeping them in different places
-
----
-
-### Add Meaningful Context
-Variables like `state` alone have no context. Put them in a class:
+## Add Meaningful Context
 
 ```java
-// Bad: ambiguous
+// Bad: ambiguous in isolation
 String firstName, lastName, street, city, state, zip;
 
 // Good: context from class
@@ -120,29 +73,16 @@ class Address {
 }
 ```
 
----
-
-### Don't Add Gratuitous Context
-If your application is called "Gas Station Deluxe", don't prefix every class with `GSD`.
-
-```java
-// Bad
-GSDAccountAddress  // why?
-
-// Good
-Address
-```
-
----
+Don't add _gratuitous_ context: if the app is "Gas Station Deluxe", `Address` is better than `GSDAddress`.
 
 ## Quick Reference: Name Anti-Patterns
 
-| Anti-Pattern | Example | Fix |
-|---|---|---|
-| Cryptic abbreviation | `d`, `r`, `hp` | `elapsed_days`, `response`, `hit_points` |
-| Noise word | `ProductData`, `NameString` | `Product`, `Name` |
-| Wrong type implied | `account_list` (it's a set) | `accounts` |
-| Vague/generic | `Manager`, `Processor`, `Info` | Name the specific responsibility |
-| Inconsistent verbs | `fetch` here, `get` there | Pick one, use everywhere |
-| Magic number | `if score > 7:` | `if score > PASSING_SCORE:` |
-| Commented-out meaning | `d  # days elapsed` | `days_elapsed` |
+| Anti-Pattern         | Example                        | Fix                                      |
+| -------------------- | ------------------------------ | ---------------------------------------- |
+| Cryptic abbreviation | `d`, `r`, `hp`                 | `elapsed_days`, `response`, `hit_points` |
+| Noise word           | `ProductData`, `NameString`    | `Product`, `Name`                        |
+| Wrong type implied   | `account_list` (it's a set)    | `accounts`                               |
+| Vague/generic        | `Manager`, `Processor`, `Info` | Name the specific responsibility         |
+| Inconsistent verbs   | `fetch` here, `get` there      | Pick one, use everywhere                 |
+| Magic number         | `if score > 7:`                | `if score > PASSING_SCORE:`              |
+| Commented meaning    | `d  # days elapsed`            | `days_elapsed`                           |

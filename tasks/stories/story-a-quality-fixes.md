@@ -110,11 +110,11 @@ So that each handler reduces to one expressive line and the code is DRY.
 
 ## Verification Checklist
 
-- [ ] A1: Tool description corrected
-- [ ] A1: Regression verified — invoke `scrum_get_backlog` and confirm response contains `ready`, `partially_ready`, `not_ready` keys (not the old `sprint_ready`, `in_refinement`, `future_candidate`)
-- [ ] A2: Dead code deleted
-- [ ] A3: Status resolution consolidated
-- [ ] A4: Bootstrap helper extracted
-- [ ] `deno check src/index.ts` passes
-- [ ] All existing tests pass
-- [ ] No behavioral changes introduced
+- [x] A1: Tool description corrected
+- [x] A1: Regression verified — invoke `scrum_get_backlog` and confirm response contains `ready`, `partially_ready`, `not_ready` keys (not the old `sprint_ready`, `in_refinement`, `future_candidate`)
+- [x] A2: Dead code deleted
+- [x] A3: Status resolution consolidated
+- [x] A4: Bootstrap helper extracted
+- [x] `deno check src/index.ts` passes
+- [x] All existing tests pass
+- [x] No behavioral changes introduced

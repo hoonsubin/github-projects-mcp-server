@@ -1,16 +1,10 @@
 # Error Handling (Ch. 7)
 
-Source: *Clean Code*, Chapter 7 — Robert C. Martin
-
-Error handling is important, but it must not **obscure** the main logic. Clean error handling
-reads separately from clean business logic — they don't tangle together.
-
----
+Error handling must not **obscure** the main logic. Clean error handling reads separately from clean business logic — they don't tangle together.
 
 ## Use Exceptions, Not Error Codes
 
-Error codes force the caller to handle the error immediately and create deeply nested
-conditional logic. Exceptions allow the main path to remain clean.
+Error codes force the caller to handle errors immediately and create deeply nested logic. Exceptions let the main path remain clean.
 
 ```python
 # Bad: error handling tangled with logic
@@ -21,12 +15,6 @@ if result == ErrorCode.OK:
         result = config_keys.delete_key(page.name.make_key())
         if result == ErrorCode.OK:
             logger.log("page deleted")
-        else:
-            logger.log("config key deletion failed")
-    else:
-        logger.log("reference deletion failed")
-else:
-    logger.log("delete failed")
 
 # Good: clean separation
 def delete(page):
@@ -41,74 +29,44 @@ def delete_page_and_all_references(page):
     config_keys.delete_key(page.name.make_key())
 ```
 
----
-
 ## Write Your Try-Catch-Finally First
 
-When writing code that can throw, **start with the try-catch-finally**. This ensures your
-error handling defines the scope and contract clearly before you fill in the happy path.
-
-Tests for error cases should come *before* tests for happy paths when practicing TDD.
-
----
+When writing code that can throw, start with `try-catch-finally`. This defines the scope and contract before you fill in the happy path.
 
 ## Error Handling Is One Thing
 
-A function that handles errors should **do nothing else**. The `try` block and its `except`/`catch`
-handler constitute the entire function body.
-
-```python
-# Good: error handling is the only job of this function
-def delete(page):
-    try:
-        delete_page_and_all_references(page)
-    except Exception as e:
-        log_error(e)
-```
-
----
+A function that handles errors should **do nothing else**. The `try` block and its handler constitute the entire function body (see `delete()` above).
 
 ## Provide Context with Exceptions
 
-Don't throw bare exceptions. Add a message that includes:
-- What operation was attempted
-- What failed and why (if known)
+Don't throw bare exceptions — include what operation was attempted and why it failed:
 
 ```python
-# Bad: no context
+# Bad
 raise ValueError()
 
-# Good: context included
+# Good
 raise ValueError(
     f"Cannot parse user ID from token '{token}': expected integer, got '{raw_id}'"
 )
 ```
 
----
-
 ## Define Exception Classes Based on Caller Needs
 
-Often a single exception type per subsystem is enough. Wrap third-party APIs so you can
-translate their many exception types into one that makes sense for *your* callers.
+Wrap third-party APIs to translate their many exception types into one that makes sense for *your* callers:
 
 ```python
-# Bad: caller must catch 10 different third-party exceptions
+# Bad: caller must handle multiple third-party exception types
 try:
     port.open()
-except DeviceResponseException as e:
-    ...
-except ATM1212UnlockedException as e:
-    ...
-except GMXError as e:
-    ...
+except DeviceResponseException as e: ...
+except ATM1212UnlockedException as e: ...
+except GMXError as e: ...
 
-# Good: wrap the third-party API
+# Good: wrap the API — also makes mocking trivial
 class PortDeviceFailure(Exception): ...
 
 class LocalPort:
-    def __init__(self, port_number):
-        self._inner = ACMEPort(port_number)
-
     def open(self):
         try:
             self._inner.open()
@@ -116,55 +74,34 @@ class LocalPort:
             raise PortDeviceFailure("Port device failure") from e
 ```
 
-Wrapping third-party APIs also makes mocking in tests trivial.
-
----
-
-## Don't Return None
+## Don't Return Null
 
 Returning `None` forces every caller to check for it. One forgotten check = a runtime error.
 
 ```python
 # Bad
-def get_employee(name) -> Employee | None:
-    ...
-
+def get_employee(name) -> Employee | None: ...
 employee = get_employee(name)
 if employee is not None:     # caller must remember this
     employee.do_something()
 
-# Good option 1: raise if not found
+# Good: raise if not found
 def get_employee(name) -> Employee:
     employee = db.lookup(name)
     if employee is None:
         raise EmployeeNotFound(name)
     return employee
-
-# Good option 2: return Null Object
-class NullEmployee(Employee):
-    def do_something(self): pass  # does nothing, safely
-
-def get_employee(name) -> Employee:
-    employee = db.lookup(name)
-    return employee if employee else NullEmployee()
 ```
 
----
-
-## Don't Pass None
-
-Passing `None` to a function is as bad as returning it. It forces defensive `None` checks
-inside the function. Design APIs so that `None` is not a valid argument.
-
----
+**Don't pass `None` either.** Design APIs so that `None` is not a valid argument.
 
 ## Quick Rules
 
 | Situation | Action |
 |---|---|
-| Signaling failure | Throw an exception, not return an error code |
+| Signaling failure | Throw an exception, not an error code |
 | Writing error-prone code | Write `try-catch` first, then fill in logic |
 | Third-party library | Wrap it — translate their exceptions to yours |
-| Returning "not found" | Raise, or return a Null Object |
-| Optional arguments | Use keyword args with defaults, not `None` sentinel values |
-| No context in exception | Add a descriptive message always |
+| Returning "not found" | Raise an exception |
+| Optional arguments | Use keyword args with defaults, not `None` sentinels |
+| No context in exception | Always add a descriptive message |

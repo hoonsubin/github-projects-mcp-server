@@ -92,6 +92,29 @@ const getBootstrapConfig = (): BootstrapConfig => {
   return { owner, ownerType: ownerTypeRaw as "user" | "org", projectNumber };
 };
 
+/** Bootstrap values returned by handler boilerplate extraction. */
+interface RuntimeConfigResult {
+  config: RuntimeConfig;
+  owner: string;
+  ownerType: "user" | "org";
+}
+
+/** Load runtime config from environment — reduces each handler to one line. */
+const loadRuntimeConfig = async (): Promise<RuntimeConfigResult> => {
+  const { owner, ownerType, projectNumber } = getBootstrapConfig();
+  return {
+    config: await loadConfig({
+      github: gh,
+      owner,
+      ownerType,
+      projectNumber,
+      repo: getRepo(),
+    }),
+    owner,
+    ownerType,
+  };
+};
+
 // ── Raw GraphQL response types ─────────────────────────────────────────────────
 
 interface RawFieldValue {
@@ -470,14 +493,14 @@ const buildStoryFromRaw = (item: RawItem, config: RuntimeConfig): Story | null =
 // ── Vocabulary helpers ─────────────────────────────────────────────────────────
 
 /**
- * Find a status display name by searching yml.status for a vocab key that
- * contains the given hint (case-insensitive). Falls back to `fallback`.
+ * Resolve the display name for a status by searching yml.status for a vocab key
+ * that contains the given hint (case-insensitive). Falls back to `fallback`.
  *
- * Example: findStatusDisplayName(config, "done", "Done")
- *   → searches yml.status for a key like "done", "Done", "is_done", etc.
+ * Example: resolveStatusDisplayName(config, "done", "Done")
+ *   → searches yml.status for a key like "done", "is_done", etc.
  *   → returns the mapped display value, e.g. "Done" or "Completed"
  */
-const findStatusDisplayName = (
+const resolveStatusDisplayName = (
   config: RuntimeConfig,
   keyHint: string,
   fallback: string,
@@ -605,13 +628,13 @@ export const computeSprintTotals = (
   in_flight_points: number;
   blocked_points: number;
 } => {
-  const doneDisplay = findStatusDisplayName(config, "done", "Done");
-  const inProgressDisplay = findStatusDisplayName(
+  const doneDisplay = resolveStatusDisplayName(config, "done", "Done");
+  const inProgressDisplay = resolveStatusDisplayName(
     config,
     "progress",
     "In Progress",
   );
-  const blockedDisplay = findStatusDisplayName(config, "block", "Blocked");
+  const blockedDisplay = resolveStatusDisplayName(config, "block", "Blocked");
 
   return {
     committed_points: sumPointsWhere(stories, () => true),
@@ -761,26 +784,6 @@ export const parseAcceptanceCriteria = (body: string): AcceptanceCriterion[] => 
   return ac;
 };
 
-// ── Readiness classifier ───────────────────────────────────────────────────────
-
-type ReadinessLevel = "sprint_ready" | "in_refinement" | "future_candidate";
-
-/**
- * Classify a backlog story's readiness for sprint planning.
- * sprint_ready:       has story_points + AC checkboxes in body + priority
- * in_refinement:      has at least one but not all three
- * future_candidate:   has none of the three
- */
-const _classifyReadiness = (story: Story): ReadinessLevel => {
-  const hasPoints = story.story_points !== null && story.story_points > 0;
-  const hasAC = /^[ \t]*-[ \t]+\[([ xX])\]/m.test(story.body);
-  const hasPriority = story.priority !== null;
-  const score = [hasPoints, hasAC, hasPriority].filter(Boolean).length;
-  if (score === 3) return "sprint_ready";
-  if (score > 0) return "in_refinement";
-  return "future_candidate";
-};
-
 // ── Burndown helpers ───────────────────────────────────────────────────────────
 
 // ── Local-only interfaces (burndown internals) ─────────────────────────────────
@@ -924,19 +927,6 @@ export const buildDaySeries = (
 };
 
 // ── Vocabulary and projection helpers ──────────────────────────────────────────
-
-/**
- * Resolve the display name for the "done" status from config vocabulary.
- * Falls back to "Done" if the vocabulary entry is missing or has no display_name.
- */
-const findDoneStatusName = (config: RuntimeConfig): string => {
-  const statusVocab = config.yml.status as
-    | Record<string, { display_name?: string } | undefined>
-    | undefined;
-  if (!statusVocab) return "Done";
-  const doneEntry = Object.entries(statusVocab).find(([key]) => key.toLowerCase().includes("done"));
-  return doneEntry?.[1]?.display_name ?? "Done";
-};
 
 /**
  * Project a RawItem to the four fields burndown computation needs.
@@ -1088,7 +1078,7 @@ const resolveCompletionTimestamps = async (
   owner: string,
   repo: string,
 ): Promise<CompletionResult> => {
-  const doneStatusName = findDoneStatusName(config);
+  const doneStatusName = resolveStatusDisplayName(config, "done", "Done");
   const statusFieldName = config.yml.field_names.status;
 
   try {
@@ -1261,14 +1251,7 @@ can be resolved autonomously via scrum_add_vocabulary.`,
     },
     async () => {
       try {
-        const { owner, ownerType, projectNumber } = getBootstrapConfig();
-        const config = await loadConfig({
-          github: gh,
-          owner,
-          ownerType,
-          projectNumber,
-          repo: getRepo(),
-        });
+        const { config, owner } = await loadRuntimeConfig();
         const yml = config.yml;
 
         const statusVocab = (yml.status as Record<string, string> | undefined) ?? null;
@@ -1416,14 +1399,7 @@ trends, and recommendations — this tool returns the facts.`,
     },
     async (params: z.infer<typeof GetHistorySchema>) => {
       try {
-        const { owner, ownerType, projectNumber } = getBootstrapConfig();
-        const config = await loadConfig({
-          github: gh,
-          owner,
-          ownerType,
-          projectNumber,
-          repo: getRepo(),
-        });
+        const { config, owner, ownerType } = await loadRuntimeConfig();
 
         // Most-recent-first slice of completed iterations
         const completedSorted = [...config.iterations.completed].sort(
@@ -1451,7 +1427,7 @@ trends, and recommendations — this tool returns the facts.`,
         // Fetch all items once; group by iteration client-side
         const allItems = await fetchAllItems(config, owner, ownerType);
         const { sprintFieldId, statusFieldId, storyPointsFieldId } = config.fields;
-        const doneDisplay = findStatusDisplayName(config, "done", "Done");
+        const doneDisplay = resolveStatusDisplayName(config, "done", "Done");
 
         const sprints = windowSlice.map((iter) => {
           const iterItems = allItems.filter((item) => {
@@ -1547,14 +1523,14 @@ Args:
   limit    (integer, default 50) — max stories to return
 
 Returns:
-  stories[]              — Story objects, backlog order
-  total_count            — count before limit is applied
-  readiness              — { sprint_ready, in_refinement, future_candidate } counts
+   stories[]              — Story objects, backlog order
+   total_count            — count before limit is applied
+   readiness              — { ready, partially_ready, not_ready } counts
 
 Readiness criteria:
-  sprint_ready      = has story_points > 0 AND at least one AC checkbox in body AND has priority
-  in_refinement     = has at least one of the three
-  future_candidate  = has none`,
+   ready               = has story_points > 0 AND at least one AC checkbox in body AND has priority
+   partially_ready     = has at least one of the three
+   not_ready           = has none`,
       inputSchema: GetBacklogSchema.shape,
       annotations: {
         readOnlyHint: true,
@@ -1565,14 +1541,7 @@ Readiness criteria:
     },
     async (params: z.infer<typeof GetBacklogSchema>) => {
       try {
-        const { owner, ownerType, projectNumber } = getBootstrapConfig();
-        const config = await loadConfig({
-          github: gh,
-          owner,
-          ownerType,
-          projectNumber,
-          repo: getRepo(),
-        });
+        const { config } = await loadRuntimeConfig();
 
         // Use PaginatedProjectItemFetcher for efficient pagination
         const fetcher = new PaginatedProjectItemFetcher(config, gh, {
@@ -1677,14 +1646,7 @@ and "block" respectively.`,
     },
     async (params: z.infer<typeof GetSprintSchema>) => {
       try {
-        const { owner, ownerType, projectNumber } = getBootstrapConfig();
-        const config = await loadConfig({
-          github: gh,
-          owner,
-          ownerType,
-          projectNumber,
-          repo: getRepo(),
-        });
+        const { config, owner, ownerType } = await loadRuntimeConfig();
 
         const sprintRef = params.sprint ?? "current";
         const iterationId = resolveSprint(sprintRef, config);
@@ -1772,14 +1734,7 @@ Comments include notes posted by scrum_log_impediment (bidirectional impediment 
     },
     async (params: z.infer<typeof GetStorySchema>) => {
       try {
-        const { owner, ownerType, projectNumber } = getBootstrapConfig();
-        const config = await loadConfig({
-          github: gh,
-          owner,
-          ownerType,
-          projectNumber,
-          repo: getRepo(),
-        });
+        const { config } = await loadRuntimeConfig();
 
         const resolved = await resolveStory(params.ref, config, gh);
 
@@ -1866,15 +1821,8 @@ to communicate accuracy caveats to the user before presenting the chart.`,
     },
     async (params: z.infer<typeof GetBurndownSchema>) => {
       try {
-        const { owner, ownerType, projectNumber } = getBootstrapConfig();
+        const { config, owner, ownerType } = await loadRuntimeConfig();
         const repo = getRepo();
-        const config = await loadConfig({
-          github: gh,
-          owner,
-          ownerType,
-          projectNumber,
-          repo,
-        });
 
         // Step 1 — Resolve sprint
         const sprintRef = params.sprint ?? "current";
@@ -1960,15 +1908,8 @@ to communicate accuracy caveats to the user before presenting the chart.`,
     },
     async (params: z.infer<typeof GetTemplateSchema>) => {
       try {
-        const { owner, ownerType, projectNumber } = getBootstrapConfig();
+        const { config, owner } = await loadRuntimeConfig();
         const repo = getRepo();
-        const config = await loadConfig({
-          github: gh,
-          owner,
-          ownerType,
-          projectNumber,
-          repo,
-        });
 
         const path = resolveTemplatePath(config.yml, params.artifact_type);
 

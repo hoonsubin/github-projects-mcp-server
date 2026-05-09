@@ -1,62 +1,39 @@
 # Objects and Data Structures (Ch. 6)
 
-Source: *Clean Code*, Chapter 6 — Robert C. Martin
-
-There is a fundamental tension between **objects** and **data structures** that shapes every
-design decision. Understanding it prevents major architectural mistakes.
-
----
+Understanding the tension between objects and data structures prevents major design mistakes.
 
 ## Data Abstraction
 
-Keep variables **private**. Don't expose them via mindless getters/setters — that just
-makes them public with extra steps, destroying the abstraction.
+Keep variables **private**. Mindless getters/setters just make them public with extra steps, destroying abstraction. Expose *operations*, not storage format.
 
 ```python
 # Bad: exposes implementation — callers know it's stored as x, y
 class Point:
     def get_x(self): return self.x
     def get_y(self): return self.y
-    def set_x(self, x): self.x = x
-    def set_y(self, y): self.y = y
 
-# Good: hides implementation — callers work with abstraction
+# Good: hides implementation — callers work with behavior
 class Point:
     def get_distance_from_origin(self) -> float: ...
-    def get_distance_to(self, other: 'Point') -> float: ...
     def translate(self, delta: Vector) -> 'Point': ...
 ```
 
-**Don't blindly add getters and setters.** Ask: *What operations does this type support?*
-Express those operations, not the storage format.
-
----
-
-## The Objects vs. Data Structures Dichotomy
+## Objects vs. Data Structures
 
 | | Objects | Data Structures |
 |---|---|---|
-| **Exposes** | Behavior (methods), hides data | Data, no meaningful behavior |
-| **Easy to add** | New types (extend/implement) | New functions (all types change together) |
-| **Hard to add** | New functions (all classes must change) | New data structures (all functions must change) |
-| **Examples** | Domain objects, services | DTOs, records, structs, POJOs |
-| **OOP style?** | Yes | No (procedural) |
+| **Exposes** | Behavior (hides data) | Data (no meaningful behavior) |
+| **Easy to add** | New types (polymorphism) | New functions |
+| **Hard to add** | New functions (all classes change) | New types (all functions change) |
+| **Examples** | Domain objects, services | DTOs, records, structs |
 
-**Neither is universally better.** Choose based on what is likely to change:
-- Expect new *types* → use objects (OO polymorphism)
-- Expect new *operations* → use data structures (procedural functions)
-
----
+Choose based on what's likely to change: new *types* → use objects; new *operations* → use data structures.
 
 ## The Law of Demeter
 
 > *"A method should only talk to its immediate friends, not strangers."*
 
-A method `f` of class `C` may only call methods on:
-1. `C` itself
-2. Objects created by `f`
-3. Objects passed as arguments to `f`
-4. Objects held in instance variables of `C`
+A method may only call methods on: itself, objects it created, arguments passed to it, objects held in its instance variables.
 
 ```python
 # Bad: train wreck — navigates through the object graph
@@ -66,39 +43,13 @@ output_dir = context.get_options().get_scratch_dir().get_absolute_path()
 output_dir = context.get_scratch_directory_path()
 ```
 
-Train wrecks (`a.b().c().d()`) are a strong smell that your abstraction is leaking.
-
-**Exception:** Data structures (with no behavior) don't violate Demeter when you navigate their
-fields directly. The rule applies to *objects*.
-
----
+Note: the rule applies to *objects*. Plain data structures (no behavior) are fine to navigate directly.
 
 ## Data Transfer Objects (DTOs)
 
-Pure data structures with public fields and no behavior. Used to move data between layers
-(database ↔ service ↔ API):
+Pure data structures with public fields and no behavior — used to move data between layers. **Do not add business logic to DTOs.** Either it's a DTO (data) or a domain object (behavior) — never a hybrid.
 
-```python
-@dataclass
-class UserRecord:
-    id: int
-    username: str
-    email: str
-    created_at: datetime
-```
-
-**Do not add business logic to DTOs.** If you find yourself doing that, you've created a hybrid —
-the worst of both worlds. Either it's a DTO (data) or it's a domain object (behavior). Not both.
-
----
-
-## Active Record Anti-Pattern
-
-Active Records are DTOs with `save()` and `find()` methods. They are data structures —
-treat them as such. Do **not** add business rule methods to them. Create separate domain
-objects that contain business rules and use the Active Record for persistence only.
-
----
+Active Records (`save()` / `find()` on a DTO) are data structures — treat them as such and keep business rules in separate domain objects.
 
 ## Quick Rules
 
