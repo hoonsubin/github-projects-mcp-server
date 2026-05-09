@@ -306,8 +306,6 @@ It is designed to be used with the `skill/scrum-master-assistant/` agentic skill
 
 To test the functionality of the tools, [this project is managed using itself](https://github.com/users/hoonsubin/projects/5) as the tool.
 
----
-
 ## Tool Surface
 
 This section defines the public MCP interface — the tools an LLM agent can call. It is the stable contract of the project: backend implementations, data types, and storage details may change underneath, but every tool listed here retains the same name, semantic arguments, and return meaning.
@@ -323,15 +321,36 @@ The surface is governed by six rules. Any change that violates one is a breaking
 5. **The MCP is amoral.** It does not enforce Definition of Ready, Definition of Done, sprint-injection policy, or any other Scrum judgement. Those live in the agent skill. If the agent asks the MCP to assign an unrefined item to a sprint, the MCP complies. The skill is responsible for not asking.
 6. **Artifact reads, not insight derivation.** Read tools expose the state of Scrum artifacts. They do not pre-compute reports, metrics, or recommendations. Velocity, burndown, throughput, predictability, and all other derived insights are **agent capabilities** — the agent reasons over raw artifact data to produce them. The server returns observable facts; the agent interprets them.
 
+### System Layers
+
+```mermaid
+flowchart TD
+    subgraph FRAMEWORK["FRAMEWORK LAYER — src/tools/"]
+        F["MCP tool registration · thin handlers · Zod param parsing\nDepends on: use-case functions, ScrumConfigYml"]
+    end
+
+    subgraph USECASE["USE-CASE LAYER — src/scrum/ + src/domain/"]
+        U["Scrum orchestration · domain rules · pure computation\nDepends on: ProjectBackend interface, domain types"]
+        PORT["«interface» ProjectBackend  (src/scrum/ports.ts)\nThe only crossing point between use cases and backends"]
+    end
+
+    subgraph ADAPTER["ADAPTER LAYER — src/adapters/github/"]
+        A["GitHubProjectBackend implements ProjectBackend\nAll GraphQL queries · field-ID resolution · raw type mapping\nDepends on: ProjectBackend interface + domain types + services"]
+    end
+
+    FRAMEWORK -->|"calls use-case functions"| USECASE
+    USECASE -->|"implements ↑  (Dependency Inversion)"| ADAPTER
+```
+
 ### Tool surface layers
 
-The twelve tools in this surface occupy three distinct conceptual layers. Understanding the layers is the fastest way to see why a proposed new tool does or does not belong here.
+The thirteen tools in this surface occupy three distinct conceptual layers. Understanding the layers is the fastest way to see why a proposed new tool does or does not belong here.
 
 **Layer 1 — Artifact readers.** These tools return the current state of a Scrum primitive: the Product Backlog, the Sprint Backlog, a single Story, or the platform's current state and declared vocabulary. They make no assumptions about what the agent will do with the data. `scrum_get_template` also belongs here — it fetches the raw content of a project-configured artifact template from the repo, or returns a signal instructing the agent to fall back to its skill-level default. The server never applies or interprets templates; it only retrieves them.
 
 **Layer 2 — Artifact mutators.** These tools change the state of Scrum artifacts: creating stories, moving them between sprints, updating fields, logging impediments. Each mutation is one complete Scrum operation. `scrum_add_vocabulary` is a lightweight exception — it mutates the platform schema (adding a field option or label) rather than a story, but belongs here because the agent calls it autonomously in response to a detected vocabulary gap, without human involvement.
 
-**Layer 3 — Sprint history.** `scrum_get_history` is the one read tool that spans time rather than returning a single snapshot. It exposes raw completed-sprint data so the agent can derive any time-based insight it needs — velocity trends, throughput, predictability index, sprint goal achievement rate — without the server deciding which metric matters.
+**Layer 3 — Sprint history and burndown.** `scrum_get_history` and `scrum_get_burndown` are the two read tools that span time rather than returning a single snapshot. `scrum_get_history` exposes raw completed-sprint data so the agent can derive any time-based insight it needs — velocity trends, throughput, predictability index, sprint goal achievement rate — without the server deciding which metric matters. `scrum_get_burndown` exposes the day-by-day completion series for one sprint so the agent can render or describe a burndown without recomputing it from raw event data.
 
 Ceremony records (standup logs, retro entries, review feedback) are **not** a layer of this surface. They are documents the agent produces and stores in the team's chosen ceremony backend — a file, a wiki page, a discussion thread — outside the MCP's scope. Attaching ceremony records to individual stories as comments is an anti-pattern: it pollutes the story audit trail and breaks when the backend changes.
 
@@ -459,6 +478,29 @@ Returns raw data for the last N completed sprints so the agent can derive any ti
 **Notes:** This tool exposes facts. The agent derives insights from them: velocity (average `completed_points` over the window), throughput (average `completed_count`), predictability (fraction of sprints where goal was achieved), type breakdown, epic-level trends, and anything else the conversation demands. The MCP does not pre-select which metric matters — that is the agent's job. A backend only needs to support queryable completed-sprint item state to implement this tool.
 
 **Does not:** compute averages, project future velocity, surface per-member throughput, or return current-sprint data (use `scrum_get_sprint` for that).
+
+---
+
+#### `scrum_get_burndown`
+
+Returns a day-by-day burndown chart for one sprint: the actual remaining-points series, the ideal straight-line projection, and a per-story completion breakdown.
+
+**Arguments:**
+
+- `sprint` (optional, `SprintRef`): defaults to `"current"`. Pass an explicit sprint name to retrieve burndown for a past sprint. Burndown does not apply to the backlog; `null` is not a valid value.
+
+**Returns:** an object with:
+
+- `sprint` — `{ name, start_date, end_date, duration_days, days_remaining }`.
+- `data_source` — `"audit_log"` or `"issue_close_proxy"`. Indicates how completion timestamps were determined: `"audit_log"` means the GitHub Enterprise Audit Log was used (precise field-change timestamps); `"issue_close_proxy"` means issue-close events were used as a proxy (accurate only if issues are closed at the same moment they are moved to Done).
+- `warning` (optional) — present when `data_source` is `"issue_close_proxy"`. The agent must surface this caveat to the human before presenting the chart.
+- `series[]` — actual burndown: `{ date, remaining_points, completed_points }`, one entry per calendar day of the sprint.
+- `ideal[]` — ideal burndown line: `{ date, remaining_points }`, one entry per calendar day from sprint start (total committed points) to sprint end (zero).
+- `stories[]` — per-story summary: `{ number, title, points, status, completed_at }`. `completed_at` is `null` for stories not yet done.
+
+**Notes:** The series and ideal data are observable facts derived from platform event timestamps, not agent-computed projections. The agent uses this data to render or describe a burndown without recomputing it from raw events. When `data_source` is `"issue_close_proxy"`, the agent should communicate the accuracy caveat to the human before presenting the chart — the `warning` field contains the recommended message.
+
+**Does not:** compute velocity, project remaining work beyond the sprint end date, or return burndown for the backlog.
 
 ---
 
@@ -610,7 +652,7 @@ Idempotent addition of a vocabulary entry to the platform schema. Called by the 
 
 ### What this surface deliberately does NOT include
 
-The full Scrum domain (see the ER diagram above) is much richer than these twelve tools. The omissions are intentional.
+The full Scrum domain (see the ER diagram above) is much richer than these thirteen tools. The omissions are intentional.
 
 **Default artifact templates.** Built-in template content for ceremony documents — sprint review write-ups, retro boards, standup summaries, planning notes — is not embedded in the server. Default templates are the agent's domain. They live in the scrum-agile-assistant skill and are adapted to the target output platform at the moment the agent produces an artifact. The server provides only `scrum_get_template`, a thin fetch mechanism for project-specific custom templates the team has checked into their repo. This keeps the server output-platform-agnostic: it has no knowledge of whether the artifact will be written to a GitHub Discussion, a Notion page, or a Slack canvas.
 
@@ -618,7 +660,7 @@ The full Scrum domain (see the ER diagram above) is much richer than these twelv
 
 **Sprint creation and closure.** Creating new sprint iterations and formally closing completed ones are administrative one-shots performed by the human in the platform UI. The boundary is intentional: the decision to start or end a sprint involves a ceremony (planning meeting, sprint review) that the human and agent conduct together — the MCP records the outcomes, it does not drive the ceremony clock. Structural field provisioning (creating a brand-new project field from scratch) also requires human action; `scrum_add_vocabulary` handles only incremental vocabulary extension on fields that already exist.
 
-**Derived insight tools** (burndown timeseries, velocity averages, throughput, predictability). The agent derives all time-based insights from `scrum_get_history` data. The MCP does not pre-select which metrics matter or bake in a definition of "done" for computational purposes. A burndown chart is the agent reasoning about snapshots; the server's job is to provide reliable snapshots.
+**Derived insight tools** (velocity averages, throughput, predictability). The agent derives all summary insights from `scrum_get_history` data. The MCP does not pre-select which metrics matter. `scrum_get_burndown` is the deliberate exception: it exposes the day-by-day remaining-points series and ideal line for one sprint as observable facts (drawn from platform event timestamps), but velocity, throughput, predictability, and all other multi-sprint aggregations remain agent-derived from raw history data.
 
 **Acceptance criteria as a separate entity.** AC lives inside the Story body as a markdown checklist. `scrum_get_story` parses it for convenience; writes go through `scrum_update_story` against the body.
 
@@ -721,8 +763,8 @@ Every other workflow this server supports — sprint planning, daily standup, sp
 
 The reason this division matters: the system survives change in three independent dimensions.
 
-- **Backend changes.** Swapping GitHub for Notion or Trello replaces only the implementations behind the ten tools. The agent skill, the Scrum vocabulary, and the human's interactions are unchanged.
+- **Backend changes.** Swapping GitHub for Notion or Trello replaces only the implementations behind the eleven tools. The agent skill, the Scrum vocabulary, and the human's interactions are unchanged.
 - **Skill changes.** Improving the agent's coaching, adding new ceremony formats, or supporting new derived insights is a skill-file edit. The MCP does not need a release.
 - **Domain changes.** If a future Scrum dialect needs new fields (say, a "confidence" rating on estimates), the team adds it as a custom field in the backend, declares it in `config.yml`, and the agent reads it from the Story body or from `scrum_get_config`. The tool surface does not grow.
 
-The twelve tools are the contract. Everything else is a moving part.
+The thirteen tools are the contract. Everything else is a moving part.
