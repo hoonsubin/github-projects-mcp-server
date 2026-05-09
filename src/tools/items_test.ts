@@ -695,7 +695,7 @@ Deno.test("github_archive_project_item - archive: returns 'archived' confirmatio
 Deno.test("github_archive_project_item - unarchive: returns 'unarchived' confirmation", async () => {
   Deno.env.set("GITHUB_TOKEN", "test-token");
   const restore = mockFetch({
-    archiveProjectV2Item: { item: { id: "PVTI_1", isArchived: false } },
+    unarchiveProjectV2Item: { item: { id: "PVTI_1", isArchived: false } },
   });
   try {
     const client = await makeTestClient();
