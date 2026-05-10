@@ -1,13 +1,12 @@
 ---
 name: clean-architecture
 description: >-
-  System and software architecting skill grounded in Robert C. Martin's Clean
-  Architecture. Use when planning a new project, designing module structure,
+  System and software architecting skill. Use when planning a new project, designing module structure,
   drawing layer/component boundaries, evaluating an existing codebase,
   refactoring a "big ball of mud", applying SOLID, or reasoning about dependency
   direction. Trigger on: "where should this go", "how do I structure this",
   "hard to change", "decouple X from Y", "starting a new project",
-  "refactoring", "this is a mess", "design review". Works across any tech stack
+  "refactoring", "house cleaning", "design review". Works across any tech stack
   or domain.
 ---
 

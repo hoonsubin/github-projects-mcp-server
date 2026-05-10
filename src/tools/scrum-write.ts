@@ -52,7 +52,16 @@ export function registerScrumWriteTools(
     {
       title: "Add Vocabulary Entry",
       description:
-        "Idempotently add a status option, priority option, or label to the project board schema.",
+        "Idempotently add a new option to an existing board field, or a new repo label.\n\n" +
+        "IMPORTANT CONSTRAINT: this tool can only add options to fields that already exist " +
+        "(status, priority). It cannot create new project fields — that requires a human to " +
+        "act in the GitHub Projects UI.\n\n" +
+        "Use this when scrum_set_field or scrum_create_story fails because a vocabulary value " +
+        "is not found. Call scrum_orient first to see what values already exist before adding duplicates.\n\n" +
+        "Args:\n" +
+        '  kind   "status_option" | "priority_option" | "label"\n' +
+        '  value  display name to add (e.g. "Blocked", "Critical", "tech_debt")\n\n' +
+        "Safe to call if the value already exists — operation is idempotent.",
       inputSchema: AddVocabularySchema.shape,
       annotations: { role: "admin" },
     },
@@ -87,7 +96,20 @@ export function registerScrumWriteTools(
     {
       title: "Set Board Field",
       description:
-        "Set a single board field (status, sprint, story_points, priority, assignee) on a story.",
+        "Set a single board field on a story. The primary write primitive — use this to move " +
+        "stories across the board, assign sprints, set points, and update priority or assignee.\n\n" +
+        "Call scrum_get_story first if you need to read the current value before overwriting.\n\n" +
+        "Args:\n" +
+        "  ref    { number: integer } | { id: string } — story to update\n" +
+        '  field  one of: "status" | "sprint" | "story_points" | "priority" | "assignee"\n' +
+        "  value  shape depends on field:\n" +
+        '           status        → string display name (e.g. "In Progress", "Done")\n' +
+        '           sprint        → "current" | "next" | "<sprint-name>" | null  (null clears)\n' +
+        "           story_points  → number (e.g. 3, 5, 8)\n" +
+        '           priority      → string display name (e.g. "Must", "Should")\n' +
+        '           assignee      → GitHub login string (e.g. "hoonsubin")\n' +
+        "         Pass null for any field to clear the value entirely.\n\n" +
+        "Returns: updated Story object.",
       inputSchema: SetFieldSchema.shape,
       annotations: { role: "admin" },
     },
@@ -116,7 +138,20 @@ export function registerScrumWriteTools(
     "scrum_update_story",
     {
       title: "Update Story",
-      description: "Update story content (title, body, labels, assignees, epic).",
+      description:
+        "Edit the content fields of a story: title, body, labels, assignees, or epic. " +
+        "For board fields (status, sprint, story_points, priority, assignee) use scrum_set_field.\n\n" +
+        "WARNING — labels and assignees REPLACE the full existing set, they do not append. " +
+        "Call scrum_get_story first if you want to add a label without removing existing ones. " +
+        "body also replaces the entire body — read first if you intend to append.\n\n" +
+        "Args:\n" +
+        "  ref        { number: integer } | { id: string } — story to update\n" +
+        "  title      string — new title (omit to leave unchanged)\n" +
+        "  body       string — replacement markdown body (omit to leave unchanged)\n" +
+        "  labels     string[] — REPLACES all existing labels (omit to leave unchanged)\n" +
+        "  assignees  string[] — REPLACES all existing assignees, GitHub logins (omit to leave unchanged)\n" +
+        "  epic       string | null — Milestone title to assign to; null detaches from epic (omit to leave unchanged)\n\n" +
+        "Returns: updated Story object.",
       inputSchema: UpdateStorySchema.shape,
       annotations: { role: "admin" },
     },
@@ -153,7 +188,22 @@ export function registerScrumWriteTools(
     "scrum_create_story",
     {
       title: "Create Story",
-      description: "Create a story and optionally place it on the board in one call.",
+      description:
+        "Create a new story (GitHub Issue) and optionally place it on the board in one call.\n\n" +
+        "Board fields (sprint, story_points, priority) are applied after creation. If a board " +
+        "field fails, the story is still created — check the 'partialFailure' field in the response.\n\n" +
+        "Args:\n" +
+        "  title        string (required) — concise one-sentence title\n" +
+        "  body         string (required) — full markdown body; use user-story format + AC checklist\n" +
+        '  type         "feature" | "bug" | "tech_debt" | "spike"\n' +
+        "               NOTE: for impediments use scrum_log_impediment, not type:\"impediment\"\n" +
+        '  priority     string — vocabulary display name (e.g. "Must"); call scrum_orient for valid values\n' +
+        "  story_points number — Fibonacci estimate (1, 2, 3, 5, 8, 13)\n" +
+        "  labels       string[] — additional labels; type labels are added automatically\n" +
+        "  epic         string — Milestone title; created if not found\n" +
+        "  assignees    string[] — GitHub logins\n" +
+        '  sprint       "current" | "next" | "<sprint-name>" — places on board; omit for backlog\n\n' +
+        "Returns: created Story object, or partial-failure shape { story, partialFailure: true, failedFields[] }.",
       inputSchema: CreateStorySchema.shape,
       annotations: { role: "admin" },
     },
@@ -224,7 +274,17 @@ export function registerScrumWriteTools(
     {
       title: "Plan Sprint",
       description:
-        "Bulk-assign stories to a sprint with optional replace mode. Returns partial-success report.",
+        "Bulk-assign stories to a sprint. More efficient than calling scrum_set_field per story " +
+        "when planning a sprint or moving multiple items at once.\n\n" +
+        "Args:\n" +
+        '  sprint   "current" | "next" | "<sprint-name>" — target sprint\n' +
+        "  stories  StoryRef[] (min 1) — each entry needs at least number or id\n" +
+        "  replace  boolean, default false\n" +
+        "           false = add the listed stories; existing sprint items are untouched\n" +
+        "           true  = CLEAR all current sprint stories first, then assign the list\n" +
+        "                   Use with caution — replace:true removes any story not in your list.\n\n" +
+        "Returns: { sprint, assigned: StoryRef[], skipped: [{ ref, reason }] }\n" +
+        "The operation continues through individual failures — check skipped[] for errors.",
       inputSchema: PlanSprintSchema.shape,
       annotations: { role: "admin" },
     },
@@ -281,7 +341,17 @@ export function registerScrumWriteTools(
     {
       title: "Log Impediment",
       description:
-        "Create an impediment story linked to the affected story and add a comment to both.",
+        "Log a blocking impediment: creates a spike story tagged 'impediment', posts a warning " +
+        "comment on the affected story, and cross-links the two stories.\n\n" +
+        "Use this instead of scrum_create_story when logging something that blocks another story. " +
+        "The impediment will appear in scrum_get_backlog results filterable by the 'impediment' label.\n\n" +
+        "Args:\n" +
+        "  description  string (required) — full description of the blocker; becomes the story body\n" +
+        "               and the comment posted to the affected story\n" +
+        "  affects      { number } | { id } — the story being blocked (required)\n" +
+        "  raised_by    string — GitHub login of the person raising it; defaults to Scrum Master\n" +
+        '  priority     string — vocabulary display name (e.g. "Must"); defaults to highest tier\n\n' +
+        "Returns: the created impediment Story object.",
       inputSchema: LogImpedimentSchema.shape,
       annotations: { role: "admin" },
     },

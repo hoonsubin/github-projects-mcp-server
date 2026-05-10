@@ -191,7 +191,7 @@ classDiagram
         interface BurndownStory
         type ArtifactType
         type TemplateResponse
-        %% Unused: ScrumField, StoryType, PageInfo, DefinitionCriteria, ItemContentType, ProjectV2ItemFieldValue, LinkedContentBase, ProjectV2IssueContent, ProjectV2PRContent, ProjectV2DraftIssueContent, ProjectsV2Connection, UserProjectsData, OrgProjectsData, SingleProjectData, ProjectItemsData, AddProjectItemData, AddDraftIssueData, UpdateProjectItemFieldData, DeleteProjectItemData, ArchiveProjectItemData, UpdateProjectData, PriorityTier, StatusSemantics, GitHubBackendConfig, SprintIteration, BoardConfig, GhFieldBase, GhSingleSelectOption, GhSingleSelectField, GhIterationConfig, GhIterationField, GhField, GhProjectResponse, MergedScrumConfig, ResolvedScrumFields, IterationVelocity, SprintStatusResult, BulkUpdateResult, SprintHistoryResponse, SprintSnapshot, SprintStory, SprintSummary, GetBacklogResult, BurndownResponse, BurndownSprintMeta, BurndownDayPoint, IdealDayPoint, BurndownStory
+        %% Unused: ScrumField, StoryType, PageInfo, DefinitionCriteria, ItemContentType, ProjectV2ItemFieldValue, LinkedContentBase, ProjectV2IssueContent, ProjectV2PRContent, ProjectV2DraftIssueContent, ProjectsV2Connection, UserProjectsData, OrgProjectsData, SingleProjectData, ProjectItemsData, AddProjectItemData, AddDraftIssueData, UpdateProjectItemFieldData, DeleteProjectItemData, ArchiveProjectItemData, UpdateProjectData, PriorityTier, StatusSemantics, SprintIteration, BoardConfig, GhFieldBase, GhSingleSelectOption, GhSingleSelectField, GhIterationConfig, GhIterationField, GhField, GhProjectResponse, MergedScrumConfig, ResolvedScrumFields, IterationVelocity, SprintStatusResult, BulkUpdateResult, SprintHistoryResponse, SprintSnapshot, SprintStory, SprintSummary, GetBacklogResult, BurndownResponse, BurndownSprintMeta, BurndownDayPoint, IdealDayPoint, BurndownStory
     }
 
     class Queries:::github {
@@ -491,7 +491,6 @@ The following exports are never imported by any other module in the codebase:
 | [`types.ts`](../src/types.ts)                                                       | `UpdateProjectData`          | `interface` |
 | [`types.ts`](../src/types.ts)                                                       | `PriorityTier`               | `interface` |
 | [`types.ts`](../src/types.ts)                                                       | `StatusSemantics`            | `interface` |
-| [`types.ts`](../src/types.ts)                                                       | `GitHubBackendConfig`        | `interface` |
 | [`types.ts`](../src/types.ts)                                                       | `SprintIteration`            | `interface` |
 | [`types.ts`](../src/types.ts)                                                       | `BoardConfig`                | `interface` |
 | [`types.ts`](../src/types.ts)                                                       | `GhFieldBase`                | `interface` |

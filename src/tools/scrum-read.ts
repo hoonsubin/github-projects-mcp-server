@@ -42,10 +42,13 @@ export const registerScrumReadTools = (
     {
       title: "Orient to Project",
       description:
-        `Return the current platform state and declared Scrum vocabulary for this project.\n\n` +
-        `No arguments required. Call this first when connecting to a new project.\n\n` +
-        `Returns platform_state and declared_vocabulary sections.`,
-      inputSchema: z.object({}).strict().shape,
+        `Entry point — call this FIRST when connecting to a project or starting any workflow.\n\n` +
+        `Returns the current platform state (active sprint dates, field IDs, iteration list) ` +
+        `and the declared Scrum vocabulary for this project (status options, priority tiers, ` +
+        `sprint names). The vocabulary values returned here are the exact strings you must ` +
+        `pass to write tools — they are project-specific and cannot be guessed.\n\n` +
+        `No arguments required. Pass {} or omit arguments entirely.`,
+      inputSchema: z.object({ _: z.string().optional() }).shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -69,8 +72,14 @@ export const registerScrumReadTools = (
     "scrum_get_history",
     {
       title: "Get Sprint History",
-      description: `Return raw sprint snapshots for the last N completed sprints.\n\n` +
-        `Args: window (integer 1-10, default 5) — how many completed sprints to include.`,
+      description:
+        `Return raw sprint snapshots for the last N completed sprints.\n\n` +
+        `Use for velocity calculations, retrospective prep, and trend analysis. ` +
+        `Each snapshot includes sprint dates, committed vs. completed story points, ` +
+        `and per-story outcomes.\n\n` +
+        `Args:\n` +
+        `  window  integer 1–10, default 5 — how many completed sprints to look back\n\n` +
+        `Returns: array of sprint snapshots ordered newest-first.`,
       inputSchema: GetHistorySchema.shape,
       annotations: {
         readOnlyHint: true,
@@ -95,8 +104,18 @@ export const registerScrumReadTools = (
     "scrum_get_backlog",
     {
       title: "Get Product Backlog",
-      description: `Return all stories not yet assigned to any sprint (the backlog).\n\n` +
-        `Args: search, labels, priority, epic, limit.`,
+      description:
+        `Return all stories not yet assigned to any sprint (the product backlog).\n\n` +
+        `All filter arguments are optional and combinable. Results are sorted by priority ` +
+        `descending, then story number ascending.\n\n` +
+        `Args:\n` +
+        `  search    string — case-insensitive substring match on title + body\n` +
+        `  labels    string[] — include only stories carrying ALL of these labels\n` +
+        `  priority  string — vocabulary display name, e.g. "Must" (from scrum_orient)\n` +
+        `  epic      string — Milestone title (exact match)\n` +
+        `  limit     integer > 0, default 50\n\n` +
+        `Returns: array of Story objects. Each story has ref.id and ref.number ` +
+        `for use in subsequent write calls.`,
       inputSchema: GetBacklogSchema.shape,
       annotations: {
         readOnlyHint: true,
@@ -123,7 +142,11 @@ export const registerScrumReadTools = (
       title: "Get Sprint Board",
       description:
         `Return the sprint board: all stories for a sprint, grouped by status with point totals.\n\n` +
-        `Args: sprint ("current"|"next"|null|sprint-name, optional, default "current").`,
+        `Args:\n` +
+        `  sprint  "current" | "next" | "<sprint-name>" | null — defaults to "current"\n` +
+        `          Use scrum_orient to see the list of valid sprint names.\n\n` +
+        `Returns: sprint metadata (dates, totals) plus per-status groups. ` +
+        `Each story carries ref.id and ref.number for use in write calls.`,
       inputSchema: GetSprintSchema.shape,
       annotations: {
         readOnlyHint: true,
@@ -149,8 +172,14 @@ export const registerScrumReadTools = (
     {
       title: "Get Story Details",
       description:
-        `Return full details for a single story: content, board fields, comments, linked PRs, and AC.\n\n` +
-        `Args: ref — { number: int } or { id: string }.`,
+        `Return full details for a single story: content, all board fields, comments, ` +
+        `linked PRs, and acceptance criteria.\n\n` +
+        `Args:\n` +
+        `  ref  { number: integer } | { id: string } | { number, id }\n` +
+        `       At least one of number or id is required.\n` +
+        `       number = visible issue number (e.g. 42)\n` +
+        `       id = opaque board item ID from a previous tool response\n\n` +
+        `Returns: Story object with full body, comments array, and linked PR list.`,
       inputSchema: GetStorySchema.shape,
       annotations: {
         readOnlyHint: true,
@@ -175,8 +204,14 @@ export const registerScrumReadTools = (
     "scrum_get_burndown",
     {
       title: "Get Sprint Burndown",
-      description: `Return a day-by-day burndown chart for a sprint.\n\n` +
-        `Args: sprint ("current"|"next"|null|sprint-name, optional, default "current").`,
+      description:
+        `Return a day-by-day burndown chart for a sprint.\n\n` +
+        `Completion timestamps are sourced from the GitHub audit log (org accounts) or ` +
+        `inferred from issue close events (user accounts). When falling back to the ` +
+        `issue-close proxy a "warning" field is included in the response.\n\n` +
+        `Args:\n` +
+        `  sprint  "current" | "next" | "<sprint-name>" — defaults to "current"\n\n` +
+        `Returns: sprint date range, per-day remaining-points series, and completion events.`,
       inputSchema: GetBurndownSchema.shape,
       annotations: {
         readOnlyHint: true,
@@ -201,8 +236,17 @@ export const registerScrumReadTools = (
     "scrum_get_template",
     {
       title: "Get Ceremony Template",
-      description: `Fetch a ceremony artifact template by type.\n\n` +
-        `Args: artifact_type — one of: sprint_review, retrospective, standup, sprint_planning, refinement.`,
+      description:
+        `Fetch a Scrum ceremony artifact template by type.\n\n` +
+        `Returns a markdown template pre-populated with sprint context. Fill in the ` +
+        `blank sections before presenting to the team.\n\n` +
+        `Args:\n` +
+        `  artifact_type  one of:\n` +
+        `    "sprint_review"   — demo and stakeholder feedback template\n` +
+        `    "retrospective"   — what went well / delta / actions template\n` +
+        `    "standup"         — daily sync format\n` +
+        `    "sprint_planning" — capacity and commitment planning template\n` +
+        `    "refinement"      — backlog grooming and estimation template`,
       inputSchema: GetTemplateSchema.shape,
       annotations: {
         readOnlyHint: true,

@@ -311,18 +311,21 @@ export class GitHubProjectBackend implements ProjectBackend {
     const nodeIdToNumber = new Map(
       input.stories.map((s) => [s.number, s.number]), // already has number
     );
-    try {
-      const completions = await this.fetchAuditLogCompletions(
-        nodeIdToNumber,
-        new Date(input.sprint.startDate),
-        new Date(input.sprint.endDate),
-        this.owner,
-        doneStatusName,
-        statusFieldName,
-      );
-      return { completions, dataSource: "audit_log" };
-    } catch (err) {
-      if (!(err instanceof GitHubApiError) || err.statusCode !== 403) throw err;
+    if (this.ownerType === "org") {
+      try {
+        const completions = await this.fetchAuditLogCompletions(
+          nodeIdToNumber,
+          new Date(input.sprint.startDate),
+          new Date(input.sprint.endDate),
+          this.owner,
+          doneStatusName,
+          statusFieldName,
+        );
+        return { completions, dataSource: "audit_log" };
+      } catch (err) {
+        if (!(err instanceof GitHubApiError) || err.statusCode !== 403) throw err;
+        // 403 = org audit log disabled; fall through to issue-close proxy
+      }
     }
     const completions = await this.fetchIssueCloseCompletions(input.stories, input.sprint);
     return {

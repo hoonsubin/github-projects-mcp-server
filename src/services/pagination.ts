@@ -283,9 +283,6 @@ export class PaginatedProjectItemFetcher {
     this.projectNumber = gh.project_number;
     this.ownerType = gh.owner_type;
     this.query = buildItemsQuery(this.ownerType, this.options);
-
-    // Fetch first page immediately
-    this._fetchPage();
   }
 
   /** Get total item count from the first page response. */
