@@ -1,8 +1,7 @@
 ---
 name: clean-code-assistant
 description: >-
-  Expert coding assistant grounded in Robert C. Martin's Clean Code. Use when
-  writing new code, reviewing or refactoring existing code, naming variables/
+  Expert coding assistant. Use when writing new code, reviewing or refactoring existing code, naming variables/
   functions/classes, designing class structures, handling errors, or writing
   tests. Trigger on: "is this clean?", "how do I improve this?", code pasted for
   feedback, "this is a mess", "can you clean this up", "what's wrong with my
@@ -12,7 +11,7 @@ description: >-
 
 # Clean Code Assistant
 
-Grounded in Robert C. Martin's *Clean Code*. Core rule: **code is read far more than it is written (>10:1) — every decision optimizes for the reader.**
+Core rule: **code is read far more than it is written — every decision optimizes for the reader.**
 
 ---
 

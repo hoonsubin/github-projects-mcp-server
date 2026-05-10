@@ -78,7 +78,11 @@ export interface IterationEntry {
   duration: number;
 }
 
-/** A versioned definition checklist (DoR and DoD share this shape). */
+/**
+ * @deprecated — DoR and DoD are now plain string[] in ScrumConfigYml.
+ * Retained temporarily to avoid breaking any remaining references.
+ * Remove in Phase 4 cleanup.
+ */
 export interface DefinitionCriteria {
   version: string;
   last_updated: string;
@@ -277,84 +281,116 @@ export interface UpdateProjectData {
 
 // ── SCRUM config types ────────────────────────────────────────────────────────
 
-/** Shape of scrum.config.yml (human-defined sections only). */
+/**
+ * One canonical priority tier. The ordered position in the array (index 0 =
+ * highest) defines relative urgency. The agent reasons in these keys; each
+ * backend maps them to its own display labels via priority_display.
+ */
+export interface PriorityTier {
+  key: string; // e.g. "p0", "p1", "p2", "p3"
+}
+
+/**
+ * Semantic metadata for a single canonical workflow state.
+ * terminal — counts as "done" for velocity and burndown (exactly one should be true).
+ * blocking — indicates the story is impeding sprint flow; used for impediment
+ *            inference when explicit dependency link data is unavailable.
+ */
+export interface StatusSemantics {
+  terminal: boolean;
+  blocking: boolean;
+}
+
+/**
+ * GitHub-specific backend configuration.
+ * All values here are platform-specific — the use-case layer never reads this directly.
+ * Auth values are $ENV_VAR references resolved by the config loader at startup.
+ */
+export interface GitHubBackendConfig {
+  auth: {
+    token: string; // resolved from $GITHUB_TOKEN or literal value
+  };
+  owner: string;
+  owner_type: "user" | "org";
+  project_number: number;
+  tracked_repos: string[];
+  /** Platform identity for team members. `ref` cross-references project.team[].name. */
+  team?: Array<{
+    ref: string;
+    login: string;
+  }>;
+  /** Maps canonical Scrum field names to exact GitHub project field names. */
+  field_mapping: {
+    sprint: string; // REQUIRED — ITERATION type field
+    status: string; // REQUIRED — SINGLE_SELECT type field
+    story_points?: string; // optional — NUMBER type field
+    priority?: string; // optional — SINGLE_SELECT type field
+    [key: string]: string | undefined;
+  };
+  /** Maps canonical status keys → exact GitHub single-select option names. */
+  status_display: Record<string, string>;
+  /** Maps canonical priority keys → exact GitHub single-select option names. */
+  priority_display: Record<string, string>;
+}
+
+/** Top-level shape of .github/scrum/config.yml. */
 export interface ScrumConfigYml {
+  /** Platform-agnostic project identity, agent behaviour, and team roster. */
   project: {
-    owner: string;
-    /** "user" for personal accounts, "org" for organisations. */
-    owner_type: "user" | "org";
-    project_number: number;
-  };
-  product?: {
     name: string;
-    vision: string;
-    product_goal: string;
-  };
-  team?: {
-    product_owner: { name: string; contact: string };
-    members: Array<{
-      login: string;
+    agent?: {
+      name?: string;
+      autonomy?: {
+        level: "conservative" | "standard" | "full";
+        require_confirmation_above_n_items?: number;
+      };
+    };
+    team?: Array<{
       name: string;
-      scrum_master_sprint: number;
+      role: "scrum_master" | "product_owner" | "developer";
+      contact?: string;
     }>;
-    supervisor: { name: string; contact: string; report_recipient: boolean };
   };
-  sprint_goal?: {
-    field_name: string | null;
-    required: boolean;
-    format: string;
+
+  /** Platform-neutral Scrum taxonomy — consumed by use-case layer and agent. */
+  scrum: {
+    sprint?: {
+      length_weeks?: number;
+      start_day?: string;
+      story_point_scale?: string;
+      story_point_values?: number[];
+      velocity_window?: number;
+      carry_over_threshold_days?: number;
+    };
+    /** Ordered highest→lowest. p0 is most urgent. */
+    priority: PriorityTier[];
+    /** Canonical workflow states with semantic metadata. */
+    status: Record<string, StatusSemantics>;
   };
-  // field_names maps Scrum concepts to the actual field names used in this project's board.
-  // loadConfig (Phase 1, step 3) resolves these strings to GitHub field IDs at call time
-  // via RuntimeConfig.fields — no static binding needed.
-  field_names: {
-    sprint: string;
-    status: string;
-    story_points: string;
-    priority: string;
-    epic: string;
-    item_type: string;
-    assignee: string;
-    impediment: string;
-    [key: string]: string;
-  };
-  item_id?: {
-    user_story_prefix: string;
-    task_prefix: string;
-    commit_format: string;
-  };
-  epics?: Array<{ id: string; title: string; priority: string }>;
-  story_points?: {
-    method?: string;
-    scale?: number[];
-    max_points_per_item?: number;
-  };
-  sprint?: {
-    duration_days: number | null;
-    velocity_window?: number;
-    carry_over_threshold_days?: number;
-    report_submit_time?: string;
-    report_recipient?: string | null;
-    story_point_scale?: string;
-    story_point_values?: number[];
-    length_weeks?: number;
-    start_day?: string;
-  };
-  impediment?: {
-    escalation_threshold_days?: number;
-  };
-  autonomy?: {
-    level: "conservative" | "standard" | "full";
-    require_confirmation_above_n_items: number;
-  };
-  definition_of_ready?: DefinitionCriteria;
-  definition_of_done?: DefinitionCriteria;
-  /**
-   * Template file paths for each ceremony artifact type.
-   * null means no custom template — the agent should use its built-in default.
-   */
+
+  /** Agent-facing quality gates. Server never enforces these. */
+  definition_of_ready?: string[];
+  definition_of_done?: string[];
+
+  /** Ceremony artifact template paths, or null for agent skill defaults. */
   templates?: Partial<Record<ArtifactType, string | null>>;
-  [key: string]: unknown;
+
+  /** Where the agent writes ceremony documents (outside MCP server scope). */
+  ceremony_records?: {
+    backend: string;
+    discussion_category?: string;
+    issue_label?: string;
+    file_path?: string;
+  };
+
+  /**
+   * Backend adapter configurations, keyed by platform name (e.g. "github").
+   * The agent identifies backends by these keys when routing cross-platform calls.
+   */
+  backends: {
+    github?: GitHubBackendConfig;
+    [key: string]: unknown; // future backends (notion, linear, etc.)
+  };
 }
 
 /**

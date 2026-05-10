@@ -93,6 +93,7 @@ interface RepoLabelsResponse {
 
 // ── GitHubProjectBackend ──────────────────────────────────────────────────────
 
+//todo: this class is way too massive. It should be broken down even further and separate reusable logic outside of the class
 export class GitHubProjectBackend implements ProjectBackend {
   private readonly config: RuntimeConfig;
   private readonly gh: { graphql: typeof graphql; rest: typeof rest };
@@ -228,7 +229,7 @@ export class GitHubProjectBackend implements ProjectBackend {
     if (windowSlice.length === 0) return [];
     const allItems = await this.fetchAllItems();
     const { sprintFieldId, statusFieldId, storyPointsFieldId } = this.config.fields;
-    const doneDisplay = this.resolveStatusDisplayName("done", "Done");
+    const doneDisplay = this.resolveTerminalStatusDisplayName();
     return windowSlice.map((iter) => {
       const iterItems = allItems.filter((item) => {
         const fv = item.fieldValues.nodes.find((v) => v.field?.id === sprintFieldId);
@@ -305,8 +306,8 @@ export class GitHubProjectBackend implements ProjectBackend {
   }
 
   async resolveCompletionTimestamps(input: BurndownInput): Promise<CompletionMap> {
-    const doneStatusName = this.resolveStatusDisplayName("done", "Done");
-    const statusFieldName = this.config.yml.field_names.status;
+    const doneStatusName = this.resolveTerminalStatusDisplayName();
+    const statusFieldName = this.config.yml.backends.github?.field_mapping.status ?? "Status";
     const nodeIdToNumber = new Map(
       input.stories.map((s) => [s.number, s.number]), // already has number
     );
@@ -347,6 +348,24 @@ export class GitHubProjectBackend implements ProjectBackend {
 
   // ── Private helpers for setField ────────────────────────────────────────────
 
+  /**
+   * Clear a project field value using the dedicated GitHub mutation.
+   * `updateProjectV2ItemFieldValue` does not accept `value: null` — this is the
+   * correct mutation to use when removing a field value entirely.
+   */
+  private async clearField(itemId: string, fieldId: string): Promise<void> {
+    await this.gh.graphql(
+      `mutation ClearField($projectId: ID!, $itemId: ID!, $fieldId: ID!) {
+        clearProjectV2ItemFieldValue(input: {
+          projectId: $projectId
+          itemId: $itemId
+          fieldId: $fieldId
+        }) { item { id } }
+      }`,
+      { projectId: this.config.projectId, itemId, fieldId },
+    );
+  }
+
   private async resolveUserNodeId(login: string): Promise<string> {
     const result = await this.gh.graphql<{ user?: { id: string } }>(
       `query { user(login: "${login}") { id } }`,
@@ -385,19 +404,19 @@ export class GitHubProjectBackend implements ProjectBackend {
     if (found) {
       return found.id;
     }
-    // Create milestone if not found
+    // Create milestone if not found.
+    // GitHub's createMilestone only accepts: repositoryId, title, description, dueOn.
+    // startDate and endDate are not valid fields on this mutation.
     const repositoryId = await this.fetchRepoNodeId();
-    const startDate = new Date().toISOString().slice(0, 10);
-    const endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const createResult = await this.gh.graphql<{
       createMilestone: { milestone: { id: string } };
     }>(
-      `mutation CreateMilestone($repositoryId: ID!, $title: String!, $startDate: Date!, $endDate: Date!) {
-        createMilestone(input: { repositoryId: $repositoryId, title: $title, startDate: $startDate, endDate: $endDate }) {
+      `mutation CreateMilestone($repositoryId: ID!, $title: String!) {
+        createMilestone(input: { repositoryId: $repositoryId, title: $title }) {
           milestone { id }
         }
       }`,
-      { repositoryId, title, startDate, endDate },
+      { repositoryId, title },
     );
     return createResult.createMilestone.milestone.id;
   }
@@ -648,18 +667,13 @@ export class GitHubProjectBackend implements ProjectBackend {
   }
 
   async addComment(ref: StoryRef, body: string): Promise<void> {
-    // Validate ref exists by resolving it
-    const _resolved = await resolveStory(ref, this.config, { graphql: this.gh.graphql });
-    void _resolved; // Suppress unused warning; resolution validates the ref
-
-    // We need the issue number to post a comment via REST
-    const issueNumber = ref.number;
-    if (!issueNumber) {
-      throw new GitHubApiError("addComment requires a story ref with a number");
-    }
+    // Resolve the ref to get the canonical issue number — works for both
+    // { number } and { id } refs (the resolver fetches the number from GitHub
+    // when only an item ID is provided).
+    const resolved = await resolveStory(ref, this.config, { graphql: this.gh.graphql });
 
     await this.gh.rest(
-      `repos/${this.owner}/${this.repo}/issues/${issueNumber}/comments`,
+      `repos/${this.owner}/${this.repo}/issues/${resolved.issueNumber}/comments`,
       {
         method: "POST",
         body: { body },
@@ -695,15 +709,7 @@ export class GitHubProjectBackend implements ProjectBackend {
     const fieldId = this.config.fields.sprintFieldId;
     if (!fieldId) throw new Error("Sprint field ID is not configured.");
     if (iterationId === null) {
-      await this.gh.graphql(
-        `mutation {
-          updateProjectV2ItemFieldValue(input: {
-            itemId: "${itemId}"
-            fieldId: "${fieldId}"
-            value: null
-          }) { item { id } }
-        }`,
-      );
+      await this.clearField(itemId, fieldId);
     } else {
       await this.gh.graphql(
         `mutation {
@@ -721,15 +727,7 @@ export class GitHubProjectBackend implements ProjectBackend {
     const fieldId = this.config.fields.storyPointsFieldId;
     if (!fieldId) throw new Error("Story points field ID is not configured.");
     if (value === null) {
-      await this.gh.graphql(
-        `mutation {
-          updateProjectV2ItemFieldValue(input: {
-            itemId: "${itemId}"
-            fieldId: "${fieldId}"
-            value: null
-          }) { item { id } }
-        }`,
-      );
+      await this.clearField(itemId, fieldId);
     } else {
       await this.gh.graphql(
         `mutation {
@@ -747,15 +745,7 @@ export class GitHubProjectBackend implements ProjectBackend {
     const fieldId = this.config.fields.priorityFieldId;
     if (!fieldId) throw new Error("Priority field ID is not configured.");
     if (value === null) {
-      await this.gh.graphql(
-        `mutation {
-          updateProjectV2ItemFieldValue(input: {
-            itemId: "${itemId}"
-            fieldId: "${fieldId}"
-            value: null
-          }) { item { id } }
-        }`,
-      );
+      await this.clearField(itemId, fieldId);
     } else {
       const optionId = this.config.priorityOptions[value];
       if (!optionId) {
@@ -933,7 +923,7 @@ export class GitHubProjectBackend implements ProjectBackend {
     while (hasNextPage) {
       const data: GetProjectItemsResponse = await this.gh.graphql(GET_PROJECT_ITEMS_QUERY, {
         login: this.owner,
-        number: this.config.yml.project.project_number,
+        number: this.config.yml.backends.github!.project_number,
         after: cursor ?? null,
       });
       const items = data.user?.projectV2?.items;
@@ -967,13 +957,26 @@ export class GitHubProjectBackend implements ProjectBackend {
     };
   }
 
-  private resolveStatusDisplayName(keyHint: string, fallback: string): string {
-    const vocab = this.config.yml.status as Record<string, string> | undefined;
-    if (!vocab) return fallback;
-    const entry = Object.entries(vocab).find(([k]) =>
-      k.toLowerCase().includes(keyHint.toLowerCase())
-    );
-    return entry ? entry[1] : fallback;
+  /**
+   * Resolve the display name for a canonical status key using the GitHub backend's
+   * status_display mapping. Falls back to `fallback` if the key is not found.
+   */
+  private resolveStatusDisplayName(canonicalKey: string, fallback: string): string {
+    const statusDisplay = this.config.yml.backends.github?.status_display;
+    if (!statusDisplay) return fallback;
+    return statusDisplay[canonicalKey] ?? fallback;
+  }
+
+  /**
+   * Return the display name of the terminal status (i.e., "done") by finding
+   * the canonical key marked `terminal: true` in scrum.status, then looking up
+   * its display name in backends.github.status_display.
+   */
+  private resolveTerminalStatusDisplayName(): string {
+    const scrumStatus = this.config.yml.scrum?.status ?? {};
+    const terminalKey = Object.entries(scrumStatus).find(([, meta]) => meta.terminal)?.[0];
+    if (!terminalKey) return "Done"; // safe fallback
+    return this.resolveStatusDisplayName(terminalKey, "Done");
   }
 
   private async fetchAuditLogCompletions(

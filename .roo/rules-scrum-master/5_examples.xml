@@ -1,0 +1,132 @@
+<complete_examples>
+  <example name="sprint_planning_full_flow">
+    <scenario>
+      The team wants to plan the next sprint. The user asks the Scrum Master agent to run sprint planning.
+    </scenario>
+
+    <user_request>
+      Let's plan the next sprint.
+    </user_request>
+
+    <workflow>
+      <step number="1">
+        <description>Orient to board state</description>
+        <action>Call `scrum_orient` silently</action>
+        <expected_outcome>Platform state and declared vocabulary loaded</expected_outcome>
+      </step>
+
+      <step number="2">
+        <description>Load backlog</description>
+        <action>Call `scrum_get_backlog` to retrieve unassigned stories</action>
+        <expected_outcome>List of candidate stories for the sprint</expected_outcome>
+      </step>
+
+      <step number="3">
+        <description>Review DoR</description>
+        <action>Check each candidate against the Definition of Ready checklist</action>
+        <analysis>
+          Flag items missing acceptance criteria, estimates, or dependencies.
+          These items should not enter Planning.
+        </analysis>
+      </step>
+
+      <step number="4">
+        <description>Check capacity</description>
+        <action>Call `scrum_get_sprint` for current sprint state</action>
+        <expected_outcome>Understanding of remaining capacity</expected_outcome>
+      </step>
+
+      <step number="5">
+        <description>Plan sprint</description>
+        <action>Call `scrum_plan_sprint` with selected stories and sprint goal</action>
+        <expected_outcome>Stories assigned to the next sprint</expected_outcome>
+      </step>
+
+      <step number="6">
+        <description>Fetch template</description>
+        <action>Call `scrum_get_template` for sprint_planning artifact</action>
+        <expected_outcome>Template ready for drafting the planning document</expected_outcome>
+      </step>
+    </workflow>
+
+    <completion>
+      Sprint planning complete. Stories [A, B, C] assigned to the next sprint with goal "Implement authentication flow".
+      Planning document template is ready for review.
+    </completion>
+
+    <key_takeaways>
+      <takeaway>Always check DoR before adding stories to a sprint</takeaway>
+      <takeaway>Confirm the sprint goal with the team</takeaway>
+      <takeaway>Use the ceremony template for structured documentation</takeaway>
+    </key_takeaways>
+  </example>
+
+  <example name="impediment_resolution">
+    <scenario>
+      A team member reports a blocker during standup that prevents progress on a story.
+    </scenario>
+
+    <user_request>
+      Story #15 is blocked — waiting on the design team for asset approvals.
+    </user_request>
+
+    <workflow>
+      <step number="1">
+        <description>Orient</description>
+        <action>Call `scrum_orient` silently</action>
+      </step>
+
+      <step number="2">
+        <description>Log impediment</description>
+        <action>Call `scrum_log_impediment` with description and affected story</action>
+      </step>
+
+      <step number="3">
+        <description>Summarise</description>
+        <action>Report the impediment logged and next steps per impediment protocol</action>
+      </step>
+    </workflow>
+
+    <completion>
+      Impediment logged on story #15: "Waiting on design team for asset approvals."
+      Per impediment protocol: investigate today, escalate if no progress by day 2.
+    </completion>
+  </example>
+
+  <example name="retrospective_drafting">
+    <scenario>
+      The team wants to run a retrospective at the end of the sprint.
+    </scenario>
+
+    <user_request>
+      Let's draft the retrospective document.
+    </user_request>
+
+    <workflow>
+      <step number="1">
+        <description>Orient</description>
+        <action>Call `scrum_orient` silently</action>
+      </step>
+
+      <step number="2">
+        <description>Load history</description>
+        <action>Call `scrum_get_history` for velocity trend</action>
+      </step>
+
+      <step number="3">
+        <description>Load template</description>
+        <action>Call `scrum_get_template` for retrospective artifact</action>
+      </step>
+
+      <step number="4">
+        <description>Draft</description>
+        <action>Compose retro document with data gathering, insights, and one committed improvement</action>
+      </step>
+    </workflow>
+
+    <completion>
+      Retrospective document drafted with velocity trend data and ceremony template.
+      One committed improvement captured for the next sprint.
+    </completion>
+  </example>
+</complete_examples>

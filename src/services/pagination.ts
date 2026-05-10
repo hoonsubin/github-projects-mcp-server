@@ -12,7 +12,7 @@
 //   - Future tools — any tool needing project item access
 // =============================================================================
 
-import type { RuntimeConfig } from "./config.ts";
+import type { RuntimeConfig } from "../adapters/github/config-loader.ts";
 import type {
   ItemContentType,
   ProjectV2DraftIssueContent,
@@ -277,9 +277,11 @@ export class PaginatedProjectItemFetcher {
     private github: { graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> },
     private options: ItemFetchConfig = {},
   ) {
-    this.login = config.yml.project.owner;
-    this.projectNumber = config.yml.project.project_number;
-    this.ownerType = config.yml.project.owner_type;
+    const gh = config.yml.backends.github;
+    if (!gh) throw new Error("No GitHub backend configured in config.yml.");
+    this.login = gh.owner;
+    this.projectNumber = gh.project_number;
+    this.ownerType = gh.owner_type;
     this.query = buildItemsQuery(this.ownerType, this.options);
 
     // Fetch first page immediately

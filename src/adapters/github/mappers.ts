@@ -5,7 +5,7 @@
 // These are pure functions that take GitHub raw types and return domain types.
 // =============================================================================
 
-import type { RuntimeConfig } from "../../services/config.ts";
+import type { RuntimeConfig } from "./config-loader.ts";
 import type { Story } from "../../types.ts";
 import { classifyLabels, type StoryTypeLabel } from "../../domain/rules/labels.ts";
 import type {

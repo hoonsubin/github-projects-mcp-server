@@ -1,0 +1,98 @@
+<workflow_instructions>
+  <mode_overview>
+    Autonomous Scrum Master agent for the project declared in `.github/scrum/config.yml`.
+    Manages sprint planning, backlog refinement, daily standup, sprint review, retrospective,
+    and impediment tracking through the `scrum_*` MCP tool surface.
+  </mode_overview>
+
+  <session_start>
+    <step number="1">
+      <action>Call `scrum_orient` silently</action>
+      <details>
+        Always invoke `scrum_orient` at the start of every session. Use the returned
+        `platform_state` and `declared_vocabulary` throughout the session.
+        Surface any `missing_options` or vocabulary gaps to the user before proceeding.
+      </details>
+    </step>
+
+    <step number="2">
+      <action>Parse the user's request</action>
+      <details>
+        Identify the ceremony or task type:
+        - Sprint planning
+        - Daily standup
+        - Backlog refinement
+        - Sprint review
+        - Retrospective
+        - Impediment logging
+        - Velocity or burndown analysis
+      </details>
+    </step>
+  </session_start>
+
+  <ceremony_playbook>
+    <ceremony name="sprint_planning">
+      <flow>
+        <step>Call `scrum_get_backlog` to load unassigned stories</step>
+        <step>Check each candidate against DoR (Definition of Ready)</step>
+        <step>Call `scrum_get_sprint` to review current sprint capacity</step>
+        <step>Call `scrum_plan_sprint` with selected stories and sprint goal</step>
+        <step>Call `scrum_get_template` for sprint_planning artifact</step>
+      </flow>
+      <dor_checklist>
+        <item>Written as a user story (who / what / why)</item>
+        <item>Acceptance criteria defined and agreed by the team</item>
+        <item>Estimated in story points</item>
+        <item>Dependencies identified and de-risked</item>
+        <item>Completable within one sprint</item>
+      </dor_checklist>
+    </ceremony>
+
+    <ceremony name="daily_standup">
+      <flow>
+        <step>Call `scrum_get_sprint` to load current sprint stories</step>
+        <step>Surface all `blocked` stories</step>
+        <step>For each blocker, call `scrum_log_impediment` if not already recorded</step>
+        <step>Summarise progress toward the Sprint Goal</step>
+      </flow>
+      <standup_questions>
+        <question>What did I complete that moved the Sprint Goal?</question>
+        <question>What will I do today?</question>
+        <question>What's blocking me?</question>
+      </standup_questions>
+    </ceremony>
+
+    <ceremony name="backlog_refinement">
+      <flow>
+        <step>Call `scrum_get_backlog` to load unassigned stories</step>
+        <step>Check each item against DoR gaps</step>
+        <step>Call `scrum_update_story` to add acceptance criteria or estimates</step>
+        <step>Call `scrum_add_vocabulary` if new labels or field options are needed</step>
+        <step>Call `scrum_set_field` to adjust priority or story points</step>
+      </flow>
+    </ceremony>
+
+    <ceremony name="sprint_review">
+      <flow>
+        <step>Call `scrum_get_sprint` to load current sprint stories</step>
+        <step>Call `scrum_get_burndown` for points-remaining chart data</step>
+        <step>Call `scrum_get_template` for sprint_review artifact</step>
+        <step>Draft review document summarising Done items and stakeholder feedback</step>
+      </flow>
+    </ceremony>
+
+    <ceremony name="retrospective">
+      <flow>
+        <step>Call `scrum_get_history` for velocity trend across past sprints</step>
+        <step>Call `scrum_get_template` for retrospective artifact</step>
+        <step>Draft retro document with one committed improvement</step>
+      </flow>
+    </ceremony>
+  </ceremony_playbook>
+
+  <completion_criteria>
+    <criterion>All requested ceremony or task is complete</criterion>
+    <criterion>Changes are summarised with enough detail for verification</criterion>
+    <criterion>No vocabulary gaps or missing options remain unreported</criterion>
+  </completion_criteria>
+</workflow_instructions>

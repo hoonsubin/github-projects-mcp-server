@@ -48,12 +48,15 @@ export const getSprintUseCase = async (
     startDate: result.sprintInfo.startDate,
     duration: result.sprintInfo.durationDays,
   });
-  const statusOrder = Object.values((yml.status as Record<string, string>) ?? {});
+  // todo: Story.status currently returns platform display names. Once the mapper
+  // translates to canonical keys, replace these display lookups with canonical keys
+  // ("done", "in_progress", "blocked") and remove the status_display dependency.
+  const statusDisplay = yml.backends.github?.status_display ?? {};
+  const statusOrder = Object.keys(yml.scrum.status).map((k) => statusDisplay[k]).filter(Boolean);
   const groups = groupStoriesByStatus(result.stories, statusOrder);
-  const statusVocab = yml.status as Record<string, string> | undefined;
-  const doneDisplay = resolveStatusDisplayName(statusVocab, "done", "Done");
-  const inProgressDisplay = resolveStatusDisplayName(statusVocab, "progress", "In Progress");
-  const blockedDisplay = resolveStatusDisplayName(statusVocab, "block", "Blocked");
+  const doneDisplay = statusDisplay["done"] ?? "Done";
+  const inProgressDisplay = statusDisplay["in_progress"] ?? "In Progress";
+  const blockedDisplay = statusDisplay["blocked"] ?? "Blocked";
   const totals = computeSprintTotals(
     result.stories,
     doneDisplay,
@@ -61,16 +64,4 @@ export const getSprintUseCase = async (
     blockedDisplay,
   );
   return { sprint: meta, groups, totals };
-};
-
-const resolveStatusDisplayName = (
-  status: Record<string, string> | undefined,
-  keyHint: string,
-  fallback: string,
-): string => {
-  if (!status) return fallback;
-  const entry = Object.entries(status).find(([k]) =>
-    k.toLowerCase().includes(keyHint.toLowerCase())
-  );
-  return entry ? entry[1] : fallback;
 };

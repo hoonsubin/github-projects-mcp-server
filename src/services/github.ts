@@ -88,10 +88,10 @@ export const graphql = async <T>(
   } catch (err: unknown) {
     const ms = Math.round(performance.now() - t0);
     if (err instanceof Error && err.name === "AbortError") {
-      log.error(`✗ graphql:${op} timed out after ${ms}ms`);
+      log.debug(`✗ graphql:${op} timed out after ${ms}ms`);
       throw new GitHubApiError("Request timed out after 30s");
     }
-    log.error(`✗ graphql:${op} network error (${ms}ms)`, err);
+    log.debug(`✗ graphql:${op} network error (${ms}ms)`, err);
     throw new GitHubApiError(
       `Network error: ${err instanceof Error ? err.message : String(err)}`,
     );
@@ -102,7 +102,7 @@ export const graphql = async <T>(
   const ms = Math.round(performance.now() - t0);
 
   if (response.status === 401) {
-    log.error(`✗ graphql:${op} 401 Unauthorized (${ms}ms)`);
+    log.debug(`✗ graphql:${op} 401 Unauthorized (${ms}ms)`);
     throw new GitHubApiError(
       "Authentication failed. Check that GITHUB_TOKEN is valid and has the required scopes.",
       401,
@@ -113,16 +113,14 @@ export const graphql = async <T>(
     const resetTime = rateLimitReset
       ? new Date(Number(rateLimitReset) * 1000).toISOString()
       : "unknown";
-    log.error(
-      `✗ graphql:${op} 403 rate-limited (${ms}ms), resets ${resetTime}`,
-    );
+    log.debug(`✗ graphql:${op} 403 rate-limited (${ms}ms), resets ${resetTime}`);
     throw new GitHubApiError(
       `Rate limit or permission denied. Rate limit resets at ${resetTime}.`,
       403,
     );
   }
   if (!response.ok) {
-    log.error(`✗ graphql:${op} HTTP ${response.status} (${ms}ms)`);
+    log.debug(`✗ graphql:${op} HTTP ${response.status} (${ms}ms)`);
     throw new GitHubApiError(
       `GitHub API error: HTTP ${response.status} ${response.statusText}`,
       response.status,
@@ -133,7 +131,10 @@ export const graphql = async <T>(
 
   if (json.errors && json.errors.length > 0) {
     const messages = json.errors.map((e) => e.message);
-    log.error(`✗ graphql:${op} GraphQL errors (${ms}ms)`, messages);
+    // Log at debug — the tool-level interceptor always re-logs errors with full
+    // context (tool name + params). Keeping the API detail at debug avoids
+    // printing the same failure twice at ERROR level.
+    log.debug(`✗ graphql:${op} GraphQL errors (${ms}ms)`, messages);
     throw new GitHubApiError(
       `GraphQL errors: ${messages.join("; ")}`,
       undefined,
@@ -142,7 +143,7 @@ export const graphql = async <T>(
   }
 
   if (json.data === undefined) {
-    log.error(`✗ graphql:${op} no data returned (${ms}ms)`);
+    log.debug(`✗ graphql:${op} no data returned (${ms}ms)`);
     throw new GitHubApiError("GitHub API returned no data and no errors.");
   }
 
@@ -217,10 +218,10 @@ export const rest = async <T>(
   } catch (err: unknown) {
     const ms = Math.round(performance.now() - t0);
     if (err instanceof Error && err.name === "AbortError") {
-      log.error(`✗ rest:${method} ${path} timed out after ${ms}ms`);
+      log.debug(`✗ rest:${method} ${path} timed out after ${ms}ms`);
       throw new GitHubApiError("Request timed out after 30s");
     }
-    log.error(`✗ rest:${method} ${path} network error (${ms}ms)`, err);
+    log.debug(`✗ rest:${method} ${path} network error (${ms}ms)`, err);
     throw new GitHubApiError(
       `Network error: ${err instanceof Error ? err.message : String(err)}`,
     );
@@ -231,7 +232,7 @@ export const rest = async <T>(
   const ms = Math.round(performance.now() - t0);
 
   if (response.status === 401) {
-    log.error(`✗ rest:${method} ${path} 401 Unauthorized (${ms}ms)`);
+    log.debug(`✗ rest:${method} ${path} 401 Unauthorized (${ms}ms)`);
     throw new GitHubApiError(
       "Authentication failed. Check that GITHUB_TOKEN is valid and has the required scopes.",
       401,
@@ -242,16 +243,14 @@ export const rest = async <T>(
     const resetTime = rateLimitReset
       ? new Date(Number(rateLimitReset) * 1000).toISOString()
       : "unknown";
-    log.error(
-      `✗ rest:${method} ${path} 403 rate-limited (${ms}ms), resets ${resetTime}`,
-    );
+    log.debug(`✗ rest:${method} ${path} 403 rate-limited (${ms}ms), resets ${resetTime}`);
     throw new GitHubApiError(
       `Rate limit or permission denied. Rate limit resets at ${resetTime}.`,
       403,
     );
   }
   if (!response.ok) {
-    log.error(`✗ rest:${method} ${path} HTTP ${response.status} (${ms}ms)`);
+    log.debug(`✗ rest:${method} ${path} HTTP ${response.status} (${ms}ms)`);
     throw new GitHubApiError(
       `GitHub API error: HTTP ${response.status} ${response.statusText}`,
       response.status,

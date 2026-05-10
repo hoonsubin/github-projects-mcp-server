@@ -1,187 +1,108 @@
 # .github/scrum/config.yml
 #
-# This file is read by two audiences and should serve both clearly:
+# Two audiences read this file:
 #
-#   AGENT  — The scrum-agile-assistant reads this on every tool call via
-#            scrum_orient. It uses these values to ground its Scrum reasoning,
-#            resolve vocabulary names to platform IDs, select ceremony behavior,
-#            and determine default ownership for operations like impediment logging.
+#   AGENT  — reads project, scrum, definition_of_ready/done, templates, and
+#            ceremony_records on every tool call via scrum_orient. Uses these
+#            to ground Scrum reasoning in platform-neutral terms.
 #
-#   HUMAN  — The team maintains this file. Values here are project constants:
-#            change them deliberately. Some fields under `field_names` are required
-#            — removing them will break all tool calls.
+#   SERVER — reads backends.* at startup to instantiate adapters and resolve
+#            credentials. Never exposes platform credentials to the agent.
 #
 # What lives here:
-#   - Project identity and GitHub coordinates
-#   - Team roster and Scrum roles
-#   - Sprint cadence and estimation settings
-#   - Scrum concept → GitHub field name mappings
-#   - Status and priority option vocabularies
-#   - Definition of Done and Definition of Ready
-#   - Ceremony records backend declaration
-#   - Artifact template paths (or null to use agent skill defaults)
-#   - AI autonomy level
+#   project          — identity, agent behavior, team roster
+#   scrum            — platform-neutral Scrum taxonomy (sprint, priority, status)
+#   definition_of_*  — quality gates (agent-facing only)
+#   templates        — ceremony artifact template paths or null for agent defaults
+#   ceremony_records — where the agent writes ceremony artifacts
+#   backends         — one section per PM platform; credentials as $ENV_VAR refs
 #
 # What does NOT live here:
-#   - GitHub node IDs (field IDs, option IDs, iteration IDs) — fetched fresh on every call
-#   - Sprint goals, capacity plans, and standup notes — written by the agent directly
-#     to the ceremony backend declared in `ceremony_records`
-#   - Derived metrics (velocity, burndown) — computed by the agent from scrum_get_history data
+#   GitHub node IDs, field IDs, option IDs — fetched live by the adapter
+#   Sprint goals, capacity plans, standup notes — written by the agent directly
+#   Derived metrics (velocity, burndown) — computed by the agent from raw data
 
-# ── PROJECT IDENTITY ─────────────────────────────────────────────────────────
+# ── PROJECT ───────────────────────────────────────────────────────────────────
 #
-# `name` is used by the agent as display context only — it does not affect API calls.
-#
-# `owner` and `owner_type` determine the GraphQL query shape used by the server:
-#   user  → user(login: $owner) { projectV2(number: $number) { ... } }
-#   org   → organization(login: $owner) { projectV2(number: $number) { ... } }
-#
-# `number` is the project number shown in the GitHub Projects URL (/projects/5).
-#
-# Note: the server also bootstraps owner, owner_type, project number, and repo from
-# environment variables (GITHUB_OWNER, GITHUB_OWNER_TYPE, GITHUB_PROJECT_NUMBER,
-# GITHUB_REPO). Keep this section in sync with those variables.
+# Platform-agnostic identity. The `agent` block controls AI behavior for this
+# project. `team` is the canonical roster — platform-specific identity (e.g.
+# GitHub login, Notion user ID) is declared under the relevant backend below.
 
 project:
   name: "GitHub Projects MCP Server"
-  owner: hoonsubin
-  owner_type: user # user | org
-  repo: github-projects-mcp-server
-  number: 5 # Project number from the GitHub URL (/projects/5)
 
-# ── TEAM ─────────────────────────────────────────────────────────────────────
-#
-# GitHub login is the canonical identifier used across all tools — `name` is
-# display context only.
-#
-# `role` is the member's default Scrum role for this project. The agent uses this
-# for default ownership decisions: when no `raised_by` is supplied to
-# scrum_log_impediment, it defaults to the member whose role is `scrum_master`.
-#
-# Add one entry per team member. Per-sprint role changes (e.g. a rotating Scrum
-# Master) are discussed with the agent in conversation — there is no separate
-# config file for sprint-level role overrides.
+  agent:
+    name: "Scrum Master Bot"
+    autonomy:
+      level: standard # conservative | standard | full
+      require_confirmation_above_n_items: 5
 
-team:
-  - login: hoonsubin
-    name: Hoon Kim
-    role: product_owner # scrum_master | product_owner | developer
+  team:
+    - name: Hoon Kim
+      role: product_owner # scrum_master | product_owner | developer
+      contact: hoon@example.com
 
-# ── SPRINT SETTINGS ──────────────────────────────────────────────────────────
+# ── SCRUM TAXONOMY ────────────────────────────────────────────────────────────
 #
-# `length_weeks` and `start_day` are used by the agent to compute expected sprint
-# end dates when the platform does not provide an explicit end date.
-#
-# `story_point_scale` is informational only — the agent reads it for context but
-# does not validate `story_point_values` against it.
-#
-# `story_point_values` lists the exact values the team uses for estimation. The
-# agent references this list when coaching during backlog refinement.
-#
-# `velocity_window` is passed as the `window` argument to scrum_get_history when
-# the agent derives velocity. The server returns raw sprint data; the agent
-# computes averages and trends itself from that data.
-#
-# `carry_over_threshold_days` — at standup, stories not in `done` status with
-# fewer days remaining than this value are flagged as carry-over risk by the agent.
+# Platform-neutral Scrum concepts. The agent always speaks in these terms.
+# Each backend declares how its platform expresses these concepts under
+# backends.<name>.status_display and backends.<name>.priority_display.
 
-sprint:
-  length_weeks: 2
-  start_day: monday # monday | tuesday | wednesday | thursday | friday
-  story_point_scale: fibonacci # fibonacci | linear | tshirt (informational only)
-  story_point_values: [1, 2, 3, 5, 8, 13]
-  velocity_window: 4
-  carry_over_threshold_days: 2
+scrum:
+  sprint:
+    length_weeks: 2
+    start_day: monday # monday | tuesday | wednesday | thursday | friday
+    story_point_scale: fibonacci # fibonacci | linear | tshirt (informational)
+    story_point_values: [1, 2, 3, 5, 8, 13]
+    velocity_window: 4 # sprints to include when agent computes velocity
+    carry_over_threshold_days: 2 # days remaining before agent flags carry-over risk
 
-# ── FIELD NAME MAPPINGS ───────────────────────────────────────────────────────
-#
-# Maps Scrum concepts (left) to the exact field names in the GitHub project (right).
-# The agent resolves these names to platform field IDs at every tool call —
-# no IDs are stored here.
-#
-# REQUIRED — the server throws an error on startup if either of these is missing
-# or does not match a field in the GitHub project:
-#   sprint        must point to an ITERATION type field
-#   status        must point to a SINGLE_SELECT type field
-#
-# OPTIONAL — if absent, the corresponding capability degrades gracefully:
-#   story_points  NUMBER type field; stories will have null points if omitted
-#   priority      SINGLE_SELECT type field; priority reads/writes are skipped if omitted
-#
-# Values are case-sensitive and must match the GitHub field name exactly.
-# If you rename a field in the GitHub project UI, update the matching value here.
-#
-# Built-in GitHub fields (Assignees, Labels, Milestone, Title, Repository)
-# do not need entries — they are accessed via the issue content node directly.
+  # Ordered from highest to lowest priority.
+  # The agent reasons in these keys (p0 = most urgent).
+  # Display labels for each platform are declared under backends.<name>.priority_display.
+  priority:
+    - key: p0
+    - key: p1
+    - key: p2
+    - key: p3
 
-field_names:
-  sprint: "Sprint" # REQUIRED — ITERATION type field
-  status: "Status" # REQUIRED — SINGLE_SELECT type field
-  story_points: "Story Points" # optional — NUMBER type field
-  priority: "Priority" # optional — SINGLE_SELECT type field
-# Optional custom fields — uncomment and set to the exact GitHub field name:
-# epic: "Epic"
-# item_type: "Type"
+  # Canonical workflow states with semantic metadata.
+  # The agent always receives canonical keys, never platform display names.
+  #
+  # terminal: true  — this state counts as "done" for velocity and burndown.
+  #                   Only one state should be terminal; the adapter uses it
+  #                   to determine completion timestamps.
+  # blocking: true  — this state indicates the story is impeding sprint flow.
+  #                   The agent uses it to surface impediments and infer
+  #                   dependency risk when explicit link data is unavailable.
+  #
+  # Platform display names are declared under backends.<name>.status_display.
+  # Every key declared here MUST have a corresponding entry in status_display
+  # for each configured backend, or the adapter will refuse to start.
+  status:
+    backlog:
+      terminal: false
+      blocking: false
+    ready:
+      terminal: false
+      blocking: false
+    in_progress:
+      terminal: false
+      blocking: false
+    in_review:
+      terminal: false
+      blocking: false
+    blocked:
+      terminal: false
+      blocking: true
+    done:
+      terminal: true
+      blocking: false
 
-# ── STATUS VOCABULARY ────────────────────────────────────────────────────────
+# ── QUALITY GATES ─────────────────────────────────────────────────────────────
 #
-# Maps Scrum workflow state names (left) to the exact option names in the GitHub
-# Status field (right). The agent uses the left-hand keys throughout its reasoning
-# and translates them to platform option names for reads and writes.
-#
-# Values are case-sensitive and must match the GitHub project options exactly.
-#
-# Agent-behavioral notes:
-#   `blocked`  — scrum_log_impediment sets the affected story to this status.
-#                If this key is absent or the value does not match a real option,
-#                impediment logging will fail.
-#   `done`     — this value drives completion counting in scrum_get_history
-#                summaries and velocity calculations. Renaming it without updating
-#                the matching platform option will break history data.
-#
-# To add a new status: create the option in the GitHub project UI first, or ask
-# the agent to call scrum_add_vocabulary — then add the mapping here.
-# To remove a status: remove the entry. Stories carrying that status on the board
-# are unaffected; the agent will no longer reference it by vocabulary name.
-
-status:
-  backlog: "Backlog"
-  ready: "Ready"
-  in_progress: "In Progress"
-  in_review: "In Review"
-  done: "Done"
-  blocked: "Blocked"
-
-# ── PRIORITY VOCABULARY ──────────────────────────────────────────────────────
-#
-# Maps MoSCoW priority tiers (left) to exact option names in the GitHub Priority
-# field (right). The agent uses the left-hand keys when reading, filtering, and
-# writing priority — the platform option name is never exposed directly.
-#
-# Values are case-sensitive and must match the GitHub project options exactly.
-#
-# Agent-behavioral note:
-#   `must` — the highest-tier key is the default priority applied by
-#            scrum_log_impediment when no explicit priority is supplied.
-#            Keep the highest tier first and named `must` to preserve this behavior.
-#
-# To add a new tier: create the option in GitHub first (or use scrum_add_vocabulary),
-# then add the mapping here.
-
-priority:
-  must: "Must"
-  should: "Should"
-  could: "Could"
-  wont: "Won't"
-
-# ── DEFINITION OF READY ──────────────────────────────────────────────────────
-#
-# Planning gate criteria. An item should meet ALL of these before entering a sprint.
-# The agent references this list when assessing backlog readiness and coaching the
-# team during refinement and sprint planning. Applying this gate is the agent's
-# advisory responsibility — the server does not enforce it automatically.
-#
-# Edit these criteria to reflect what your team has agreed readiness means.
+# Agent-facing only. The server never enforces these — the agent references
+# them when coaching the team during refinement and sprint planning.
 
 definition_of_ready:
   - Written as a user story (who / what / why)
@@ -189,16 +110,6 @@ definition_of_ready:
   - Estimated in story points
   - Dependencies identified and de-risked
   - Completable within one sprint
-
-# ── DEFINITION OF DONE ───────────────────────────────────────────────────────
-#
-# Quality gate criteria for every increment. The agent references this list when
-# coaching the team before a story moves to the `done` status. Enforcement is the
-# team's and agent's shared responsibility — the server does not block status
-# transitions based on this list.
-#
-# Do not lower these criteria to meet a deadline — create a tech debt story instead.
-# Edit them only after a deliberate team retrospective decision.
 
 definition_of_done:
   - Code reviewed and approved
@@ -208,53 +119,18 @@ definition_of_done:
   - Documentation updated if public behaviour changed
   - Deployed to staging and smoke-tested
 
-# ── CEREMONY RECORDS ─────────────────────────────────────────────────────────
+# ── CEREMONY ARTIFACTS ────────────────────────────────────────────────────────
 #
-# Declares where the agent writes ceremony artifacts: standup summaries, retro
-# notes, sprint review documents, and planning records. The agent writes directly
-# to this backend using its own platform capabilities — ceremony records are
-# outside the MCP server's scope and are not written through any scrum_* tool.
+# `ceremony_records` declares where the agent writes ceremony documents.
+# The agent writes directly to this backend using its own platform capabilities
+# — ceremony records are outside the MCP server's scope.
 #
-# Changing `backend` does not migrate existing records — do that manually.
-# Only one backend is active at a time.
-#
-# backend options:
-#   github_discussions  — threaded, categorized; best for async teams
-#   github_issues       — linear, label-based; works without Discussions enabled
-#   repo_file           — markdown files in the repo; best for version-controlled records
+# `templates` maps each artifact type to a repo-relative path for a custom
+# template, or null to use the agent skill's built-in default.
 
 ceremony_records:
   backend: github_discussions
-
-  # ── github_discussions options ──
-  # `discussion_category` must match an existing Discussion category in the repo.
   discussion_category: Ceremonies
-
-  # ── github_issues options ──
-  # issue_label: ceremony
-
-  # ── repo_file options ──
-  # file_path: docs/minutes/
-  # Files are named: YYYY-MM-DD-<ceremony-type>.md (e.g., 2026-05-03-retro.md)
-
-# ── ARTIFACT TEMPLATES ────────────────────────────────────────────────────────
-#
-# Maps ceremony artifact types to project-specific template files in this repo.
-# The agent calls scrum_get_template to retrieve the template before writing a
-# ceremony artifact, then applies it by substituting dynamic data.
-#
-# Two possible values per key:
-#   null (or omit the key entirely)
-#       The agent uses its own built-in skill-level default for that artifact type.
-#       This is the normal path — no action required unless the team wants to
-#       customize.
-#   "<repo-relative-path>"
-#       The server fetches the file at this path and returns its content verbatim.
-#       The agent applies the template; the server never interprets its structure.
-#       Example: ".github/scrum/templates/sprint-review.md"
-#
-# Custom templates are useful when the team has a specific document format, house
-# style, or non-English output requirement.
 
 templates:
   sprint_review: null
@@ -263,22 +139,61 @@ templates:
   sprint_planning: null
   refinement: null
 
-# ── AI AUTONOMY ──────────────────────────────────────────────────────────────
+# ── BACKENDS ──────────────────────────────────────────────────────────────────
 #
-# Controls when the agent requires explicit human confirmation before writing.
+# One section per PM platform. The agent identifies backends by their key name
+# (e.g. "github", "notion") when making cross-platform requests.
 #
-# level:
-#   conservative — confirm before every write, including single-item updates
-#   standard     — confirm before bulk writes and writes triggered by natural language
-#   full         — proceed on high-confidence direct commands
+# Auth values prefixed with $ are resolved as environment variables at startup.
+# The server never exposes credentials to the agent or tool responses.
 #
-# `require_confirmation_above_n_items` works independently of `level`: any write
-# operation affecting more items than this threshold requires confirmation regardless
-# of the autonomy level. Set to 0 to always confirm any multi-item operation.
+# `team` cross-references project.team[].name via the `ref` field and declares
+# the platform-specific identity for that member. The server validates that
+# every `ref` matches a name in project.team.
 #
-# Note: destructive operations (e.g. clearing sprint assignments in bulk) always
-# require confirmation regardless of both settings above.
+# `status_display` maps every canonical status key (from scrum.status) to the
+# exact option name used on this platform's board. Case-sensitive.
+#
+# `priority_display` maps every canonical priority key (from scrum.priority)
+# to the exact option name used on this platform's board. Case-sensitive.
 
-autonomy:
-  level: standard # conservative | standard | full
-  require_confirmation_above_n_items: 5
+backends:
+  github:
+    auth:
+      token: $GITHUB_TOKEN
+
+    owner: hoonsubin
+    owner_type: user # user | org
+    project_number: 5
+    tracked_repos:
+      - github-projects-mcp-server
+
+    team:
+      - ref: Hoon Kim # matches project.team[].name
+        login: hoonsubin
+
+    # Maps canonical Scrum field names to exact GitHub project field names.
+    # sprint and status are required; others degrade gracefully if absent.
+    field_mapping:
+      sprint: "Sprint" # REQUIRED — ITERATION type field
+      status: "Status" # REQUIRED — SINGLE_SELECT type field
+      story_points: "Story Points" # optional — NUMBER type field
+      priority: "Priority" # optional — SINGLE_SELECT type field
+
+    # Maps canonical status keys → exact GitHub single-select option names.
+    # Every key in scrum.status must appear here.
+    status_display:
+      backlog: "Backlog"
+      ready: "Ready"
+      in_progress: "In Progress"
+      in_review: "In Review"
+      blocked: "Blocked"
+      done: "Done"
+
+    # Maps canonical priority keys → exact GitHub single-select option names.
+    # Order must match scrum.priority (p0 = highest).
+    priority_display:
+      p0: "Must"
+      p1: "Should"
+      p2: "Could"
+      p3: "Won't"

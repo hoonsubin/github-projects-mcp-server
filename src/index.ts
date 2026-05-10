@@ -17,7 +17,7 @@ import type { JSONRPCMessage, MessageExtraInfo } from "@modelcontextprotocol/sdk
 import express, { type Request, type Response } from "express";
 import { registerScrumReadTools } from "./tools/scrum-read.ts";
 import { registerScrumWriteTools } from "./tools/scrum-write.ts";
-import { getBootstrapConfig, getRepo, loadConfig } from "./adapters/github/config-loader.ts";
+import { loadConfig } from "./adapters/github/config-loader.ts";
 import { GitHubProjectBackend } from "./adapters/github/backend.ts";
 import { graphql, rest } from "./services/github.ts";
 import { log } from "./services/logger.ts";
@@ -25,7 +25,13 @@ import type { Socket } from "node:net";
 import type { ProjectBackend } from "./scrum/ports.ts";
 import type { ScrumConfigYml } from "./types.ts";
 
-// ── Debug: tool-call interceptor ─────────────────────────────────────────────
+// ── Tool-call interceptor ────────────────────────────────────────────────────
+//
+// Three verbosity tiers:
+//
+//   always   — tool name, timing, and errors with input params (no env var needed)
+//   DEBUG=1  — GraphQL/REST operation names and params (API-level tracing)
+//   TRACE=1  — raw JSON-RPC wire messages (transport dump, very noisy)
 
 const patchToolLogging = (server: McpServer): void => {
   // deno-lint-ignore no-explicit-any
@@ -42,21 +48,34 @@ const patchToolLogging = (server: McpServer): void => {
     handler: (params: unknown, extra: unknown) => Promise<unknown>,
   ): unknown => {
     return original(name, config, async (params: unknown, extra: unknown) => {
-      log.debug(`→ tool:${name}`, params);
+      // Always: log which tool fired (no params — keeps the line short)
+      log.info(`→ ${name}`);
+      // DEBUG: also log the full input so you can see what the agent passed
+      log.debug(`  params`, params);
+
       const t0 = performance.now();
       try {
         const result = await handler(params, extra);
-        log.debug(`← tool:${name} OK (${Math.round(performance.now() - t0)}ms)`);
+        log.info(`← ${name} OK (${Math.round(performance.now() - t0)}ms)`);
         return result;
       } catch (err: unknown) {
-        log.error(`✗ tool:${name} threw (${Math.round(performance.now() - t0)}ms)`, err);
+        const ms = Math.round(performance.now() - t0);
+        // Always: log the tool that failed, elapsed time, error message, AND
+        // the input params so you can reproduce or diagnose the call.
+        log.error(`✗ ${name} FAILED (${ms}ms)`, {
+          error: err instanceof Error ? err.message : String(err),
+          params,
+        });
         throw err;
       }
     });
   };
 };
 
-// ── Debug: transport-level request/response logger ───────────────────────────
+// ── Transport-level request/response logger (TRACE=1 only) ───────────────────
+//
+// Logs every raw JSON-RPC message — useful for debugging MCP protocol issues
+// but extremely noisy during normal use. Enable with TRACE=1 (not DEBUG=1).
 
 const wrapTransportLogging = (transport: Transport, label: string): void => {
   const origOnMessage = transport.onmessage?.bind(transport);
@@ -78,10 +97,15 @@ const wrapTransportLogging = (transport: Transport, label: string): void => {
 // ── Backend factory ──────────────────────────────────────────────────────────
 
 const createBackend = async (): Promise<{ backend: ProjectBackend; yml: ScrumConfigYml }> => {
-  const { owner, ownerType, projectNumber } = getBootstrapConfig();
-  const repo = getRepo();
-  const config = await loadConfig({ github: { graphql }, owner, ownerType, projectNumber, repo });
-  const backend = new GitHubProjectBackend(config, { graphql, rest }, owner, ownerType, repo);
+  const config = await loadConfig({ github: { graphql } });
+  const gh = config.yml.backends.github!;
+  const backend = new GitHubProjectBackend(
+    config,
+    { graphql, rest },
+    gh.owner,
+    gh.owner_type,
+    gh.tracked_repos[0], // primary repo for issue operations; multi-repo support is future work
+  );
   return { backend, yml: config.yml };
 };
 
@@ -93,10 +117,7 @@ const createMcpServer = async (): Promise<McpServer> => {
     version: "1.0.0",
   });
 
-  if (log.isDebug()) {
-    patchToolLogging(server);
-    log.debug("tool-call logging enabled");
-  }
+  patchToolLogging(server);
 
   const { backend, yml } = await createBackend();
   registerScrumReadTools(server, backend, yml);
@@ -111,7 +132,7 @@ const runStdio = async (): Promise<void> => {
   const server = await createMcpServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  if (log.isDebug()) wrapTransportLogging(transport, "stdio");
+  if (Deno.env.get("TRACE")) wrapTransportLogging(transport, "stdio");
   log.info("github-projects-mcp-server running on stdio");
 };
 
@@ -149,7 +170,7 @@ const runHttp = () => {
 
       const server = await createMcpServer();
       await server.connect(transport);
-      if (log.isDebug()) wrapTransportLogging(transport, `http:${transport.sessionId}`);
+      if (Deno.env.get("TRACE")) wrapTransportLogging(transport, `http:${transport.sessionId}`);
     } else {
       res.status(400).json({
         jsonrpc: "2.0",

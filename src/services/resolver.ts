@@ -5,7 +5,7 @@
 // ── Phase 1, step 9: resolveStory  — COMPLETE ────────────────────────────────
 // =============================================================================
 
-import type { RuntimeConfig } from "./config.ts";
+import type { RuntimeConfig } from "../adapters/github/config-loader.ts";
 import type { SprintRef, StoryRef } from "../types.ts";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -207,18 +207,18 @@ export const resolveStory = async (
   }
 
   // ── Path B: issue number provided — lookup via repository query ─────────────
-  const repo = Deno.env.get("GITHUB_REPO");
+  const gh = config.yml.backends.github;
+  if (!gh) {
+    throw new Error("No GitHub backend configured in config.yml.");
+  }
+  // Primary repo is the first entry in tracked_repos.
+  const repo = gh.tracked_repos[0];
   if (!repo) {
-    throw new Error(
-      "GITHUB_REPO environment variable is not set. " +
-        "Set it to the repository slug (e.g., 'github-projects-mcp-server').",
-    );
+    throw new Error("backends.github.tracked_repos is empty — at least one repo is required.");
   }
 
-  // Use explicit repoOwner if provided; otherwise fall back to config.yml.project.owner.
-  // This allows callers to specify a different repo owner when the project and repo
-  // have different owners (e.g., an org-owned project on a user-owned repo).
-  const repoOwnerResolved = repoOwner ?? config.yml.project.owner;
+  // Use explicit repoOwner if provided; otherwise use the configured owner.
+  const repoOwnerResolved = repoOwner ?? gh.owner;
   const data = await github.graphql<IssueByNumberResponse>(
     GET_ISSUE_BY_NUMBER_QUERY,
     {
@@ -242,7 +242,7 @@ export const resolveStory = async (
   );
   if (!projectItem) {
     throw new Error(
-      `Issue #${ref.number} exists in ${repoOwnerResolved}/${repo} but is not part of project #${config.yml.project.project_number}. ` +
+      `Issue #${ref.number} exists in ${repoOwnerResolved}/${repo} but is not part of project #${gh.project_number}. ` +
         "Add the issue to the project before operating on it.",
     );
   }

@@ -11,7 +11,7 @@
 // =============================================================================
 
 import { assertEquals } from "@std/assert";
-import type { RuntimeConfig } from "../services/config.ts";
+import type { RuntimeConfig } from "../adapters/github/config-loader.ts";
 import type { IterationEntry, ScrumConfigYml, Story } from "../types.ts";
 
 // ── Manual test doubles (no GitHub client needed) ──────────────────────────────

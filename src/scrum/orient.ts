@@ -48,8 +48,11 @@ export const orientUseCase = async (
   backend: ProjectBackend,
   yml: ScrumConfigYml,
 ): Promise<OrientResult> => {
-  const statusVocab = (yml.status as Record<string, string> | undefined) ?? null;
-  const priorityVocab = (yml.priority as Record<string, string> | undefined) ?? null;
+  // todo: Once Story.status returns canonical keys, expose scrum.status semantic
+  // metadata here instead of display names. For now, status_display values are
+  // passed so the adapter can diff them against live platform options.
+  const statusVocab = yml.backends.github?.status_display ?? null;
+  const priorityVocab = yml.backends.github?.priority_display ?? null;
 
   const state = await backend.getPlatformState({
     statusValues: statusVocab ? Object.values(statusVocab) : [],
@@ -95,15 +98,15 @@ export const orientUseCase = async (
       status: statusVocab,
       priority: priorityVocab,
       story_points: {
-        scale: yml.sprint?.story_point_scale ?? null,
-        values: yml.sprint?.story_point_values ?? null,
+        scale: yml.scrum.sprint?.story_point_scale ?? null,
+        values: yml.scrum.sprint?.story_point_values ?? null,
       },
       sprint: {
-        duration_days: yml.sprint?.duration_days ?? null,
-        velocity_window: yml.sprint?.velocity_window ?? 5,
-        length_weeks: yml.sprint?.length_weeks ?? null,
+        duration_days: null, // not modelled in new config — length_weeks is the source of truth
+        velocity_window: yml.scrum.sprint?.velocity_window ?? 5,
+        length_weeks: yml.scrum.sprint?.length_weeks ?? null,
       },
-      team: yml.team ?? null,
+      team: yml.project.team ?? null,
       definition_of_ready: yml.definition_of_ready ?? null,
       definition_of_done: yml.definition_of_done ?? null,
       templates: {

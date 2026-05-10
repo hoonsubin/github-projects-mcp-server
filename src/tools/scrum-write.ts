@@ -311,10 +311,14 @@ export function registerScrumWriteTools(
         await backend.addComment(params.affects, affectedComment);
 
         // Step 4: Add comment to the impediment story itself (bidirectional linking)
+        // affects.number may be undefined when the caller passed {id} only — use a safe fallback.
+        const affectsRef = params.affects.number
+          ? `#${params.affects.number}`
+          : `(item ${params.affects.id ?? "unknown"})`;
         const impedimentComment = [
           ":link: This impediment affects story",
-          `  - Number: #${params.affects.number}`,
-          `  - Ref: ${params.affects.id ?? "N/A"}`,
+          `  - Story: ${affectsRef}`,
+          `  - Item ID: ${params.affects.id ?? "N/A"}`,
         ].join("\n");
 
         await backend.addComment(storyRef, impedimentComment);
