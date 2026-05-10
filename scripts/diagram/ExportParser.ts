@@ -34,24 +34,41 @@ const hasExportKeyword = (node: ts.Node): boolean => {
   );
 };
 
+const isFunctionExpression = (node: ts.Node): boolean => {
+  // Check for arrow function expressions
+  if (ts.isArrowFunction(node)) {
+    return true;
+  }
+
+  // Check for function expressions (e.g., `const func = function() {}`)
+  if (ts.isFunctionExpression(node)) {
+    return true;
+  }
+
+  // Check for object method shorthand (e.g., `{ method() {} }`)
+  if (ts.isMethodDeclaration(node) && node.name && typeof node.name !== "string") {
+    return true;
+  }
+
+  return false;
+};
+
 const getVariableKind = (
   list: ts.VariableDeclarationList,
 ): ExportKind => {
-  const modifiers = (list as unknown as { modifiers?: unknown[] }).modifiers;
-  if (modifiers && Array.isArray(modifiers)) {
-    if (
-      modifiers.some(
-        (m: unknown) => (m as { kind?: number }).kind === ts.SyntaxKind.ConstKeyword,
-      )
-    ) {
-      return "const";
-    }
-    if (
-      modifiers.some(
-        (m: unknown) => (m as { kind?: number }).kind === ts.SyntaxKind.LetKeyword,
-      )
-    ) {
-      return "let";
+  // More robust way to check for modifiers - look at the parent node
+  const parent = list.parent;
+  if (parent && ts.isVariableStatement(parent)) {
+    const modifiers = parent.modifiers;
+    if (modifiers && Array.isArray(modifiers)) {
+      for (const modifier of modifiers) {
+        if (modifier.kind === ts.SyntaxKind.ConstKeyword) {
+          return "const";
+        }
+        if (modifier.kind === ts.SyntaxKind.LetKeyword) {
+          return "let";
+        }
+      }
     }
   }
   return "var";
@@ -135,9 +152,18 @@ export class ExportParser {
       const kind = getVariableKind(list);
       for (const decl of list.declarations) {
         const type = decl.type?.getText().trim();
+
+        // Check if this is a function expression assigned to a variable
+        let finalKind = kind;
+        if (decl.initializer) {
+          if (isFunctionExpression(decl.initializer)) {
+            finalKind = "function";
+          }
+        }
+
         exports.push({
           name: decl.name.getText().trim(),
-          kind,
+          kind: finalKind,
           type,
         });
       }

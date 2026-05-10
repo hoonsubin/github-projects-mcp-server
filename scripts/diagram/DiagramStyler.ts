@@ -43,16 +43,51 @@ export class DiagramStyler {
     this.palette = options?.colorPalette ?? MODULE_COLOR_PALETTE;
   }
 
-  generateClassDefs(modules: ParsedModule[]): string[] {
-    const lines: string[] = [];
-    for (let i = 0; i < modules.length; i++) {
-      const mod = modules[i];
-      const fileName = mod.path.split("/").pop()!;
-      const color = this.palette[i % this.palette.length];
-      lines.push(
-        `    classDef ${sanitizeId(fileName)} fill:${color},stroke:#333,stroke-width:2px;`,
-      );
+  /**
+   * Generate Mermaid classDef style declarations grouped by folder.
+   * Each folder gets a unique color from the palette, and each module
+   * references its folder's classDef.
+   */
+  generateClassDefs(modules: ParsedModule[]): {
+    classDefs: string[];
+    folderToColor: Map<string, string>;
+    moduleToFolder: Map<string, string>;
+  } {
+    // Group modules by their parent folder
+    const folderToModules = new Map<string, ParsedModule[]>();
+    const moduleToFolder = new Map<string, string>();
+
+    for (const mod of modules) {
+      const pathParts = mod.path.split("/");
+      // Get the parent folder (second-to-last part) or root if it's at root level
+      const folder = pathParts.length > 1 ? pathParts[pathParts.length - 2] : "root";
+
+      moduleToFolder.set(mod.path, folder);
+
+      if (!folderToModules.has(folder)) {
+        folderToModules.set(folder, []);
+      }
+      folderToModules.get(folder)!.push(mod);
     }
-    return lines;
+
+    // Generate classDef entries for each folder
+    const classDefs: string[] = [];
+    const folderToColor = new Map<string, string>();
+
+    let colorIndex = 0;
+    for (const [folder] of folderToModules.entries()) {
+      const color = this.palette[colorIndex % this.palette.length];
+      folderToColor.set(folder, color);
+
+      // Sanitize the folder name for use as a Mermaid ID
+      const sanitizedFolder = sanitizeId(folder);
+      classDefs.push(
+        `    classDef ${sanitizedFolder} fill:${color},stroke:#333,stroke-width:2px;`,
+      );
+
+      colorIndex++;
+    }
+
+    return { classDefs, folderToColor, moduleToFolder };
   }
 }

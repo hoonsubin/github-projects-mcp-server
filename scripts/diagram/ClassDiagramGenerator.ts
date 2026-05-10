@@ -4,7 +4,7 @@
 
 import { ParsedModule, UnusedExport } from "./DependencyGraph.ts";
 import { ExportInfo, ExportKind } from "./ExportParser.ts";
-import { formatClassNameFromPath } from "./NameFormatter.ts";
+import { formatClassNameFromPath, sanitizeId } from "./NameFormatter.ts";
 import { resolveImport } from "./resolveImport.ts";
 import { DiagramStyler } from "./DiagramStyler.ts";
 
@@ -19,17 +19,15 @@ export interface ClassDiagramOptions {
 // ── Export Formatting (strategy map) ───────────────────────────────────────────
 
 const exportFormatters: Record<ExportKind, (exp: ExportInfo) => string> = {
-  class: (exp) => `<<Class>> ${exp.name}`,
-  interface: (exp) => `<<Interface>> ${exp.name}`,
-  enum: (exp) => `<<Enum>> ${exp.name}`,
+  class: (exp) => `class ${exp.name}`,
+  interface: (exp) => `interface ${exp.name}`,
+  enum: (exp) => `enum ${exp.name}`,
   function: (exp) => {
     if (exp.returnType) return `+${exp.name}() ${exp.returnType}`;
     return `+${exp.name}()`;
   },
-  type: (exp) => {
-    if (exp.type) return `<<type>> ${exp.name}`;
-    return `<<type>> ${exp.name}`;
-  },
+  type: (exp) => `type ${exp.name}`,
+
   const: (exp) => {
     if (exp.type) return `+${exp.type} ${exp.name}`;
     return `+const ${exp.name}`;
@@ -42,7 +40,7 @@ const exportFormatters: Record<ExportKind, (exp: ExportInfo) => string> = {
     if (exp.type) return `+${exp.type} ${exp.name}`;
     return `+var ${exp.name}`;
   },
-  module: (exp) => `<<Module>> ${exp.name}`,
+  module: (exp) => `Module ${exp.name}`,
 };
 
 const formatExportAsMember = (exp: ExportInfo): string => {
@@ -64,11 +62,15 @@ export class ClassDiagramGenerator {
   generate(): string {
     const lines: string[] = [];
 
+    // Call generateClassDefs once and share the result
+    const styler = new DiagramStyler(this.options);
+    const { classDefs, moduleToFolder } = styler.generateClassDefs(this.modules);
+
     lines.push(...this.generateHeader());
     lines.push("");
-    lines.push(...this.generateStyles());
+    lines.push(...classDefs);
     lines.push("");
-    lines.push(...this.generateClasses());
+    lines.push(...this.generateClasses(moduleToFolder));
     lines.push("");
     lines.push(...this.generateRelationships());
 
@@ -79,19 +81,17 @@ export class ClassDiagramGenerator {
     return ["classDiagram", "    direction LR"];
   }
 
-  private generateStyles(): string[] {
-    const styler = new DiagramStyler(this.options);
-    return styler.generateClassDefs(this.modules);
-  }
-
-  private generateClasses(): string[] {
+  private generateClasses(moduleToFolder: Map<string, string>): string[] {
     const lines: string[] = [];
 
     for (const mod of this.modules) {
       const fileName = mod.path.split("/").pop()!;
       const className = formatClassNameFromPath(fileName);
+      const folder = moduleToFolder.get(mod.path)!;
+      const sanitizedFolder = sanitizeId(folder);
 
-      lines.push(`    class ${className} {`);
+      // Use the folder's classDef for styling
+      lines.push(`    class ${className}:::${sanitizedFolder} {`);
 
       for (const exp of mod.exports) {
         const memberLine = formatExportAsMember(exp);
