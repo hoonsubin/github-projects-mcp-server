@@ -68,11 +68,11 @@ export class ClassDiagramGenerator {
 
     lines.push(...this.generateHeader());
     lines.push("");
-    lines.push(...classDefs);
-    lines.push("");
     lines.push(...this.generateClasses(moduleToFolder));
     lines.push("");
     lines.push(...this.generateRelationships());
+    lines.push("");
+    lines.push(...classDefs);
 
     return lines.join("\n");
   }

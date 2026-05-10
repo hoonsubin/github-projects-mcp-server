@@ -29,6 +29,16 @@ export const MODULE_COLOR_PALETTE = [
   "#cff", // cyan
   "#fcf", // magenta
   "#0ff", // teal
+  "#f0f", // violet
+  "#0f0", // lime green
+  "#ff0", // yellow
+  "#00f", // blue
+  "#f00", // red
+  "#0f0", // green
+  "#800080", // purple
+  "#808000", // olive
+  "#008080", // teal
+  "#ff8000", // orange
 ] as const;
 
 // ── DiagramStyler ──────────────────────────────────────────────────────────────
@@ -82,7 +92,7 @@ export class DiagramStyler {
       // Sanitize the folder name for use as a Mermaid ID
       const sanitizedFolder = sanitizeId(folder);
       classDefs.push(
-        `    classDef ${sanitizedFolder} fill:${color},stroke:#333,stroke-width:2px;`,
+        `    classDef ${sanitizedFolder} fill:${color},stroke:#333,stroke-width:2px,color:#000;`,
       );
 
       colorIndex++;

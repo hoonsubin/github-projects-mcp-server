@@ -8,6 +8,7 @@ Guidance for coding agents working in this repository. Concise by design — see
 | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
 | [`README.md`](README.md)                                                 | Project overview, domain model, full tool surface design, interaction patterns |
 | [`tasks/REFACTORING.md`](tasks/REFACTORING.md)                           | Architecture, phased roadmap, current implementation state per phase           |
+| [`docs/proj-diagram.md`](docs/proj-diagram.md)                           | The current state of the project class diagram and tracking unused exports     |
 | [`.github/scrum/config.yml`](.github/scrum/config.yml)                   | Team, sprint, field names, vocabulary, DoR/DoD, autonomy settings              |
 | [`deno.json`](deno.json)                                                 | Tasks, import map, compiler options, formatter and linter config               |
 | [`skill/scrum-master-agent/SKILL.md`](skill/scrum-master-agent/SKILL.md) | Agentic Scrum skill prompts and ceremony playbooks                             |
