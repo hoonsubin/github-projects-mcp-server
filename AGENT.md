@@ -13,20 +13,19 @@ Guidance for coding agents working in this repository. Concise by design — see
 | [`deno.json`](deno.json)                                                 | Tasks, import map, compiler options, formatter and linter config                                                |
 | [`skill/scrum-master-agent/SKILL.md`](skill/scrum-master-agent/SKILL.md) | Agentic Scrum skill prompts and ceremony playbooks                                                              |
 
-## Managing This Project with Its Own Tools
+## Context Management Rules
 
-This server registers itself as its own MCP client — see [`.roo/mcp.json`](.roo/mcp.json). The active tool surface changes as migration phases complete — **always discover before acting**:
+- **File reading limit**: 500 lines per read operation
+- **Reference file limit**: Maximum 2 files simultaneously
+- **Chunking required**: Files >500 lines must use offset/limit
+- **User confirmation**: Ask before reading files >1000 lines
 
-1. Call `tools/list` to see what is currently registered
-2. Check [`src/index.ts`](src/index.ts) to confirm which tool modules are wired
-3. Check [`tasks/REFACTORING.md`](tasks/REFACTORING.md) for phase status — it defines what is implemented, what is a stub, and what is planned
-4. Use whatever tools are available; do not assume a specific tool exists until confirmed
+## When Working with Documentation
 
-**Stable interaction pattern regardless of surface:**
-
-- Start with an orientation tool (`scrum_orient` or equivalent) if one is registered
-- Read before writing — inspect sprint and backlog state before mutating anything
-- Confirm with the user before bulk writes; respect the `autonomy` level in `.github/scrum/config.yml`
+1. Check the `.roo/skills/` directory for relevant skills
+2. Load skill instructions first (small, <5000 tokens)
+3. Use skill guidance to identify which sections of large files to read
+4. Never load complete reference documentation without user direction
 
 ## Architecture
 

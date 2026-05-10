@@ -301,7 +301,13 @@ All types that cross this boundary are domain types defined in `src/domain/`. No
 ```typescript
 // src/scrum/ports.ts
 
-import type { ArtifactType, ScrumField, SprintRef, Story, StoryRef } from "../domain/story.ts";
+import type {
+  ArtifactType,
+  ScrumField,
+  SprintRef,
+  Story,
+  StoryRef,
+} from "../domain/story.ts";
 
 // ── Supporting types that cross the boundary ──────────────────────────────────
 
@@ -627,58 +633,173 @@ Return: `{ impediment: Story, linked_to: StoryRef }`.
 
 ## 10. Phase 4 — Cutover and Cleanup
 
-**Prerequisite:** Phase 3 complete and all write tools verified.
+**Prerequisite:** Phase 5 complete (backend abstraction layer) and all write tools verified.
 
-### `src/index.ts` swap
+> **Note:** Phase 4 is split into two parts: **4a (Cutover)** switches the server to serve `scrum_*` tools, and **4b (Cleanup)** removes dead code. They can be done in separate commits.
+
+### 4a. `src/index.ts` Cutover
+
+The server currently wires legacy `github_*` tools. Swap to the new `scrum_*` tool surface:
 
 ```typescript
-// Remove these three lines:
+// ── BEFORE (legacy) ──────────────────────────────────────────────────────────
+import { registerProjectTools } from "./tools/projects.ts";
+import { registerItemTools } from "./tools/items.ts";
+import { registerRepositoryTools } from "./tools/repository.ts";
+
+// ... later in createMcpServer():
 registerProjectTools(server);
 registerItemTools(server);
 registerRepositoryTools(server);
 
-// Add these two (after Phase 5, backend and yml come from the wiring block):
+// ── AFTER (scrum_*) ─────────────────────────────────────────────────────────
+import { registerScrumReadTools } from "./tools/scrum-read.ts";
+import { registerScrumWriteTools } from "./tools/scrum-write.ts";
+
+// ... later in createMcpServer():
 registerScrumReadTools(server, backend, yml);
 registerScrumWriteTools(server, backend, yml); // includes deprecated github_graphql
 ```
 
-### Files to delete
+**Verification after cutover:**
 
-| File                      | Action                                                       |
-| ------------------------- | ------------------------------------------------------------ |
-| `src/tools/projects.ts`   | Delete entirely                                              |
-| `src/tools/items.ts`      | Delete entirely                                              |
-| `src/tools/repository.ts` | Gut all tool registrations; delete file if no helpers remain |
+1. `deno check src/index.ts` passes
+2. Server starts and lists 13 tools (7 read + 6 write)
+3. All `scrum_orient` and `scrum_get_*` tools respond correctly
 
-### Schemas cleanup — `src/schemas/inputs.ts`
+### 4b. Dead Code Cleanup — Priority-Based Removal Plan
 
-**Remove:** `GetSprintStatusSchema`, `GetVelocitySchema` (old version), `GetBacklogItemsSchema`, `BulkUpdateItemFieldSchema`, `CloseSprintSchema`, `GenerateSprintReportSchema`.
+Based on the dead code analysis (May 2026), cleanup is organized into 4 priority levels. Each level is independently committable.
 
-**Keep temporarily:** `GetIssueNodeIdSchema`, `GetUserNodeIdSchema`, `GraphQLQuerySchema`, `GetRepoFileSchema` — these may still be used by write tool internals or the deprecated `github_graphql` tool. Delete once confirmed unused.
+#### Priority 1 — Safe File Deletions (Zero Risk)
 
-### Types cleanup — `src/types.ts`
+Delete these files entirely. None are imported by any active code:
 
-After Phase 5 moves types to `src/domain/`:
+| File                           | Reason                                                                                                                                            |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/tools/projects.ts`        | Legacy tool — never registered in current `index.ts`                                                                                              |
+| `src/tools/items.ts`           | Legacy tool — never registered in current `index.ts`                                                                                              |
+| `src/tools/repository.ts`      | Legacy tool — never registered in current `index.ts`                                                                                              |
+| `src/tools/projects_test.ts`   | Test for deleted file                                                                                                                             |
+| `src/tools/items_test.ts`      | Test for deleted file                                                                                                                             |
+| `src/tools/repository_test.ts` | Test for deleted file                                                                                                                             |
+| `src/services/formatters.ts`   | All 6 exports dead (`PROJECT_CORE_FRAGMENT`, `ITEM_CONTENT_FRAGMENT`, `ITEM_FIELD_VALUES_FRAGMENT`, `formatProject`, `formatItem`, `formatField`) |
 
-**Delete from `types.ts`:**
+#### Priority 2 — Schema Pruning (`src/schemas/inputs.ts`)
 
-- `BoardConfig`, `GhFieldBase`, `GhSingleSelectField`, `GhSingleSelectOption`, `GhIterationField`, `GhIterationConfig`, `GhField`, `GhProjectResponse` — sync-script types, sync script is retired
-- `MergedScrumConfig`, `ResolvedScrumFields` — replaced by `RuntimeConfig` in adapter
-- `SprintIteration` — replaced by `IterationEntry` used internally in adapter
-- `SprintStatusResult`, `BulkUpdateResult`, `IterationVelocity` — implementation details that leaked into shared types
+Remove **28 dead schemas** from `src/schemas/inputs.ts`. All have `todo: [Phase 4] Remove` comments and are superseded by `scrum_*` schemas:
 
-**Keep until confirmed migrated:**
+| Remove (28)                  | Reason                                                 |
+| ---------------------------- | ------------------------------------------------------ |
+| `PaginationSchema`           | Never imported                                         |
+| `OwnerTypeSchema`            | Never imported                                         |
+| `ListProjectsSchema`         | Superseded by `scrum_orient`                           |
+| `GetProjectSchema`           | Superseded by `scrum_orient`                           |
+| `UpdateProjectSchema`        | Superseded by `scrum_set_field`                        |
+| `ListItemsSchema`            | Superseded by `scrum_get_backlog`                      |
+| `AddItemSchema`              | Superseded by `scrum_create_story`                     |
+| `AddDraftIssueSchema`        | Superseded by `scrum_create_story`                     |
+| `DeleteItemSchema`           | Superseded by `scrum_set_field`                        |
+| `ArchiveItemSchema`          | Superseded by `scrum_set_field`                        |
+| `FieldValueUnion`            | GitHub-specific; replaced by `ScrumFieldSchema`        |
+| `ResolvedFieldValue`         | Type for `FieldValueUnion`                             |
+| `resolveFieldValue`          | Function for `FieldValueUnion`                         |
+| `UpdateFieldValueSchema`     | Superseded by `scrum_set_field`                        |
+| `GetProjectFieldsSchema`     | Superseded by `scrum_orient`                           |
+| `GetSprintStatusSchema`      | Superseded by `scrum_get_sprint`                       |
+| `GetVelocitySchema`          | Superseded by `scrum_get_velocity` (never implemented) |
+| `GetBacklogItemsSchema`      | Superseded by `scrum_get_backlog`                      |
+| `BulkUpdateItemFieldSchema`  | Superseded by `scrum_plan_sprint`                      |
+| `CloseSprintSchema`          | Superseded by `scrum_plan_sprint`                      |
+| `GenerateSprintReportSchema` | Superseded by `scrum_get_sprint`                       |
+| `GetIssueNodeIdSchema`       | Never imported                                         |
+| `GetUserNodeIdSchema`        | Never imported                                         |
+| `GetRepoFileSchema`          | Never imported                                         |
+| `CreateIssueSchema`          | Never imported                                         |
+| `UpdateIssueSchema`          | Never imported                                         |
+| `CreateCommentSchema`        | Never imported                                         |
+| `WriteRepoFileSchema`        | Never imported                                         |
 
-- `Story`, `StoryRef`, `SprintRef`, `ScrumField`, `StoryType` → move to `src/domain/story.ts`
-- `IterationEntry`, `DefinitionCriteria` → move to `src/domain/sprint.ts`
-- `ScrumConfigYml`, `ArtifactType` → move to `src/domain/config.ts`
-- `SprintHistoryResponse`, `SprintSnapshot`, `SprintStory`, `SprintSummary` → inline in `scrum/get-history.ts` (only one consumer)
-- `GetBacklogResult` → inline in `scrum/get-backlog.ts`
-- `BurndownResponse`, `BurndownSprintMeta`, `BurndownDayPoint`, `IdealDayPoint`, `BurndownStory` → inline in `scrum/get-burndown.ts`
-- `TemplateResponse` → inline in `scrum/get-template.ts`
-- `StoryReadiness` → replace with `type ReadinessLevel = "ready" | "partially_ready" | "not_ready"` in `domain/rules/readiness.ts`
+**Keep:** `GraphQLQuerySchema` — actively imported by `scrum-write.ts:28` for the deprecated `github_graphql` tool.
 
-### `github_graphql` deprecation marker
+#### Priority 3 — Type Pruning (`src/types.ts`)
+
+Remove **38 dead types** from `src/types.ts`. These are legacy sync-script types and GitHub-PR-specific response types:
+
+| Remove (38)                  | Reason         |
+| ---------------------------- | -------------- |
+| `DefinitionCriteria`         | Never imported |
+| `PageInfo`                   | Never imported |
+| `ItemContentType`            | Never imported |
+| `ProjectV2ItemFieldValue`    | Never imported |
+| `LinkedContentBase`          | Never imported |
+| `ProjectV2IssueContent`      | Never imported |
+| `ProjectV2PRContent`         | Never imported |
+| `ProjectV2DraftIssueContent` | Never imported |
+| `ProjectsV2Connection`       | Never imported |
+| `UserProjectsData`           | Never imported |
+| `OrgProjectsData`            | Never imported |
+| `SingleProjectData`          | Never imported |
+| `ProjectItemsData`           | Never imported |
+| `AddProjectItemData`         | Never imported |
+| `AddDraftIssueData`          | Never imported |
+| `UpdateProjectItemFieldData` | Never imported |
+| `DeleteProjectItemData`      | Never imported |
+| `ArchiveProjectItemData`     | Never imported |
+| `UpdateProjectData`          | Never imported |
+| `PriorityTier`               | Never imported |
+| `StatusSemantics`            | Never imported |
+| `SprintIteration`            | Never imported |
+| `BoardConfig`                | Never imported |
+| `GhFieldBase`                | Never imported |
+| `GhSingleSelectOption`       | Never imported |
+| `GhSingleSelectField`        | Never imported |
+| `GhIterationConfig`          | Never imported |
+| `GhIterationField`           | Never imported |
+| `GhField`                    | Never imported |
+| `GhProjectResponse`          | Never imported |
+| `MergedScrumConfig`          | Never imported |
+| `ResolvedScrumFields`        | Never imported |
+| `IterationVelocity`          | Never imported |
+| `SprintStatusResult`         | Never imported |
+| `BulkUpdateResult`           | Never imported |
+| `SprintHistoryResponse`      | Never imported |
+| `SprintSnapshot`             | Never imported |
+| `SprintStory`                | Never imported |
+| `SprintSummary`              | Never imported |
+| `GetBacklogResult`           | Never imported |
+| `BurndownResponse`           | Never imported |
+| `BurndownSprintMeta`         | Never imported |
+| `BurndownDayPoint`           | Never imported |
+| `IdealDayPoint`              | Never imported |
+| `BurndownStory`              | Never imported |
+
+**Keep (9 types actively used):** `Story`, `StoryRef`, `SprintRef`, `ScrumField`, `StoryType`, `ScrumConfigYml`, `IterationEntry`, `ArtifactType`, `TemplateResponse`
+
+#### Priority 4 — Dead Function Removal
+
+| File                       | Remove                                                                    | Reason          |
+| -------------------------- | ------------------------------------------------------------------------- | --------------- |
+| `src/services/github.ts`   | `getToken`, `decodeRepoFileContent`                                       | Never imported  |
+| `src/services/resolver.ts` | `resolveBacklogItems`                                                     | Never imported  |
+| `src/scrum/sprint-math.ts` | `SprintWindow`, `IdealDayPoint`, `BurndownDayPoint`, `BurndownStoryInput` | Dead interfaces |
+
+### False Positives — Do NOT Remove
+
+The diagram generator produced false positives for these. They are **actively used** but the generator missed cross-file references:
+
+| Module                                 | Exports                                                                                                                | Why the generator missed them                                      |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `src/schemas/scrum.ts`                 | All 12 schemas                                                                                                         | Actively imported by `scrum-read.ts` and `scrum-write.ts`          |
+| `src/scrum/ports.ts`                   | `SprintInfo`, `PlatformState`, `StoryDetail`, `SprintHistoryEntry`, `BurndownInput`, `CompletionMap`, `VocabularyKind` | Port contract — used as return types on `ProjectBackend` interface |
+| `src/adapters/github/queries.ts`       | All 4 queries                                                                                                          | Used internally by `backend.ts`                                    |
+| `src/adapters/github/mappers.ts`       | All 6 functions + `BurndownStoryInput`                                                                                 | Used internally by `backend.ts`                                    |
+| `src/adapters/github/raw-types.ts`     | All 13 interfaces                                                                                                      | Used by `mappers.ts`                                               |
+| `src/adapters/github/config-loader.ts` | `ConfigParams`, `classifyIterations`                                                                                   | Used by `index.ts` and internally                                  |
+| `src/domain/rules/`                    | All 5 exports                                                                                                          | Used by use-case files                                             |
+| `src/types.ts`                         | 9 types listed above as "Keep"                                                                                         | Used by tool handlers and use cases                                |
+
+### `github_graphql` Deprecation Marker
 
 Ensure the tool description reads:
 

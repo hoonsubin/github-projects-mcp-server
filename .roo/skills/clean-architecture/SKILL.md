@@ -1,13 +1,15 @@
 ---
 name: clean-architecture
 description: >-
-  System and software architecting skill. Use when planning a new project, designing module structure,
-  drawing layer/component boundaries, evaluating an existing codebase,
-  refactoring a "big ball of mud", applying SOLID, or reasoning about dependency
-  direction. Trigger on: "where should this go", "how do I structure this",
-  "hard to change", "decouple X from Y", "starting a new project",
-  "refactoring", "house cleaning", "design review". Works across any tech stack
-  or domain.
+  ONLY trigger on:
+  - planning a new project
+  - "how do I structure this"
+  - "massive refactoring" or "house cleaning"
+  - applying SOLID, or reasoning about dependency direction
+  DO NOT activate for:
+  - Single-phase questions (use phase-specific skills instead)
+  - General architecture questions (use clean-arch skill)
+  - Debugging specific files (use search, not full read)
 ---
 
 # Clean Architecture — System Architecting Skill
