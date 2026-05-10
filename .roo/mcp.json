@@ -25,15 +25,15 @@
 			],
 			"timeout": 300
 		},
-		"docker_mcp_gateway": {
-			"command": "docker",
+		"mermaid-validator": {
+			"command": "npx",
 			"args": [
-				"mcp",
-				"gateway",
-				"run"
+				"-y",
+				"@rtuin/mcp-mermaid-validator@latest"
 			],
-			"disabled": true,
-			"alwaysAllow": []
+			"alwaysAllow": [
+				"validateMermaid"
+			]
 		}
 	}
 }

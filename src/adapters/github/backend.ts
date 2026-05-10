@@ -41,8 +41,6 @@ import type {
   VocabularyKind,
 } from "../../scrum/ports.ts";
 import type { IterationEntry, Story, StoryRef } from "../../types.ts";
-// classifyIterations kept for potential future use
-import { classifyIterations as _classifyIterations } from "./config-loader.ts";
 
 // ── Helper types ─────────────────────────────────────────────────────────────
 
