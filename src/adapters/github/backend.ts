@@ -86,7 +86,7 @@ interface GetProjectItemsResponse {
 interface RepoLabelsResponse {
   repository?: {
     labels?: {
-      nodes: Array<{ name: string; color: string; description: string }>;
+      nodes: Array<{ id: string; name: string; color: string; description: string }>;
     };
   };
 }
@@ -331,30 +331,592 @@ export class GitHubProjectBackend implements ProjectBackend {
     };
   }
 
+  // ── Private helpers for addVocabulary ───────────────────────────────────────
+
+  private async fetchRepoNodeId(): Promise<string> {
+    // Fetch the repository node ID from GitHub GraphQL API
+    const result = await this.gh.graphql<{ repository?: { id: string } }>(
+      `query { repository(owner: "${this.owner}", name: "${this.repo}") { id } }`,
+    );
+    const nodeId = result?.repository?.id;
+    if (!nodeId) {
+      throw new Error(`Could not fetch repository node ID for ${this.owner}/${this.repo}`);
+    }
+    return nodeId;
+  }
+
+  // ── Private helpers for setField ────────────────────────────────────────────
+
+  private async resolveUserNodeId(login: string): Promise<string> {
+    const result = await this.gh.graphql<{ user?: { id: string } }>(
+      `query { user(login: "${login}") { id } }`,
+    );
+    const nodeId = result?.user?.id;
+    if (!nodeId) {
+      throw new GitHubApiError(`User "${login}" not found.`, 404);
+    }
+    return nodeId;
+  }
+
+  private async resolveUserNodeIds(logins: string[]): Promise<string[]> {
+    const ids: string[] = [];
+    for (const login of logins) {
+      ids.push(await this.resolveUserNodeId(login));
+    }
+    return ids;
+  }
+
+  private async resolveOrCreateMilestoneNodeId(title: string): Promise<string> {
+    // Check existing milestones on the repo
+    const milestonesQuery = `
+      query($owner: String!, $repo: String!) {
+        repository(owner: $owner, name: $repo) {
+          milestones(first: 100, states: [OPEN]) {
+            nodes { id title }
+          }
+        }
+      }
+    `;
+    const result = await this.gh.graphql<{
+      repository?: { milestones?: { nodes: Array<{ id: string; title: string }> } };
+    }>(milestonesQuery, { owner: this.owner, repo: this.repo });
+    const nodes = result?.repository?.milestones?.nodes ?? [];
+    const found = nodes.find((m) => m.title.toLowerCase() === title.toLowerCase());
+    if (found) {
+      return found.id;
+    }
+    // Create milestone if not found
+    const repositoryId = await this.fetchRepoNodeId();
+    const startDate = new Date().toISOString().slice(0, 10);
+    const endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const createResult = await this.gh.graphql<{
+      createMilestone: { milestone: { id: string } };
+    }>(
+      `mutation CreateMilestone($repositoryId: ID!, $title: String!, $startDate: Date!, $endDate: Date!) {
+        createMilestone(input: { repositoryId: $repositoryId, title: $title, startDate: $startDate, endDate: $endDate }) {
+          milestone { id }
+        }
+      }`,
+      { repositoryId, title, startDate, endDate },
+    );
+    return createResult.createMilestone.milestone.id;
+  }
+
+  private async resolveLabelNodeIds(names: string[]): Promise<string[]> {
+    const result = await this.gh.graphql<RepoLabelsResponse>(GET_REPO_LABELS_QUERY, {
+      owner: this.owner,
+      repo: this.repo,
+    });
+    const existingLabels = result?.repository?.labels?.nodes ?? [];
+    const nodeIds: string[] = [];
+    const missing: string[] = [];
+
+    for (const name of names) {
+      const found = existingLabels.find((l) => l.name === name);
+      if (found) {
+        nodeIds.push(found.id);
+      } else {
+        missing.push(name);
+      }
+    }
+
+    if (missing.length > 0) {
+      const repositoryId = await this.fetchRepoNodeId();
+      for (const name of missing) {
+        const color = this.hashToColor(name);
+        const createResult = await this.gh.graphql<{ createLabel: { label: { id: string } } }>(
+          `mutation CreateLabel($repositoryId: ID!, $name: String!, $color: String!) {
+            createLabel(input: { repositoryId: $repositoryId, name: $name, color: $color }) {
+              label { id }
+            }
+          }`,
+          { repositoryId, name, color },
+        );
+        nodeIds.push(createResult.createLabel.label.id);
+      }
+    }
+
+    return nodeIds;
+  }
+
+  /** Resolve a single label by name, creating it if it doesn't exist. Returns node ID or null. */
+  private async resolveOrCreateLabel(name: string): Promise<string | null> {
+    const result = await this.gh.graphql<RepoLabelsResponse>(GET_REPO_LABELS_QUERY, {
+      owner: this.owner,
+      repo: this.repo,
+    });
+    const existingLabels = result?.repository?.labels?.nodes ?? [];
+    const existing = existingLabels.find((l) => l.name === name);
+    if (existing) {
+      return existing.id;
+    }
+    // Create the label
+    const repositoryId = await this.fetchRepoNodeId();
+    const color = this.hashToColor(name);
+    const createResult = await this.gh.graphql<{ createLabel?: { label?: { id: string } } }>(
+      `mutation CreateLabel($repositoryId: ID!, $name: String!, $color: String!) {
+        createLabel(input: { repositoryId: $repositoryId, name: $name, color: $color }) {
+          label { id }
+        }
+      }`,
+      { repositoryId, name, color },
+    );
+    return createResult.createLabel?.label?.id ?? null;
+  }
+
   fetchRepoFile(path: string): Promise<string> {
     return fetchRepoFile(this.owner, this.repo, path);
   }
 
   // ── Write stubs ──────────────────────────────────────────────────────────
 
-  createStory(_input: CreateStoryInput): Promise<StoryRef> {
-    throw new Error("not yet implemented");
+  async createStory(input: CreateStoryInput): Promise<StoryRef> {
+    // Step 1: Resolve/create type label
+    const typeLabelId = await this.resolveOrCreateLabel(`type_${input.type}`);
+
+    // Step 2: Resolve/create priority label (if provided)
+    let priorityLabelId: string | null = null;
+    if (input.priority) {
+      priorityLabelId = await this.resolveOrCreateLabel(`priority_${input.priority.toLowerCase()}`);
+    }
+
+    // Step 3: Resolve existing repo labels to build label ID list
+    const labelResult = await this.gh.graphql<RepoLabelsResponse>(GET_REPO_LABELS_QUERY, {
+      owner: this.owner,
+      repo: this.repo,
+    });
+    const existingLabels = labelResult?.repository?.labels?.nodes ?? [];
+    const labelIds: string[] = [];
+
+    // Add type label
+    const typeNode = existingLabels.find((l) => l.name === `type_${input.type}`);
+    if (typeNode) {
+      labelIds.push(typeNode.id);
+    } else if (typeLabelId) {
+      labelIds.push(typeLabelId);
+    }
+
+    // Add priority label if resolved
+    if (priorityLabelId) {
+      labelIds.push(priorityLabelId);
+    }
+
+    // Add user-provided labels
+    if (input.labels) {
+      for (const labelName of input.labels) {
+        const existing = existingLabels.find((l) => l.name === labelName);
+        if (existing) {
+          labelIds.push(existing.id);
+        } else {
+          const createdId = await this.resolveOrCreateLabel(labelName);
+          if (createdId) labelIds.push(createdId);
+        }
+      }
+    }
+
+    // Step 4: Resolve assignee logins → user node IDs
+    const assigneeIds: string[] = [];
+    if (input.assignees) {
+      for (const login of input.assignees) {
+        const nodeId = await this.resolveUserNodeId(login);
+        assigneeIds.push(nodeId);
+      }
+    }
+
+    // Step 5: Call createIssue mutation
+    const repositoryId = await this.fetchRepoNodeId();
+    const result = await this.gh.graphql<{
+      createIssue?: { issue?: { id: string; number: number } };
+    }>(
+      `mutation CreateIssue(
+        $repositoryId: ID!,
+        $title: String!,
+        $body: String,
+        $labelIds: [ID!],
+        $assigneeIds: [ID!]
+      ) {
+        createIssue(
+          input: {
+            repositoryId: $repositoryId
+            title: $title
+            body: $body
+            labelIds: $labelIds
+            assigneeIds: $assigneeIds
+          }
+        ) {
+          issue { id number }
+        }
+      }`,
+      {
+        repositoryId,
+        title: input.title,
+        body: input.body,
+        ...(labelIds.length > 0 ? { labelIds } : {}),
+        ...(assigneeIds.length > 0 ? { assigneeIds } : {}),
+      },
+    );
+
+    const issue = result.createIssue?.issue;
+    if (!issue) {
+      throw new GitHubApiError("Failed to create issue: no issue returned from mutation");
+    }
+
+    // Step 6: Call addProjectV2ItemById to add to project board
+    await this.gh.graphql(
+      `mutation AddItem($projectId: ID!, $contentId: ID!) {
+        addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
+          item { id }
+        }
+      }`,
+      { projectId: this.config.projectId, contentId: issue.id },
+    );
+
+    return { number: issue.number, id: issue.id };
   }
-  updateStory(_ref: StoryRef, _updates: StoryUpdates): Promise<void> {
-    throw new Error("not yet implemented");
+
+  async updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void> {
+    const resolved = await resolveStory(ref, this.config, { graphql: this.gh.graphql });
+    const issueId = resolved.issueId;
+
+    // Build update parts — only include fields that are set
+    const parts: string[] = [];
+    const variables: Record<string, unknown> = { issueId };
+
+    if (updates.title !== undefined) {
+      parts.push("title: $title");
+      variables.title = updates.title;
+    }
+    if (updates.body !== undefined) {
+      parts.push("body: $body");
+      variables.body = updates.body;
+    }
+    if (updates.labels !== undefined && updates.labels.length > 0) {
+      const labelIds = await this.resolveLabelNodeIds(updates.labels);
+      parts.push("labelIds: $labelIds");
+      variables.labelIds = labelIds;
+    }
+    if (updates.assignees !== undefined && updates.assignees.length > 0) {
+      const userIds = await this.resolveUserNodeIds(updates.assignees);
+      parts.push("assigneeIds: $assigneeIds");
+      variables.assigneeIds = userIds;
+    }
+    if (updates.epic !== undefined) {
+      if (updates.epic === null) {
+        parts.push("milestoneId: null");
+      } else {
+        const milestoneId = await this.resolveOrCreateMilestoneNodeId(updates.epic);
+        parts.push("milestoneId: $milestoneId");
+        variables.milestoneId = milestoneId;
+      }
+    }
+
+    if (parts.length === 0) return; // Nothing to update
+
+    const mutation = `
+      mutation UpdateIssue($issueId: ID!, $title: String, $body: String, $labelIds: [ID!], $assigneeIds: [ID!], $milestoneId: ID) {
+        updateIssue(input: { issueId: $issueId, ${parts.join(", ")} }) {
+          issue { id }
+        }
+      }
+    `;
+
+    await this.gh.graphql(mutation, variables);
   }
-  setField(
-    _ref: StoryRef,
-    _field: string,
-    _value: string | number | SprintRef | null,
+
+  async setField(
+    ref: StoryRef,
+    field: "status" | "sprint" | "story_points" | "priority" | "assignee",
+    value: string | number | SprintRef | null,
   ): Promise<void> {
-    throw new Error("not yet implemented");
+    const resolved = await resolveStory(ref, this.config, { graphql: this.gh.graphql });
+    const itemId = resolved.itemId;
+
+    switch (field) {
+      case "status":
+        return this.setFieldStatus(itemId, value as string);
+      case "sprint":
+        return this.setFieldSprint(itemId, value as SprintRef);
+      case "story_points":
+        return this.setFieldStoryPoints(itemId, value as number | null);
+      case "priority":
+        return this.setFieldPriority(itemId, value as string | null);
+      case "assignee":
+        return this.setFieldAssignee(resolved.issueId, value as string | null);
+      default:
+        throw new Error(`Unknown field: ${field}`);
+    }
   }
-  addComment(_ref: StoryRef, _body: string): Promise<void> {
-    throw new Error("not yet implemented");
+
+  async addComment(ref: StoryRef, body: string): Promise<void> {
+    // Validate ref exists by resolving it
+    const _resolved = await resolveStory(ref, this.config, { graphql: this.gh.graphql });
+    void _resolved; // Suppress unused warning; resolution validates the ref
+
+    // We need the issue number to post a comment via REST
+    const issueNumber = ref.number;
+    if (!issueNumber) {
+      throw new GitHubApiError("addComment requires a story ref with a number");
+    }
+
+    await this.gh.rest(
+      `repos/${this.owner}/${this.repo}/issues/${issueNumber}/comments`,
+      {
+        method: "POST",
+        body: { body },
+      },
+    );
   }
-  addVocabulary(_kind: VocabularyKind, _value: string): Promise<{ created: boolean }> {
-    throw new Error("not yet implemented");
+
+  // ── Private helpers for setField ────────────────────────────────────────────
+
+  private async setFieldStatus(itemId: string, value: string): Promise<void> {
+    const optionId = this.config.statusOptions[value];
+    if (!optionId) {
+      throw new GitHubApiError(
+        `Status option "${value}" not found in vocabulary. Run scrum_add_vocabulary to add it first.`,
+        400,
+      );
+    }
+    const fieldId = this.config.fields.statusFieldId;
+    if (!fieldId) throw new Error("Status field ID is not configured.");
+    await this.gh.graphql(
+      `mutation {
+        updateProjectV2ItemFieldValue(input: {
+          itemId: "${itemId}"
+          fieldId: "${fieldId}"
+          value: { singleSelectOptionId: "${optionId}" }
+        }) { item { id } }
+      }`,
+    );
+  }
+
+  private async setFieldSprint(itemId: string, value: SprintRef): Promise<void> {
+    const iterationId = value === null ? null : resolveSprint(value, this.config);
+    const fieldId = this.config.fields.sprintFieldId;
+    if (!fieldId) throw new Error("Sprint field ID is not configured.");
+    if (iterationId === null) {
+      await this.gh.graphql(
+        `mutation {
+          updateProjectV2ItemFieldValue(input: {
+            itemId: "${itemId}"
+            fieldId: "${fieldId}"
+            value: null
+          }) { item { id } }
+        }`,
+      );
+    } else {
+      await this.gh.graphql(
+        `mutation {
+          updateProjectV2ItemFieldValue(input: {
+            itemId: "${itemId}"
+            fieldId: "${fieldId}"
+            value: { iterationId: "${iterationId}" }
+          }) { item { id } }
+        }`,
+      );
+    }
+  }
+
+  private async setFieldStoryPoints(itemId: string, value: number | null): Promise<void> {
+    const fieldId = this.config.fields.storyPointsFieldId;
+    if (!fieldId) throw new Error("Story points field ID is not configured.");
+    if (value === null) {
+      await this.gh.graphql(
+        `mutation {
+          updateProjectV2ItemFieldValue(input: {
+            itemId: "${itemId}"
+            fieldId: "${fieldId}"
+            value: null
+          }) { item { id } }
+        }`,
+      );
+    } else {
+      await this.gh.graphql(
+        `mutation {
+          updateProjectV2ItemFieldValue(input: {
+            itemId: "${itemId}"
+            fieldId: "${fieldId}"
+            value: { number: ${value} }
+          }) { item { id } }
+        }`,
+      );
+    }
+  }
+
+  private async setFieldPriority(itemId: string, value: string | null): Promise<void> {
+    const fieldId = this.config.fields.priorityFieldId;
+    if (!fieldId) throw new Error("Priority field ID is not configured.");
+    if (value === null) {
+      await this.gh.graphql(
+        `mutation {
+          updateProjectV2ItemFieldValue(input: {
+            itemId: "${itemId}"
+            fieldId: "${fieldId}"
+            value: null
+          }) { item { id } }
+        }`,
+      );
+    } else {
+      const optionId = this.config.priorityOptions[value];
+      if (!optionId) {
+        throw new GitHubApiError(
+          `Priority option "${value}" not found. Run scrum_add_vocabulary to add it first.`,
+          400,
+        );
+      }
+      await this.gh.graphql(
+        `mutation {
+          updateProjectV2ItemFieldValue(input: {
+            itemId: "${itemId}"
+            fieldId: "${fieldId}"
+            value: { singleSelectOptionId: "${optionId}" }
+          }) { item { id } }
+        }`,
+      );
+    }
+  }
+
+  private async setFieldAssignee(issueId: string, value: string | null): Promise<void> {
+    if (value === null) {
+      // Clear all assignees
+      await this.gh.graphql(
+        `mutation {
+          updateIssue(input: { issueId: "${issueId}", assigneeIds: [] }) { issue { id } }
+        }`,
+      );
+      return;
+    }
+    // Resolve login → user node ID
+    const userId = await this.resolveUserNodeId(value);
+    await this.gh.graphql(
+      `mutation {
+        updateIssue(input: { issueId: "${issueId}", assigneeIds: ["${userId}"] }) { issue { id } }
+      }`,
+    );
+  }
+
+  addVocabulary(kind: VocabularyKind, value: string): Promise<{ created: boolean }> {
+    switch (kind) {
+      case "status_option":
+        return this.addStatusOption(value);
+      case "priority_option":
+        return this.addPriorityOption(value);
+      case "label":
+        return this.addLabel(value);
+    }
+  }
+
+  private addStatusOption(value: string): Promise<{ created: boolean }> {
+    const fieldId = this.config.fields.statusFieldId;
+    if (!fieldId) {
+      throw new GitHubApiError(
+        "Status field does not exist on the project. Create the field manually in GitHub Projects UI before adding options.",
+        400,
+      );
+    }
+    return this.addSingleSelectOption(fieldId, value);
+  }
+
+  private addPriorityOption(value: string): Promise<{ created: boolean }> {
+    const fieldId = this.config.fields.priorityFieldId;
+    if (!fieldId) {
+      throw new GitHubApiError(
+        "Priority field does not exist on the project. Create the field manually in GitHub Projects UI before adding options.",
+        400,
+      );
+    }
+    return this.addSingleSelectOption(fieldId, value);
+  }
+
+  private async addSingleSelectOption(
+    fieldId: string,
+    value: string,
+  ): Promise<{ created: boolean }> {
+    const fieldData = await this.gh.graphql<{
+      node: {
+        options: Array<{ id: string; name: string; color: string; description: string }>;
+      } | null;
+    }>(
+      `query GetFieldOptions($fieldId: ID!) {
+        node(id: $fieldId) {
+          ... on ProjectV2SingleSelectField { options { id name color description } }
+        }
+      }`,
+      { fieldId },
+    );
+    const currentOptions = fieldData.node?.options ?? [];
+    if (currentOptions.some((opt) => opt.name === value)) {
+      return { created: false };
+    }
+    const updatedOptions = [
+      ...currentOptions.map((opt) => ({
+        id: opt.id,
+        name: opt.name,
+        color: opt.color,
+        description: opt.description,
+      })),
+      { name: value, color: "GRAY", description: "" },
+    ];
+    await this.gh.graphql(
+      `mutation UpdateField($projectId: ID!, $fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) {
+        updateProjectV2Field(input: {
+          projectId: $projectId
+          fieldId: $fieldId
+          singleSelectOptions: $options
+        }) {
+          projectV2Field { id }
+        }
+      }`,
+      { projectId: this.config.projectId, fieldId, options: updatedOptions },
+    );
+    return { created: true };
+  }
+
+  private async addLabel(value: string): Promise<{ created: boolean }> {
+    const result = await this.gh.graphql<RepoLabelsResponse>(GET_REPO_LABELS_QUERY, {
+      owner: this.owner,
+      repo: this.repo,
+    });
+    const existingLabels = result?.repository?.labels?.nodes.map((l) => l.name) ?? [];
+    if (existingLabels.includes(value)) {
+      return { created: false };
+    }
+    const color = this.hashToColor(value);
+    const repositoryId = await this.fetchRepoNodeId();
+    await this.gh.graphql(
+      `mutation CreateLabel($repositoryId: ID!, $name: String!, $color: String!) {
+        createLabel(input: { repositoryId: $repositoryId, name: $name, color: $color }) {
+          label { id name }
+        }
+      }`,
+      { repositoryId, name: value, color },
+    );
+    return { created: true };
+  }
+
+  private hashToColor(name: string): string {
+    const palette = [
+      "f9d0c4",
+      "d8f3dc",
+      "d4e6f1",
+      "e8daef",
+      "ffeaa7",
+      "fab1a0",
+      "81ecec",
+      "a29bfe",
+      "fd79a8",
+      "55efc4",
+      "ff7675",
+      "74b9ff",
+      "a9def9",
+      "c39bd3",
+      "f6e58a",
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return palette[Math.abs(hash) % palette.length];
   }
 
   // ── Private helpers ──────────────────────────────────────────────────────

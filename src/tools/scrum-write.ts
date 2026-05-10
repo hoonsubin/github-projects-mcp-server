@@ -1,6 +1,5 @@
 // =============================================================================
-// src/tools/scrum-write.ts — Phase 3: all 5 scrum_* write tools + scrum_add_vocabulary
-//                           + deprecated github_graphql
+// src/tools/scrum-write.ts — Register all scrum_* write tools + deprecated github_graphql
 //
 // Implementation order (each builds on the previous):
 //   Step 11: Stub all 5 write tools + scrum_add_vocabulary + register github_graphql
@@ -10,124 +9,375 @@
 //     13a. scrum_add_vocabulary  (simplest — single field/label mutation, no resolver needed)
 //     13b. scrum_set_field       (core primitive — all other write tools depend on it internally)
 //     13c. scrum_update_story
-//     13d. scrum_create_story
-//     13e. scrum_plan_sprint
-//     13f. scrum_log_impediment  (composes create_story + a direct comment mutation)
+//     13d. scrum_create_story  (C4)
+//     13e. scrum_plan_sprint   (C5)
+//     13f. scrum_log_impediment (C6)
 // =============================================================================
 
-import type { McpServer as _McpServer } from "@modelcontextprotocol/sdk/server/mcp";
-
-// todo: [Phase 3] Uncomment imports as each tool is implemented: ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
-// import { loadConfig } from "../services/config.ts";
-// import { resolveStory, resolveSprint } from "../services/resolver.ts";
-// import { AddVocabularySchema, CreateStorySchema, UpdateStorySchema } from "../schemas/scrum.ts";
-// import { SetFieldSchema, PlanSprintSchema, LogImpedimentSchema } from "../schemas/scrum.ts";
-// import { GraphQLQuerySchema } from "../schemas/inputs.ts";
-// import type { Story, StoryRef } from "../types.ts";
-
-/**
- * Register all scrum_* write tools + deprecated github_graphql on the MCP server.
- *
- * todo: [Phase 3, step 13a] scrum_add_vocabulary ([#12](https://github.com/hoonsubin/github-projects-mcp-server/issues/12)) [implement first — no resolver needed]
- *   Idempotent addition of a vocabulary entry to the platform schema.
- *   - kind:"status_option"  → call updateProjectV2SingleSelectField mutation to append the new
- *                             option to the Status field. Use config.fields.statusFieldId.
- *                             Return { created: true, field: "status", value } or
- *                             { created: false, message: "option already exists" } if present.
- *   - kind:"priority_option"→ same pattern for config.fields.priorityFieldId.
- *   - kind:"label"          → call createLabel mutation on the repo (name = value, auto-assign
- *                             a colour from a fixed palette based on label name hash).
- *                             If the label already exists, return { created: false }.
- *   NOTE: Cannot create new project fields (structural setup). If statusFieldId or
- *   priorityFieldId is null, return a structured error instructing the user to create
- *   the field manually in the GitHub Projects UI before retrying.
- *
- * todo: [Phase 3, step 13b] scrum_set_field ([#13](https://github.com/hoonsubin/github-projects-mcp-server/issues/13)) [core primitive — implement before other write tools]
- *   Translates Scrum vocabulary to GitHub Projects v2 field mutations. Per field:
- *   - status:        resolve name → config.statusOptions[value]; call updateProjectV2ItemFieldValue
- *                    with singleSelectOptionId. Return structured error if value not in vocabulary
- *                    (hint: "run scrum_add_vocabulary to add the missing option first").
- *   - sprint:        call resolveSprint → iteration ID or null; set or clear the iteration field
- *   - story_points:  set number field value, or clear if null
- *   - priority:      resolve name → config.priorityOptions[value]; set or clear singleSelectOptionId
- *   - assignee:      use updateIssue mutation (NOT a separate project field) — resolve login to user
- *                    node ID via GetUserNodeIdSchema handler, then call updateIssue with assignee_ids.
- *                    Setting null → pass empty array [] to clear all assignees.
- *   Return: the updated Story (call a shared readStoryFields helper to fetch current state)
- *
- * todo: [Phase 3, step 13c] scrum_update_story ([#14](https://github.com/hoonsubin/github-projects-mcp-server/issues/14))
- *   - Call resolveStory to get issueId and itemId
- *   - Call updateIssue mutation for any of: title, body, assignees (resolve logins to node IDs),
- *     labels (resolve label names to node IDs via graphql listing repo labels)
- *   - epic: resolve Milestone title to milestone node ID; use updateIssue milestone field
- *           Pass null to detach (set milestoneId: null in the mutation)
- *   - Return: the updated Story
- *
- * todo: [Phase 3, step 13d] scrum_create_story ([#16](https://github.com/hoonsubin/github-projects-mcp-server/issues/16))
- *   - Create issue via CreateIssueSchema handler (title, body, assignee_ids, label_ids)
- *     NOTE: resolve type label name → label node ID before calling (create label if it doesn't
- *     exist — reuse scrum_add_vocabulary label logic internally)
- *   - Add the new issue to the project via addProjectV2ItemById mutation
- *   - For each optional field (priority, story_points, sprint): call scrum_set_field logic inline
- *     (reuse the internal helper, not the registered tool — avoid double resolver calls)
- *   - Partial failure: if issue creation succeeds but a field-set fails, return a structured error
- *     that includes the partial StoryRef so the agent can retry field-sets without duplicating the story
- *   - Return: the newly created Story
- *
- * todo: [Phase 3, step 13e] scrum_plan_sprint ([#17](https://github.com/hoonsubin/github-projects-mcp-server/issues/17))
- *   - If replace:true — fetch all items currently in the target sprint and call resolveSprint +
- *     scrum_set_field(sprint: null) on each to clear them first
- *   - For each story in stories[]: call resolveStory, then apply scrum_set_field sprint logic
- *   - Collect results: assigned[] (succeeded) and skipped[] ({ ref, reason }) for failures
- *   - Return: { assigned: StoryRef[], skipped: [{ ref, reason }] }
- *
- * todo: [Phase 3, step 13f] scrum_log_impediment ([#18](https://github.com/hoonsubin/github-projects-mcp-server/issues/18))
- *   - Call scrum_create_story with:
- *       type: "spike"  (there is no "impediment" StoryType — use "spike" + "impediment" label)
- *       labels: ["impediment"]  (create label if it doesn't exist via scrum_add_vocabulary logic)
- *       status: "Blocked" (via set_field after creation, or inline)
- *       priority: args.priority ?? highest tier from config.yml
- *       raised_by: args.raised_by ?? configured Scrum Master login from config.yml
- *   - Post a GitHub comment on the *affected* story via addComment mutation:
- *       "Impediment #N opened against this story."
- *   - Post a GitHub comment on the *new impediment* story via addComment mutation:
- *       "This impediment affects story #M."
- *   NOTE: scrum_log_impediment uses the addComment mutation directly — it does not depend on
- *   scrum_post_note (which was removed from the tool surface). The addComment mutation is a
- *   shared internal primitive, not an agent-callable tool.
- *   - Return: impediment as Story + { linked_to: StoryRef }
- *
- * todo: [Phase 3, step 11] github_graphql (deprecated — register first as part of step 11 stub pass) ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
- *   - Schema: GraphQLQuerySchema from src/schemas/inputs.ts
- *   - Block any query string containing the word "mutation" (case-insensitive) — return an error
- *   - Otherwise forward the query to the GitHub GraphQL API and return the raw response
- *   - Tool description must include the deprecation notice:
- *       "DEPRECATED. Preserved for ad-hoc diagnostic GraphQL lookups only. Will be removed in a
- *        future version. Prefer the scrum_* tools for all agent workflows. Mutations are blocked."
- */
-// todo: [Phase 3, step 11] export function registerScrumWriteTools( ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
-// todo: [Phase 3]   server: McpServer, ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
-// todo: [Phase 3]   github: { graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> }, ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
-// todo: [Phase 3] ): void { ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
-// todo: [Phase 3]   // Step 11: stub each tool + register deprecated github_graphql ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
-// todo: [Phase 3]   // Step 13: implement in order: add_vocabulary → set_field → update_story ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
-// todo: [Phase 3]   //                               → create_story → plan_sprint → log_impediment ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
-// todo: [Phase 3] } ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
-
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { ProjectBackend } from "../scrum/ports.ts";
-import type { ScrumConfigYml } from "../types.ts";
+import type { CreateStoryInput, ProjectBackend, StoryUpdates } from "../scrum/ports.ts";
+import type { ScrumConfigYml, Story, StoryRef } from "../types.ts";
+import {
+  AddVocabularySchema,
+  CreateStorySchema,
+  LogImpedimentSchema,
+  PlanSprintSchema,
+  SetFieldSchema,
+  UpdateStorySchema,
+} from "../schemas/scrum.ts";
+import { GraphQLQuerySchema } from "../schemas/inputs.ts";
+import { isMutationQuery } from "../services/mutation-validator.ts";
+import { formatError, graphql } from "../services/github.ts";
+import { z } from "zod";
 
-/**
- * Register all scrum_* write tools + deprecated github_graphql on the MCP server.
- *
- * Write tool implementations are deferred to Phase 3.
- */
+// ── Helper types ──────────────────────────────────────────────────────────────
+
+interface PartialFailureResult {
+  story: StoryRef;
+  partialFailure: true;
+  failedFields: Array<{ field: string; reason: string }>;
+}
+
+// ── Public API ────────────────────────────────────────────────────────────────
+
 export function registerScrumWriteTools(
-  _server: McpServer,
-  _backend: ProjectBackend,
+  server: McpServer,
+  backend: ProjectBackend,
   _yml: ScrumConfigYml,
 ): void {
-  void _backend;
-  void _yml;
+  // ── C1: scrum_add_vocabulary ──────────────────────────────────────────────────
+
+  server.registerTool(
+    "scrum_add_vocabulary",
+    {
+      title: "Add Vocabulary Entry",
+      description:
+        "Idempotently add a status option, priority option, or label to the project board schema.",
+      inputSchema: AddVocabularySchema.shape,
+      annotations: { role: "admin" },
+    },
+    async (params: z.infer<typeof AddVocabularySchema>) => {
+      try {
+        const result = await backend.addVocabulary(params.kind, params.value);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                { ...result, kind: params.kind, value: params.value },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      } catch (err) {
+        return {
+          content: [{ type: "text", text: formatError(err) }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // ── C2: scrum_set_field ──────────────────────────────────────────────────────
+
+  server.registerTool(
+    "scrum_set_field",
+    {
+      title: "Set Board Field",
+      description:
+        "Set a single board field (status, sprint, story_points, priority, assignee) on a story.",
+      inputSchema: SetFieldSchema.shape,
+      annotations: { role: "admin" },
+    },
+    async (params: z.infer<typeof SetFieldSchema>) => {
+      try {
+        await backend.setField(params.ref, params.field, params.value);
+        // Fetch and return updated story
+        const updated = await backend.getStoryDetail(params.ref);
+        return {
+          content: [
+            { type: "text", text: JSON.stringify(updated.story, null, 2) },
+          ],
+        };
+      } catch (err) {
+        return {
+          content: [{ type: "text", text: formatError(err) }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // ── C3: scrum_update_story ──────────────────────────────────────────────────
+
+  server.registerTool(
+    "scrum_update_story",
+    {
+      title: "Update Story",
+      description: "Update story content (title, body, labels, assignees, epic).",
+      inputSchema: UpdateStorySchema.shape,
+      annotations: { role: "admin" },
+    },
+    async (params: z.infer<typeof UpdateStorySchema>) => {
+      try {
+        const updates: Partial<z.infer<typeof UpdateStorySchema>> = {};
+        if (params.title !== undefined) updates.title = params.title;
+        if (params.body !== undefined) updates.body = params.body;
+        if (params.labels !== undefined) updates.labels = params.labels;
+        if (params.assignees !== undefined) updates.assignees = params.assignees;
+        if (params.epic !== undefined) updates.epic = params.epic;
+
+        await backend.updateStory(params.ref, updates as StoryUpdates);
+
+        // Fetch and return updated story
+        const updated = await backend.getStoryDetail(params.ref);
+        return {
+          content: [
+            { type: "text", text: JSON.stringify(updated.story, null, 2) },
+          ],
+        };
+      } catch (err) {
+        return {
+          content: [{ type: "text", text: formatError(err) }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // ── C4: scrum_create_story ──────────────────────────────────────────────────
+
+  server.registerTool(
+    "scrum_create_story",
+    {
+      title: "Create Story",
+      description: "Create a story and optionally place it on the board in one call.",
+      inputSchema: CreateStorySchema.shape,
+      annotations: { role: "admin" },
+    },
+    async (params: z.infer<typeof CreateStorySchema>) => {
+      try {
+        // Step 1: Create the story via backend
+        const storyRef = await backend.createStory(params as CreateStoryInput);
+
+        // Step 2: Apply optional field sets (collect failures, don't abort)
+        const failedFields: PartialFailureResult["failedFields"] = [];
+
+        if (params.sprint !== undefined) {
+          try {
+            await backend.setField(storyRef, "sprint", params.sprint);
+          } catch (err) {
+            failedFields.push({ field: "sprint", reason: formatError(err) });
+          }
+        }
+
+        if (params.story_points !== undefined) {
+          try {
+            await backend.setField(storyRef, "story_points", params.story_points);
+          } catch (err) {
+            failedFields.push({ field: "story_points", reason: formatError(err) });
+          }
+        }
+
+        if (params.priority !== undefined) {
+          try {
+            await backend.setField(storyRef, "priority", params.priority);
+          } catch (err) {
+            failedFields.push({ field: "priority", reason: formatError(err) });
+          }
+        }
+
+        // Step 3: Fetch updated story
+        const detail = await backend.getStoryDetail(storyRef);
+
+        // Step 4: Return with partial failure indicator if needed
+        if (failedFields.length > 0) {
+          const result: PartialFailureResult & { story: Story } = {
+            story: detail.story,
+            partialFailure: true,
+            failedFields,
+          };
+          return {
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+            isError: false,
+          };
+        }
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(detail.story, null, 2) }],
+        };
+      } catch (err) {
+        return {
+          content: [{ type: "text", text: formatError(err) }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // ── C5: scrum_plan_sprint ──────────────────────────────────────────────────
+
+  server.registerTool(
+    "scrum_plan_sprint",
+    {
+      title: "Plan Sprint",
+      description:
+        "Bulk-assign stories to a sprint with optional replace mode. Returns partial-success report.",
+      inputSchema: PlanSprintSchema.shape,
+      annotations: { role: "admin" },
+    },
+    async (params: z.infer<typeof PlanSprintSchema>) => {
+      try {
+        const assigned: StoryRef[] = [];
+        const skipped: Array<{ ref: StoryRef; reason: string }> = [];
+
+        // Step 1: If replace: true, clear existing sprint items
+        if (params.replace) {
+          const currentStories = await backend.getSprintStories(params.sprint);
+          for (const story of currentStories.stories) {
+            try {
+              await backend.setField(story.ref, "sprint", null);
+              assigned.push(story.ref);
+            } catch (err) {
+              skipped.push({ ref: story.ref, reason: formatError(err) });
+            }
+          }
+        }
+
+        // Step 2: Assign each requested story
+        for (const ref of params.stories) {
+          try {
+            await backend.setField(ref, "sprint", params.sprint);
+            assigned.push(ref);
+          } catch (err) {
+            skipped.push({ ref, reason: formatError(err) });
+          }
+        }
+
+        const result = {
+          sprint: params.sprint,
+          assigned,
+          skipped,
+        };
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      } catch (err) {
+        return {
+          content: [{ type: "text", text: formatError(err) }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // ── C6: scrum_log_impediment ────────────────────────────────────────────────
+
+  server.registerTool(
+    "scrum_log_impediment",
+    {
+      title: "Log Impediment",
+      description:
+        "Create an impediment story linked to the affected story and add a comment to both.",
+      inputSchema: LogImpedimentSchema.shape,
+      annotations: { role: "admin" },
+    },
+    async (params: z.infer<typeof LogImpedimentSchema>) => {
+      try {
+        // Step 1: Build impediment story input
+        const impedimentInput: CreateStoryInput = {
+          title: `Impediment: ${params.description.slice(0, 80)}`,
+          body: params.description,
+          type: "spike",
+          priority: params.priority ?? "Must",
+          labels: ["impediment"],
+        };
+
+        // Step 2: Create the impediment story
+        const storyRef = await backend.createStory(impedimentInput);
+
+        // Step 3: Add comment to the AFFECTED story
+        const affectedComment = [
+          ":warning: **Impediment logged**",
+          "",
+          params.description,
+          "",
+          `> Created by ${params.raised_by ?? "agent"}`,
+        ].join("\n");
+
+        await backend.addComment(params.affects, affectedComment);
+
+        // Step 4: Add comment to the impediment story itself (bidirectional linking)
+        const impedimentComment = [
+          ":link: This impediment affects story",
+          `  - Number: #${params.affects.number}`,
+          `  - Ref: ${params.affects.id ?? "N/A"}`,
+        ].join("\n");
+
+        await backend.addComment(storyRef, impedimentComment);
+
+        // Step 5: Return the impediment story
+        const detail = await backend.getStoryDetail(storyRef);
+        return {
+          content: [{ type: "text", text: JSON.stringify(detail.story, null, 2) }],
+        };
+      } catch (err) {
+        return {
+          content: [{ type: "text", text: formatError(err) }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // ── C7: github_graphql (deprecated) ───────────────────────────────────────────
+
+  server.registerTool(
+    "github_graphql",
+    {
+      title: "GitHub GraphQL (Deprecated)",
+      description:
+        "**DEPRECATED.** Preserved for ad-hoc diagnostic GraphQL lookups only. Will be removed in a future version. Prefer the `scrum_*` tools for all agent workflows. Mutations are blocked.",
+      inputSchema: GraphQLQuerySchema.shape,
+      annotations: { role: "admin" },
+    },
+    async (params: z.infer<typeof GraphQLQuerySchema>) => {
+      try {
+        // Validate query does not contain mutations
+        if (isMutationQuery(params.query)) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(
+                  {
+                    error: "Mutation blocked",
+                    message:
+                      "The deprecated github_graphql tool only supports read queries. Use scrum_* tools for mutations.",
+                  },
+                  null,
+                  2,
+                ),
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        // Forward to GitHub GraphQL API
+        const result = await graphql(params.query, params.variables ?? {});
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      } catch (err) {
+        return {
+          content: [{ type: "text", text: formatError(err) }],
+          isError: true,
+        };
+      }
+    },
+  );
 }

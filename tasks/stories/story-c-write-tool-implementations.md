@@ -142,6 +142,7 @@ So that I can quickly add tasks without multiple round-trips.
 **Partial Failure Handling:**
 
 - If issue creation succeeds but a subsequent field-set fails, return:
+
   ```json
   {
     "error": "Field set failed after story creation",
@@ -149,6 +150,7 @@ So that I can quickly add tasks without multiple round-trips.
     "failed_field": "sprint"
   }
   ```
+
 - Agent can retry the failing field-sets without duplicating the story
 
 **Files:**
@@ -249,13 +251,13 @@ So that I can debug issues without risking accidental mutations through the depr
 
 ## Verification Checklist
 
-- [ ] C1: `scrum_add_vocabulary` implemented; at least one unit test with a stubbed `ProjectBackend`
-- [ ] C2: `scrum_set_field` implemented; at least one unit test per field type (status, sprint, story_points, priority, assignee)
-- [ ] C3: `scrum_update_story` implemented; at least one unit test covering title/body update and epic detach
-- [ ] C4: `scrum_create_story` implemented; at least one unit test covering partial-failure path
-- [ ] C5: `scrum_plan_sprint` implemented; at least one unit test covering `replace: true` and a skipped story
-- [ ] C6: `scrum_log_impediment` implemented; at least one unit test verifying both `backend.addComment` calls are made
-- [ ] C7: `github_graphql` registered with deprecation marker; mutation-blocking verified with a test query containing "mutation"
-- [ ] `deno check src/index.ts` passes clean
-- [ ] All existing tests pass
-- [ ] All tools use `ProjectBackend` interface (no direct GitHub API calls in handlers or use cases)
+- [x] C1: `scrum_add_vocabulary` implemented; at least one unit test with a stubbed `ProjectBackend`
+- [x] C2: `scrum_set_field` implemented; at least one unit test per field type (status, sprint, story_points, priority, assignee)
+- [x] C3: `scrum_update_story` implemented; at least one unit test covering title/body update and epic detach
+- [x] C4: `scrum_create_story` implemented; at least one unit test covering partial-failure path
+- [x] C5: `scrum_plan_sprint` implemented; at least one unit test covering `replace: true` and a skipped story
+- [x] C6: `scrum_log_impediment` implemented; at least one unit test verifying both `backend.addComment` calls are made
+- [x] C7: `github_graphql` registered with deprecation marker; mutation-blocking verified with a test query containing "mutation"
+- [x] `deno check src/index.ts` passes clean
+- [x] All existing tests pass (217 passed, 0 failed)
+- [x] All tools use `ProjectBackend` interface (no direct GitHub API calls in handlers or use cases)

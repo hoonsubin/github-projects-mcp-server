@@ -167,7 +167,8 @@ const generateMarkdown = (
   if (unusedExports.length > 0) {
     const unusedRows = unusedExports
       .map(
-        (e) => `| ${e.modulePath} | \`${e.exportName}\` | \`${e.exportKind}\` |`,
+        (e) =>
+          `| [\`${e.modulePath}\`](../src/${e.modulePath}) | \`${e.exportName}\` | \`${e.exportKind}\` |`,
       )
       .join("\n");
 

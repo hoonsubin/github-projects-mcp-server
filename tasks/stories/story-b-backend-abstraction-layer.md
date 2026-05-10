@@ -253,7 +253,7 @@ So that business logic is testable with stubbed backends and handlers are thin.
 
 ---
 
-### B7: Verify and Stabilise
+### B7: Verify and Stabilize
 
 **Title:** Verify architecture integrity and add tests
 
@@ -283,20 +283,20 @@ deno test
 
 ## Verification Checklist
 
-- [ ] B1: Domain rules extracted to `src/domain/rules/`
-- [ ] B2: Sprint-math helpers extracted to `src/scrum/sprint-math.ts`
-- [ ] B3: Raw types and queries extracted to `src/adapters/github/`
-- [ ] B4: Mappers extracted to `src/adapters/github/mappers.ts`
-- [ ] B5: `ProjectBackend` interface + `GitHubProjectBackend` implemented
-- [ ] B6.1: `get-template.ts` use case extracted
-- [ ] B6.2: `orient.ts` use case extracted
-- [ ] B6.3: `get-story.ts` use case extracted
-- [ ] B6.4: `get-sprint.ts` use case extracted
-- [ ] B6.5: `get-backlog.ts` use case extracted
-- [ ] B6.6: `get-history.ts` use case extracted
-- [ ] B6.7: `get-burndown.ts` use case extracted
-- [ ] B7: B1 temporary re-exports removed from `src/tools/scrum-read.ts`
-- [ ] B7: All verifications pass, tests added
-- [ ] `deno check src/index.ts` passes clean
-- [ ] All existing tests pass
-- [ ] New unit tests added per use case
+- [x] B1: Domain rules extracted to `src/domain/rules/`
+- [x] B2: Sprint-math helpers extracted to `src/scrum/sprint-math.ts`
+- [x] B3: Raw types and queries extracted to `src/adapters/github/`
+- [x] B4: Mappers extracted to `src/adapters/github/mappers.ts`
+- [x] B5: `ProjectBackend` interface + `GitHubProjectBackend` implemented
+- [x] B6.1: `get-template.ts` use case extracted
+- [x] B6.2: `orient.ts` use case extracted
+- [x] B6.3: `get-story.ts` use case extracted
+- [x] B6.4: `get-sprint.ts` use case extracted
+- [x] B6.5: `get-backlog.ts` use case extracted
+- [x] B6.6: `get-history.ts` use case extracted
+- [x] B6.7: `get-burndown.ts` use case extracted
+- [x] B7: B1 temporary re-exports removed from `src/tools/scrum-read.ts`
+- [x] B7: All verifications pass, tests added
+- [x] `deno check src/index.ts` passes clean
+- [x] All existing tests pass
+- [x] New unit tests added per use case

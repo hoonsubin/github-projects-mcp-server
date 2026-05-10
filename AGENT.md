@@ -4,14 +4,14 @@ Guidance for coding agents working in this repository. Concise by design — see
 
 ## Reference Documents
 
-| Document                                                                 | Contents                                                                       |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
-| [`README.md`](README.md)                                                 | Project overview, domain model, full tool surface design, interaction patterns |
-| [`tasks/REFACTORING.md`](tasks/REFACTORING.md)                           | Architecture, phased roadmap, current implementation state per phase           |
-| [`docs/proj-diagram.md`](docs/proj-diagram.md)                           | The current state of the project class diagram and tracking unused exports     |
-| [`.github/scrum/config.yml`](.github/scrum/config.yml)                   | Team, sprint, field names, vocabulary, DoR/DoD, autonomy settings              |
-| [`deno.json`](deno.json)                                                 | Tasks, import map, compiler options, formatter and linter config               |
-| [`skill/scrum-master-agent/SKILL.md`](skill/scrum-master-agent/SKILL.md) | Agentic Scrum skill prompts and ceremony playbooks                             |
+| Document                                                                 | Contents                                                                                                        |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| [`README.md`](README.md)                                                 | Project vision, domain model, full tool surface design, interaction patterns                                    |
+| [`tasks/`](tasks/)                                                       | Architecture, phased roadmap, current implementation state per phase, user stories, and small broken-down tasks |
+| [`docs/proj-diagram.md`](docs/proj-diagram.md)                           | Current state of the project class diagram and tracking unused exports. Use as ToC of the project               |
+| [`.github/scrum/config.yml`](.github/scrum/config.yml)                   | Team, sprint, field names, vocabulary, DoR/DoD, autonomy settings                                               |
+| [`deno.json`](deno.json)                                                 | Tasks, import map, compiler options, formatter and linter config                                                |
+| [`skill/scrum-master-agent/SKILL.md`](skill/scrum-master-agent/SKILL.md) | Agentic Scrum skill prompts and ceremony playbooks                                                              |
 
 ## Managing This Project with Its Own Tools
 
@@ -64,8 +64,8 @@ GitHub Adapter  src/services/github.ts  ←  GraphQL + REST
 ```sh
 deno fmt --check
 deno lint
-deno check src/
-GITHUB_TOKEN=test-token deno test --allow-env=DEBUG,GITHUB_TOKEN --allow-net src/
+deno task diagram-gen
+deno task test
 ```
 
 These mirror the checks in [`.github/workflows/pr-check.yml`](.github/workflows/pr-check.yml).

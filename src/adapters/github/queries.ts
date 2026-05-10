@@ -134,7 +134,7 @@ export const GET_REPO_LABELS_QUERY = `
   query GetRepoLabels($owner: String!, $repo: String!) {
     repository(owner: $owner, name: $repo) {
       labels(first: 50) {
-        nodes { name color description }
+        nodes { id name color description }
       }
     }
   }
