@@ -4,27 +4,6 @@
 
 ---
 
-## Bug #2 — GraphQL Syntax Error in `scrum_get_backlog` (P0 — Blocking)
-
-**Issue:** `scrum_get_backlog` returns `Error: GraphQL errors: Expected NAME, actual: COLON (":") at [7, 21]`
-
-**Reason:** In [`src/services/pagination.ts:215`](src/services/pagination.ts:215), `loginArg` already contains `login: $login` (full argument), but the template adds `: ${loginVar}` after it, producing `login: $login: $login` — invalid GraphQL.
-
-```
-Call chain: scrum_get_backlog → getBacklogUseCase → backend.getBacklogStories()
-  → PaginatedProjectItemFetcher → buildItemsQuery() [BUG HERE]
-```
-
-**Actions to take:**
-
-1. Edit [`src/services/pagination.ts`](src/services/pagination.ts) line 215
-2. Change `${ownerKey}(${loginArg}: ${loginVar}) {` to `${ownerKey}(${loginArg}) {`
-3. Delete `loginVar` on line 205 — `ownerType === "user" ? "$login" : "$login"` (both branches identical; variable becomes unused after step 2)
-4. Run `deno test` to confirm no regressions
-5. Verify `scrum_get_backlog` works for both user and org configs
-
----
-
 ## Bug #3 — GraphQL Injection in `resolveUserNodeId()` (P1 — Security)
 
 **Issue:** User input (`login`) is interpolated directly into a GraphQL query string instead of using variables.
@@ -96,14 +75,54 @@ This could break with special characters in usernames (e.g., `user'o"b`) and is 
 
 ---
 
+## Bug #7 — `enrichError()` Is Dead in Production (P1 — Agent Observability)
+
+**Issue:** `src/services/github.ts` exports `enrichError()` with pattern-matched `→ Fix:` hints covering every known GitHub API failure mode — explicitly designed to help small/local LLMs self-diagnose. Every tool handler in `scrum-write.ts` and `scrum-read.ts` calls `formatError(err)` instead. `enrichError` has never run in production.
+
+**Root Cause:** The function was added but the call sites were never updated. The JSDoc on `enrichError` even says `// Usage: replace formatError(err) with enrichError(err, { operation: "..." })` — it was intended as a drop-in replacement but the migration was never done.
+
+**Impact on agents:** When the agent in the attached trace saw `Error: Project item "I_kwDO..." is not an Issue`, it had no actionable guidance. With `enrichError`, the message could have said "The story was created successfully — this error occurred during the post-creation read. Retrieve the story with scrum_get_story." The agent instead went into debug mode and retried, creating duplicate issues.
+
+**Actions to take:**
+
+1. In [`src/tools/scrum-write.ts`](src/tools/scrum-write.ts): replace every `formatError(err)` in `catch` blocks with `enrichError(err, { operation: "<tool_name>" })`, using the tool name as the operation context (e.g. `"create_story"`, `"set_field"`, `"plan_sprint"`)
+2. In [`src/tools/scrum-read.ts`](src/tools/scrum-read.ts): same replacement for all `catch` blocks
+3. Ensure `enrichError` is imported wherever `formatError` was imported — both are exported from `src/services/github.ts`
+4. Run `deno test` to confirm no regressions
+
+**Note:** The `scrum_create_story` handler also needs the post-creation `getStoryDetail` call wrapped in its own `try/catch` (separate from the outer one) so a read failure after successful creation returns `isError: false` with a partial-success shape rather than `isError: true`. See Bug #5 for the related root cause.
+
+---
+
+## Bug #8 — `scrum_orient` Exposes Raw Field Option UUIDs (P2 — Agent Usability)
+
+**Issue:** The `scrum_orient` response returns field `options` as raw GitHub UUIDs (e.g. `["f75ad846", "47fc9ee4", ...]`) alongside `missing_options` as display names (e.g. `["Backlog", "Ready", ...]`). An agent cannot cross-reference these to know which vocabulary names are already configured vs. missing.
+
+**Root Cause:** The orient tool returns the raw option IDs from the GitHub Projects API without mapping them to their display names. The display names are available from the same API call that returns the IDs — they're just not being surfaced.
+
+**Impact on agents:** From the agent trace, the orient response showed configured options as opaque UUIDs and missing options as human-readable names. The agent had no way to verify whether e.g. "Backlog" was already set up (as `f75ad846`) or truly absent. The server is supposed to bridge the vocabulary gap — exposing UUIDs defeats that purpose.
+
+**Actions to take:**
+
+1. Locate the `scrum_orient` handler and the underlying orient use-case — find where field options are fetched from the GitHub Projects API
+2. Replace the `options: [uuid, uuid, ...]` shape with `configured_options: ["Backlog", "Ready", ...]` (display names) — the server resolves the ID-to-name mapping internally
+3. Remove raw UUIDs from the orient response entirely; agents should never need them
+4. Run `deno test` and manually verify orient output shape
+
+---
+
 ## Execution Order
 
-| Step | Bug     | Rationale                                                                    |
-| ---- | ------- | ---------------------------------------------------------------------------- |
-| 1    | #2 (P0) | Blocking runtime error — must be fixed first to restore `scrum_get_backlog`  |
-| 2    | #3 (P1) | Security fix — should be addressed before any new code touches this function |
-| 3    | #4 (P2) | Consistency fix — same pattern as #3, low risk; batch with #3 review pass    |
-| 4    | #1 (P1) | Developer tooling fix — improves analysis reliability for Phase 4 cleanup    |
+| Step | Bug     | Rationale                                                                                         |
+| ---- | ------- | ------------------------------------------------------------------------------------------------- |
+| 1    | #2 (P0) | Blocking runtime error — must be fixed first to restore `scrum_get_backlog`                       |
+| 2    | #5 (P0) | Blocking: `scrum_create_story` returns wrong ID, causing false failure and duplicate issue risk   |
+| 3    | #7 (P1) | Agent observability — `enrichError` makes every error actionable; do before any new agent testing |
+| 4    | #3 (P1) | Security fix — should be addressed before any new code touches this function                      |
+| 5    | #6 (P1) | Priority set as label instead of board field — correctness fix for story creation                 |
+| 6    | #4 (P2) | Consistency fix — same pattern as #3, low risk; batch with #3 review pass                         |
+| 7    | #8 (P2) | Orient UUID exposure — agent usability; no data loss risk                                         |
+| 8    | #1 (P1) | Developer tooling fix — improves analysis reliability for Phase 4 cleanup                         |
 
 ## Bug #5 — `createStory()` Returns Wrong ID, Breaking `getStoryDetail()` (P0 — Blocking)
 

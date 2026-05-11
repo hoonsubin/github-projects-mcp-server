@@ -138,8 +138,7 @@ export function registerScrumWriteTools(
     "scrum_update_story",
     {
       title: "Update Story",
-      description:
-        "Edit the content fields of a story: title, body, labels, assignees, or epic. " +
+      description: "Edit the content fields of a story: title, body, labels, assignees, or epic. " +
         "For board fields (status, sprint, story_points, priority, assignee) use scrum_set_field.\n\n" +
         "WARNING — labels and assignees REPLACE the full existing set, they do not append. " +
         "Call scrum_get_story first if you want to add a label without removing existing ones. " +
@@ -196,7 +195,7 @@ export function registerScrumWriteTools(
         "  title        string (required) — concise one-sentence title\n" +
         "  body         string (required) — full markdown body; use user-story format + AC checklist\n" +
         '  type         "feature" | "bug" | "tech_debt" | "spike"\n' +
-        "               NOTE: for impediments use scrum_log_impediment, not type:\"impediment\"\n" +
+        '               NOTE: for impediments use scrum_log_impediment, not type:"impediment"\n' +
         '  priority     string — vocabulary display name (e.g. "Must"); call scrum_orient for valid values\n' +
         "  story_points number — Fibonacci estimate (1, 2, 3, 5, 8, 13)\n" +
         "  labels       string[] — additional labels; type labels are added automatically\n" +
@@ -239,13 +238,22 @@ export function registerScrumWriteTools(
           }
         }
 
-        // Step 3: Fetch updated story
-        const detail = await backend.getStoryDetail(storyRef);
+        // Step 3: Fetch updated story (wrap so a read failure after successful
+        //         creation returns partial-success, not a full failure)
+        let storyDetail: Story | Partial<StoryRef>;
+        try {
+          const fetchedDetail = await backend.getStoryDetail(storyRef);
+          storyDetail = fetchedDetail.story;
+        } catch (readErr) {
+          // Story was created successfully — return partial success with issue ref
+          failedFields.push({ field: "read", reason: formatError(readErr) });
+          storyDetail = { number: storyRef.number, id: storyRef.id }; // minimal shape
+        }
 
         // Step 4: Return with partial failure indicator if needed
         if (failedFields.length > 0) {
           const result: PartialFailureResult & { story: Story } = {
-            story: detail.story,
+            story: storyDetail as Story,
             partialFailure: true,
             failedFields,
           };
@@ -256,7 +264,7 @@ export function registerScrumWriteTools(
         }
 
         return {
-          content: [{ type: "text", text: JSON.stringify(detail.story, null, 2) }],
+          content: [{ type: "text", text: JSON.stringify(storyDetail, null, 2) }],
         };
       } catch (err) {
         return {

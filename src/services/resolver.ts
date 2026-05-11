@@ -181,9 +181,9 @@ export const resolveStory = async (
   }
 
   // ── Path A: item ID provided — fastest, single node lookup ─────────────────
-  if (ref.id) {
+  if (ref.itemId) {
     const data = await github.graphql<ItemByIdResponse>(GET_ITEM_BY_ID_QUERY, {
-      itemId: ref.id,
+      itemId: ref.itemId,
     });
 
     const node = data.node;

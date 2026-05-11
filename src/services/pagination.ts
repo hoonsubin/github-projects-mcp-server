@@ -212,7 +212,7 @@ query GetProjectItems(
   $first: Int!
   $after: String
 ) {
-  ${ownerKey}(${loginArg}: ${loginVar}) {
+  ${ownerKey}(${loginArg}) {
     projectV2(number: $number) {
       id
       items(first: $first, after: $after) {

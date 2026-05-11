@@ -584,7 +584,9 @@ export class GitHubProjectBackend implements ProjectBackend {
     }
 
     // Step 6: Call addProjectV2ItemById to add to project board
-    await this.gh.graphql(
+    const addItemResult = await this.gh.graphql<{
+      addProjectV2ItemById: { item: { id: string } };
+    }>(
       `mutation AddItem($projectId: ID!, $contentId: ID!) {
         addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
           item { id }
@@ -593,7 +595,11 @@ export class GitHubProjectBackend implements ProjectBackend {
       { projectId: this.config.projectId, contentId: issue.id },
     );
 
-    return { number: issue.number, id: issue.id };
+    return {
+      number: issue.number,
+      id: issue.id,
+      itemId: addItemResult.addProjectV2ItemById?.item?.id,
+    };
   }
 
   async updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void> {

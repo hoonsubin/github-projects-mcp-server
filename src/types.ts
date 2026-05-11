@@ -13,6 +13,7 @@
 export interface StoryRef {
   number?: number; // user-facing issue number (e.g. GitHub issue #42)
   id?: string; // opaque backend handle returned by a previous tool call
+  itemId?: string; // Project item ID (PVTI_...) — optional for backward compatibility
 }
 
 /**
