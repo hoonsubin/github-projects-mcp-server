@@ -202,7 +202,6 @@ const buildItemsQuery = (
   }
 
   const ownerKey = ownerType === "user" ? "user" : "organization";
-  const loginVar = ownerType === "user" ? "$login" : "$login";
   const loginArg = `login: $login`;
 
   return `
@@ -221,6 +220,7 @@ query GetProjectItems(
         nodes {
           id type createdAt updatedAt isArchived
           content {
+            __typename
             ${contentFragment.trim()}
           }
           ${fieldValuesFragment.trim()}
@@ -334,7 +334,7 @@ export class PaginatedProjectItemFetcher {
       isArchived: raw.isArchived,
       content: raw.content as ProjectV2Item["content"],
       fieldValues: {
-        nodes: raw.fieldValues.nodes.map((fv) => ({
+        nodes: (raw.fieldValues?.nodes ?? []).map((fv) => ({
           __typename: fv.__typename,
           field: fv.field ?? { id: "", name: "" },
           iterationId: ("iterationId" in fv ? fv.iterationId : undefined) ?? undefined,

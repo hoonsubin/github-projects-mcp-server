@@ -92,26 +92,52 @@ export const extractBoardFields = (
 
 /**
  * Build a Story from a project item.
- * Returns null for DraftIssues (no issue number) and items without content.
+ * Returns null only for items without content (should not occur in practice).
  * Timestamps come from the item (not the content node) because content nodes
  * for Issues/PRs do not carry createdAt/updatedAt in the ProjectV2 schema.
+ *
+ * DraftIssues are included: key is null, labels/url/epic are empty/null.
  */
 export const buildStoryFromRaw = (
   item: ProjectV2Item,
   config: RuntimeConfig,
 ): Story | null => {
   const content = item.content;
-  if (!content || content.__typename === "DraftIssue") return null;
+  if (!content) return null;
 
-  // Narrowed to ProjectV2IssueContent | ProjectV2PRContent — both have number, title, url, body, assignees, labels
   const boardFields = extractBoardFields(item.fieldValues.nodes, config.fields);
+
+  // ── DraftIssue branch ───────────────────────────────────────────────────────
+  if (content.__typename === "DraftIssue") {
+    return {
+      ref: { id: item.id },
+      key: null,
+      title: content.title,
+      body: content.body,
+      type: null,
+      status: boardFields.status,
+      sprint: boardFields.sprint,
+      story_points: boardFields.story_points,
+      priority: boardFields.priority,
+      assignees: content.assignees.nodes.map((a) => a.login),
+      labels: [],
+      epic: null,
+      created_at: item.createdAt,
+      updated_at: item.updatedAt,
+      url: null,
+    };
+  }
+
+  // ── Issue / PullRequest branch ──────────────────────────────────────────────
+  // Both have number, title, url, body, assignees, labels
   const { type, labels } = classifyLabels(
     content.labels.nodes.map((l) => l.name),
   );
   const epic = content.__typename === "Issue" ? content.milestone?.title ?? null : null;
 
   return {
-    ref: { number: content.number, id: item.id },
+    ref: { id: item.id },
+    key: content.number.toString(),
     title: content.title,
     body: content.body,
     type,
@@ -144,7 +170,8 @@ export const buildEnrichedStory = (
   );
 
   return {
-    ref: { number: issueNode.number, id: itemId },
+    ref: { id: itemId },
+    key: issueNode.number.toString(),
     title: issueNode.title ?? "",
     body: issueNode.body ?? "",
     type: type as StoryTypeLabel | null,

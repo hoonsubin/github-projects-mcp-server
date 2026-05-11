@@ -7,13 +7,12 @@
 
 /**
  * A reference to a single Story.
- * Accepted forms: `{ "number": 42 }` (user-facing reference, e.g., issue number)
- * or `{ "id": "<opaque>" }` (backend-native handle returned by previous calls).
+ * Every read tool returns `Story.ref.id` — pass it back here to identify the story.
+ * Backend-agnostic: the id is an opaque project-item handle (PVTI_... on GitHub)
+ * returned by scrum_get_sprint, scrum_get_backlog, or scrum_create_story.
  */
 export interface StoryRef {
-  number?: number; // user-facing issue number (e.g. GitHub issue #42)
-  id?: string; // opaque backend handle returned by a previous tool call
-  itemId?: string; // Project item ID (PVTI_...) — optional for backward compatibility
+  id: string; // opaque project-item handle returned by any read tool
 }
 
 /**
@@ -29,7 +28,8 @@ export type SprintRef = "current" | "next" | null | string;
  * Epic IS writable in v1 (maps to GitHub Milestone).
  */
 export interface Story {
-  ref: { number: number; id: string }; // always populated with both forms after a read
+  ref: { id: string }; // opaque project-item handle — use in subsequent tool calls
+  key: string | null; // human-readable identifier ("42", "PRO-123"); null for draft issues
   title: string;
   body: string;
   type: "feature" | "bug" | "tech_debt" | "spike" | null;

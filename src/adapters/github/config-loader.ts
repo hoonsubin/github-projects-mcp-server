@@ -450,7 +450,7 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
       const displayToId = new Map(ssNode.options.map((o) => [o.name, o.id]));
       for (const [canonicalKey, displayName] of Object.entries(patchedGhConfig.status_display)) {
         const optionId = displayToId.get(displayName);
-        if (optionId) statusOptions[canonicalKey] = displayName; // Store display name, not ID
+        if (optionId) statusOptions[displayName] = optionId; // displayName → optionId
       }
     }
 
@@ -458,7 +458,7 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
       const displayToId = new Map(ssNode.options.map((o) => [o.name, o.id]));
       for (const [canonicalKey, displayName] of Object.entries(patchedGhConfig.priority_display)) {
         const optionId = displayToId.get(displayName);
-        if (optionId) priorityOptions[canonicalKey] = displayName; // Store display name, not ID
+        if (optionId) priorityOptions[displayName] = optionId; // displayName → optionId
       }
     }
   }

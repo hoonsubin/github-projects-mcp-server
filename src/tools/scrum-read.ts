@@ -118,7 +118,7 @@ export const registerScrumReadTools = (
         `  priority  string — vocabulary display name, e.g. "Must" (from scrum_orient)\n` +
         `  epic      string — Milestone title (exact match)\n` +
         `  limit     integer > 0, default 50\n\n` +
-        `Returns: array of Story objects. Each story has ref.id and ref.number ` +
+        `Returns: array of Story objects. Each story has ref.id ` +
         `for use in subsequent write calls.`,
       inputSchema: GetBacklogSchema.shape,
       annotations: {
@@ -153,7 +153,7 @@ export const registerScrumReadTools = (
         `  sprint  "current" | "next" | "<sprint-name>" | null — defaults to "current"\n` +
         `          Use scrum_orient to see the list of valid sprint names.\n\n` +
         `Returns: sprint metadata (dates, totals) plus per-status groups. ` +
-        `Each story carries ref.id and ref.number for use in write calls.`,
+        `Each story carries ref.id for use in write calls.`,
       inputSchema: GetSprintSchema.shape,
       annotations: {
         readOnlyHint: true,

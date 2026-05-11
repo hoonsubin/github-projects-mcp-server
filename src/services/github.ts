@@ -391,6 +391,7 @@ const resolveHint = (err: GitHubApiError, ctx: EnrichErrorContext): string | nul
   return null;
 };
 
+// todo: this function should be separated from the github service code and make it more modular for different backends
 /**
  * Like formatError(), but appends a concrete `→ Fix:` hint for known GitHub
  * API error patterns. Falls back to formatError() for non-GitHubApiError types.

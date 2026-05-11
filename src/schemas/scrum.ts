@@ -13,29 +13,18 @@ import { z } from "zod";
 
 // ── Primitive schemas (shared by multiple tools) ──────────────────────────────
 
-// Accepted as input by any tool that references a story. At least one of number or id required.
-export const StoryRefSchema = z
-  .object({
-    number: z
-      .number()
-      .int()
-      .positive()
-      .optional()
-      .describe(
-        "User-facing issue number (e.g. 42). Visible in GitHub issue URLs and in " +
-          "scrum_get_backlog / scrum_get_sprint results.",
-      ),
-    id: z
-      .string()
-      .optional()
-      .describe(
-        "Opaque board item ID returned by a previous tool call (e.g. scrum_create_story, " +
-          "scrum_get_story). Use when you have the ID but not the issue number.",
-      ),
-  })
-  .refine((v) => v.number !== undefined || v.id !== undefined, {
-    message: "StoryRef requires at least one of: number, id",
-  });
+// Accepted as input by any tool that references a story.
+// Every read tool returns Story.ref.id — pass that value here.
+export const StoryRefSchema = z.object({
+  id: z
+    .string()
+    .describe(
+      "Opaque project-item handle returned by any read tool (scrum_get_sprint, " +
+        "scrum_get_backlog, scrum_get_story, scrum_create_story, etc.). " +
+        "Always present in Story.ref.id. Use scrum_get_sprint or scrum_get_backlog " +
+        "first if you do not yet have the id for the story you want to act on.",
+    ),
+});
 
 // Sprint targeting: "current", "next", null (= backlog / clear sprint), or explicit sprint name.
 export const SprintRefSchema = z
@@ -128,8 +117,8 @@ export const GetBacklogSchema = z
 export const GetStorySchema = z
   .object({
     ref: StoryRefSchema.describe(
-      "Reference to the story to fetch. Supply number (issue number) or id (board item ID), " +
-        "or both.",
+      "Reference to the story to fetch. Supply the Story.ref.id value returned by " +
+        "scrum_get_sprint, scrum_get_backlog, or a previous write tool.",
     ),
   })
   .strict();
@@ -272,7 +261,7 @@ export const PlanSprintSchema = z
       .min(1)
       .describe(
         "Stories to assign to the sprint. At least one required. " +
-          "Each entry needs at least number or id.",
+          "Each entry must supply the Story.ref.id value from a read tool.",
       ),
     replace: z
       .boolean()

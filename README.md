@@ -404,21 +404,55 @@ flowchart LR
 
 These appear in arguments and return values across multiple tools.
 
-| Type         | Meaning                                                                                                                                                                                                                           |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `StoryRef`   | A reference to a single Story. Accepted forms: `{ "number": 42 }` (user-facing reference, e.g. issue number, card ID) or `{ "id": "<opaque>" }` (the backend-native handle returned by previous calls). Tools accept either form. |
-| `SprintRef`  | A reference to a sprint. Accepted forms: `"current"`, `"next"`, `null` (= no sprint, i.e. the backlog), or an explicit sprint name (e.g. `"Sprint 12"`).                                                                          |
-| `ScrumField` | One of `status`, `sprint`, `story_points`, `priority`, `assignee`. The set is fixed; new field types are out of scope for v1.                                                                                                     |
-| `StoryType`  | One of `feature`, `bug`, `tech_debt`, `spike`. Drives the type label or category the backend applies.                                                                                                                             |
-| `Story`      | The canonical entity. See full shape below.                                                                                                                                                                                       |
+| Type             | Meaning                                                                                                                                                                                                                           |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `StoryRef`       | A reference to a single Story. Shape: `{ "id": "<opaque>" }` where `id` is the project-item handle returned by any read tool in `Story.ref.id`. The agent obtains an `id` from a listing tool first, then passes it to write tools. |
+| `SprintRef`      | A reference to a sprint. Accepted forms: `"current"`, `"next"`, `null` (= no sprint, i.e. the backlog), or an explicit sprint name (e.g. `"Sprint 12"`).                                                                          |
+| `ScrumField`     | One of `status`, `sprint`, `story_points`, `priority`, `assignee`. The set is fixed; new field types are out of scope for v1.                                                                                                     |
+| `StoryType`      | One of `feature`, `bug`, `tech_debt`, `spike`. Drives the type label or category the backend applies.                                                                                                                             |
+| `StoryListing`   | Lightweight listing entry returned by all listing tools. See shape below.                                                                                                                                                         |
+| `SprintSnapshot` | Sprint metadata plus its `StoryListing[]`. The common envelope for `scrum_get_sprint` and `scrum_get_history`. See shape below.                                                                                                   |
+| `Story`          | Full story detail — body, comments, AC, linked PRs. Returned **only** by `scrum_get_story` and write tools. See shape below.                                                                                                      |
+
+#### StoryListing shape
+
+Returned by listing tools (`scrum_get_sprint`, `scrum_get_backlog`, `scrum_get_history`). Contains only the fields needed for board orientation. Call `scrum_get_story` when body, acceptance criteria, comments, or linked PRs are needed.
+
+| Field          | Meaning                                                                   |
+| -------------- | ------------------------------------------------------------------------- |
+| `ref`          | `{ number, id }` — both forms always present so the agent can use either. |
+| `title`        | The story title.                                                          |
+| `status`       | Current status display name (e.g. `"In Progress"`), or `null` if unset.   |
+| `story_points` | Numeric estimate, or `null` if unestimated.                               |
+| `priority`     | Priority display name (e.g. `"Must"`), or `null` if unset.                |
+| `sprint`       | Sprint name, or `null` if the story is in the backlog.                    |
+
+#### SprintSnapshot shape
+
+The common envelope for sprint data. Used by both `scrum_get_sprint` and `scrum_get_history` so the agent uses one mental model regardless of whether it is looking at active or historical sprints.
+
+| Field                   | Meaning                                                                                  |
+| ----------------------- | ---------------------------------------------------------------------------------------- |
+| `sprint.name`           | Sprint name.                                                                             |
+| `sprint.start_date`     | ISO-8601 start date.                                                                     |
+| `sprint.end_date`       | ISO-8601 end date.                                                                       |
+| `sprint.duration_days`  | Sprint length in calendar days.                                                          |
+| `sprint.days_remaining` | Days until end, or `null` for completed or future sprints.                               |
+| `items`                 | Array of `StoryListing` — the sprint's assigned items.                                   |
+| `total_count`           | Total matching items before `limit` is applied.                                          |
+| `totals.by_status`      | Map of status display name → item count (e.g. `{ "Done": 7, "In Progress": 2 }`).        |
+| `totals.story_points`   | Sum of `story_points` across all items in the snapshot (unestimated items contribute 0). |
 
 #### Story shape
 
-Every read tool that returns Stories returns objects of this shape:
+Returned **only** by `scrum_get_story` and write tools (`scrum_create_story`, `scrum_update_story`, `scrum_set_field`). Listing tools return `StoryListing` instead.
+
+Every full Story has this shape:
 
 | Field                      | Meaning                                                                                                                                      |
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ref`                      | A `StoryRef` containing both `number` and `id` so the agent can use either in subsequent calls.                                              |
+| `ref`                      | `{ id: string }` — the opaque project-item handle. Pass `Story.ref.id` to any write tool that accepts a `StoryRef`.                         |
+| `key`                      | Human-readable identifier (`"42"`, `"PRO-123"`), or `null` for Draft Issues. Display-only — do not pass to write tools.                     |
 | `title`                    | The story title.                                                                                                                             |
 | `body`                     | The story body, rendered as markdown. Includes user-story format, AC checklist, dependencies, and technical notes — whatever the team wrote. |
 | `type`                     | `StoryType` resolved from the type label or category.                                                                                        |
@@ -453,17 +487,21 @@ Returns the current platform state alongside the team's declared Scrum vocabular
 
 #### `scrum_get_sprint`
 
-Returns the Sprint Backlog as a snapshot: the sprint metadata, its goal, its capacity, and every Story currently assigned to it grouped by status with points summed per group.
+Returns a snapshot of one sprint or all active sprints as a `SprintSnapshot`. Each snapshot contains lightweight `StoryListing` items — no story bodies.
 
 **Arguments:**
 
-- `sprint` (optional, `SprintRef`): defaults to `"current"`. Pass `"next"` to inspect the upcoming sprint, or an explicit sprint name to inspect a past sprint.
+- `sprint` (optional, `SprintRef | "all"`): defaults to `"current"`. Pass `"next"` to inspect the upcoming sprint, an explicit sprint name to inspect a specific sprint, or `"all"` to retrieve every non-completed iteration in one call.
+- `limit` (optional, integer): maximum number of items per `SprintSnapshot`. If omitted, all items are returned.
 
-**Returns:** an object with `sprint` (`{ name, goal, start_date, end_date, days_remaining, capacity_points }`), `groups` (array of `{ status, stories: Story[], points_sum }` in the order defined by `status_vocabulary`), `totals` (`{ committed_points, completed_points, in_flight_points, blocked_points }`).
+**Returns:**
 
-**Notes:** This is the agent's primary orient call for any in-sprint ceremony. The grouped structure means the agent doesn't have to bucket Stories itself — a compact model especially benefits from receiving pre-grouped data. The tool reads the Sprint Backlog artifact; it does not compute trends or projections (use `scrum_get_history` for those).
+- When `sprint` is a single ref: `{ sprint: SprintSnapshot }`.
+- When `sprint` is `"all"`: `{ sprints: SprintSnapshot[], total_count: number }` where `total_count` is the sum of items across all snapshots.
 
-**Does not:** include backlog items; surface burndown timeseries; resolve dependencies between stories.
+**Notes:** Pass `"all"` to get a full board overview in a single call — current sprint, next sprint, and any other scheduled future sprints. Items in terminal status that belong to completed sprints are silently excluded; those are visible only through `scrum_get_history`. The agent calls `scrum_get_story` on demand when it needs body, acceptance criteria, comments, or linked PRs for a specific item.
+
+**Does not:** include backlog items; surface burndown timeseries; resolve dependencies between stories; return full story bodies.
 
 #### `scrum_get_backlog`
 
@@ -477,11 +515,11 @@ Returns the Product Backlog: all Stories not assigned to any sprint, ordered by 
 - `epic` (optional, string): include only Stories under this epic.
 - `limit` (optional, integer, default 50): cap on items returned.
 
-**Returns:** an object with `stories` (array of `Story`), `total_count` (number matching the filter regardless of `limit`), and `readiness` (object summarising how many items are sprint-ready, in refinement, or future candidates — based on whether they have `story_points`, acceptance criteria in the body, and a priority).
+**Returns:** an object with `stories` (array of `StoryListing`), `total_count` (number matching the filter regardless of `limit`), and `readiness` (object summarising how many items are sprint-ready, in refinement, or future candidates — based on whether they have `story_points`, acceptance criteria in the body, and a priority).
 
-**Notes:** The readiness summary is a pure aggregation of observable facts, not a Scrum judgement. It reports what is present; it does not enforce DoR.
+**Notes:** The readiness summary is a pure aggregation of observable facts, not a Scrum judgement. It reports what is present; it does not enforce DoR. Archived items and items in terminal status with no sprint (orphaned completed stories that were never cleaned up) are silently excluded. The agent calls `scrum_get_story` when it needs the full body, acceptance criteria, or comments for a specific item.
 
-**Does not:** modify ordering; create or estimate items; mark items as ready.
+**Does not:** modify ordering; create or estimate items; mark items as ready; return full story bodies.
 
 #### `scrum_get_story`
 
@@ -499,21 +537,23 @@ Returns the full detail of one Story, including comments, linked PRs, and parsed
 
 #### `scrum_get_history`
 
-Returns raw data for the last N completed sprints so the agent can derive any time-based insight it needs.
+Returns `SprintSnapshot` data for the last N completed sprints — the same structure as `scrum_get_sprint("all")` — so the agent uses one mental model for sprint data regardless of whether it is looking at active or historical sprints.
 
 **Arguments:**
 
 - `window` (optional, integer 1–10, default 5): number of most-recent closed sprints to include.
+- `limit` (optional, integer): maximum number of items per `SprintSnapshot`. If omitted, all items are returned.
 
-**Returns:** an array of sprint objects, most-recent-first. Each sprint contains:
+**Returns:** `{ sprints: SprintSnapshot[], window: number, average_completed_points: number }`. Each `SprintSnapshot` is the standard shape with two history-specific additions inside `totals`:
 
-- `name`, `start_date`, `end_date`, `duration_days`, `goal` (or `null` if not stored by the backend)
-- `stories`: lightweight array of `{ ref, title, type, story_points, final_status, labels }` for every story that was in the sprint at close
-- `summary`: server-computed aggregation `{ committed_points, completed_points, story_count, completed_count }` for agent convenience
+- `totals.committed_points` — total story points entering the sprint.
+- `totals.completed_points` — total story points that reached terminal status by sprint close.
 
-**Notes:** This tool exposes facts. The agent derives insights from them: velocity (average `completed_points` over the window), throughput (average `completed_count`), predictability (fraction of sprints where goal was achieved), type breakdown, epic-level trends, and anything else the conversation demands. The MCP does not pre-select which metric matters — that is the agent's job. A backend only needs to support queryable completed-sprint item state to implement this tool.
+`average_completed_points` is the mean of `completed_points` across the returned window, provided as a convenience fact (not a derived insight — the agent still uses raw data for velocity trends, predictability, and other multi-sprint analyses).
 
-**Does not:** compute averages, project future velocity, surface per-member throughput, or return current-sprint data (use `scrum_get_sprint` for that).
+**Notes:** This tool exposes facts. The agent derives insights from them: velocity trends, throughput, predictability (fraction of sprints where goal was achieved), type breakdown, epic-level trends, and anything else the conversation demands. The MCP does not pre-select which metric matters — that is the agent's job. A backend only needs to support queryable completed-sprint item state to implement this tool.
+
+**Does not:** project future velocity, surface per-member throughput, return current-sprint data (use `scrum_get_sprint` for that), or return full story bodies.
 
 #### `scrum_get_burndown`
 
@@ -726,7 +766,7 @@ sequenceDiagram
     A->>M: scrum_orient()
     M-->>A: platform_state · declared_vocabulary
     A->>M: scrum_get_sprint()
-    M-->>A: sprint snapshot · story groups · totals
+    M-->>A: SprintSnapshot · StoryListing[] · totals
 
     Note over H,A: Phase 2 — Coach
     A->>H: surfaces DoR gaps · risks · missing context
@@ -738,7 +778,7 @@ sequenceDiagram
 
     Note over A,M: Phase 4 — Execute
     A->>M: scrum_create_story(title, body, type, points, sprint)
-    M-->>A: Story · StoryRef { number, id }
+    M-->>A: Story · StoryRef { id }
     A->>M: scrum_set_field(ref, "sprint", null)
     M-->>A: updated Story
 

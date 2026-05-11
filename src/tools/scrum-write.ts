@@ -33,7 +33,7 @@ import { z } from "zod";
 // ── Helper types ──────────────────────────────────────────────────────────────
 
 interface PartialFailureResult {
-  story: StoryRef;
+  story: Story | StoryRef;
   partialFailure: true;
   failedFields: Array<{ field: string; reason: string }>;
 }
@@ -259,7 +259,7 @@ export function registerScrumWriteTools(
             field: "read",
             reason: enrichError(readErr, { operation: "create_story" }),
           });
-          storyDetail = { number: storyRef.number, id: storyRef.id }; // minimal shape
+          storyDetail = { id: storyRef.id }; // minimal shape — full Story unavailable
         }
 
         // Step 4: Return with partial failure indicator if needed
@@ -298,7 +298,7 @@ export function registerScrumWriteTools(
         "when planning a sprint or moving multiple items at once.\n\n" +
         "Args:\n" +
         '  sprint   "current" | "next" | "<sprint-name>" — target sprint\n' +
-        "  stories  StoryRef[] (min 1) — each entry needs at least number or id\n" +
+        "  stories  StoryRef[] (min 1) — each entry must supply Story.ref.id\n" +
         "  replace  boolean, default false\n" +
         "           false = add the listed stories; existing sprint items are untouched\n" +
         "           true  = CLEAR all current sprint stories first, then assign the list\n" +
@@ -404,14 +404,10 @@ export function registerScrumWriteTools(
         await backend.addComment(params.affects, affectedComment);
 
         // Step 4: Add comment to the impediment story itself (bidirectional linking)
-        // affects.number may be undefined when the caller passed {id} only — use a safe fallback.
-        const affectsRef = params.affects.number
-          ? `#${params.affects.number}`
-          : `(item ${params.affects.id ?? "unknown"})`;
+        const affectsRef = params.affects.id;
         const impedimentComment = [
           ":link: This impediment affects story",
-          `  - Story: ${affectsRef}`,
-          `  - Item ID: ${params.affects.id ?? "N/A"}`,
+          `  - Story item ID: ${affectsRef}`,
         ].join("\n");
 
         await backend.addComment(storyRef, impedimentComment);

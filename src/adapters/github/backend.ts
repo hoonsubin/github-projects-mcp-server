@@ -90,8 +90,8 @@ export class GitHubProjectBackend implements ProjectBackend {
     statusValues: string[];
     priorityValues: string[];
   }): Promise<PlatformState> {
-    const liveStatusOptions = Object.values(this.config.statusOptions); // display names
-    const livePriorityOptions = Object.values(this.config.priorityOptions); // display names
+    const liveStatusOptions = Object.keys(this.config.statusOptions); // display names (keys map to option IDs)
+    const livePriorityOptions = Object.keys(this.config.priorityOptions); // display names (keys map to option IDs)
 
     const missingStatusOptions = declaredVocabulary.statusValues.filter(
       (v) => !liveStatusOptions.includes(v),
@@ -168,7 +168,13 @@ export class GitHubProjectBackend implements ProjectBackend {
   }
 
   async getStoryDetail(ref: StoryRef): Promise<StoryDetail> {
-    const resolved = await resolveStory(ref, this.config, { graphql: this.gh.graphql });
+    const resolved = await resolveStory(ref, { graphql: this.gh.graphql });
+    if (!resolved.issueId) {
+      throw new Error(
+        `Story "${ref.id}" is a Draft Issue — detailed view is not available. ` +
+          "Convert it to a real issue to access comments and linked PRs.",
+      );
+    }
     const [issueData, itemData] = await Promise.all([
       this.gh.graphql<GetIssueDetailsResponse>(GET_ISSUE_DETAILS_QUERY, {
         issueId: resolved.issueId,
@@ -566,12 +572,12 @@ export class GitHubProjectBackend implements ProjectBackend {
       { projectId: this.config.projectId, contentId: issue.id },
     );
 
-    // After Step 6, after getting issue ref:
-    const storyRef = {
-      number: issue.number,
-      id: issue.id,
-      itemId: addItemResult.addProjectV2ItemById?.item?.id,
-    };
+    // After Step 6, the project item ID is the opaque StoryRef handle.
+    const itemId = addItemResult.addProjectV2ItemById?.item?.id;
+    if (!itemId) {
+      throw new Error("Failed to add issue to project — no item ID returned.");
+    }
+    const storyRef: StoryRef = { id: itemId };
 
     // Set priority as board field
     if (input.priority) {
@@ -582,7 +588,13 @@ export class GitHubProjectBackend implements ProjectBackend {
   }
 
   async updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void> {
-    const resolved = await resolveStory(ref, this.config, { graphql: this.gh.graphql });
+    const resolved = await resolveStory(ref, { graphql: this.gh.graphql });
+    if (!resolved.issueId) {
+      throw new Error(
+        `Story "${ref.id}" is a Draft Issue — title, body, labels, assignees, and epic cannot be ` +
+          "edited via the GitHub Issues API. Convert it to a real issue first.",
+      );
+    }
     const issueId = resolved.issueId;
 
     // Build update parts — only include fields that are set
@@ -635,7 +647,7 @@ export class GitHubProjectBackend implements ProjectBackend {
     field: "status" | "sprint" | "story_points" | "priority" | "assignee",
     value: string | number | SprintRef | null,
   ): Promise<void> {
-    const resolved = await resolveStory(ref, this.config, { graphql: this.gh.graphql });
+    const resolved = await resolveStory(ref, { graphql: this.gh.graphql });
     const itemId = resolved.itemId;
 
     switch (field) {
@@ -648,6 +660,12 @@ export class GitHubProjectBackend implements ProjectBackend {
       case "priority":
         return this.setFieldPriority(itemId, value as string | null);
       case "assignee":
+        if (!resolved.issueId) {
+          throw new Error(
+            `Story "${ref.id}" is a Draft Issue — assignee cannot be set via the GitHub Issues API. ` +
+              "Convert it to a real issue first.",
+          );
+        }
         return this.setFieldAssignee(resolved.issueId, value as string | null);
       default:
         throw new Error(`Unknown field: ${field}`);
@@ -655,10 +673,14 @@ export class GitHubProjectBackend implements ProjectBackend {
   }
 
   async addComment(ref: StoryRef, body: string): Promise<void> {
-    // Resolve the ref to get the canonical issue number — works for both
-    // { number } and { id } refs (the resolver fetches the number from GitHub
-    // when only an item ID is provided).
-    const resolved = await resolveStory(ref, this.config, { graphql: this.gh.graphql });
+    const resolved = await resolveStory(ref, { graphql: this.gh.graphql });
+
+    if (resolved.issueNumber === null) {
+      throw new Error(
+        `Story "${ref.id}" is a Draft Issue — comments can only be added to real Issues. ` +
+          "Convert it to a real issue first.",
+      );
+    }
 
     await this.gh.rest(
       `repos/${this.owner}/${this.repo}/issues/${resolved.issueNumber}/comments`,

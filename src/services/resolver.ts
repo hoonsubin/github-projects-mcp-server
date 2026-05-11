@@ -1,8 +1,8 @@
 // =============================================================================
 // src/services/resolver.ts
 //
-// ── Phase 1, step 4: resolveSprint — COMPLETE ────────────────────────────────
-// ── Phase 1, step 9: resolveStory  — COMPLETE ────────────────────────────────
+// ── resolveSprint: resolve SprintRef → GitHub iteration ID ───────────────────
+// ── resolveStory:  resolve StoryRef  → GitHub node IDs needed for mutations ──
 // =============================================================================
 
 import type { RuntimeConfig } from "../adapters/github/config-loader.ts";
@@ -11,13 +11,16 @@ import type { SprintRef, StoryRef } from "../types.ts";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 /**
- * Resolved story — both node IDs the backend mutations need.
- * { number } path requires a GraphQL call; { id } path is a direct item lookup.
+ * Resolved story — the node IDs the backend mutations need.
+ *
+ * issueId / issueNumber are null for DraftIssue items.
+ * Write tools that require a real Issue (e.g. addComment) must guard on null
+ * and throw a clear error rather than crashing.
  */
-interface ResolvedStory {
+export interface ResolvedStory {
   itemId: string; // project item node ID (PVTI_...)
-  issueId: string; // issue node ID (I_kwDO...)
-  issueNumber: number; // user-facing issue number
+  issueId: string | null; // issue node ID (I_kwDO...), null for DraftIssues
+  issueNumber: number | null; // user-facing issue number, null for DraftIssues
 }
 
 /** Minimal GitHub client interface — matches what index.ts passes in. */
@@ -28,44 +31,8 @@ interface GitHubClient {
 // ── GraphQL queries ───────────────────────────────────────────────────────────
 
 /**
- * Lookup by issue number: returns the issue node ID and all project items
- * the issue belongs to (so we can filter to our project).
- */
-const GET_ISSUE_BY_NUMBER_QUERY = `
-  query GetIssueByNumber($owner: String!, $repo: String!, $number: Int!) {
-    repository(owner: $owner, name: $repo) {
-      issue(number: $number) {
-        id
-        number
-        projectItems(first: 10) {
-          nodes {
-            id
-            project { id }
-          }
-        }
-      }
-    }
-  }
-`;
-
-interface IssueByNumberResponse {
-  repository?: {
-    issue?: {
-      id: string;
-      number: number;
-      projectItems: {
-        nodes: Array<{
-          id: string;
-          project: { id: string };
-        }>;
-      };
-    } | null;
-  } | null;
-}
-
-/**
- * Lookup by project item ID (PVTI_...): returns the underlying issue ID
- * and number so the write tools can call updateIssue.
+ * Lookup by project item ID (PVTI_...): returns the underlying content node.
+ * Handles both real Issues and DraftIssues — DraftIssues have no issue ID or number.
  */
 const GET_ITEM_BY_ID_QUERY = `
   query GetProjectItemById($itemId: ID!) {
@@ -73,9 +40,13 @@ const GET_ITEM_BY_ID_QUERY = `
       ... on ProjectV2Item {
         id
         content {
+          __typename
           ... on Issue {
             id
             number
+          }
+          ... on DraftIssue {
+            id
           }
         }
       }
@@ -87,8 +58,9 @@ interface ItemByIdResponse {
   node?: {
     id: string;
     content?: {
+      __typename: string;
       id: string;
-      number: number;
+      number?: number;
     } | null;
   } | null;
 }
@@ -152,104 +124,56 @@ export const resolveSprint = (
 /**
  * Resolve a StoryRef to the GitHub node IDs needed for mutations.
  *
- * Two resolution paths:
+ * Uses ref.id as a project item node ID (PVTI_...) — the same opaque handle
+ * returned by every read tool in Story.ref.id. A single `node()` lookup returns
+ * the content type and underlying issue details.
  *
- * { number } — lookup by issue number in the configured repository.
- *   Queries `repository { issue(number:$n) { id, projectItems } }` and filters
- *   the returned project items to the one whose project.id matches config.projectId.
- *   Throws if the issue doesn't exist or isn't in this project.
- *
- * { id }     — treat id as a project item node ID (PVTI_...).
- *   Queries `node(id:$itemId) { ... on ProjectV2Item { content { ... on Issue } } }`.
- *   Throws if the item doesn't exist or its content is not an Issue (e.g., DraftIssue).
- *
- * At least one of { number, id } must be present; if both are provided, { id } wins
- * (it saves a round-trip).
- *
- * @param repoOwner - Owner of the repository (defaults to config.yml.project.owner for backward compat)
+ * DraftIssue items resolve successfully: issueId and issueNumber are null.
+ * Callers that require a real Issue (e.g. addComment) must guard on null and
+ * throw a clear user-facing error.
  */
 export const resolveStory = async (
   ref: StoryRef,
-  config: RuntimeConfig,
   github: GitHubClient,
-  repoOwner?: string,
 ): Promise<ResolvedStory> => {
-  if (!ref.number && !ref.id) {
+  const data = await github.graphql<ItemByIdResponse>(GET_ITEM_BY_ID_QUERY, {
+    itemId: ref.id,
+  });
+
+  const node = data.node;
+  if (!node) {
     throw new Error(
-      "StoryRef must contain at least one of { number } or { id }.",
+      `Project item "${ref.id}" not found. The ID may be stale or the item was deleted. ` +
+        "Use scrum_get_sprint or scrum_get_backlog to get a fresh Story.ref.id.",
     );
   }
 
-  // ── Path A: item ID provided — fastest, single node lookup ─────────────────
-  if (ref.itemId) {
-    const data = await github.graphql<ItemByIdResponse>(GET_ITEM_BY_ID_QUERY, {
-      itemId: ref.itemId,
-    });
+  const content = node.content;
+  if (!content) {
+    throw new Error(
+      `Project item "${ref.id}" has no content. It may have been deleted from the underlying repository.`,
+    );
+  }
 
-    const node = data.node;
-    if (!node) {
-      throw new Error(
-        `Project item "${ref.id}" not found. The ID may be stale or the item was deleted.`,
-      );
-    }
-    const issue = node.content;
-    if (!issue) {
-      throw new Error(
-        `Project item "${ref.id}" is not an Issue (it may be a Draft or Pull Request). ` +
-          "Only Issues are supported as Stories.",
-      );
-    }
+  if (content.__typename === "DraftIssue") {
     return {
       itemId: node.id,
-      issueId: issue.id,
-      issueNumber: issue.number,
+      issueId: null,
+      issueNumber: null,
     };
   }
 
-  // ── Path B: issue number provided — lookup via repository query ─────────────
-  const gh = config.yml.backends.github;
-  if (!gh) {
-    throw new Error("No GitHub backend configured in config.yml.");
-  }
-  // Primary repo is the first entry in tracked_repos.
-  const repo = gh.tracked_repos[0];
-  if (!repo) {
-    throw new Error("backends.github.tracked_repos is empty — at least one repo is required.");
-  }
-
-  // Use explicit repoOwner if provided; otherwise use the configured owner.
-  const repoOwnerResolved = repoOwner ?? gh.owner;
-  const data = await github.graphql<IssueByNumberResponse>(
-    GET_ISSUE_BY_NUMBER_QUERY,
-    {
-      owner: repoOwnerResolved,
-      repo,
-      number: ref.number!,
-    },
-  );
-
-  const issue = data.repository?.issue;
-  if (!issue) {
+  if (content.__typename === "PullRequest") {
     throw new Error(
-      `Issue #${ref.number} not found in ${repoOwnerResolved}/${repo}. ` +
-        "Verify the issue number and ensure the token has Contents: Read access.",
+      `Project item "${ref.id}" is a Pull Request, not a Story. ` +
+        "Only Issues and Draft Issues are supported as Stories.",
     );
   }
 
-  // Filter to the project item belonging to our project
-  const projectItem = issue.projectItems.nodes.find(
-    (item) => item.project.id === config.projectId,
-  );
-  if (!projectItem) {
-    throw new Error(
-      `Issue #${ref.number} exists in ${repoOwnerResolved}/${repo} but is not part of project #${gh.project_number}. ` +
-        "Add the issue to the project before operating on it.",
-    );
-  }
-
+  // Issue — has id and number
   return {
-    itemId: projectItem.id,
-    issueId: issue.id,
-    issueNumber: issue.number,
+    itemId: node.id,
+    issueId: content.id,
+    issueNumber: content.number ?? null,
   };
 };
