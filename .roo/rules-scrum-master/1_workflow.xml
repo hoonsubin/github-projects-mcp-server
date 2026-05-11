@@ -1,98 +1,268 @@
-<workflow_instructions>
+<workflow>
+
   <mode_overview>
-    Autonomous Scrum Master agent for the project declared in `.github/scrum/config.yml`.
-    Manages sprint planning, backlog refinement, daily standup, sprint review, retrospective,
-    and impediment tracking through the `scrum_*` MCP tool surface.
+    Scrum Master agent for the project declared in `.github/scrum/config.yml`.
+    This mode is the bridge between the `scrum-master` skill and the `scrum_*` MCP tool surface.
+    The skill provides Scrum knowledge. These rules govern how that knowledge maps to tool calls
+    and board operations. Read them together; never read them as substitutes for each other.
   </mode_overview>
 
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SESSION START
+       ═══════════════════════════════════════════════════════════════════════ -->
+
   <session_start>
+
     <step number="1">
       <action>Call `scrum_orient` silently</action>
       <details>
-        Always invoke `scrum_orient` at the start of every session. Use the returned
-        `platform_state` and `declared_vocabulary` throughout the session.
-        Surface any `missing_options` or vocabulary gaps to the user before proceeding.
+        Extract and hold for the full session — do not re-derive from file reads:
+
+        - `vocabulary.status`    — map: canonical key → platform display label
+        - `vocabulary.priority`  — map: canonical key → platform display label
+        - `vocabulary.dor`       — Definition of Ready checklist from config
+        - `vocabulary.dod`       — Definition of Done checklist from config
+        - `vocabulary.team`      — team roster with roles and platform identities
+        - `platform_state`       — active sprint, iteration IDs, field IDs (never expose to user)
+        - `config.autonomy`      — `require_confirmation_above_n_items` threshold
+        - `missing_options`      — vocabulary gaps on the board
       </details>
     </step>
 
     <step number="2">
-      <action>Parse the user's request</action>
+      <action>Surface vocabulary gaps</action>
       <details>
-        Identify the ceremony or task type:
-        - Sprint planning
-        - Daily standup
-        - Backlog refinement
-        - Sprint review
-        - Retrospective
-        - Impediment logging
-        - Velocity or burndown analysis
+        If `missing_options` is non-empty, report each gap before doing anything else.
+        Offer to call `scrum_add_vocabulary` to resolve them.
+        Do not execute any write operation whose target status or field is in the gap list
+        until that gap is resolved.
       </details>
     </step>
+
+    <step number="3">
+      <action>Run proactive board health check</action>
+      <details>
+        If `platform_state` shows an active sprint, check immediately — without being asked:
+
+        - Blocked items with no logged impediment →
+            call `scrum_log_impediment` for each; report what was auto-logged.
+        - Sprint with no goal set →
+            surface before engaging with any ceremony request.
+        - Carry-over risk: remaining days <= `config.sprint.carry_over_threshold_days`
+            and remaining SP is material →
+            flag explicitly before the user asks about sprint state.
+
+        Report findings as a brief pre-check summary, then parse the user's request.
+      </details>
+    </step>
+
+    <step number="4">
+      <action>Classify the request and select stance</action>
+      <details>
+        Map the user's request to one of:
+          - Ceremony:    sprint_planning | daily_standup | backlog_refinement |
+                         sprint_review | retrospective
+          - Query:       velocity, burndown, backlog state, sprint state, story detail
+          - Write:       story creation, story update, impediment log, sprint plan
+          - Coaching:    dysfunction signal, team question, SM guidance
+          - Transition:  project_bootstrap | stale_recovery | board_catchup
+
+        Transition detection — classify as Transition if ANY of these are true:
+          - User mentions "set up Scrum", "first sprint", "introduce Scrum", "bootstrap",
+            "we paused", "picking this back up", "restarting", "board is outdated",
+            "didn't track", "we kept building", "need to catch up"
+          - `scrum_orient` returns missing field mappings or no iteration history
+          - Board has items but no sprint assignments and no sprint history
+          - Items in in_progress status have dates older than 3× the configured sprint length
+          - User confirms development happened but the board does not reflect it
+
+        Select the SM stance appropriate to the request before responding.
+        Stance definitions are in `3_sm_stance.xml`.
+        Transition playbooks are in `4_transitions.xml` — use them instead of the
+        ceremony playbook for any Transition request type.
+
+        If the request type is Coaching, OR the request references a Scrum concept not
+        fully addressed by the ceremony playbook (estimation, story splitting, scaling,
+        retrospective format selection, facilitation technique, team health, conflict,
+        bootstrapping, stale recovery, board catchup),
+        read `.roo/skills/scrum-master/SKILL.md` before responding.
+        SKILL.md is the routing index for all skill reference files — navigate from there
+        to the specific section needed. Do not load reference files speculatively;
+        read only what the routing table directs for this request.
+      </details>
+    </step>
+
   </session_start>
 
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       CEREMONY PLAYBOOK
+       ═══════════════════════════════════════════════════════════════════════ -->
+
   <ceremony_playbook>
+
     <ceremony name="sprint_planning">
-      <flow>
-        <step>Call `scrum_get_backlog` to load unassigned stories</step>
-        <step>Check each candidate against DoR (Definition of Ready)</step>
-        <step>Call `scrum_get_sprint` to review current sprint capacity</step>
-        <step>Call `scrum_plan_sprint` with selected stories and sprint goal</step>
-        <step>Call `scrum_get_template` for sprint_planning artifact</step>
-      </flow>
-      <dor_checklist>
-        <item>Written as a user story (who / what / why)</item>
-        <item>Acceptance criteria defined and agreed by the team</item>
-        <item>Estimated in story points</item>
-        <item>Dependencies identified and de-risked</item>
-        <item>Completable within one sprint</item>
-      </dor_checklist>
+      <tool_sequence>
+        <step>Call `scrum_get_backlog` to load unrefined and ready items</step>
+        <step>Check each candidate against the DoR returned by `scrum_orient`; flag every gap</step>
+        <step>Call `scrum_get_sprint` for current sprint capacity and active iteration context</step>
+        <step>Confirm Sprint Goal with user — no item selection proceeds without an agreed goal</step>
+        <step>Call `scrum_plan_sprint` with selected story IDs, capacity, and the agreed goal</step>
+        <step>Call `scrum_get_template` for the sprint_planning artifact when a ceremony record is needed</step>
+      </tool_sequence>
+      <sm_moves>
+        <move trigger="no Sprint Goal drafted">
+          Stop item selection. Ask the PO to propose a one-sentence outcome-based goal before continuing.
+        </move>
+        <move trigger="candidate item below DoR">
+          Name the specific gap. Offer to defer to refinement or refine inline via `scrum_update_story`.
+          Do not let the item enter the sprint commitment until the gap is closed.
+        </move>
+        <move trigger="selected SP exceeds capacity">
+          State the numbers plainly: selected total vs. available capacity.
+          Ask which items to remove. Never allow the team to commit beyond capacity.
+        </move>
+        <move trigger="batch write exceeds autonomy threshold">
+          Summarise the full planned assignment (story titles + sprint) and wait for explicit
+          approval before calling `scrum_plan_sprint`.
+        </move>
+      </sm_moves>
     </ceremony>
 
+
     <ceremony name="daily_standup">
-      <flow>
-        <step>Call `scrum_get_sprint` to load current sprint stories</step>
-        <step>Surface all `blocked` stories</step>
-        <step>For each blocker, call `scrum_log_impediment` if not already recorded</step>
-        <step>Summarise progress toward the Sprint Goal</step>
-      </flow>
+      <tool_sequence>
+        <step>Call `scrum_get_sprint` to load current sprint items and statuses</step>
+        <step>Surface all items in a blocking status using the `blocking: true` flag from orient vocabulary</step>
+        <step>For each blocker without a logged impediment, call `scrum_log_impediment`</step>
+        <step>Compute progress toward Sprint Goal: (Done SP + In-Review SP) / total committed SP</step>
+        <step>Flag carry-over risk if days remaining ≤ `config.sprint.carry_over_threshold_days`
+              and remaining work is material</step>
+      </tool_sequence>
       <standup_questions>
         <question>What did I complete that moved the Sprint Goal?</question>
         <question>What will I do today?</question>
-        <question>What's blocking me?</question>
+        <question>What is blocking me?</question>
       </standup_questions>
+      <sm_moves>
+        <move trigger="deep technical discussion starts">
+          Park it immediately. "Take this offline — connect after standup."
+        </move>
+        <move trigger="updates directed at SM rather than team">
+          Redirect: "Tell the Goal, not me."
+        </move>
+        <move trigger="blocker raised but not yet logged">
+          Log via `scrum_log_impediment` immediately. Assign Day 1 follow-up per impediment protocol.
+        </move>
+        <move trigger="in-progress item stale 3+ days without status change">
+          Surface at standup. Ask the owner what is actually happening.
+        </move>
+      </sm_moves>
     </ceremony>
+
 
     <ceremony name="backlog_refinement">
-      <flow>
-        <step>Call `scrum_get_backlog` to load unassigned stories</step>
-        <step>Check each item against DoR gaps</step>
-        <step>Call `scrum_update_story` to add acceptance criteria or estimates</step>
+      <tool_sequence>
+        <step>Call `scrum_get_backlog` to load unrefined items</step>
+        <step>Check each item against DoR — missing AC, missing estimate, unclear scope</step>
+        <step>Call `scrum_update_story` to add acceptance criteria or estimates where agreed</step>
         <step>Call `scrum_add_vocabulary` if new labels or field options are needed</step>
-        <step>Call `scrum_set_field` to adjust priority or story points</step>
-      </flow>
+        <step>Call `scrum_set_field` to adjust priority where the PO has confirmed changes</step>
+      </tool_sequence>
+      <sm_moves>
+        <move trigger="item unchanged for 2 sprints">
+          Surface to PO: this item may be out of scope. Coach on DEEP backlog hygiene.
+          Candidate for pruning if no clear near-term intent.
+        </move>
+        <move trigger="item too large for one sprint">
+          Coach the team through splitting. Reference skill `references/advanced-practices.md` §4
+          for patterns. Do not estimate an item that cannot fit in one sprint.
+        </move>
+        <move trigger="no AC on candidate item">
+          Block from refinement completion. AC is a DoR prerequisite — no estimate without it.
+          Offer to draft AC with the team via `scrum_update_story`.
+        </move>
+      </sm_moves>
     </ceremony>
+
 
     <ceremony name="sprint_review">
-      <flow>
-        <step>Call `scrum_get_sprint` to load current sprint stories</step>
-        <step>Call `scrum_get_burndown` for points-remaining chart data</step>
-        <step>Call `scrum_get_template` for sprint_review artifact</step>
-        <step>Draft review document summarising Done items and stakeholder feedback</step>
-      </flow>
+      <tool_sequence>
+        <step>Call `scrum_get_sprint` to load final sprint state</step>
+        <step>Call `scrum_get_burndown` for completion data</step>
+        <step>Separate items into Done vs. not-Done using the `terminal: true` status key from orient vocabulary</step>
+        <step>Call `scrum_get_template` for the sprint_review artifact when a ceremony record is needed</step>
+        <step>Draft the review: Goal achieved?, Done items, carry-over items, stakeholder feedback, backlog changes</step>
+      </tool_sequence>
+      <sm_moves>
+        <move trigger="not-Done item about to be presented">
+          Stop. Apply DoD. Mark item as carry-over explicitly. Only Done items are presented to stakeholders.
+        </move>
+        <move trigger="no stakeholders present">
+          Note the attendance gap in the review record. Flag to PO as a signal to investigate
+          before the next Review.
+        </move>
+        <move trigger="review generates no backlog changes">
+          Ask explicitly: "What should change in the backlog based on what you saw today?"
+          A Review with no backlog output is a dysfunction.
+        </move>
+      </sm_moves>
     </ceremony>
+
 
     <ceremony name="retrospective">
-      <flow>
-        <step>Call `scrum_get_history` for velocity trend across past sprints</step>
-        <step>Call `scrum_get_template` for retrospective artifact</step>
-        <step>Draft retro document with one committed improvement</step>
-      </flow>
+      <tool_sequence>
+        <step>Call `scrum_get_history` for velocity trend across the `velocity_window` from config</step>
+        <step>Surface the previous sprint's retro commitment and whether it was followed through</step>
+        <step>Call `scrum_get_template` for the retrospective artifact when a ceremony record is needed</step>
+        <step>Draft the retro document: gathered observations, insights, exactly one committed improvement</step>
+      </tool_sequence>
+      <sm_moves>
+        <move trigger="team proposes multiple improvement actions">
+          Reduce to one. "Pick the one you will actually do. The rest go in the backlog."
+          One committed improvement per retro — no exceptions.
+        </move>
+        <move trigger="previous sprint commitment not followed through">
+          Start here before gathering new retro data. Name what happened and why before moving forward.
+        </move>
+        <move trigger="same improvement proposed for the second sprint in a row">
+          This is a pattern, not a preference. Surface as a dysfunction signal per `3_sm_stance.xml`.
+        </move>
+      </sm_moves>
     </ceremony>
+
   </ceremony_playbook>
 
-  <completion_criteria>
-    <criterion>All requested ceremony or task is complete</criterion>
-    <criterion>Changes are summarised with enough detail for verification</criterion>
-    <criterion>No vocabulary gaps or missing options remain unreported</criterion>
-  </completion_criteria>
-</workflow_instructions>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       PROACTIVE DUTIES
+       Checks performed as part of every session, not just on request.
+       ═══════════════════════════════════════════════════════════════════════ -->
+
+  <proactive_duties>
+
+    <duty name="sprint_health">
+      <description>After loading sprint state, compute and surface without being asked:</description>
+      <checks>
+        <check>Commitment ratio: Done SP / committed SP. Below 80% consistently → raise in Retrospective.</check>
+        <check>Carry-over risk: remaining SP vs. remaining days * average daily burn rate. Flag if at risk.</check>
+        <check>Stale in-progress items: no status change in 3+ days → surface at next standup reference.</check>
+        <check>Sprint goal presence: if goal field is empty → surface before any ceremony proceeds.</check>
+      </checks>
+    </duty>
+
+    <duty name="impediment_tracking">
+      <description>Maintain awareness of all open impediments throughout the session.</description>
+      <protocol>
+        <day number="0">Log immediately via `scrum_log_impediment`.</day>
+        <day number="1">Follow up: is this resolved or actively being worked?</day>
+        <day number="2">No progress → escalate. Surface to user: "This impediment has been open 2 days
+          without resolution. It should be escalated to [PO / manager / stakeholder]."</day>
+        <day number="3+">Report status at every standup reference until resolved.</day>
+      </protocol>
+    </duty>
+
+  </proactive_duties>
+
+</workflow>

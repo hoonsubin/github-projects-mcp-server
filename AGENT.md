@@ -19,7 +19,7 @@ Guidance for coding agents working in this repository. Concise by design — see
 - Read Limit: Max 500 lines/operation; use offset/limit for larger files.
 - Ref Limits: Max 2 reference files active at once.
 - Tools: Proactively invoke available tools and functions for searching and memory storage.
-- Tasks: On high context noise or end of assessment, break down session into tasks and write in `tasks/todo.md` for external agent hand-off. Remove outdated content when finished.
+- Tasks: On high context noise or end of assessment, break down session into tasks and write in `tasks/TODO.md` for external agent hand-off. Remove outdated content when finished.
 
 ## When Working with Documentation
 

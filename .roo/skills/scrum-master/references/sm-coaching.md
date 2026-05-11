@@ -1,35 +1,23 @@
 # SM Coaching, Facilitation & Team Health
 
-1. [Coaching models](#1-coaching-models)
-2. [Facilitation techniques](#2-facilitation-techniques)
-3. [Retrospective formats](#3-retrospective-formats)
-4. [Conflict resolution](#4-conflict-resolution)
-5. [Team health metrics](#5-team-health-metrics)
-6. [Remote / distributed SM](#6-remote--distributed-sm)
-7. [Onboarding a new team](#7-onboarding-a-new-team)
-8. [SM self-assessment](#8-sm-self-assessment)
-
-For game-studio team patterns, producer-as-SM coaching, communities of practice, distributed game teams: see `references/game-development.md`.
-
 ---
 
-## 1. Coaching models
+## Coaching models
 
-### GROW (Goal, Reality, Options, Will)
+### GROW (Goal → Reality → Options → Will)
 
-For when an individual or team knows something is wrong but can't find the path forward.
+Use when an individual or team knows something is wrong but can't find the path forward.
 
-| Phase   | Question                                                                            |
-| ------- | ----------------------------------------------------------------------------------- |
-| Goal    | "What outcome do you want from this conversation?" / "What does success look like?" |
-| Reality | "What's actually happening?" / "What have you tried?"                               |
-| Options | "What could you do?" / "What if the constraint didn't exist?"                       |
-| Will    | "What will you do next?" / "When?" / "What support do you need?"                    |
+| Phase | Questions |
+|---|---|
+| Goal | "What outcome do you want?" / "What does success look like?" |
+| Reality | "What's actually happening?" / "What have you tried?" |
+| Options | "What could you do?" / "What if the constraint didn't exist?" |
+| Will | "What will you do next?" / "When?" / "What support do you need?" |
 
-**Rule:** in coaching mode, ask questions — don't provide answers. "What should I do?" → "What do _you_ think the options are?"
+**Rule:** in coaching mode, ask questions — don't provide answers. "What should I do?" → "What do *you* think the options are?"
 
 ### Powerful questions
-
 - "What's the worst that could happen if you tried that?"
 - "What would you advise someone else in your position?"
 - "What's stopping you right now?"
@@ -38,242 +26,229 @@ For when an individual or team knows something is wrong but can't find the path 
 
 ### SBI feedback (Situation → Behaviour → Impact)
 
-Observable and specific:
-
 > "During today's standup [situation], you spent 10 minutes on a technical deep-dive [behaviour], which meant three team members couldn't share updates [impact]."
 
-Avoid labels ("you're disorganised") — describe behaviour only.
+Describe observable behaviour only — no labels ("you're disorganised").
 
 ---
 
-## 2. Facilitation techniques
+## Facilitation techniques
 
-### Diverge → converge
-
-Every productive meeting: (1) generate options, surface all perspectives — no evaluation; (2) select, prioritise, commit. If the loudest voice closes things early: "Let's hear from everyone before we decide."
-
-### Dot voting
-
-N dots per participant (3–5). Silently stick on top options. Discuss the leaders. Works for retro actions, backlog triage, feature prioritization.
-
-### 1-2-4-All (Liberating Structures)
-
-1 min silent → 2-person pairs → groups of 4 → whole room. Surfaces quiet voices, prevents groupthink.
-
-### Timeboxing
-
-Announce the box at the start. 2-min warning. When time's up: "Enough to decide, or 5 more minutes?" — explicit agreement before extending.
-
-### Parking Lot
-
-Visible "parking lot" for off-scope-but-important items. Review at meeting close: defer, schedule, or discard each one.
-
-### Fist to Five
-
-Quick consent gauge after a proposal:
-
-- Fist (0): block
-- 1–2: strong concerns; needs modification
-- 3: concerns noted but won't block
-- 4: good enough
-- 5: full enthusiasm
-
-Proceed if no fists; address 1s and 2s first.
+| Technique | How | Best for |
+|---|---|---|
+| **Diverge → converge** | Generate first (no evaluation), then select | Every productive meeting |
+| **Dot voting** | N dots per person (3–5), silently place, discuss leaders | Retro actions, backlog triage |
+| **1-2-4-All** | 1 min silent → pairs → groups of 4 → whole room | Surfaces quiet voices, prevents groupthink |
+| **Timeboxing** | Announce box upfront, 2-min warning, explicit extension agreement | All ceremonies |
+| **Parking Lot** | Visible list of off-scope items; review at close | Off-topic tangents |
+| **Fist to Five** | 0=block, 1–2=concerns, 3=acceptable, 4=good, 5=enthusiastic | Consent on proposals |
 
 ---
 
-## 3. Retrospective formats
+## Retrospective formats
 
 Choose by team mood and sprint context.
 
-### Start / Stop / Continue
-
-**Best for:** quick, familiar teams; tired teams.
-Three columns: Start (begin), Stop (end), Continue (keep).
-
-### 4Ls
-
-**Best for:** reflective sprints; learning-heavy work.
-Liked / Learned / Lacked / Longed For.
-
-### Sailboat (Speedboat)
-
-**Best for:** teams feeling stuck or frustrated.
-Wind (helps) / Anchors (slows us) / Rocks ahead (risks) / Island (goal).
-
-### Mad / Sad / Glad
-
-**Best for:** low morale; trust rebuilding.
-Start with emotional acknowledgment before fixes.
-
-### Five Whys
-
-**Best for:** recurring dysfunction with a known symptom.
-One problem statement → "Why?" five times → root cause. Write the chain.
-
-### Timeline
-
-**Best for:** longer sprints; release retrospectives; post-mortems.
-Map sprint events on a timeline; mood indicator per event (😊 / 😐 / 😞); discuss patterns, not incidents.
-
-### KALM (Keep / Add / Less / More)
-
-**Best for:** process-heavy teams wanting tuning over overhaul.
-Keep (exactly right) · Add (try) · Less (reduce) · More (amplify).
+| Format | Best for | Structure |
+|---|---|---|
+| **Start / Stop / Continue** | Quick; familiar or tired teams | Three columns |
+| **4Ls** | Reflective; learning-heavy sprints | Liked / Learned / Lacked / Longed For |
+| **Sailboat** | Teams feeling stuck or frustrated | Wind (helps) / Anchors / Rocks ahead / Island (goal) |
+| **Mad / Sad / Glad** | Low morale; trust rebuilding | Emotional acknowledgment first |
+| **Five Whys** | Recurring dysfunction with a known symptom | One problem → "Why?" × 5 → root cause |
+| **Timeline** | Longer sprints; post-mortems | Events on a timeline with mood indicators |
+| **KALM** | Process-heavy teams wanting tuning over overhaul | Keep / Add / Less / More |
 
 ---
 
-## 4. Conflict resolution
+## Conflict resolution
 
 ### Identify the type first
 
-| Type         | Sign                     | SM approach                                                           |
-| ------------ | ------------------------ | --------------------------------------------------------------------- |
-| Task         | Disagreement on _what_   | Healthy — facilitate structured debate; each side steelmans the other |
-| Process      | Disagreement on _how_    | Restate Goal; redirect to "what process serves the goal?"             |
-| Relationship | Personal friction; blame | Separate people from problem; SBI; consider 1:1 first                 |
+| Type | Sign | SM approach |
+|---|---|---|
+| Task | Disagreement on *what* | Healthy — structured debate; each side steelmans the other |
+| Process | Disagreement on *how* | Restate Goal; "what process serves the goal?" |
+| Relationship | Personal friction; blame | Separate people from problem; SBI; 1:1 first |
 
 ### De-escalation in ceremonies
-
 1. Pause: "5-minute break."
-2. Validate publicly: "I can see this matters to both of you."
+2. Validate: "I can see this matters to both of you."
 3. Redirect: "What outcome do we both want?"
-4. Unresolved → close the meeting; schedule structured 1:1 or mediated conversation.
+4. Unresolved → close meeting; schedule structured 1:1 or mediated session.
 
-### SM is not a judge
-
-Don't pick a winner. Facilitate the team to its own decision. Genuinely stuck → Dot Voting, Fist to Five, or timeboxed discussion with coin-flip fallback ("Try Alice's approach for one sprint, then evaluate").
+**SM is not a judge.** Facilitate the team to its own decision. Genuinely stuck → Dot Voting or Fist to Five, or: "Try Alice's approach for one sprint, then evaluate."
 
 ---
 
-## 5. Team health metrics
-
-Maintain in a markdown table — no tooling required.
+## Team health metrics
 
 ```markdown
 ## Team Health — Sprint [N]
 
-| Metric                            | Value    | Trend | Notes                |
-| --------------------------------- | -------- | ----- | -------------------- |
-| Velocity (SP)                     |          | ↑ → ↓ |                      |
-| Commitment ratio                  |          |       | Target 80–100%       |
-| Impediments raised                |          |       |                      |
-| Impediments resolved same sprint  |          |       | Target 100%          |
-| Standup avg (min)                 |          |       | Target ≤15           |
-| Retro commitment followed through | ✅/❌/⚠️ |       |                      |
-| Psych safety (1–5 self-report)    |          |       | Raise in retro if <3 |
-| Team satisfaction (1–5)           |          |       | Anonymous            |
+| Metric | Value | Trend | Notes |
+|---|---|---|---|
+| Velocity (SP) | | ↑ → ↓ | |
+| Commitment ratio | | | Target 80–100% |
+| Impediments raised | | | |
+| Impediments resolved same sprint | | | Target 100% |
+| Standup avg (min) | | | Target ≤15 |
+| Retro commitment followed through | ✅/❌/⚠️ | | |
+| Psych safety (1–5 self-report) | | | Raise in retro if <3 |
+| Team satisfaction (1–5) | | | Anonymous |
 ```
 
 **Self-report questions** (end of retro, anonymous):
-
 - "1–5: how safe do you feel raising problems in this team?"
 - "1–5: how satisfied with how we worked this sprint?"
 
-**Trend > absolute value.** Three consecutive ↓ in any metric → bring to retro explicitly.
+Three consecutive ↓ in any metric → bring to retro explicitly.
 
 ---
 
-## 6. Remote / distributed SM
+## Remote / distributed SM
 
-### Adapted ceremonies
+| Ceremony | Remote adaptation |
+|---|---|
+| Planning | Video + shared screen; collaborative markdown doc |
+| Standup | Async chat (3-point post by agreed time) or short video; never skip |
+| Review | Video + screen share; record for absent stakeholders |
+| Retro | Shared markdown doc; virtual stickies or 1-2-4-All in writing rounds |
 
-| Ceremony | Remote                                                              |
-| -------- | ------------------------------------------------------------------- |
-| Planning | Video + shared screen; collaborative markdown doc                   |
-| Standup  | Async chat (3-point post by agreed time) or short video; never skip |
-| Review   | Video + screen share; record for absent stakeholders                |
-| Retro    | Shared markdown doc / collaborative canvas; virtual stickies        |
-
-### Async standup template
-
-```markdown
-## Standup — [YYYY-MM-DD]
-
-**Alice**
-
-- ✅ Done: [moves the Goal]
-- 🔜 Today: [plan]
-- 🚧 Blockers: [none / describe]
-
-**Bob**
-
-- ✅ Done:
-- 🔜 Today:
-- 🚧 Blockers:
-```
-
-Posted by 09:30 (or agreed time). SM reviews within 1 hour; same-day blocker follow-up.
-
-### Remote SM tips
-
-- Over-communicate in writing: decisions, retro commitments, impediments — visibility replaces presence
-- Camera-on norms (propose, model, don't mandate)
-- "Office hours": 30-min daily open slot for drop-ins; reduces async pile-up
-- Watch for silent voices in video — use 1-2-4-All and written rounds before verbal
+**Remote SM tips:**
+- Over-communicate decisions, retro commitments, and impediments in writing — visibility replaces presence
+- Camera-on norms: propose and model, don't mandate
+- "Office hours": 30-min daily open slot; reduces async pile-up
+- Watch for silent voices in video — use written rounds before verbal in 1-2-4-All
 
 ---
 
-## 7. Onboarding a new team
+## Onboarding a new team
 
-### Week 0 — Foundation
+| Phase | Focus | Key actions |
+|---|---|---|
+| **Week 0** | Foundation | Half-day Scrum overview; Team Charter; agree sprint length + cadence; DoD v1 |
+| **Sprint 1** | Learning | Simple Goal; SM Teacher stance at every standup; full retro on process |
+| **Sprints 2–3** | Norming | SM steps back from running standup; coach PO on refinement; upgrade DoD |
+| **Sprint 4+** | Performing | SM shifts to Coach + Impediment Remover; measure health metrics; focus on org blockers |
 
-- [ ] Half-day Scrum overview (roles, events, artifacts, values)
-- [ ] Facilitate Team Charter (working agreements, comm norms, DoD v1)
-- [ ] Agree sprint length + ceremony schedule
-- [ ] Set up markdown artifact files (sprint board, retro, impediment log, release roadmap)
-
-### Sprint 1 — Learning
-
-- [ ] Keep Sprint Goal simple — success builds confidence
-- [ ] SM attends every standup; Teacher stance
-- [ ] Full retro; focus on process learning, not just delivery
-
-### Sprints 2–3 — Norming
-
-- [ ] SM steps back from facilitating standup — let team run it
-- [ ] Coach PO on refinement rhythm
-- [ ] Review DoD; upgrade based on what was learned
-
-### Sprint 4+ — Performing
-
-- [ ] SM shifts to Coach + Impediment Remover stances
-- [ ] Measure health metrics; surface trends in retro
-- [ ] Energy on org blockers, not team mechanics
-
-For game-studio onboarding (beachhead pattern, split-and-seed, federal-vs-state laws, cargo-cult-Scrum risk): see `references/game-development.md` §9.
+*Game-studio onboarding (beachhead pattern, split-and-seed, cargo-cult-Scrum risk): see `game-development.md` §9.*
 
 ---
 
-## 8. SM self-assessment
+## SM self-assessment
 
-**Facilitation**
+**Green signals** (aim for all):
+- Talking <20% of time in ceremonies
+- Asking questions before giving answers
+- Team solves problems before bringing them to SM
+- Impediment log current; anything open >2 days is escalated
+- Last retro commitment followed through
+- Members feel safe raising bad news
 
-- Talking <20% of the time in ceremonies?
-- Creating space for quiet voices?
-- Timeboxing consistently?
-
-**Coaching**
-
-- Asking questions before giving answers?
-- Enabling self-organisation, or creating dependency on me?
-- Do team members solve problems before bringing them?
-
-**Impediment removal**
-
-- Log current?
-- Anything open >2 days I've escalated?
-- Tracking org patterns, not just individual blockers?
-
-**Team health**
-
-- Data on velocity + satisfaction trends?
-- Last sprint's retro commitment actually happen?
-- Members feel safe raising bad news?
-
-**Red flags (seek coaching yourself if any are yes)**
-
+**Red flags** (seek coaching yourself if any are yes):
 - Regularly assigning tasks to specific developers
 - Reporting individual performance up the chain
 - Ceremonies run over timebox without anyone noticing
 - You feel indispensable to the team's operation
+
+---
+
+## Bootstrap: Introducing Scrum to an ongoing project
+
+### Sprint 0 vs. Sprint 1
+
+**Sprint 0** — use when the team needs a setup sprint before committing to delivery:
+- Tooling, board configuration, and working agreements aren't yet in place
+- DoD and DoR have never been discussed
+- The team hasn't worked together in a Scrum cadence before
+
+Sprint 0 goal: "By end of this sprint, we have a working board, agreed DoD, and a calibrated velocity estimate." Keep it short (1 week). Sprint 0 produces no product increment — it produces a team ready to commit.
+
+**Sprint 1** — use when:
+- The board is functional, DoD/DoR are written (even minimally), and the team has context
+- The project has been running informally and just needs structure applied
+
+When in doubt, prefer Sprint 1. Sprint 0 is a crutch that teams extend indefinitely.
+
+### v1 DoD principle
+
+Write the simplest DoD the team will actually respect. A DoD with 3 criteria followed is worth more than one with 10 criteria ignored. Start with: code reviewed, AC verified, deployed to staging. Add criteria in retro as the team proves the baseline.
+
+**Never write an aspirational DoD** — "100% test coverage" on a project with no tests is a fiction. Write what's true now and upgrade it.
+
+### Velocity baseline from informal history
+
+When formal sprint data doesn't exist, reconstruct from memory and evidence:
+1. Ask: "What did the team complete in the last 4–6 weeks?" (Rough answer is fine.)
+2. Divide by elapsed weeks, then multiply by sprint length to get items/sprint.
+3. Estimate story points by asking the team to size the completed items relatively to each other.
+4. Use the result as a provisional planning number. Label it as bootstrapped.
+5. Revisit after Sprint 2 — by then, real data exists.
+
+If no throughput data exists at all: start with the capacity formula and treat Sprint 1 as a calibration sprint. The point of Sprint 1 is a reliable velocity reading, not maximum output.
+
+---
+
+## Stale recovery: Re-orienting after a pause
+
+### The restart retrospective
+
+Before re-planning, run a short retrospective on the pause itself. Three questions only:
+1. "What caused the pause — and what have we learned from it?"
+2. "What's different now that makes this restart viable?"
+3. "What one change would prevent the same thing from happening again?"
+
+Capture the one committed change. If the root cause isn't resolved, don't restart — plan the resolution first.
+
+### Re-baseline decision
+
+| Pause duration | Team changed? | Velocity decision |
+|---|---|---|
+| ≤ 2 sprint lengths | No | Use last known velocity — it's still valid |
+| ≤ 2 sprint lengths | Yes | Adjust for capacity change; use last velocity as reference |
+| > 2 sprint lengths | No | Confirm with team; treat as suspect; calibration sprint |
+| > 2 sprint lengths | Yes | Re-baseline from scratch via capacity formula |
+
+When re-baselining: Capacity = Available Days × Focus Factor (0.65) × Team Size.
+
+### The calibration sprint
+
+The first sprint back is not about output — it's about proving the team can deliver again. Design it deliberately:
+- Commit to 60–70% of estimated capacity
+- Choose items the team knows well — no new technology or high-risk unknowns
+- Sprint Goal: "Deliver one complete, releasable increment"
+- Retro question: "Was the commit realistic? What would we adjust?"
+
+Under-committing on the calibration sprint is not weakness — it's accurate. Teams that over-commit on restart sprint 1 and miss it lose confidence twice.
+
+---
+
+## Board catchup: Reconciling a board with actual progress
+
+### Reconciliation philosophy
+
+The board must reflect reality before it can guide future work. A board showing 12 items "In Progress" from three months ago is not a planning tool — it's noise. The first job is to make the board true, not to make it look good.
+
+**Principle: reconstruct without fiction.** Mark completed work as Done directly — do not create fake sprint records to house it. History is useful; invented structure is not.
+
+**Principle: approximate is fine.** Reconstructed dates and estimates don't need to be exact. A board that's 80% accurate and 100% current is more useful than a perfect historical record that's two months old.
+
+### What to do with each type of undocumented work
+
+| What happened | Board action |
+|---|---|
+| Item completed as described | Find on board → mark Done |
+| Item completed with different scope | Update body → mark Done → split remainder into new open item |
+| Work done that was never on the board | Create new item → immediately mark Done |
+| Item started but not finished | Update body to reflect current partial state; re-estimate if needed |
+| Item no longer relevant | Archive / icebox — never delete |
+
+### Solo and informal team adaptations
+
+For teams of 1–3 with no prior process:
+- **Skip Sprint 0** — go straight to Sprint 1 after the board is clean
+- **Lighter DoR** — solo devs don't need formal estimation before starting; a clear outcome statement is enough
+- **Shorter sprints** — 1-week sprints give faster feedback loops for small teams
+- **Combined planning + review** — for solo devs, a 30-min weekly "what did I do / what's next" session covers both ceremonies
+- **Velocity in items, not points** — story points are a team estimation tool; solo devs can track items completed per sprint and convert later if the team grows

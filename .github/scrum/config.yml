@@ -186,7 +186,7 @@ backends:
       backlog: "Backlog"
       ready: "Ready"
       in_progress: "In Progress"
-      #in_review: "In Review"
+      in_review: "In Review"
       blocked: "Blocked"
       done: "Done"
 

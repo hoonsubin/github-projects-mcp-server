@@ -30,14 +30,27 @@ for (const def of _doc.definitions) {
   }
 }
 
-// Recursively collect all fragment names referenced by an AST node
-function _collectFrags(node: unknown, acc: Set<string> = new Set()): Set<string> {
+// Recursively collect all fragment names referenced by an AST node.
+// Uses WeakSet to track visited AST nodes and avoid infinite recursion
+// from circular parent/prev/next pointers in the GraphQL AST.
+function _collectFrags(
+  node: unknown,
+  acc: Set<string> = new Set(),
+  seen: WeakSet<object> = new WeakSet(),
+): Set<string> {
   if (!node || typeof node !== "object") return acc;
+
   if (Array.isArray(node)) {
-    for (const v of node) _collectFrags(v, acc);
+    for (const v of node) _collectFrags(v, acc, seen);
     return acc;
   }
-  const o = node as Record<string, unknown>;
+
+  const obj = node as object;
+  // Prevent revisiting the same object (handles circular references)
+  if (seen.has(obj)) return acc;
+  seen.add(obj);
+
+  const o = obj as Record<string, unknown>;
   if (
     o["kind"] === "FragmentSpread" &&
     o["name"] &&
@@ -46,11 +59,12 @@ function _collectFrags(node: unknown, acc: Set<string> = new Set()): Set<string>
     const name = (o["name"] as { value: string }).value;
     if (!acc.has(name)) {
       acc.add(name);
-      _collectFrags(_fragments.get(name), acc);
+      const frag = _fragments.get(name);
+      if (frag) _collectFrags(frag, acc, seen);
     }
   }
   for (const v of Object.values(o)) {
-    if (v && typeof v === "object") _collectFrags(v, acc);
+    if (v && typeof v === "object") _collectFrags(v, acc, seen);
   }
   return acc;
 }
