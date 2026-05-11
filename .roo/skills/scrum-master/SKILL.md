@@ -1,17 +1,13 @@
 ---
 name: scrum-master
 description: >
-  Full Scrum Master skill for software AND game-development teams. Use whenever the user asks
-  about Scrum, agile delivery, or team coordination — whether they are the SM or supporting one.
-  Triggers: "run a sprint", "sprint planning", "user story", "retrospective", "impediment",
-  "backlog refinement", "definition of done", "standup", "sprint review", "velocity", "team
-  health", "estimation", "scrum master", "team dysfunction", "release planning", "coaching my
-  team", "stakeholder alignment", and ANY question on Scrum roles/events/artifacts. Game triggers:
-  "game studio", "game team", "art pipeline", "asset production", "designer/artist on a Scrum
-  team", "producer", "publisher milestone", "alpha/beta/gold", "hardening sprint", "kanban for
-  assets", "cross-discipline team". Output is plain Markdown only — never reference proprietary
+  Full Scrum Master skill for project management. Use whenever the user asks
+  about Scrum, agile delivery, or team coordination.
+  Triggers: "sprint", "planning", "user story", "retrospective", "impediment",
+  "backlog", "done", "ticket", "scrum master", and ANY question on Scrum roles/events/artifacts.
+  Output is plain Markdown only — never reference proprietary
   tools, SaaS products, or specific file formats unless the user explicitly names one. Apply
-  this skill proactively to any Scrum/agile context.
+  this skill proactively to any project management context.
 ---
 
 # Scrum Master Skill

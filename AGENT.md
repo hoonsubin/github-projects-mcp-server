@@ -4,21 +4,22 @@ Guidance for coding agents working in this repository. Concise by design — see
 
 ## Reference Documents
 
-| Document                                                                 | Contents                                                                                                        |
-| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| [`README.md`](README.md)                                                 | Project vision, domain model, full tool surface design, interaction patterns                                    |
-| [`tasks/`](tasks/)                                                       | Architecture, phased roadmap, current implementation state per phase, user stories, and small broken-down tasks |
-| [`docs/proj-diagram.md`](docs/proj-diagram.md)                           | Current state of the project class diagram and tracking unused exports. Use as ToC of the project               |
-| [`.github/scrum/config.yml`](.github/scrum/config.yml)                   | Team, sprint, field names, vocabulary, DoR/DoD, autonomy settings                                               |
-| [`deno.json`](deno.json)                                                 | Tasks, import map, compiler options, formatter and linter config                                                |
-| [`skill/scrum-master-agent/SKILL.md`](skill/scrum-master-agent/SKILL.md) | Agentic Scrum skill prompts and ceremony playbooks                                                              |
+- `README.md`: Project vision, domain model, tool surface design, interaction patterns.
+- `docs/proj-diagram.md`: Current module dependency diagram and unused export tracking (project ToC).
+- `.github/scrum/config.yml`: Team/sprint definitions, vocabulary, DoD rules, autonomy settings.
+- `skill/scrum-master-agent/SKILL.md`: Agentic Scrum prompts and ceremony playbooks.
+
+## Tech Stack
+
+- `Deno.js`: Use `deno task <task name>` command. Available tasks: `deno.json`.
+- `express.js` and `stdio` MCP: Tool meant to be called by agents first. Not a web application.
 
 ## Context Management Rules
 
-- **File reading limit**: 500 lines per read operation
-- **Reference file limit**: Maximum 2 files simultaneously
-- **Chunking required**: Files >500 lines must use offset/limit
-- **User confirmation**: Ask before reading files >1000 lines
+- Read Limit: Max 500 lines/operation; use offset/limit for larger files.
+- Ref Limits: Max 2 reference files active at once.
+- Tools: Proactively invoke available tools and functions for searching and memory storage.
+- Tasks: On high context noise or end of assessment, break down session into tasks and write in `tasks/todo.md` for external agent hand-off. Remove outdated content when finished.
 
 ## When Working with Documentation
 
@@ -48,32 +49,12 @@ GitHub Adapter  src/services/github.ts  ←  GraphQL + REST
 
 ## Code Style
 
-| Rule               | Detail                                                                                            |
-| ------------------ | ------------------------------------------------------------------------------------------------- |
-| **Imports**        | Full relative paths with `.ts` extension — no bare specifiers                                     |
-| **Naming**         | `PascalCase` types · `camelCase` functions/vars · `UPPER_SNAKE_CASE` constants                    |
-| **Functions**      | Arrow functions only: `const fn = (arg: Type): Return => {}`                                      |
-| **Error handling** | Throw `GitHubApiError`; handlers return `{ content: [{ type: "text", text: formatError(err) }] }` |
-| **Zod schemas**    | Always `.strict()` — unknown keys must be rejected                                                |
-| **Comments**       | `// ── Section ──` for major sections · `// todo: [Phase N]` for deferred work                    |
-| **Formatter**      | `deno fmt` — 100-char lines, 2-space indent, double quotes, semicolons                            |
+- Imports: Full relative paths with .ts extension; no bare specifiers.
+- Naming: `PascalCase` types, `camelCase` functions/vars, `UPPER_SNAKE_CASE` constants.
+- Functions: Arrow functions only `(const fn = (arg: Type): Return => {})`.
+- Error handling: Throw `GitHubApiError`; handlers return structured text response via format helper.
+- Zod schemas: Enforce `.strict()` to reject unknown keys.
 
 ## CI — Run Before Every Commit
 
-```sh
-deno fmt --check
-deno lint
-deno task diagram-gen
-deno task test
-```
-
-These mirror the checks in [`.github/workflows/pr-check.yml`](.github/workflows/pr-check.yml).
-
-## Environment Variables
-
-| Variable        | Required | Default | Purpose                                                   |
-| --------------- | -------- | ------- | --------------------------------------------------------- |
-| `GITHUB_TOKEN`  | ✅       | —       | GitHub PAT; server exits on startup if missing            |
-| `MCP_TRANSPORT` | —        | `stdio` | Set to `http` for HTTP/SSE mode (Open WebUI, Docker)      |
-| `PORT`          | —        | `3000`  | HTTP mode port                                            |
-| `DEBUG`         | —        | —       | Set to `1` for debug logging (GraphQL timing, tool calls) |
+`.github/workflows/pr-check.yml`
