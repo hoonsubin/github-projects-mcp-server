@@ -1,5 +1,3 @@
-// todo: [Phase 4] RETIRE — codegen-fetched types are replaced by RuntimeConfig from live API fetch
-// todo: [Phase 4] All field metadata now resolved dynamically in loadConfig (src/services/config.ts)
 // =============================================================================
 // scripts/graphql-codegen.ts
 //
@@ -36,7 +34,9 @@ import {
   printSchema,
   validate as gqlValidate,
 } from "graphql";
-import { getToken, GITHUB_API_URL } from "../src/services/github.ts";
+import { getToken } from "../src/services/github.ts";
+
+const GITHUB_API_URL = "https://api.github.com/graphql";
 
 // ── CLI ───────────────────────────────────────────────────────────────────────
 

@@ -28,6 +28,8 @@ The difference between a draft issue and full issue:
 Therefore, the default user story create mode should be opening a draft issue. When the agent requests the MCP to add certain fields or values that is not available for draft issues, it should automatically convert it to a full issue.
 For the agent reading and writing, they are all the same user story just with certain fields being missing.
 
+---
+
 ## Refactoring Status Assessment
 
 I've reviewed [`tasks/REFACTORING.md`](tasks/REFACTORING.md:1) and assessed the current state of the codebase. Here's the summary:

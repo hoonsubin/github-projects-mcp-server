@@ -1,7 +1,7 @@
 import type { GraphQLResponse } from "../types.ts";
 import { log } from "./logger.ts";
 
-export const GITHUB_API_URL = "https://api.github.com/graphql";
+const GITHUB_API_URL = "https://api.github.com/graphql";
 const REST_API_URL = "https://api.github.com";
 const REQUEST_TIMEOUT_MS = 30_000;
 

@@ -14,7 +14,7 @@ import type { SprintRef, StoryRef } from "../types.ts";
  * Resolved story — both node IDs the backend mutations need.
  * { number } path requires a GraphQL call; { id } path is a direct item lookup.
  */
-export interface ResolvedStory {
+interface ResolvedStory {
   itemId: string; // project item node ID (PVTI_...)
   issueId: string; // issue node ID (I_kwDO...)
   issueNumber: number; // user-facing issue number
@@ -252,34 +252,4 @@ export const resolveStory = async (
     issueId: issue.id,
     issueNumber: issue.number,
   };
-};
-
-// ── resolveBacklogItems ───────────────────────────────────────────────────────
-
-import type { ProjectV2Item } from "../types.ts";
-import { isBacklogItem, PaginatedProjectItemFetcher } from "./pagination.ts";
-
-/**
- * Resolve all backlog items (items without a sprint assignment).
- *
- * Uses PaginatedProjectItemFetcher for efficient pagination with minimal payload.
- * Only fetches the sprint field value — not all 20 field values.
- *
- * @param config - RuntimeConfig with projectId and field IDs
- * @param github - GraphQL client
- * @returns Array of ProjectV2Item objects that are in the backlog
- */
-export const resolveBacklogItems = (
-  config: RuntimeConfig,
-  github: GitHubClient,
-): Promise<ProjectV2Item[]> => {
-  const fetcher = new PaginatedProjectItemFetcher(config, github, {
-    sprintFieldIds: [config.fields.sprintFieldId], // only need sprint field
-    includeIssueContent: true,
-    includePRContent: false,
-    includeDraftIssueContent: false,
-    pageSize: 100,
-  });
-
-  return fetcher.collect((item) => isBacklogItem(item, config.fields.sprintFieldId));
 };

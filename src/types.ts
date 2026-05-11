@@ -24,19 +24,6 @@ export interface StoryRef {
 export type SprintRef = "current" | "next" | null | string;
 
 /**
- * One of the five writable board fields.
- * The set is fixed; new field types are out of scope for v1.
- */
-export type ScrumField = "status" | "sprint" | "story_points" | "priority" | "assignee";
-
-/**
- * Story type — drives the type label or category the backend applies.
- * NOTE: There is no "impediment" StoryType. scrum_log_impediment uses type:"spike"
- * plus an "impediment" label.
- */
-export type StoryType = "feature" | "bug" | "tech_debt" | "spike";
-
-/**
  * The canonical Story entity returned by every read tool.
  *
  * Epic IS writable in v1 (maps to GitHub Milestone).
@@ -45,7 +32,7 @@ export interface Story {
   ref: { number: number; id: string }; // always populated with both forms after a read
   title: string;
   body: string;
-  type: StoryType | null;
+  type: "feature" | "bug" | "tech_debt" | "spike" | null;
   status: string | null; // team's vocabulary value, e.g. "In Progress"
   sprint: string | null; // sprint name, or null if in backlog
   story_points: number | null;
@@ -79,42 +66,6 @@ export interface IterationEntry {
   duration: number;
 }
 
-// ── Projects ─────────────────────────────────────────────────────────────────
-
-export interface ProjectV2 {
-  id: string;
-  number: number;
-  title: string;
-  shortDescription: string | null;
-  url: string;
-  public: boolean;
-  closed: boolean;
-  createdAt: string;
-  updatedAt: string;
-  readme: string | null;
-  owner: { __typename: "User" | "Organization"; login: string };
-  fields: { nodes: ProjectV2Field[] };
-  items: { totalCount: number };
-}
-
-export interface ProjectV2Field {
-  id: string;
-  name: string;
-  dataType: string;
-  // Single-select specific
-  options?: Array<{
-    id: string;
-    name: string;
-    color: string;
-    description: string;
-  }>;
-  // Iteration specific
-  configuration?: {
-    iterations: IterationEntry[];
-    completedIterations: IterationEntry[];
-  };
-}
-
 // ── Items / Cards ─────────────────────────────────────────────────────────────
 
 export type ItemContentType = "Issue" | "PullRequest" | "DraftIssue";
@@ -122,33 +73,24 @@ export type ItemContentType = "Issue" | "PullRequest" | "DraftIssue";
 export interface ProjectV2ItemFieldValue {
   __typename: string;
   field: { id: string; name: string };
-  // Text
   text?: string;
-  // Number
   number?: number;
-  // Date
   date?: string;
-  // Single-select
   name?: string;
   color?: string;
   optionId?: string;
-  // Iteration
   title?: string;
   startDate?: string;
   duration?: number;
   iterationId?: string;
-  // User
   users?: { nodes: Array<{ login: string }> };
-  // Label
   labels?: { nodes: Array<{ name: string; color: string }> };
-  // Milestone
   milestone?: { title: string; dueOn: string | null };
-  // Repository
   repository?: { name: string; nameWithOwner: string };
 }
 
-/** Fields shared by both Issue and PullRequest content nodes. */
-export interface LinkedContentBase {
+export interface ProjectV2IssueContent {
+  __typename: "Issue";
   id: string;
   number: number;
   title: string;
@@ -158,15 +100,20 @@ export interface LinkedContentBase {
   assignees: { nodes: Array<{ login: string }> };
   labels: { nodes: Array<{ name: string; color: string }> };
   repository: { name: string; nameWithOwner: string };
-}
-
-export interface ProjectV2IssueContent extends LinkedContentBase {
-  __typename: "Issue";
   milestone: { title: string; dueOn: string | null } | null;
 }
 
-export interface ProjectV2PRContent extends LinkedContentBase {
+export interface ProjectV2PRContent {
   __typename: "PullRequest";
+  id: string;
+  number: number;
+  title: string;
+  url: string;
+  state: string;
+  body: string;
+  assignees: { nodes: Array<{ login: string }> };
+  labels: { nodes: Array<{ name: string; color: string }> };
+  repository: { name: string; nameWithOwner: string };
   isDraft: boolean;
 }
 
@@ -185,11 +132,7 @@ export interface ProjectV2Item {
   updatedAt: string;
   isArchived: boolean;
   fieldValues: { nodes: ProjectV2ItemFieldValue[] };
-  content:
-    | ProjectV2IssueContent
-    | ProjectV2PRContent
-    | ProjectV2DraftIssueContent
-    | null;
+  content: ProjectV2IssueContent | ProjectV2PRContent | ProjectV2DraftIssueContent | null;
 }
 
 // ── GraphQL response wrappers ─────────────────────────────────────────────────
@@ -310,69 +253,6 @@ export interface ScrumConfigYml {
   backends: {
     github?: GitHubBackendConfig;
     [key: string]: unknown; // future backends (notion, linear, etc.)
-  };
-}
-
-// ── SCRUM history types (scrum_get_history) ────────────────────────────────────
-
-/** Response shape for scrum_get_history tool. */
-export interface SprintHistoryResponse {
-  window: number;
-  sprints: SprintSnapshot[];
-  message?: string; // present when no sprints available
-}
-
-/** A single sprint snapshot returned by scrum_get_history. */
-export interface SprintSnapshot {
-  name: string;
-  start_date: string; // ISO date (YYYY-MM-DD)
-  end_date: string; // ISO date (YYYY-MM-DD)
-  duration_days: number;
-  stories: SprintStory[];
-  summary: SprintSummary;
-}
-
-/** Lightweight story entry within a sprint snapshot. */
-export interface SprintStory {
-  number: number;
-  title: string;
-  points: number;
-  status: string | null;
-}
-
-/** Aggregated summary for a sprint snapshot. */
-export interface SprintSummary {
-  committed_points: number;
-  completed_points: number;
-  carried_points: number;
-  completion_rate: number; // 0–1, rounded to 2 decimals
-  story_count: number;
-  completed_count: number;
-}
-
-// ── Backlog types (scrum_get_backlog) ─────────────────────────────────────────
-
-/** Readiness assessment for a backlog story against Definition of Ready. */
-export interface StoryReadiness {
-  /** Has story points assigned and acceptance criteria checklist present */
-  has_estimation_and_ac: boolean;
-  /** Has some but not all DoR criteria met */
-  partially_ready: boolean;
-  /** Has none of the DoR criteria */
-  not_ready: boolean;
-}
-
-/** Response shape for scrum_get_backlog. */
-export interface GetBacklogResult {
-  stories: Story[];
-  total_count: number;
-  readiness: {
-    /** Stories with all DoR criteria met */
-    ready: number;
-    /** Stories with partial DoR criteria */
-    partially_ready: number;
-    /** Stories with no DoR criteria */
-    not_ready: number;
   };
 }
 
