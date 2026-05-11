@@ -1,141 +1,96 @@
 // =============================================================================
-// src/adapters/github/queries.ts — GitHub GraphQL query strings
+// src/adapters/github/queries.ts — GraphQL operation loader
 //
-// Extracted from scrum-read.ts as part of Story B (Phase 5).
-// These are pure declarations — no logic. All GraphQL query strings
-// are confined to the adapter layer.
+// Auto-loads all named operations from operations.graphql at module init.
+// Do NOT add query strings here — edit operations.graphql instead.
+//
+// Each exported constant is the full document string for that operation
+// (operation definition + all referenced fragment definitions), ready to
+// send directly to the GitHub GraphQL API.
+//
+// Fails fast at startup if any expected operation name is missing from
+// operations.graphql — no silent drift between the file and this module.
 // =============================================================================
 
-/** Fetch project items with pagination cursor. */
-export const GET_PROJECT_ITEMS_QUERY = `
-  query GetProjectItems($login: String!, $number: Int!, $after: String) {
-    user(login: $login) {
-      projectV2(number: $number) {
-        items(first: 100, after: $after) {
-          pageInfo { hasNextPage endCursor }
-          nodes {
-            id
-            content {
-              ... on Issue {
-                id
-                number
-                title
-                body
-                url
-                createdAt
-                updatedAt
-                assignees(first: 10) { nodes { login } }
-                labels(first: 20) { nodes { name } }
-                milestone { title }
-              }
-              ... on DraftIssue { id title body }
-            }
-            fieldValues(first: 20) {
-              nodes {
-                ... on ProjectV2ItemFieldSingleSelectValue {
-                  field { ... on ProjectV2SingleSelectField { id } }
-                  name
-                  optionId
-                }
-                ... on ProjectV2ItemFieldNumberValue {
-                  field { ... on ProjectV2Field { id } }
-                  number
-                }
-                ... on ProjectV2ItemFieldIterationValue {
-                  field { ... on ProjectV2IterationField { id } }
-                  title
-                  iterationId
-                  startDate
-                  duration
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-`;
+import { parse, print } from "graphql";
+import type { DocumentNode, FragmentDefinitionNode } from "graphql";
 
-/** Fetch issue details including comments and linked PRs. */
-export const GET_ISSUE_DETAILS_QUERY = `
-  query GetIssueDetails($issueId: ID!) {
-    node(id: $issueId) {
-      ... on Issue {
-        id
-        number
-        title
-        body
-        url
-        createdAt
-        updatedAt
-        assignees(first: 10) { nodes { login } }
-        labels(first: 20) { nodes { name } }
-        milestone { title }
-        comments(first: 50) {
-          nodes {
-            id
-            author { login }
-            body
-            createdAt
-            url
-          }
-        }
-        timelineItems(first: 25, itemTypes: [CROSS_REFERENCED_EVENT]) {
-          nodes {
-            ... on CrossReferencedEvent {
-              source {
-                ... on PullRequest {
-                  number
-                  title
-                  url
-                  state
-                  isDraft
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-`;
+// ── Parse operations.graphql once at module init ──────────────────────────────
 
-/** Fetch field values for a single project item. */
-export const GET_ITEM_FIELDS_QUERY = `
-  query GetItemFields($itemId: ID!) {
-    node(id: $itemId) {
-      ... on ProjectV2Item {
-        fieldValues(first: 20) {
-          nodes {
-            ... on ProjectV2ItemFieldSingleSelectValue {
-              field { ... on ProjectV2SingleSelectField { id } }
-              name
-              optionId
-            }
-            ... on ProjectV2ItemFieldNumberValue {
-              field { ... on ProjectV2Field { id } }
-              number
-            }
-            ... on ProjectV2ItemFieldIterationValue {
-              field { ... on ProjectV2IterationField { id } }
-              title
-              iterationId
-            }
-          }
-        }
-      }
-    }
-  }
-`;
+const _source = Deno.readTextFileSync(
+  new URL("./operations.graphql", import.meta.url),
+);
+const _doc: DocumentNode = parse(_source);
 
-/** Fetch repository labels. */
-export const GET_REPO_LABELS_QUERY = `
-  query GetRepoLabels($owner: String!, $repo: String!) {
-    repository(owner: $owner, name: $repo) {
-      labels(first: 50) {
-        nodes { id name color description }
-      }
+// Index all fragment definitions by name
+const _fragments = new Map<string, FragmentDefinitionNode>();
+for (const def of _doc.definitions) {
+  if (def.kind === "FragmentDefinition") {
+    _fragments.set(def.name.value, def);
+  }
+}
+
+// Recursively collect all fragment names referenced by an AST node
+function _collectFrags(node: unknown, acc: Set<string> = new Set()): Set<string> {
+  if (!node || typeof node !== "object") return acc;
+  if (Array.isArray(node)) {
+    for (const v of node) _collectFrags(v, acc);
+    return acc;
+  }
+  const o = node as Record<string, unknown>;
+  if (
+    o["kind"] === "FragmentSpread" &&
+    o["name"] &&
+    typeof o["name"] === "object"
+  ) {
+    const name = (o["name"] as { value: string }).value;
+    if (!acc.has(name)) {
+      acc.add(name);
+      _collectFrags(_fragments.get(name), acc);
     }
   }
-`;
+  for (const v of Object.values(o)) {
+    if (v && typeof v === "object") _collectFrags(v, acc);
+  }
+  return acc;
+}
+
+// Build map: operation name → full document string (op + referenced fragments)
+const _ops = new Map<string, string>();
+for (const def of _doc.definitions) {
+  if (def.kind === "OperationDefinition" && def.name) {
+    const parts: string[] = [print(def)];
+    for (const fragName of _collectFrags(def)) {
+      const frag = _fragments.get(fragName);
+      if (frag) parts.push(print(frag));
+    }
+    _ops.set(def.name.value, parts.join("\n\n"));
+  }
+}
+
+// ── Public API ────────────────────────────────────────────────────────────────
+
+/**
+ * Returns the full GraphQL document string for a named operation.
+ * Includes all fragment definitions the operation references.
+ * Throws immediately (at startup) if the name is not in operations.graphql.
+ */
+export function getQuery(name: string): string {
+  const q = _ops.get(name);
+  if (!q) {
+    throw new Error(
+      `[queries] Operation "${name}" not found in operations.graphql`,
+    );
+  }
+  return q;
+}
+
+/** All operation names available in operations.graphql. */
+export const OPERATION_NAMES: ReadonlySet<string> = new Set(_ops.keys());
+
+// ── Named constants (backward-compatible with existing imports) ───────────────
+
+export const GET_PROJECT_ITEMS_QUERY = getQuery("GetUserProjectItems");
+export const GET_ISSUE_DETAILS_QUERY = getQuery("GetIssueDetails");
+export const GET_ITEM_FIELDS_QUERY = getQuery("GetItemFields");
+export const GET_REPO_LABELS_QUERY = getQuery("GetRepoLabels");

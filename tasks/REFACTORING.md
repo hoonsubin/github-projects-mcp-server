@@ -9,6 +9,7 @@ This document is the authoritative source of truth for the MCP server's architec
 3. [Stable Tool Surface](#3-stable-tool-surface)
 4. [Current Implementation State](#4-current-implementation-state)
 5. [Remaining Work](#5-remaining-work)
+   - [5b. Backend Code Quality](#5b-backend-code-quality-srcadaptersgithubbackendts)
 6. [ProjectBackend Port Interface](#6-projectbackend-port-interface)
 7. [Migration Ledger](#7-migration-ledger)
 8. [Design Decisions](#8-design-decisions)
@@ -114,107 +115,117 @@ flowchart TD
 
 ### Per-file state
 
-| File                                      | State        | Notes                                                               |
-| ----------------------------------------- | ------------ | ------------------------------------------------------------------- |
-| `src/index.ts`                            | ✅ Complete  | Wires `registerScrumReadTools` + `registerScrumWriteTools`          |
-| `src/types.ts`                            | ⚠️ Mixed     | Scrum domain types present; legacy types pending removal in Phase 4 |
-| `src/schemas/scrum.ts`                    | ✅ Complete  | All 13 schemas (7 read + 6 write)                                   |
-| `src/schemas/inputs.ts`                   | ⚠️ Legacy    | 28 dead schemas; pending cleanup in Phase 4                         |
-| `src/adapters/github/backend.ts`          | ✅ Complete  | `GitHubProjectBackend` implements `ProjectBackend` (all methods)    |
-| `src/adapters/github/config-loader.ts`    | ✅ Complete  | `loadConfig()`, `RuntimeConfig`, `getBootstrapConfig()`             |
-| `src/adapters/github/mappers.ts`          | ✅ Complete  | All mapper functions                                                |
-| `src/adapters/github/queries.ts`          | ✅ Complete  | All GraphQL query strings                                           |
-| `src/adapters/github/raw-types.ts`        | ✅ Complete  | All raw response interfaces                                         |
-| `src/scrum/orient.ts`                     | ✅ Complete  | `orientUseCase()`                                                   |
-| `src/scrum/get-sprint.ts`                 | ✅ Complete  | `getSprintUseCase()`                                                |
-| `src/scrum/get-backlog.ts`                | ✅ Complete  | `getBacklogUseCase()`                                               |
-| `src/scrum/get-story.ts`                  | ✅ Complete  | `getStoryUseCase()`                                                 |
-| `src/scrum/get-history.ts`                | ✅ Complete  | `getHistoryUseCase()`                                               |
-| `src/scrum/get-burndown.ts`               | ✅ Complete  | `getBurndownUseCase()`                                              |
-| `src/scrum/get-template.ts`               | ✅ Complete  | `getTemplateUseCase()`                                              |
-| `src/scrum/ports.ts`                      | ✅ Complete  | `ProjectBackend` interface + all boundary types                     |
-| `src/scrum/sprint-math.ts`                | ✅ Complete  | Pure computation helpers                                            |
-| `src/domain/rules/labels.ts`              | ✅ Complete  | `classifyLabels()`                                                  |
-| `src/domain/rules/acceptance-criteria.ts` | ✅ Complete  | `parseAcceptanceCriteria()`                                         |
-| `src/domain/rules/readiness.ts`           | ✅ Complete  | `computeStoryReadiness()`, `ReadinessLevel`                         |
-| `src/services/github.ts`                  | ✅ Complete  | `graphql()`, `rest()`, `fetchRepoFile()`                            |
-| `src/services/mutation-validator.ts`      | ✅ Keeper    | `isMutationQuery()` — actively imported by `scrum-write.ts`        |
-| `src/services/pagination.ts`              | ✅ Complete  | `PaginatedProjectItemFetcher`                                       |
-| `src/services/resolver.ts`                | ✅ Complete  | `resolveSprint()`, `resolveStory()`                                 |
-| `src/services/logger.ts`                  | ✅ Unchanged | No changes needed                                                   |
-| `src/services/readiness.ts`               | ⚠️ Dead      | Superseded by `domain/rules/readiness.ts`; no live importers; delete in Phase 4 |
+| File                                      | State        | Notes                                                                                                         |
+| ----------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------- |
+| `src/index.ts`                            | ✅ Complete  | Wires `registerScrumReadTools` + `registerScrumWriteTools`                                                    |
+| `src/types.ts`                            | ⚠️ Mixed     | Scrum domain types present; legacy types pending removal in Phase 4                                           |
+| `src/schemas/scrum.ts`                    | ✅ Complete  | All 13 schemas (7 read + 6 write)                                                                             |
+| `src/schemas/inputs.ts`                   | ⚠️ Legacy    | 28 dead schemas; pending cleanup in Phase 4                                                                   |
+| `src/adapters/github/backend.ts`          | ✅ Complete  | `GitHubProjectBackend` implements `ProjectBackend` (all methods)                                              |
+| `src/adapters/github/config-loader.ts`    | ✅ Complete  | `loadConfig()`, `RuntimeConfig`, `getBootstrapConfig()`                                                       |
+| `src/adapters/github/mappers.ts`          | ✅ Complete  | All mapper functions                                                                                          |
+| `src/adapters/github/queries.ts`          | ✅ Complete  | All GraphQL query strings                                                                                     |
+| `src/adapters/github/raw-types.ts`        | ✅ Complete  | All raw response interfaces                                                                                   |
+| `src/scrum/orient.ts`                     | ✅ Complete  | `orientUseCase()`                                                                                             |
+| `src/scrum/get-sprint.ts`                 | ✅ Complete  | `getSprintUseCase()`                                                                                          |
+| `src/scrum/get-backlog.ts`                | ✅ Complete  | `getBacklogUseCase()`                                                                                         |
+| `src/scrum/get-story.ts`                  | ✅ Complete  | `getStoryUseCase()`                                                                                           |
+| `src/scrum/get-history.ts`                | ✅ Complete  | `getHistoryUseCase()`                                                                                         |
+| `src/scrum/get-burndown.ts`               | ✅ Complete  | `getBurndownUseCase()`                                                                                        |
+| `src/scrum/get-template.ts`               | ✅ Complete  | `getTemplateUseCase()`                                                                                        |
+| `src/scrum/ports.ts`                      | ✅ Complete  | `ProjectBackend` interface + all boundary types                                                               |
+| `src/scrum/sprint-math.ts`                | ✅ Complete  | Pure computation helpers                                                                                      |
+| `src/domain/rules/labels.ts`              | ✅ Complete  | `classifyLabels()`                                                                                            |
+| `src/domain/rules/acceptance-criteria.ts` | ✅ Complete  | `parseAcceptanceCriteria()`                                                                                   |
+| `src/domain/rules/readiness.ts`           | ✅ Complete  | `computeStoryReadiness()`, `ReadinessLevel`                                                                   |
+| `src/services/github.ts`                  | ✅ Complete  | `graphql()`, `rest()`, `fetchRepoFile()`                                                                      |
+| `src/services/mutation-validator.ts`      | ✅ Keeper    | `isMutationQuery()` — actively imported by `scrum-write.ts`                                                   |
+| `src/services/pagination.ts`              | ✅ Complete  | `PaginatedProjectItemFetcher`                                                                                 |
+| `src/services/resolver.ts`                | ✅ Complete  | `resolveSprint()`, `resolveStory()`                                                                           |
+| `src/services/logger.ts`                  | ✅ Unchanged | No changes needed                                                                                             |
+| `src/services/readiness.ts`               | ⚠️ Dead      | Superseded by `domain/rules/readiness.ts`; no live importers; delete in Phase 4                               |
 | `src/services/config_test.ts`             | ⚠️ Broken    | Imports `./config.ts` which no longer exists (moved to `adapters/github/config-loader.ts`); delete in Phase 4 |
-| `src/schemas/inputs_test.ts`              | ⚠️ Dead      | Tests `resolveFieldValue` which has no live callers; delete alongside `inputs.ts` cleanup |
-| `src/tools/scrum-read.ts`                 | ✅ Complete  | 7 thin handlers delegating to use-case functions                    |
-| `src/tools/scrum-write.ts`                | ✅ Complete  | All 6 write tools + deprecated `github_graphql`                     |
+| `src/schemas/inputs_test.ts`              | ⚠️ Dead      | Tests `resolveFieldValue` which has no live callers; delete alongside `inputs.ts` cleanup                     |
+| `src/tools/scrum-read.ts`                 | ✅ Complete  | 7 thin handlers delegating to use-case functions                                                              |
+| `src/tools/scrum-write.ts`                | ✅ Complete  | All 6 write tools + deprecated `github_graphql`                                                               |
 
 ## 5. Remaining Work
 
 ### 5a. Phase 4 — Dead Code Cleanup (Priority-Based)
 
-| Priority | File                                  | Action                                                          | Status      |
-| -------- | ------------------------------------- | --------------------------------------------------------------- | ----------- |
-| P1       | `src/tools/projects.ts`               | Delete                                                          | ✅ Done     |
-| P1       | `src/tools/items.ts`                  | Delete                                                          | ✅ Done     |
-| P1       | `src/tools/repository.ts`             | Delete                                                          | ✅ Done     |
-| P1       | `src/tools/projects_test.ts`          | Delete (imports deleted `projects.ts`; broken)                  | ⏸️ Pending |
-| P1       | `src/tools/items_test.ts`             | Delete (imports deleted `items.ts`; broken)                     | ⏸️ Pending |
-| P1       | `src/tools/repository_test.ts`        | Delete (imports deleted `repository.ts`; broken)                | ⏸️ Pending |
-| P1       | `src/services/formatters.ts`          | Delete (no live importers)                                      | ⏸️ Pending |
-| P1       | `src/services/readiness.ts`           | Delete (superseded by `domain/rules/readiness.ts`; no live importers) | ⏸️ Pending |
-| P1       | `src/services/config_test.ts`         | Delete (imports non-existent `./config.ts`; broken)             | ⏸️ Pending |
-| P2       | `src/schemas/inputs.ts`               | Delete all except `GraphQLQuerySchema`; delete `inputs_test.ts` alongside | ⏸️ Pending |
-| P3       | `src/types.ts`                        | Remove dead legacy types (see keep-list below)                  | ⏸️ Pending |
-| P4       | `src/services/github.ts`              | Remove `getToken`, `decodeRepoFileContent`, `enrichError`, `EnrichErrorContext`, `RepoFileResponse`, `GITHUB_API_URL`; trim `github_test.ts` accordingly (keep `formatError` tests — `formatError` IS live) | ⏸️ Pending |
-| P4       | `src/services/resolver.ts`            | Remove `resolveBacklogItems`, `ResolvedStory`                   | ⏸️ Pending |
-| P4       | `src/services/mutation-validator.ts`  | Remove `export` from `MutationBlockError` (no live importers; `isMutationQuery` is the only used export) | ⏸️ Pending |
-| P4       | `src/adapters/github/config-loader.ts` | Remove `export` from `ConfigParams`, `classifyIterations` (no live importers) | ⏸️ Pending |
-| P4       | `src/adapters/github/mappers.ts`      | Remove `export` from `extractBoardFields` — it is imported as `_extractBoardFields` in `backend.ts` (comment: "kept for potential future use in write path") so the symbol is intentionally dormant, not truly dead; decision deferred | ⏸️ Pending |
-| P4       | `src/domain/rules/readiness.ts`       | Remove `export` from `computeStoryReadiness` and `ReadinessLevel` — only `computeReadinessSummary` is called externally (by `get-backlog.ts`) | ⏸️ Pending |
-| P4       | `src/domain/rules/labels.ts`          | Remove `export` from `STORY_TYPE_LABELS` (no live importers); keep `StoryTypeLabel` — imported by `mappers.ts` | ⏸️ Pending |
-| P4       | `src/domain/rules/acceptance-criteria.ts` | Remove `export` from `AcceptanceCriterion` (no live importers; only `parseAcceptanceCriteria` is called) | ⏸️ Pending |
-| P4       | `src/scrum/sprint-math.ts`            | Remove `export` from `SprintWindow`, `IdealDayPoint`, `BurndownDayPoint`, `BurndownStoryInput` (no live importers in any other module) | ⏸️ Pending |
-| P4       | `src/services/pagination.ts`          | Remove `export` from `ItemFetchConfig` (no live importers)      | ⏸️ Pending |
+| Priority | File                                      | Action                                                                                                                                                                                                                                 | Status     |
+| -------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| P1       | `src/tools/projects.ts`                   | Delete                                                                                                                                                                                                                                 | ✅ Done    |
+| P1       | `src/tools/items.ts`                      | Delete                                                                                                                                                                                                                                 | ✅ Done    |
+| P1       | `src/tools/repository.ts`                 | Delete                                                                                                                                                                                                                                 | ✅ Done    |
+| P1       | `src/tools/projects_test.ts`              | Delete (imports deleted `projects.ts`; broken)                                                                                                                                                                                         | ⏸️ Pending |
+| P1       | `src/tools/items_test.ts`                 | Delete (imports deleted `items.ts`; broken)                                                                                                                                                                                            | ⏸️ Pending |
+| P1       | `src/tools/repository_test.ts`            | Delete (imports deleted `repository.ts`; broken)                                                                                                                                                                                       | ⏸️ Pending |
+| P1       | `src/services/formatters.ts`              | Delete (no live importers)                                                                                                                                                                                                             | ⏸️ Pending |
+| P1       | `src/services/readiness.ts`               | Delete (superseded by `domain/rules/readiness.ts`; no live importers)                                                                                                                                                                  | ⏸️ Pending |
+| P1       | `src/services/config_test.ts`             | Delete (imports non-existent `./config.ts`; broken)                                                                                                                                                                                    | ⏸️ Pending |
+| P2       | `src/schemas/inputs.ts`                   | Delete all except `GraphQLQuerySchema`; delete `inputs_test.ts` alongside                                                                                                                                                              | ⏸️ Pending |
+| P3       | `src/types.ts`                            | Remove dead legacy types (see keep-list below)                                                                                                                                                                                         | ⏸️ Pending |
+| P4       | `src/services/github.ts`                  | Remove `getToken`, `decodeRepoFileContent`, `enrichError`, `EnrichErrorContext`, `RepoFileResponse`, `GITHUB_API_URL`; trim `github_test.ts` accordingly (keep `formatError` tests — `formatError` IS live)                            | ⏸️ Pending |
+| P4       | `src/services/resolver.ts`                | Remove `resolveBacklogItems`, `ResolvedStory`                                                                                                                                                                                          | ⏸️ Pending |
+| P4       | `src/services/mutation-validator.ts`      | Remove `export` from `MutationBlockError` (no live importers; `isMutationQuery` is the only used export)                                                                                                                               | ⏸️ Pending |
+| P4       | `src/adapters/github/config-loader.ts`    | Remove `export` from `ConfigParams`, `classifyIterations` (no live importers)                                                                                                                                                          | ⏸️ Pending |
+| P4       | `src/adapters/github/mappers.ts`          | Remove `export` from `extractBoardFields` — it is imported as `_extractBoardFields` in `backend.ts` (comment: "kept for potential future use in write path") so the symbol is intentionally dormant, not truly dead; decision deferred | ⏸️ Pending |
+| P4       | `src/domain/rules/readiness.ts`           | Remove `export` from `computeStoryReadiness` and `ReadinessLevel` — only `computeReadinessSummary` is called externally (by `get-backlog.ts`)                                                                                          | ⏸️ Pending |
+| P4       | `src/domain/rules/labels.ts`              | Remove `export` from `STORY_TYPE_LABELS` (no live importers); keep `StoryTypeLabel` — imported by `mappers.ts`                                                                                                                         | ⏸️ Pending |
+| P4       | `src/domain/rules/acceptance-criteria.ts` | Remove `export` from `AcceptanceCriterion` (no live importers; only `parseAcceptanceCriteria` is called)                                                                                                                               | ⏸️ Pending |
+| P4       | `src/scrum/sprint-math.ts`                | Remove `export` from `SprintWindow`, `IdealDayPoint`, `BurndownDayPoint`, `BurndownStoryInput` (no live importers in any other module)                                                                                                 | ⏸️ Pending |
+| P4       | `src/services/pagination.ts`              | Remove `export` from `ItemFetchConfig` (no live importers)                                                                                                                                                                             | ⏸️ Pending |
 
 **Keep in `src/schemas/inputs.ts`:** `GraphQLQuerySchema` only — actively imported by `scrum-write.ts` for the deprecated `github_graphql` tool. `resolveFieldValue`, `FieldValueUnion`, and `ResolvedFieldValue` have no live callers outside `inputs.ts` itself and should be deleted with the rest. `inputs_test.ts` tests only `resolveFieldValue` and should be deleted alongside.
 
 **Keep in `src/types.ts`:** The following types have confirmed live importers and must be retained (or migrated to a more appropriate module before removal):
 
-| Type(s) | Live importer(s) | Notes |
-|---|---|---|
-| `Story`, `StoryRef`, `SprintRef` | `scrum/ports.ts`, `scrum/sprint-math.ts`, `adapters/github/backend.ts`, `tools/scrum-write.ts` | Core Scrum domain types |
-| `ScrumConfigYml`, `ArtifactType`, `TemplateResponse`, `IterationEntry` | `scrum/orient.ts`, `scrum/get-*.ts`, `tools/scrum-read.ts`, `adapters/github/config-loader.ts` | Config/template types |
-| `GitHubBackendConfig` | `adapters/github/config-loader.ts` | GitHub backend config shape |
-| `GraphQLResponse` | `services/github.ts` | Generic GraphQL response wrapper |
-| `ProjectV2`, `ProjectV2Field` | Confirmed live by diagram (not in unused list) | Legacy GitHub item types |
-| `ItemContentType`, `ProjectV2Item`, `ProjectV2IssueContent`, `ProjectV2PRContent`, `ProjectV2DraftIssueContent` | `services/pagination.ts` | Diagram incorrectly flags these as unused (generator bug with multi-line destructured imports); confirmed live by grep |
-| `BurndownResponse`, `BurndownSprintMeta`, `BurndownStory` | `scrum/get-burndown.ts` | Diagram incorrectly flags these as unused (same generator bug); confirmed live by grep |
+| Type(s)                                                                                                         | Live importer(s)                                                                               | Notes                                                                                                                  |
+| --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `Story`, `StoryRef`, `SprintRef`                                                                                | `scrum/ports.ts`, `scrum/sprint-math.ts`, `adapters/github/backend.ts`, `tools/scrum-write.ts` | Core Scrum domain types                                                                                                |
+| `ScrumConfigYml`, `ArtifactType`, `TemplateResponse`, `IterationEntry`                                          | `scrum/orient.ts`, `scrum/get-*.ts`, `tools/scrum-read.ts`, `adapters/github/config-loader.ts` | Config/template types                                                                                                  |
+| `GitHubBackendConfig`                                                                                           | `adapters/github/config-loader.ts`                                                             | GitHub backend config shape                                                                                            |
+| `GraphQLResponse`                                                                                               | `services/github.ts`                                                                           | Generic GraphQL response wrapper                                                                                       |
+| `ItemContentType`, `ProjectV2Item`, `ProjectV2IssueContent`, `ProjectV2PRContent`, `ProjectV2DraftIssueContent` | `services/pagination.ts`                                                                       | Diagram incorrectly flags these as unused (generator bug with multi-line destructured imports); confirmed live by grep |
+| `BurndownResponse`, `BurndownSprintMeta`, `BurndownStory`                                                       | `scrum/get-burndown.ts`                                                                        | Diagram incorrectly flags these as unused (same generator bug); confirmed live by grep                                 |
 
 The following types in `src/types.ts` have no external importers but **cannot be deleted without inlining** — remove the `export` keyword only:
 
-| Type(s) | Reason to keep |
-|---|---|
-| `PriorityTier`, `StatusSemantics` | Structural base types used inline within `ScrumConfigYml`; not imported by name from any other module |
-| `BurndownDayPoint`, `IdealDayPoint` | Embedded as field types in `BurndownResponse`; not imported by name from any other module |
+| Type(s)                             | Reason to keep                                                                                        |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `PriorityTier`, `StatusSemantics`   | Structural base types used inline within `ScrumConfigYml`; not imported by name from any other module |
+| `BurndownDayPoint`, `IdealDayPoint` | Embedded as field types in `BurndownResponse`; not imported by name from any other module             |
 
 All remaining types are confirmed dead and safe to delete: `BoardConfig`, `GhFieldBase`, `GhSingleSelectOption`, `GhSingleSelectField`, `GhIterationConfig`, `GhIterationField`, `GhField`, `GhProjectResponse`, `MergedScrumConfig`, `ResolvedScrumFields`, `SprintIteration`, `SprintStatusResult`, `BulkUpdateResult`, `SprintHistoryResponse`, `SprintSnapshot`, `SprintStory`, `SprintSummary`, `StoryReadiness` (becomes dead once `services/readiness.ts` is deleted), `IterationVelocity`, `GetBacklogResult`, `ProjectsV2Connection`, `UserProjectsData`, `OrgProjectsData`, `SingleProjectData`, `ProjectItemsData`, `AddProjectItemData`, `AddDraftIssueData`, `UpdateProjectItemFieldData`, `DeleteProjectItemData`, `ArchiveProjectItemData`, `UpdateProjectData`, `LinkedContentBase`, `ProjectV2ItemFieldValue`, `DefinitionCriteria`, `PageInfo`, `ScrumField`, `StoryType`.
 
 > **Note on `docs/proj-diagram.md` Unused Exports:** The diagram's unused-export analysis has a known generator bug — it misses named imports when the caller uses multi-line destructured `import type {}` blocks. This causes false positives for `types.ts` Burndown types (used by `get-burndown.ts`), `types.ts` ProjectV2 content types (used by `pagination.ts`), `scrum/ports.ts` boundary types (used by `backend.ts`), `adapters/github/queries.ts` and `mappers.ts` (used by `backend.ts`), and `schemas/scrum.ts` schemas (used by `scrum-read.ts`/`scrum-write.ts`). The keep/delete lists above are based on direct grep verification, not the diagram alone.
 
-### 5b. Missing Use-Case Files (Optional Future Work)
+### 5b. Backend Code Quality — `src/adapters/github/backend.ts`
 
-Currently, write tool logic lives directly in handlers (`src/tools/scrum-write.ts`) and backend methods (`src/adapters/github/backend.ts`). The plan originally specified extracting one use-case file per write tool, but this was never implemented. The current architecture (thin handlers → backend methods) works and is simpler than adding another layer.
+The `GitHubProjectBackend` class (1,160 lines) has accumulated significant technical debt. Below is the assessment and planned cleanup.
 
-| Planned Use Case    | Status       | Notes                              |
-| ------------------- | ------------ | ---------------------------------- |
-| `create-story.ts`   | **Not done** | Logic in `backend.createStory()`   |
-| `update-story.ts`   | **Not done** | Logic in `backend.updateStory()`   |
-| `set-field.ts`      | **Not done** | Logic in `backend.setField()`      |
-| `plan-sprint.ts`    | **Not done** | Logic in `backend.planSprint()`    |
-| `log-impediment.ts` | **Not done** | Logic in handlers + backend        |
-| `add-vocabulary.ts` | **Not done** | Logic in `backend.addVocabulary()` |
+#### Code Smell Inventory
 
-**Recommendation:** Skip this step. The current architecture (handlers → backend methods) is clean enough. Adding use-case files for write tools would duplicate the backend layer without clear benefit.
+| #   | Smell                                                                                                | Affected Methods                                                                            | Severity |
+| --- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
+| 1   | **Label creation logic duplicated 3+ times**                                                         | `resolveLabelNodeIds`, `resolveOrCreateLabel`, `addLabel`, `resolveOrCreateMilestoneNodeId` | High     |
+| 2   | **String interpolation in GraphQL mutations** (injection risk)                                       | All `setField*` methods, `clearField`                                                       | High     |
+| 3   | **`createStory` is 116 lines** doing label resolution, issue creation, board addition, field setting | `createStory`                                                                               | High     |
+| 4   | **Burndown completion logic too complex** (audit log + issue close proxy)                            | `fetchAuditLogCompletions`, `fetchIssueCloseCompletions`                                    | Medium   |
+| 5   | **`fetchAllItems` duplicates `PaginatedProjectItemFetcher`**                                         | `fetchAllItems`, `getCompletedSprintHistory`                                                | Medium   |
+| 6   | **Response types defined inline** instead of in `raw-types.ts\*\*                                    | `GetIssueDetailsResponse`, `GetItemFieldsResponse`, `RawItem`, `RawFieldValue`              | Low      |
+
+#### Planned Refactoring Tasks
+
+| Priority | Task                                                             | Expected Outcome                            | Status     |
+| -------- | ---------------------------------------------------------------- | ------------------------------------------- | ---------- |
+| P1       | Extract label resolution/creation to `LabelResolver` class       | Single source of truth for label operations | ⏸️ Pending |
+| P1       | Replace string interpolation with typed GraphQL variable passing | Eliminate injection risk in mutations       | ⏸️ Pending |
+| P1       | Reduce `createStory` by extracting label/assignee resolution     | <60 lines, delegated to helpers             | ⏸️ Pending |
+| P2       | Extract burndown completion logic to `BurndownFetcher` service   | Separated from backend concerns             | ⏸️ Pending |
+| P2       | Replace `fetchAllItems` with `PaginatedProjectItemFetcher`       | Consistent pagination                       | ⏸️ Pending |
+| P3       | Move inline response types to `raw-types.ts`                     | Cleaner backend file                        | ⏸️ Pending |
 
 ### 5c. Unit Tests for Use Cases (Optional Future Work)
 

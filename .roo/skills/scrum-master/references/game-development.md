@@ -1,10 +1,11 @@
 # Agile Game Development with Scrum
 
-Cross-discipline guidance for game studios applying Scrum to multi-disciplinary teams (programmers, artists, designers, audio, QA, producers). Adapted from Clinton Keith's *Agile Game Development with Scrum*.
+Cross-discipline guidance for game studios applying Scrum to multi-disciplinary teams (programmers, artists, designers, audio, QA, producers).
 
 Use this reference whenever a query involves: video games, game studios, game jam projects, art pipelines, asset production, designers/artists/audio on a Scrum team, producers, publishers, milestones, alpha/beta/gold, hardening sprints, or any "we're not just programmers" team configuration.
 
 ## TOC
+
 1. [Stages and how Scrum adapts](#1-stages)
 2. [Cross-discipline team patterns](#2-team-patterns)
 3. [Production stage: lean + kanban](#3-production)
@@ -21,14 +22,14 @@ Use this reference whenever a query involves: video games, game studios, game ja
 
 Game projects retain stages even when agile. Each stage adapts Scrum practices to its uncertainty profile.
 
-| Stage | Purpose | Sprint shape | Backlog character |
-|---|---|---|---|
-| **Concept** | Build knowledge for green-light approval | Short (1 wk), mostly **spikes** | Tiny; throwaway prototypes, concept treatments |
-| **Pre-production** | Find the fun + learn production cost | Full Scrum, 2 wk | Feature-driven; vertical slices; mechanics |
-| **Production** | Build 8–12 hr of content from locked mechanics | Scrum + **kanban** for asset streams | Asset-driven; pipeline timeboxed |
-| **Post-production** | Polish, tune, fix; submit to platform cert | Bug-burndown; daily-prioritized | Bug database may replace product backlog |
+| Stage               | Purpose                                        | Sprint shape                         | Backlog character                              |
+| ------------------- | ---------------------------------------------- | ------------------------------------ | ---------------------------------------------- |
+| **Concept**         | Build knowledge for green-light approval       | Short (1 wk), mostly **spikes**      | Tiny; throwaway prototypes, concept treatments |
+| **Pre-production**  | Find the fun + learn production cost           | Full Scrum, 2 wk                     | Feature-driven; vertical slices; mechanics     |
+| **Production**      | Build 8–12 hr of content from locked mechanics | Scrum + **kanban** for asset streams | Asset-driven; pipeline timeboxed               |
+| **Post-production** | Polish, tune, fix; submit to platform cert     | Bug-burndown; daily-prioritized      | Bug database may replace product backlog       |
 
-**Rule of thumb:** never enter production with mechanics still iterating — production wastes effort retrofitting assets to changed metrics (e.g. jump height changes invalidate hundreds of ledges). Pre-production ends when core mechanics + production cost are *known*, not when the schedule says so.
+**Rule of thumb:** never enter production with mechanics still iterating — production wastes effort retrofitting assets to changed metrics (e.g. jump height changes invalidate hundreds of ledges). Pre-production ends when core mechanics + production cost are _known_, not when the schedule says so.
 
 **Stages overlap.** Don't pick a "production start date" — production work ramps up as pre-production ramps down. Different asset classes transition at different times.
 
@@ -40,15 +41,15 @@ Game projects retain stages even when agile. Each stage adapts Scrum practices t
 
 Cross-discipline ("feature") teams are the default. Use other patterns only for specific needs.
 
-| Pattern | Composition | Use when |
-|---|---|---|
-| **Feature team** | 5–9 cross-disciplinary; everyone needed for a mechanic | Default; building game-facing features |
-| **Functional team** | Mostly one discipline (e.g. all PS5 platform programmers) | Foundational/infrastructure work only |
-| **Production team** | Cross-disciplinary tilted to content creators | Production stage; uses kanban |
-| **Tool team** | Programmers + tech artists + QA, internal customers | Editor, exporters, build pipeline |
-| **Shared Infrastructure (SI)** | Engine, audio middleware, cinematics — own backlog + own PO | Multiple games depend on the same tech |
-| **Pool team** | Single discipline, no sprint goal; lends members | Resource leveling (animators, FX artists) during production |
-| **Integration team** | Cross-disciplinary; owns whole-game feel | Large projects (40+) where mechanics have drifted |
+| Pattern                        | Composition                                                 | Use when                                                    |
+| ------------------------------ | ----------------------------------------------------------- | ----------------------------------------------------------- |
+| **Feature team**               | 5–9 cross-disciplinary; everyone needed for a mechanic      | Default; building game-facing features                      |
+| **Functional team**            | Mostly one discipline (e.g. all PS5 platform programmers)   | Foundational/infrastructure work only                       |
+| **Production team**            | Cross-disciplinary tilted to content creators               | Production stage; uses kanban                               |
+| **Tool team**                  | Programmers + tech artists + QA, internal customers         | Editor, exporters, build pipeline                           |
+| **Shared Infrastructure (SI)** | Engine, audio middleware, cinematics — own backlog + own PO | Multiple games depend on the same tech                      |
+| **Pool team**                  | Single discipline, no sprint goal; lends members            | Resource leveling (animators, FX artists) during production |
+| **Integration team**           | Cross-disciplinary; owns whole-game feel                    | Large projects (40+) where mechanics have drifted           |
 
 **Cross-discipline is non-negotiable for feature teams.** Discipline silos delay integration: programmers architect for design assumptions that change, artists make assets that won't fit the engine, designers spec features no one can build. Daily synchronization across disciplines is the whole point.
 
@@ -56,7 +57,7 @@ Cross-discipline ("feature") teams are the default. Use other patterns only for 
 
 **Self-organization includes membership.** Teams negotiate composition between releases. Mature studios let teams "self-organize people off" — eject chronic non-performers; another team accepts them, or eventually management releases them. This is rare but it's the backstop that makes self-management real.
 
-**Federal vs state laws.** Define studio-wide non-negotiables (engine, build pipeline, source control conventions) explicitly so teams know what they *do* control (membership, sprint selection, working agreements, DoD additions).
+**Federal vs state laws.** Define studio-wide non-negotiables (engine, build pipeline, source control conventions) explicitly so teams know what they _do_ control (membership, sprint selection, working agreements, DoD additions).
 
 ---
 
@@ -83,12 +84,12 @@ Goal: cycle time of each step ≤ takt time. If a step exceeds takt, either para
 
 ### Levers for shorter cycle time
 
-| Lever | What it means |
-|---|---|
-| Smaller assets | Break levels into "zones"; gives faster gameplay/production/velocity feedback |
-| Smaller batches | Don't pre-build 12 character models before rigging starts |
-| Reduce waste | Eliminate handoff delays (move concept artist next to level designer) |
-| Empower the team | Crew of relay racers — watch the baton, not the runners |
+| Lever            | What it means                                                                 |
+| ---------------- | ----------------------------------------------------------------------------- |
+| Smaller assets   | Break levels into "zones"; gives faster gameplay/production/velocity feedback |
+| Smaller batches  | Don't pre-build 12 character models before rigging starts                     |
+| Reduce waste     | Eliminate handoff delays (move concept artist next to level designer)         |
+| Empower the team | Crew of relay racers — watch the baton, not the runners                       |
 
 ### Hybrid Scrum + kanban board
 
@@ -106,7 +107,7 @@ Sprint reviews and retrospectives still happen; the production side demos finish
 
 ### Outsourcing
 
-Outsource pipeline *components* (props, environment sets, modular geometry), not whole streams. Studio retains the iteration-heavy work (key characters, level layout). Use proxy assets (blue boxes for doors) so studio work continues while outsourced parts arrive.
+Outsource pipeline _components_ (props, environment sets, modular geometry), not whole streams. Studio retains the iteration-heavy work (key characters, level layout). Use proxy assets (blue boxes for doors) so studio work continues while outsourced parts arrive.
 
 ---
 
@@ -125,7 +126,7 @@ Outsource pipeline *components* (props, environment sets, modular geometry), not
 
 - **Designs don't create knowledge — playable mechanics do.** Design docs are for sharing vision and identifying unknowns, not pre-resolving them. A 200-page design doc speculating on every weapon's clip size is technical debt.
 - **Designer per cross-discipline team.** Senior designers on hard mechanics; usability-strong designers on HUD/UI teams.
-- **"Parts on the garage floor" anti-pattern.** Building infrastructure for an unproven mechanic across many sprints (lock-picking sounds, animations, HUD timer — all before checking whether locked doors are even fun). Each sprint must integrate to a *playable* increment, not just stockpile parts.
+- **"Parts on the garage floor" anti-pattern.** Building infrastructure for an unproven mechanic across many sprints (lock-picking sounds, animations, HUD timer — all before checking whether locked doors are even fun). Each sprint must integrate to a _playable_ increment, not just stockpile parts.
 - **Set-based design > point-based design.** When a key decision (e.g. "stream entire levels off disc") is uncertain, prototype 2–3 alternatives in parallel until one is clearly best. Cheaper than committing early and rebuilding.
 - **Designer as PO.** Often a fit (vision, player advocacy, cross-discipline communication). Pair with senior producer to cover the gaps designers typically lack: ROI, schedule discipline, project management, non-design constraints.
 
@@ -140,6 +141,7 @@ Outsource pipeline *components* (props, environment sets, modular geometry), not
 ### Production (the role)
 
 Producer responsibilities shift in agile from "make sure everything gets done" to bigger-picture work that teams can't do for themselves:
+
 - External dependencies (outsourced cinematics, licensed assets, publisher deliverables)
 - First-party / platform certification scheduling and requirements
 - Outsourcing and insourcing coordination
@@ -154,13 +156,13 @@ Tasks that fall away: building/maintaining detailed schedules, tracking individu
 
 Game studios usually map existing roles to Scrum roles rather than hire new ones:
 
-| Existing role | Maps to | Notes |
-|---|---|---|
-| Lead designer | Product Owner | Common; pair with senior producer for ROI/schedule discipline |
-| Senior producer | PO support, or PO if vision-strong | Provides project-management muscle |
-| Producer | ScrumMaster | Speaks all disciplines fluently; few sprint commitments of their own |
-| Discipline lead (lead artist, lead programmer) | Mentor + Community of Practice lead, NOT SM | Their job becomes "go and see," 1:1 mentoring, asset/code review |
-| Art director / technical director | Director-level approvers | Use approval columns to manage their throughput |
+| Existing role                                  | Maps to                                     | Notes                                                                |
+| ---------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------- |
+| Lead designer                                  | Product Owner                               | Common; pair with senior producer for ROI/schedule discipline        |
+| Senior producer                                | PO support, or PO if vision-strong          | Provides project-management muscle                                   |
+| Producer                                       | ScrumMaster                                 | Speaks all disciplines fluently; few sprint commitments of their own |
+| Discipline lead (lead artist, lead programmer) | Mentor + Community of Practice lead, NOT SM | Their job becomes "go and see," 1:1 mentoring, asset/code review     |
+| Art director / technical director              | Director-level approvers                    | Use approval columns to manage their throughput                      |
 
 **Producer-as-SM caution:** producers from waterfall backgrounds revert to task assignment under stress. That kills self-management. Coach them on facilitation/coaching stances, not status-tracking.
 
@@ -171,6 +173,7 @@ Game studios usually map existing roles to Scrum roles rather than hire new ones
 ### Scrum of Scrums (game variant)
 
 Holds 2–3× weekly (not daily) for 30–60 min. Reps from each team answer:
+
 1. What did the team do since we last met?
 2. What will the team do next?
 3. What is blocking the team?
@@ -206,17 +209,17 @@ Mid-sprint, teams + leads spend 1–2 hrs scanning the next 2–3 sprints' likel
 
 ## 7. Game-specific dysfunctions
 
-| Anti-pattern | Symptom | Fix |
-|---|---|---|
-| **Production starts on schedule, not on readiness** | Mechanics still changing; assets need rework | Tie production start to mechanics + production-cost knowledge gates, not calendar |
-| **Parts on the garage floor** | Sprints stockpile infrastructure for unproven mechanics | Every sprint must produce a playable increment of the mechanic, however thin |
-| **Approval bottleneck** | Art/design director sign-off blocks "Done" for days | Approval column on board; approval as visible impediment; director batch-reviews 2× daily |
-| **Discipline silos masquerading as teams** | "Programming team," "Art team" with handoffs between | Rebuild around feature teams; functional teams only for infrastructure |
-| **Pool team becomes a queue** | Animators always behind; mechanic teams blocked | Add capacity, embed animators into feature teams, or shift to kanban with explicit WIP limits |
-| **Mini-waterfall sprints** | Designer disappears for week 1 of sprint to "write the design" | Sprint Planning is the design conversation; remaining design happens daily with team |
-| **Engine team ignores game teams** | Tool changes break game team's day, no warning | Engine team uses Scrum of Scrums to flag pending changes; treat as SI team with own PO |
-| **DoD downgraded for milestone** | "It compiles, ship it for the publisher demo" | Hardening sprint scheduled before milestone; never lower DoD |
-| **Producer-as-SM keeps assigning tasks** | Team waits to be told what to pull; no self-management | Coach producer through stance shift; track talk-time in standups |
+| Anti-pattern                                        | Symptom                                                        | Fix                                                                                           |
+| --------------------------------------------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| **Production starts on schedule, not on readiness** | Mechanics still changing; assets need rework                   | Tie production start to mechanics + production-cost knowledge gates, not calendar             |
+| **Parts on the garage floor**                       | Sprints stockpile infrastructure for unproven mechanics        | Every sprint must produce a playable increment of the mechanic, however thin                  |
+| **Approval bottleneck**                             | Art/design director sign-off blocks "Done" for days            | Approval column on board; approval as visible impediment; director batch-reviews 2× daily     |
+| **Discipline silos masquerading as teams**          | "Programming team," "Art team" with handoffs between           | Rebuild around feature teams; functional teams only for infrastructure                        |
+| **Pool team becomes a queue**                       | Animators always behind; mechanic teams blocked                | Add capacity, embed animators into feature teams, or shift to kanban with explicit WIP limits |
+| **Mini-waterfall sprints**                          | Designer disappears for week 1 of sprint to "write the design" | Sprint Planning is the design conversation; remaining design happens daily with team          |
+| **Engine team ignores game teams**                  | Tool changes break game team's day, no warning                 | Engine team uses Scrum of Scrums to flag pending changes; treat as SI team with own PO        |
+| **DoD downgraded for milestone**                    | "It compiles, ship it for the publisher demo"                  | Hardening sprint scheduled before milestone; never lower DoD                                  |
+| **Producer-as-SM keeps assigning tasks**            | Team waits to be told what to pull; no self-management         | Coach producer through stance shift; track talk-time in standups                              |
 
 ---
 

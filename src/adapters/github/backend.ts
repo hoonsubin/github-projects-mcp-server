@@ -20,11 +20,11 @@ import {
   type BurndownStoryInput,
   // extractBoardFields kept for potential future use in write path
   extractBoardFields as _extractBoardFields,
+  type IssueDetailsInput,
 } from "./mappers.ts";
 import {
   GET_ISSUE_DETAILS_QUERY,
   GET_ITEM_FIELDS_QUERY,
-  GET_PROJECT_ITEMS_QUERY,
   GET_REPO_LABELS_QUERY,
 } from "./queries.ts";
 import type {
@@ -40,48 +40,17 @@ import type {
   StoryUpdates,
   VocabularyKind,
 } from "../../scrum/ports.ts";
-import type { IterationEntry, Story, StoryRef } from "../../types.ts";
+import type {
+  IterationEntry,
+  ProjectV2IssueContent,
+  ProjectV2Item,
+  ProjectV2ItemFieldValue,
+  ProjectV2PRContent,
+  Story,
+  StoryRef,
+} from "../../types.ts";
 
 // ── Helper types ─────────────────────────────────────────────────────────────
-
-interface RawFieldValue {
-  field?: { id: string } | null;
-  name?: string;
-  optionId?: string;
-  number?: number;
-  title?: string;
-  iterationId?: string;
-  startDate?: string;
-  duration?: number;
-}
-
-interface RawItem {
-  id: string;
-  content: {
-    id: string;
-    number?: number;
-    title: string;
-    body?: string;
-    url?: string;
-    createdAt?: string;
-    updatedAt?: string;
-    assignees?: { nodes: Array<{ login: string }> };
-    labels?: { nodes: Array<{ name: string }> };
-    milestone?: { title: string } | null;
-  } | null;
-  fieldValues: { nodes: RawFieldValue[] };
-}
-
-interface GetProjectItemsResponse {
-  user?: {
-    projectV2?: {
-      items: {
-        pageInfo: { hasNextPage: boolean; endCursor: string | null };
-        nodes: RawItem[];
-      };
-    } | null;
-  } | null;
-}
 
 interface RepoLabelsResponse {
   repository?: {
@@ -211,7 +180,7 @@ export class GitHubProjectBackend implements ProjectBackend {
       throw new Error(`Issue ${resolved.issueId} could not be fetched.`);
     }
     const story = buildEnrichedStory(
-      issue as IssueDetailsNode,
+      issue as IssueDetailsInput,
       resolved.itemId,
       itemData.node?.fieldValues?.nodes ?? [],
       this.config,
@@ -239,9 +208,9 @@ export class GitHubProjectBackend implements ProjectBackend {
       let completedPoints = 0;
       let completedCount = 0;
       const stories = iterItems
-        .filter((item) => item.content && typeof item.content.number === "number")
+        .filter((item) => item.content !== null && item.content.__typename !== "DraftIssue")
         .map((item) => {
-          const content = item.content!;
+          const content = item.content as ProjectV2IssueContent | ProjectV2PRContent;
           const ptsFv = storyPointsFieldId
             ? item.fieldValues.nodes.find((v) => v.field?.id === storyPointsFieldId)
             : null;
@@ -255,7 +224,7 @@ export class GitHubProjectBackend implements ProjectBackend {
             completedCount++;
           }
           return {
-            number: content.number as number,
+            number: content.number,
             title: content.title,
             points: pts,
             status: statusName,
@@ -930,28 +899,14 @@ export class GitHubProjectBackend implements ProjectBackend {
 
   // ── Private helpers ──────────────────────────────────────────────────────
 
-  private async fetchAllItems(): Promise<RawItem[]> {
-    if (this.ownerType === "org") {
-      throw new Error(
-        "Org-owned projects are not yet supported by the scrum_* read tools.",
-      );
-    }
-    const all: RawItem[] = [];
-    let cursor: string | null = null;
-    let hasNextPage = true;
-    while (hasNextPage) {
-      const data: GetProjectItemsResponse = await this.gh.graphql(GET_PROJECT_ITEMS_QUERY, {
-        login: this.owner,
-        number: this.config.yml.backends.github!.project_number,
-        after: cursor ?? null,
-      });
-      const items = data.user?.projectV2?.items;
-      if (!items) break;
-      all.push(...items.nodes);
-      hasNextPage = items.pageInfo.hasNextPage;
-      cursor = items.pageInfo.endCursor;
-    }
-    return all;
+  private async fetchAllItems(): Promise<ProjectV2Item[]> {
+    const fetcher = new PaginatedProjectItemFetcher(this.config, { graphql: this.gh.graphql }, {
+      includeIssueContent: true,
+      includePRContent: true,
+      includeDraftIssueContent: true,
+      pageSize: 100,
+    });
+    return fetcher.collect();
   }
 
   private async fetchTypeLabels(): Promise<{ existing: string[]; expected: string[] }> {
@@ -1124,36 +1079,5 @@ interface GetIssueDetailsResponse {
 }
 
 interface GetItemFieldsResponse {
-  node?: { fieldValues?: { nodes: RawFieldValue[] } } | null;
-}
-
-interface IssueDetailsNode {
-  id: string;
-  number: number;
-  title: string | null;
-  body: string | null;
-  url: string | null;
-  createdAt: string;
-  updatedAt: string;
-  assignees?: { nodes: Array<{ login: string }> };
-  labels?: { nodes: Array<{ name: string }> };
-  milestone?: { title: string } | null;
-  comments?: {
-    nodes: Array<
-      { author?: { login: string } | null; body: string; createdAt: string; url: string }
-    >;
-  };
-  timelineItems?: {
-    nodes: Array<
-      {
-        source?: {
-          number?: number | null;
-          title?: string | null;
-          url?: string | null;
-          state?: string | null;
-          isDraft?: boolean | null;
-        } | null;
-      }
-    >;
-  };
+  node?: { fieldValues?: { nodes: ProjectV2ItemFieldValue[] } } | null;
 }

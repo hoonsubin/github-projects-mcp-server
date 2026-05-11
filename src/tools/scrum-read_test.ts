@@ -12,7 +12,12 @@
 
 import { assertEquals } from "@std/assert";
 import type { RuntimeConfig } from "../adapters/github/config-loader.ts";
-import type { IterationEntry, ScrumConfigYml, Story } from "../types.ts";
+import type {
+  IterationEntry,
+  ProjectV2Item,
+  ScrumConfigYml,
+  Story,
+} from "../types.ts";
 
 // ── Manual test doubles (no GitHub client needed) ──────────────────────────────
 
@@ -960,20 +965,37 @@ Deno.test("buildDaySeries — 0-pt story completes", () => {
 
 // ── buildBurndownStoryInput tests ────────────────────────────────────────────────
 
-interface RawItem {
-  id: string;
-  content: { id: string; number: number; title: string } | null;
-  fieldValues: { nodes: Array<{ field?: { id: string }; name?: string; number?: number }> };
-}
+/** Minimal field value node for burndown tests — only the fields extractBoardFields needs. */
+const makeFieldValue = (fieldId: string, opts: { name?: string; number?: number; iterationId?: string }) => ({
+  __typename: "ProjectV2ItemFieldSingleSelectValue",
+  field: { id: fieldId, name: "field" },
+  ...opts,
+});
 
 Deno.test("buildBurndownStoryInput — normal issue item", () => {
-  const item: RawItem = {
+  const item: ProjectV2Item = {
     id: "PVTI_test_1",
-    content: { id: "issue_1", number: 42, title: "Test Story" },
+    type: "Issue",
+    createdAt: "2024-01-01T00:00:00Z",
+    updatedAt: "2024-01-01T00:00:00Z",
+    isArchived: false,
+    content: {
+      __typename: "Issue",
+      id: "issue_1",
+      number: 42,
+      title: "Test Story",
+      url: "https://github.com/owner/repo/issues/42",
+      state: "OPEN",
+      body: "",
+      assignees: { nodes: [] },
+      labels: { nodes: [] },
+      repository: { name: "repo", nameWithOwner: "owner/repo" },
+      milestone: null,
+    },
     fieldValues: {
       nodes: [
-        { field: { id: "single_select_field_1" }, name: "In Progress" },
-        { field: { id: "number_field_1" }, number: 5 },
+        makeFieldValue("single_select_field_1", { name: "In Progress" }),
+        makeFieldValue("number_field_1", { number: 5 }),
       ],
     },
   };
@@ -985,13 +1007,19 @@ Deno.test("buildBurndownStoryInput — normal issue item", () => {
   assertEquals(result?.status, "In Progress");
 });
 
-Deno.test("buildBurndownStoryInput — DraftIssue (no number) returns null", () => {
-  const item: RawItem = {
+Deno.test("buildBurndownStoryInput — DraftIssue returns null", () => {
+  const item: ProjectV2Item = {
     id: "PVTI_draft_1",
-    content: { id: "draft_1", title: "Draft" } as unknown as {
-      id: string;
-      number: number;
-      title: string;
+    type: "DraftIssue",
+    createdAt: "2024-01-01T00:00:00Z",
+    updatedAt: "2024-01-01T00:00:00Z",
+    isArchived: false,
+    content: {
+      __typename: "DraftIssue",
+      id: "draft_1",
+      title: "Draft",
+      body: "",
+      assignees: { nodes: [] },
     },
     fieldValues: { nodes: [] },
   };
@@ -1001,9 +1029,25 @@ Deno.test("buildBurndownStoryInput — DraftIssue (no number) returns null", () 
 });
 
 Deno.test("buildBurndownStoryInput — unpointed story returns points: 0", () => {
-  const item: RawItem = {
+  const item: ProjectV2Item = {
     id: "PVTI_test_2",
-    content: { id: "issue_2", number: 43, title: "Unpointed" },
+    type: "Issue",
+    createdAt: "2024-01-01T00:00:00Z",
+    updatedAt: "2024-01-01T00:00:00Z",
+    isArchived: false,
+    content: {
+      __typename: "Issue",
+      id: "issue_2",
+      number: 43,
+      title: "Unpointed",
+      url: "https://github.com/owner/repo/issues/43",
+      state: "OPEN",
+      body: "",
+      assignees: { nodes: [] },
+      labels: { nodes: [] },
+      repository: { name: "repo", nameWithOwner: "owner/repo" },
+      milestone: null,
+    },
     fieldValues: { nodes: [] },
   };
   const config = makeConfig();
@@ -1012,8 +1056,12 @@ Deno.test("buildBurndownStoryInput — unpointed story returns points: 0", () =>
 });
 
 Deno.test("buildBurndownStoryInput — null content returns null", () => {
-  const item: RawItem = {
+  const item: ProjectV2Item = {
     id: "PVTI_test_3",
+    type: "Issue",
+    createdAt: "2024-01-01T00:00:00Z",
+    updatedAt: "2024-01-01T00:00:00Z",
+    isArchived: false,
     content: null,
     fieldValues: { nodes: [] },
   };

@@ -2,83 +2,63 @@
 
 ---
 
-## Verification Results: Unused Exports List
+## Bug
 
-I've verified the unused exports list in [`docs/proj-diagram.md`](docs/proj-diagram.md:408-449). **The list is INCORRECT** — several exports are actually being used.
+The MCP tool only reads repository issues, but cannot process draft issues on the project board.
+The backend should abstract draft and normal issues into a 'user story' that with differing level of readiness.
 
-### Findings:
+The difference between a draft issue and full issue:
 
-#### 1. [`src/scrum/sprint-math.ts`](src/scrum/sprint-math.ts)
+**Draft Issue**
 
-**INCORRECTLY listed as unused:**
+- Only lives in the github project board. No direct relations with a specific repository
+- Cannot be attached to Milestones, does not have issue labels
+- Only the project fields exist
+- Can be converted to a full issue for a repository (uses default repo if none are provided)
+- Cannot add comments
+- Can be removed or archived
 
-- **`SprintWindow`** (line 112) — USED by [`src/scrum/get-burndown.ts:16`](src/scrum/get-burndown.ts:16)
+**Full Issue**
 
-**Correctly listed as unused:**
+- Tied to a specific repository, can be linked with Milestones, PRs, and project boards
+- Contains labels and relationships
+- Also contains project fields if linked with a project board
+- Can be closed or archived, but not fully deleted
 
-- **`IdealDayPoint`** (line 152) — NOT imported anywhere
-- **`BurndownDayPoint`** (line 179) — NOT imported anywhere
+Therefore, the default user story create mode should be opening a draft issue. When the agent requests the MCP to add certain fields or values that is not available for draft issues, it should automatically convert it to a full issue.
+For the agent reading and writing, they are all the same user story just with certain fields being missing.
 
-#### 2. [`src/schemas/scrum.ts`](src/schemas/scrum.ts)
+## Refactoring Status Assessment
 
-**All correctly listed as unused:**
+I've reviewed [`tasks/REFACTORING.md`](tasks/REFACTORING.md:1) and assessed the current state of the codebase. Here's the summary:
 
-- **`StoryRefSchema`** (line 17)
-- **`SprintRefSchema`** (line 41)
-- **`ScrumFieldSchema`** (line 58)
-- **`StoryTypeSchema`** (line 72)
+### Overall Status: 95% Complete
 
-#### 3. [`src/schemas/inputs.ts`](src/schemas/inputs.ts)
+**Completed:**
 
-**INCORRECTLY listed as unused:**
+- ✅ All 5 phases (1, 2, 2.5, 3, 5) implemented
+- ✅ Three-layer architecture with proper dependency inversion
+- ✅ Scrum tool surface fully operational (13 schemas, 13 tools)
+- ✅ 19 of 20 symbols migrated in the ledger
+- ✅ P1 cleanup: 3 legacy tool files deleted
 
-- **`resolveFieldValue`** (line 169) — USED by [`src/schemas/inputs_test.ts:2`](src/schemas/inputs_test.ts:2)
+**Pending (Phase 4 - Dead Code Cleanup):**
 
-**All correctly listed as unused:**
+- ⏸️ 13 files to delete (broken tests, superseded services, legacy schemas)
+- ⏸️ 10 files to modify (remove dead types and exports)
+- ⏸️ 1 file to refactor (backend code quality - 6 code smells identified)
 
-- **`PaginationSchema`** (line 5)
-- **`OwnerTypeSchema`** (line 12)
-- **`ListProjectsSchema`** (line 18)
-- **`GetProjectSchema`** (line 27)
-- **`UpdateProjectSchema`** (line 35)
-- **`ListItemsSchema`** (line 53)
-- **`AddItemSchema`** (line 68)
-- **`AddDraftIssueSchema`** (line 76)
-- **`DeleteItemSchema`** (line 88)
-- **`ArchiveItemSchema`** (line 96)
-- **`FieldValueUnion`** (line 120)
-- **`ResolvedFieldValue`** (line 165)
-- **`UpdateFieldValueSchema`** (line 219)
-- **`GetProjectFieldsSchema`** (line 236)
-- **`GetSprintStatusSchema`** (line 262)
-- **`GetVelocitySchema`** (line 271)
-- **`GetBacklogItemsSchema`** (line 277)
-- **`BulkUpdateItemFieldSchema`** (line 287)
-- **`CloseSprintSchema`** (line 308)
-- **`GenerateSprintReportSchema`** (line 326)
-- **`GetIssueNodeIdSchema`** (line 336)
-- **`GetUserNodeIdSchema`** (line 345)
-- **`GraphQLQuerySchema`** (line 357)
-- **`GetRepoFileSchema`** (line 372)
-- **`CreateIssueSchema`** (line 390)
-- **`UpdateIssueSchema`** (line 410)
-- **`CreateCommentSchema`** (line 440)
-- **`WriteRepoFileSchema`** (line 463)
+### Key Findings
 
-#### 4. [`src/types.ts`](src/types.ts)
+1. **Architecture:** Fully implemented with proper layer separation (tools → use-cases → adapters)
+2. **Tool Surface:** Stable Scrum vocabulary with 7 read tools and 6 write tools
+3. **Backend:** [`GitHubProjectBackend`](src/adapters/github/backend.ts:66) has accumulated technical debt (1,084 lines, 6 code smells, 20 string interpolations)
+4. **Migration:** Systematic progress with 95% of symbols migrated
 
-**INCORRECTLY listed as unused:**
+### Critical Path
 
-- **`ScrumField`** (line 30) — Referenced in comments and documentation, but not directly imported
+**Immediate:** Execute Phase 4 P1 cleanup (delete 9 remaining files)
+**Short-term:** Complete P2-P4 cleanup (remove dead types and exports)
+**Medium-term:** Refactor backend code quality (P1-P3 tasks)
 
-**Correctly listed as unused:**
-
-- **All other types** are correctly identified as unused
-
-### Summary:
-
-- **2 exports incorrectly marked as unused**: `SprintWindow` and `resolveFieldValue`
-- **1 export correctly identified as unused**: `ScrumField` (though it's referenced in comments)
-- **All other exports correctly listed as unused**
-
-The unused exports list needs to be updated to remove `SprintWindow` and `resolveFieldValue` from the unused section.
+The refactoring is ready for Phase 4 cleanup to complete the migration.

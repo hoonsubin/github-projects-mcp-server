@@ -27,11 +27,12 @@ Copy-paste-ready Markdown templates. Game-specific variants noted inline.
 ### [PBI-XXX] Title
 
 **Type:** Feature / Bug / Tech Debt / Spike
-**Priority:** High / Med / Low  **Estimate:** [SP]  **Epic:** [parent]
+**Priority:** High / Med / Low **Estimate:** [SP] **Epic:** [parent]
 
 **User Story:** As a [user], I want [goal] so that [reason].
 
 **Acceptance Criteria:**
+
 - [ ] Given [context], when [action], then [outcome]
 
 **Out of Scope:** [explicitly excluded]
@@ -47,9 +48,11 @@ Copy-paste-ready Markdown templates. Game-specific variants noted inline.
 
 ```markdown
 # Definition of Ready — [Team]
+
 _v[N] — [YYYY-MM-DD]_
 
 An item enters Sprint Planning only if ALL are true:
+
 - [ ] User-story format (or equivalent who/what/why)
 - [ ] Acceptance criteria defined and agreed by PO + team
 - [ ] Estimated by the dev team
@@ -66,27 +69,32 @@ An item enters Sprint Planning only if ALL are true:
 
 ```markdown
 # Definition of Done — [Team]
+
 _v[N] — [YYYY-MM-DD]_
 
 A PBI is Done only when ALL are true:
 
 **Build**
+
 - [ ] Code written and self-reviewed
 - [ ] Peer-reviewed and approved
 - [ ] No new linter / static-analysis warnings
 
 **Test**
+
 - [ ] Unit tests written and passing (≥[X]% coverage)
 - [ ] Integration tests passing
 - [ ] AC verified by PO or designee
 - [ ] Regression tests clean
 
 **Docs**
+
 - [ ] Inline comments updated (if applicable)
 - [ ] User-facing docs updated (if applicable)
 - [ ] API docs updated (if applicable)
 
 **Deploy**
+
 - [ ] Deployed to staging
 - [ ] No critical bugs introduced
 - [ ] Deployed to production (if CD in use)
@@ -100,31 +108,32 @@ A PBI is Done only when ALL are true:
 ## 🏃 Sprint [N] — [Start] to [End]
 
 ### Sprint Goal
+
 > _One outcome-based sentence._
 > e.g. "Enable guest checkout to reduce abandonment."
 
 ### Capacity
 
-| Member | Avail Days | Planned Hrs | Notes |
-|---|---|---|---|
-| [Name] | [X] | [Y] | [e.g. 2d PTO] |
-| **Total** | | | |
+| Member    | Avail Days | Planned Hrs | Notes         |
+| --------- | ---------- | ----------- | ------------- |
+| [Name]    | [X]        | [Y]         | [e.g. 2d PTO] |
+| **Total** |            |             |               |
 
 ### Sprint Backlog
 
-| ID | Title | Owner | Est | Status |
-|---|---|---|---|---|
-| PBI-001 | | | | 🔵 To Do |
+| ID      | Title | Owner | Est | Status   |
+| ------- | ----- | ----- | --- | -------- |
+| PBI-001 |       |       |     | 🔵 To Do |
 
 **Status:** 🔵 To Do · 🟡 In Progress · 🟠 In Review · ✅ Done · 🔴 Blocked
 
 ### Burndown
 
-| Day | SP Remaining | Notes |
-|---|---|---|
-| 1 | [N] | start |
-| 5 | | |
-| 10 | 0 | end (ideal) |
+| Day | SP Remaining | Notes       |
+| --- | ------------ | ----------- |
+| 1   | [N]          | start       |
+| 5   |              |             |
+| 10  | 0            | end (ideal) |
 ```
 
 ---
@@ -134,9 +143,9 @@ A PBI is Done only when ALL are true:
 ```markdown
 ## Standup — Sprint [N]
 
-| Date | Done | Doing | Blockers |
-|---|---|---|---|
-| YYYY-MM-DD | | | |
+| Date       | Done | Doing | Blockers |
+| ---------- | ---- | ----- | -------- |
+| YYYY-MM-DD |      |       |          |
 ```
 
 ---
@@ -146,28 +155,29 @@ A PBI is Done only when ALL are true:
 ```markdown
 ## Sprint [N] Review
 
-**Date:** [YYYY-MM-DD]  **Goal:** [restate]  **Achieved?** ✅/❌/⚠️
+**Date:** [YYYY-MM-DD] **Goal:** [restate] **Achieved?** ✅/❌/⚠️
 **Attendees:** [names / stakeholder roles]
 
 ### Demo
 
-| Item | Status | Stakeholder Feedback |
-|---|---|---|
-| PBI-001 | ✅ Done | [feedback] |
-| PBI-002 | ❌ Not Done | [reason] |
+| Item    | Status      | Stakeholder Feedback |
+| ------- | ----------- | -------------------- |
+| PBI-001 | ✅ Done     | [feedback]           |
+| PBI-002 | ❌ Not Done | [reason]             |
 
 ### Backlog Changes from Feedback
+
 - [new or reprioritized]
 
 ### Sprint Summary
 
-| Field | Value |
-|---|---|
-| Committed SP | |
-| Completed SP | |
-| Commitment Ratio | |
-| Key Decisions | |
-| Impediments | |
+| Field            | Value |
+| ---------------- | ----- |
+| Committed SP     |       |
+| Completed SP     |       |
+| Commitment Ratio |       |
+| Key Decisions    |       |
+| Impediments      |       |
 ```
 
 ---
@@ -177,24 +187,26 @@ A PBI is Done only when ALL are true:
 ```markdown
 ## Sprint [N] Retrospective
 
-**Date:** [YYYY-MM-DD]  **Facilitator:** [SM]
+**Date:** [YYYY-MM-DD] **Facilitator:** [SM]
 **Format:** Start/Stop/Continue _(or 4Ls / Sailboat / Mad-Sad-Glad / KALM / 5 Whys / Timeline)_
 
 ### Observations
 
-| Category | Observations |
-|---|---|
-| ✅ Went well | |
-| ⚠️ Needs improvement | |
-| 🚀 Start | |
-| 🛑 Stop | |
+| Category             | Observations |
+| -------------------- | ------------ |
+| ✅ Went well         |              |
+| ⚠️ Needs improvement |              |
+| 🚀 Start             |              |
+| 🛑 Stop              |              |
 
 ### Committed Improvement for Sprint [N+1]
+
 > _One specific, actionable, measurable change._
 
 ### Follow-up: Last Sprint's Commitment
+
 > **From Sprint [N-1]:** [state it]
-> **Followed through?** ✅/❌/⚠️  **Notes:** [what happened]
+> **Followed through?** ✅/❌/⚠️ **Notes:** [what happened]
 ```
 
 ---
@@ -206,14 +218,14 @@ A PBI is Done only when ALL are true:
 
 ## Sprint [N] — [Start] to [End]
 
-| Field | Value |
-|---|---|
-| Goal | |
-| Achieved | ✅/❌/⚠️ |
-| Committed SP | |
-| Completed SP | |
-| Retro Commitment | |
-| Followed Through | |
+| Field            | Value    |
+| ---------------- | -------- |
+| Goal             |          |
+| Achieved         | ✅/❌/⚠️ |
+| Committed SP     |          |
+| Completed SP     |          |
+| Retro Commitment |          |
+| Followed Through |          |
 
 _[Paste full sprint backlog table for history]_
 ```
@@ -225,10 +237,10 @@ _[Paste full sprint backlog table for history]_
 ```markdown
 ## Impediment Log — Sprint [N]
 
-| # | Impediment | Raised By | Date | Owner | Status | Resolved |
-|---|---|---|---|---|---|---|
-| 1 | | | | SM | 🔴 Open | |
-| 2 | | | | SM | ✅ Resolved | |
+| #   | Impediment | Raised By | Date | Owner | Status      | Resolved |
+| --- | ---------- | --------- | ---- | ----- | ----------- | -------- |
+| 1   |            |           |      | SM    | 🔴 Open     |          |
+| 2   |            |           |      | SM    | ✅ Resolved |          |
 
 **Rule:** Open >2 days without progress → SM escalates.
 ```
@@ -242,9 +254,9 @@ _[Paste full sprint backlog table for history]_
 
 > Append-only. Never edit/delete — only add new entries that supersede prior ones.
 
-| # | Decision | Alternatives | Rationale | Owner | Date |
-|---|---|---|---|---|---|
-| D-001 | | | | | |
+| #     | Decision | Alternatives | Rationale | Owner | Date |
+| ----- | -------- | ------------ | --------- | ----- | ---- |
+| D-001 |          |              |           |       |      |
 ```
 
 ---
@@ -253,13 +265,16 @@ _[Paste full sprint backlog table for history]_
 
 ```markdown
 # Team Charter — [Team]
+
 _v[N] — [YYYY-MM-DD]_
 
 ## Members
+
 | Name | Role/Discipline | Availability |
-|---|---|---|
+| ---- | --------------- | ------------ |
 
 ## Sprint Cadence
+
 - Length: [X] weeks
 - Planning: [day, time]
 - Standup: [time, sync/async]
@@ -267,6 +282,7 @@ _v[N] — [YYYY-MM-DD]_
 - Retro: immediately after Review / [day, time]
 
 ## Working Agreements
+
 1. Update Sprint Backlog right after standup, not end of day.
 2. Raise blockers the day they appear.
 3. Swarm on in-progress items before pulling new ones.
@@ -274,15 +290,18 @@ _v[N] — [YYYY-MM-DD]_
 5. [team-specific]
 
 ## Communication Norms
+
 - Sync: [team chat thread]
 - Urgent: [DM SM + PO]
 - Decisions: append-only Decision Log
 - Async standup deadline: [time]
 
 ## Definition of Done — v[N]
+
 _See separate DoD; reviewed every retro._
 
 ## Definition of Ready — v[N]
+
 _See separate DoR; reviewed quarterly._
 ```
 
@@ -293,17 +312,19 @@ _See separate DoR; reviewed quarterly._
 ```markdown
 ## Velocity — [Team]
 
-| Sprint | Start | End | Committed | Completed | Ratio | Goal Met | Retro Commitment |
-|---|---|---|---|---|---|---|---|
-| 1 | | | | | | ✅/❌/⚠️ | |
-| **3-Sprint Avg** | | | | | | | |
+| Sprint           | Start | End | Committed | Completed | Ratio | Goal Met | Retro Commitment |
+| ---------------- | ----- | --- | --------- | --------- | ----- | -------- | ---------------- |
+| 1                |       |     |           |           |       | ✅/❌/⚠️ |                  |
+| **3-Sprint Avg** |       |     |           |           |       |          |                  |
 
 ### Sparkline
-Sprint:  1   2   3   4   5   6
-SP:     18  22  19  24  21  23
-        ▄   █   ▅   ██  ▇   ██
+
+Sprint: 1 2 3 4 5 6
+SP: 18 22 19 24 21 23
+▄ █ ▅ ██ ▇ ██
 
 ### Notes
+
 - Planning velocity = avg of last 3 completed sprints
 - Velocity is a planning input, not a performance target
 - Ratio <80% consistently → planning accuracy issue
@@ -317,29 +338,31 @@ SP:     18  22  19  24  21  23
 ```markdown
 ## Sprint [N] Planning — [YYYY-MM-DD]
 
-**Timebox:** [X] hr  **Sprint:** [Start] → [End]  **Facilitator:** [SM]
+**Timebox:** [X] hr **Sprint:** [Start] → [End] **Facilitator:** [SM]
 
 ### 1. Capacity (10 min)
 
-| Member | Days | Focus Factor | Effective Days |
-|---|---|---|---|
-| | | 0.65 | |
-| **Total** | | | |
+| Member    | Days | Focus Factor | Effective Days |
+| --------- | ---- | ------------ | -------------- |
+|           |      | 0.65         |                |
+| **Total** |      |              |                |
 
 ### 2. Sprint Goal (10 min)
+
 > **PO proposes:** _[outcome sentence]_
 > **Agreed:** _[final]_
 
 ### 3. Item Selection
 
-| PBI | Title | Est | Owner | Notes |
-|---|---|---|---|---|
-| | | | | |
-| **Total SP** | | | | |
+| PBI          | Title | Est | Owner | Notes |
+| ------------ | ----- | --- | ----- | ----- |
+|              |       |     |       |       |
+| **Total SP** |       |     |       |       |
 
 ### 4. Commitment
+
 > Achievable given capacity?
-> [ ] Yes — close   [ ] No — remove: [items]
+> [ ] Yes — close [ ] No — remove: [items]
 ```
 
 ---
@@ -352,22 +375,26 @@ For multi-disciplinary teams (artists, designers, audio, QA, producer alongside 
 
 ```markdown
 **Art/Audio additions**
+
 - [ ] Asset on target platform verified (not just dev PC)
 - [ ] Asset budget respected (poly count, texture size, audio file size)
 - [ ] Approved by art/audio director (or by-proxy via approval column)
 - [ ] No regression in build performance
 
 **Design additions**
+
 - [ ] Mechanic is playable end-to-end this sprint (not "parts on the floor")
 - [ ] Tunable parameters exposed for designer
 - [ ] Conditions of Satisfaction signed off by designer + QA
 
 **QA additions**
+
 - [ ] CoS verified on target platform(s)
 - [ ] Regression tests run on adjacent areas
 - [ ] No new high-priority bugs in bug database
 
 **Production additions**
+
 - [ ] No new external dependencies introduced unannounced
 - [ ] First-party / cert implications flagged if any
 ```
@@ -375,8 +402,8 @@ For multi-disciplinary teams (artists, designers, audio, QA, producer alongside 
 ### Sprint Backlog Board with Approval column
 
 ```markdown
-| ID | Title | Owner | Est | To Do | WIP | In Review | Pending Approval | Done |
-|---|---|---|---|---|---|---|---|---|
+| ID  | Title | Owner | Est | To Do | WIP | In Review | Pending Approval | Done |
+| --- | ----- | ----- | --- | ----- | --- | --------- | ---------------- | ---- |
 
 **"Pending Approval" rule:** items here are functionally complete; awaiting art/audio director, license holder, or PO sign-off. Items >2 days in this column are impediments.
 ```
@@ -385,7 +412,7 @@ For multi-disciplinary teams (artists, designers, audio, QA, producer alongside 
 
 ```markdown
 | Backlog | Concept(1) | Model(2) | Rig(1) | Animate(2) | Audio(1) | Integrate(1) | Done |
-|---|---|---|---|---|---|---|---|
+| ------- | ---------- | -------- | ------ | ---------- | -------- | ------------ | ---- |
 
 **(N)** = WIP limit per column. Pile-ups = bottlenecks; empty columns = starvation.
 Cycle time per step ≤ takt time. See `references/game-development.md` §3.
@@ -396,10 +423,10 @@ Cycle time per step ≤ takt time. See `references/game-development.md` §3.
 ```markdown
 ## Bug Database — Post-Alpha
 
-| # | Severity | Area | Description | Repro Steps | Found By | Owner | Status |
-|---|---|---|---|---|---|---|---|
-| B-001 | A (blocker) | | | | | | 🔴 Open |
-| B-002 | B (major) | | | | | | 🟡 In Progress |
+| #     | Severity    | Area | Description | Repro Steps | Found By | Owner | Status         |
+| ----- | ----------- | ---- | ----------- | ----------- | -------- | ----- | -------------- |
+| B-001 | A (blocker) |      |             |             |          |       | 🔴 Open        |
+| B-002 | B (major)   |      |             |             |          |       | 🟡 In Progress |
 
 **Severity:** A=blocker (cert fail, crash) · B=major (gameplay broken) · C=minor (visual) · D=polish
 **Triage:** PO + QA lead daily; team pulls top-priority items each morning.
@@ -410,14 +437,14 @@ Cycle time per step ≤ takt time. See `references/game-development.md` §3.
 ```markdown
 ## Release Tracker — [Project]
 
-| Milestone | Target Date | Stage | Status | Sprint |
-|---|---|---|---|---|
-| Concept Treatment | | Concept | | |
-| Vertical Slice / First Playable | | Pre-prod | | |
-| Alpha (content complete) | | Production | | |
-| Beta (feature complete) | | Production | | |
-| Gold Master / Submission | | Post-prod | | |
-| Cert / Launch | | Post-prod | | |
+| Milestone                       | Target Date | Stage      | Status | Sprint |
+| ------------------------------- | ----------- | ---------- | ------ | ------ |
+| Concept Treatment               |             | Concept    |        |        |
+| Vertical Slice / First Playable |             | Pre-prod   |        |        |
+| Alpha (content complete)        |             | Production |        |        |
+| Beta (feature complete)         |             | Production |        |        |
+| Gold Master / Submission        |             | Post-prod  |        |        |
+| Cert / Launch                   |             | Post-prod  |        |        |
 
 **Hardening sprints** scheduled before alpha and gold: no new features; bugs + polish + cert prep.
 ```
@@ -431,14 +458,15 @@ A release groups several sprints toward a milestone. Track them as a single tabl
 ```markdown
 ## Release Roadmap — [Release Name / Quarter]
 
-| Sprint | Dates | Sprint Goal | Key Deliverables | Status |
-|---|---|---|---|---|
-| Sprint 1 | YYYY-MM-DD → YYYY-MM-DD | Foundation | Core auth, data model | 🟢 Planned |
-| Sprint 2 | YYYY-MM-DD → YYYY-MM-DD | Core features | User dashboard, API | 🟢 Planned |
-| Sprint 3 | YYYY-MM-DD → YYYY-MM-DD | Polish & edges | Error handling, perf | 🟢 Planned |
-| Sprint 4 | YYYY-MM-DD → YYYY-MM-DD | Hardening | Regression, docs, release notes | 🟢 Planned |
+| Sprint   | Dates                   | Sprint Goal    | Key Deliverables                | Status     |
+| -------- | ----------------------- | -------------- | ------------------------------- | ---------- |
+| Sprint 1 | YYYY-MM-DD → YYYY-MM-DD | Foundation     | Core auth, data model           | 🟢 Planned |
+| Sprint 2 | YYYY-MM-DD → YYYY-MM-DD | Core features  | User dashboard, API             | 🟢 Planned |
+| Sprint 3 | YYYY-MM-DD → YYYY-MM-DD | Polish & edges | Error handling, perf            | 🟢 Planned |
+| Sprint 4 | YYYY-MM-DD → YYYY-MM-DD | Hardening      | Regression, docs, release notes | 🟢 Planned |
 
 ### Milestones
+
 - **YYYY-MM-DD** — Stakeholder sign-off
 - **YYYY-MM-DD** — Final regression pass
 - **YYYY-MM-DD** — Release candidate freeze
@@ -458,16 +486,17 @@ Track each member's working days across upcoming sprints to feed Planning. Numbe
 ```markdown
 ## Capacity Calendar — [Team] — Sprints [N] to [N+M]
 
-| Member | Sprint [N] | Sprint [N+1] | Sprint [N+2] | Sprint [N+3] | Notes |
-|---|---|---|---|---|---|
-| Alice | 9/10 | 10/10 | 8/10 | 10/10 | Conference S[N+2] |
-| Bob   | 10/10 | 7/10 | 10/10 | 5/10 | PTO S[N+1], surgery S[N+3] |
-| Carol | 10/10 | 10/10 | 9/10 | 10/10 | Public holiday S[N+2] |
-| **Team total** | 29/30 | 27/30 | 27/30 | 25/30 | |
+| Member         | Sprint [N] | Sprint [N+1] | Sprint [N+2] | Sprint [N+3] | Notes                      |
+| -------------- | ---------- | ------------ | ------------ | ------------ | -------------------------- |
+| Alice          | 9/10       | 10/10        | 8/10         | 10/10        | Conference S[N+2]          |
+| Bob            | 10/10      | 7/10         | 10/10        | 5/10         | PTO S[N+1], surgery S[N+3] |
+| Carol          | 10/10      | 10/10        | 9/10         | 10/10        | Public holiday S[N+2]      |
+| **Team total** | 29/30      | 27/30        | 27/30        | 25/30        |                            |
 
 ### Notes
+
 - **Available days** = working days minus absences and holidays
 - **Effective capacity** = available days × focus factor (typically 0.6–0.7 for meetings, email, context-switching)
 - Alert the team in retro when any member dips below 60% available
-- Holidays affecting the whole team go in a separate row and reduce *Total*, not *Available*
+- Holidays affecting the whole team go in a separate row and reduce _Total_, not _Available_
 ```

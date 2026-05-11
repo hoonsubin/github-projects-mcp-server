@@ -1,23 +1,57 @@
 // =============================================================================
 // src/adapters/github/mappers.ts — GitHub raw types → domain types mappers
 //
-// Extracted from scrum-read.ts as part of Story B (Phase 5).
-// These are pure functions that take GitHub raw types and return domain types.
+// Pure functions: take ProjectV2Item (or narrow input shapes) and return domain types.
 // =============================================================================
 
 import type { RuntimeConfig } from "./config-loader.ts";
-import type { Story } from "../../types.ts";
+import type { ProjectV2Item, Story } from "../../types.ts";
 import { classifyLabels, type StoryTypeLabel } from "../../domain/rules/labels.ts";
-import type {
-  BoardFields,
-  Comment,
-  CommentNode,
-  CrossReferencedEventNode,
-  FieldValueNode,
-  IssueDetailsNode,
-  LinkedPr,
-  RawItem,
-} from "./raw-types.ts";
+import type { BoardFields, Comment, FieldValueNode, LinkedPr } from "./raw-types.ts";
+
+// ── Local input shapes (private — only for function parameter types) ───────────
+
+/** Comment node shape returned by GetIssueDetails timeline query. */
+interface CommentInput {
+  author?: { login: string } | null;
+  body: string;
+  createdAt: string;
+  url: string;
+}
+
+/** CrossReferencedEvent node shape returned by GetIssueDetails timeline query. */
+interface TimelineItemInput {
+  source?: {
+    number?: number | null;
+    title?: string | null;
+    url?: string | null;
+    state?: string | null;
+    isDraft?: boolean | null;
+  } | null;
+}
+
+// ── Exported input shape for backend.ts ───────────────────────────────────────
+
+/**
+ * Shape of the issue node returned by GetIssueDetails, cast to this interface
+ * in backend.ts before passing to buildEnrichedStory.
+ */
+export interface IssueDetailsInput {
+  id: string;
+  number: number;
+  title: string | null;
+  body: string | null;
+  url: string | null;
+  createdAt: string;
+  updatedAt: string;
+  assignees?: { nodes: Array<{ login: string }> };
+  labels?: { nodes: Array<{ name: string }> };
+  milestone?: { title: string } | null;
+  comments?: { nodes: CommentInput[] };
+  timelineItems?: { nodes: TimelineItemInput[] };
+}
+
+// ── Field extraction ───────────────────────────────────────────────────────────
 
 /** Extract board fields from a field-value node array. */
 export const extractBoardFields = (
@@ -54,46 +88,52 @@ export const extractBoardFields = (
   return { status, sprint, story_points, priority };
 };
 
+// ── Story builders ─────────────────────────────────────────────────────────────
+
 /**
- * Build a Story from a raw project item node.
+ * Build a Story from a project item.
  * Returns null for DraftIssues (no issue number) and items without content.
+ * Timestamps come from the item (not the content node) because content nodes
+ * for Issues/PRs do not carry createdAt/updatedAt in the ProjectV2 schema.
  */
 export const buildStoryFromRaw = (
-  item: RawItem,
+  item: ProjectV2Item,
   config: RuntimeConfig,
 ): Story | null => {
   const content = item.content;
-  if (!content || typeof content.number !== "number") return null;
+  if (!content || content.__typename === "DraftIssue") return null;
 
+  // Narrowed to ProjectV2IssueContent | ProjectV2PRContent — both have number, title, url, body, assignees, labels
   const boardFields = extractBoardFields(item.fieldValues.nodes, config.fields);
   const { type, labels } = classifyLabels(
-    content.labels?.nodes.map((l) => l.name) ?? [],
+    content.labels.nodes.map((l) => l.name),
   );
+  const epic = content.__typename === "Issue" ? content.milestone?.title ?? null : null;
 
   return {
     ref: { number: content.number, id: item.id },
     title: content.title,
-    body: content.body ?? "",
+    body: content.body,
     type,
     status: boardFields.status,
     sprint: boardFields.sprint,
     story_points: boardFields.story_points,
     priority: boardFields.priority,
-    assignees: content.assignees?.nodes.map((a) => a.login) ?? [],
+    assignees: content.assignees.nodes.map((a) => a.login),
     labels,
-    epic: content.milestone?.title ?? null,
-    created_at: content.createdAt ?? "",
-    updated_at: content.updatedAt ?? "",
-    url: content.url ?? null,
+    epic,
+    created_at: item.createdAt,
+    updated_at: item.updatedAt,
+    url: content.url,
   };
 };
 
 /**
  * Build an enriched Story from a full issue node and field values.
- * Used by getStoryDetail path.
+ * Used by the getStoryDetail path after fetching GetIssueDetails.
  */
 export const buildEnrichedStory = (
-  issueNode: IssueDetailsNode,
+  issueNode: IssueDetailsInput,
   itemId: string,
   fieldValueNodes: FieldValueNode[],
   config: RuntimeConfig,
@@ -115,16 +155,18 @@ export const buildEnrichedStory = (
     assignees: issueNode.assignees?.nodes.map((a) => a.login) ?? [],
     labels,
     epic: issueNode.milestone?.title ?? null,
-    created_at: issueNode.createdAt ?? "",
-    updated_at: issueNode.updatedAt ?? "",
+    created_at: issueNode.createdAt,
+    updated_at: issueNode.updatedAt,
     url: issueNode.url ?? null,
   };
 };
 
+// ── Detail enrichment builders ─────────────────────────────────────────────────
+
 /**
  * Build a comment list from GraphQL comment nodes.
  */
-export const buildCommentList = (nodes: CommentNode[]): Comment[] =>
+export const buildCommentList = (nodes: CommentInput[]): Comment[] =>
   nodes.map((c) => ({
     author: c.author?.login ?? "(ghost)",
     body: c.body,
@@ -135,7 +177,7 @@ export const buildCommentList = (nodes: CommentNode[]): Comment[] =>
 /**
  * Build a linked PR list from cross-referenced event nodes.
  */
-export const buildLinkedPrList = (nodes: CrossReferencedEventNode[]): LinkedPr[] =>
+export const buildLinkedPrList = (nodes: TimelineItemInput[]): LinkedPr[] =>
   nodes.flatMap((n) => {
     const source = n.source;
     if (!source || typeof source.number !== "number") return [];
@@ -148,7 +190,9 @@ export const buildLinkedPrList = (nodes: CrossReferencedEventNode[]): LinkedPr[]
     }];
   });
 
-/** Lightweight burndown story projection from a RawItem. */
+// ── Burndown projection ────────────────────────────────────────────────────────
+
+/** Lightweight burndown story projection — four fields burndown computation needs. */
 export interface BurndownStoryInput {
   number: number;
   title: string;
@@ -157,15 +201,15 @@ export interface BurndownStoryInput {
 }
 
 /**
- * Project a RawItem to the four fields burndown computation needs.
+ * Project a ProjectV2Item to the four fields burndown computation needs.
  * Returns null for DraftIssues and items with no issue content.
  */
 export const buildBurndownStoryInput = (
-  item: RawItem,
+  item: ProjectV2Item,
   config: RuntimeConfig,
 ): BurndownStoryInput | null => {
   const content = item.content;
-  if (!content || typeof content.number !== "number") return null;
+  if (!content || content.__typename === "DraftIssue") return null;
 
   const { status, story_points } = extractBoardFields(
     item.fieldValues.nodes,
