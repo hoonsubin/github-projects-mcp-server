@@ -18,7 +18,7 @@ import {
   GetTemplateSchema,
 } from "../schemas/scrum.ts";
 import { z } from "zod";
-import { formatError } from "../services/github.ts";
+import { enrichError } from "../services/github.ts";
 
 import { orientUseCase } from "../scrum/orient.ts";
 import { getTemplateUseCase } from "../scrum/get-template.ts";
@@ -61,7 +61,10 @@ export const registerScrumReadTools = (
         const result = await orientUseCase(backend, yml);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
-        return { content: [{ type: "text", text: formatError(err) }], isError: true };
+        return {
+          content: [{ type: "text", text: enrichError(err, { operation: "orient" }) }],
+          isError: true,
+        };
       }
     },
   );
@@ -72,13 +75,12 @@ export const registerScrumReadTools = (
     "scrum_get_history",
     {
       title: "Get Sprint History",
-      description:
-        `Return raw sprint snapshots for the last N completed sprints.\n\n` +
+      description: `Return raw sprint snapshots for the last N completed sprints.\n\n` +
         `Use for velocity calculations, retrospective prep, and trend analysis. ` +
         `Each snapshot includes sprint dates, committed vs. completed story points, ` +
         `and per-story outcomes.\n\n` +
         `Args:\n` +
-        `  window  integer 1–10, default 5 — how many completed sprints to look back\n\n` +
+        `  window  integer 1-10, default 5 — how many completed sprints to look back\n\n` +
         `Returns: array of sprint snapshots ordered newest-first.`,
       inputSchema: GetHistorySchema.shape,
       annotations: {
@@ -93,7 +95,10 @@ export const registerScrumReadTools = (
         const result = await getHistoryUseCase(backend, yml, params.window);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
-        return { content: [{ type: "text", text: formatError(err) }], isError: true };
+        return {
+          content: [{ type: "text", text: enrichError(err, { operation: "get_history" }) }],
+          isError: true,
+        };
       }
     },
   );
@@ -104,8 +109,7 @@ export const registerScrumReadTools = (
     "scrum_get_backlog",
     {
       title: "Get Product Backlog",
-      description:
-        `Return all stories not yet assigned to any sprint (the product backlog).\n\n` +
+      description: `Return all stories not yet assigned to any sprint (the product backlog).\n\n` +
         `All filter arguments are optional and combinable. Results are sorted by priority ` +
         `descending, then story number ascending.\n\n` +
         `Args:\n` +
@@ -129,7 +133,10 @@ export const registerScrumReadTools = (
         const result = await getBacklogUseCase(backend, yml, params);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
-        return { content: [{ type: "text", text: formatError(err) }], isError: true };
+        return {
+          content: [{ type: "text", text: enrichError(err, { operation: "get_backlog" }) }],
+          isError: true,
+        };
       }
     },
   );
@@ -160,7 +167,10 @@ export const registerScrumReadTools = (
         const result = await getSprintUseCase(backend, yml, params.sprint ?? "current");
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
-        return { content: [{ type: "text", text: formatError(err) }], isError: true };
+        return {
+          content: [{ type: "text", text: enrichError(err, { operation: "get_sprint" }) }],
+          isError: true,
+        };
       }
     },
   );
@@ -171,8 +181,7 @@ export const registerScrumReadTools = (
     "scrum_get_story",
     {
       title: "Get Story Details",
-      description:
-        `Return full details for a single story: content, all board fields, comments, ` +
+      description: `Return full details for a single story: content, all board fields, comments, ` +
         `linked PRs, and acceptance criteria.\n\n` +
         `Args:\n` +
         `  ref  { number: integer } | { id: string } | { number, id }\n` +
@@ -193,7 +202,10 @@ export const registerScrumReadTools = (
         const result = await getStoryUseCase(backend, params.ref);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
-        return { content: [{ type: "text", text: formatError(err) }], isError: true };
+        return {
+          content: [{ type: "text", text: enrichError(err, { operation: "get_story" }) }],
+          isError: true,
+        };
       }
     },
   );
@@ -204,8 +216,7 @@ export const registerScrumReadTools = (
     "scrum_get_burndown",
     {
       title: "Get Sprint Burndown",
-      description:
-        `Return a day-by-day burndown chart for a sprint.\n\n` +
+      description: `Return a day-by-day burndown chart for a sprint.\n\n` +
         `Completion timestamps are sourced from the GitHub audit log (org accounts) or ` +
         `inferred from issue close events (user accounts). When falling back to the ` +
         `issue-close proxy a "warning" field is included in the response.\n\n` +
@@ -225,7 +236,10 @@ export const registerScrumReadTools = (
         const result = await getBurndownUseCase(backend, yml, params);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
-        return { content: [{ type: "text", text: formatError(err) }], isError: true };
+        return {
+          content: [{ type: "text", text: enrichError(err, { operation: "get_burndown" }) }],
+          isError: true,
+        };
       }
     },
   );
@@ -236,8 +250,7 @@ export const registerScrumReadTools = (
     "scrum_get_template",
     {
       title: "Get Ceremony Template",
-      description:
-        `Fetch a Scrum ceremony artifact template by type.\n\n` +
+      description: `Fetch a Scrum ceremony artifact template by type.\n\n` +
         `Returns a markdown template pre-populated with sprint context. Fill in the ` +
         `blank sections before presenting to the team.\n\n` +
         `Args:\n` +
@@ -260,7 +273,10 @@ export const registerScrumReadTools = (
         const result = await getTemplateUseCase(backend, yml, params.artifact_type);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
-        return { content: [{ type: "text", text: formatError(err) }], isError: true };
+        return {
+          content: [{ type: "text", text: enrichError(err, { operation: "get_template" }) }],
+          isError: true,
+        };
       }
     },
   );

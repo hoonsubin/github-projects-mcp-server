@@ -199,17 +199,6 @@ ${diagram}
 
 ${unusedExportsSection}
 
-## Legend
-
-| Symbol | Meaning |
-|--------|---------|
-| \`<<Class>>\` | Exported class |
-| \`<<Interface>>\` | Exported interface |
-| \`<<Enum>>\` | Exported enum |
-| \`<<Function>>\` | Exported function |
-| \`+type name\` | Exported variable with type |
-| \`-->\` | Import dependency |
-
 ## Notes
 
 - Each class represents a TypeScript module

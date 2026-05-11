@@ -2,8 +2,8 @@
 // scripts/diagram/DependencyGraph.ts — Build dependency graph and detect unused exports
 // =============================================================================
 
-import { resolveImport } from "./resolveImport.ts";
-import { extractImportedNames } from "./ImportExtractor.ts";
+import { resolveImport } from "./helpers.ts";
+import { ImportExtractor } from "./ImportExtractor.ts";
 import { ExportKind } from "./ExportParser.ts";
 import type { ParsedModule } from "./DiagramStyler.ts";
 
@@ -66,9 +66,10 @@ export class DependencyGraph {
         const target = this.modules.find((m) => m.path === resolved);
         if (!target) continue;
 
-        const names = extractImportedNames(sourceContent, imp);
-        for (const name of names) {
-          importedNames.add(name);
+        const extractor = new ImportExtractor();
+        const infos = extractor.parse(sourceContent, imp);
+        for (const info of infos) {
+          importedNames.add(info.name);
         }
       }
     }

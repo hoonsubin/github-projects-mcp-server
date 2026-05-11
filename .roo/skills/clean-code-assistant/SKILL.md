@@ -5,8 +5,8 @@ description: >-
   functions/classes, designing class structures, handling errors, or writing
   tests.
   Trigger on: "is this clean?", "how do I improve this?", "the code smells", code pasted for
-  feedback, "this is a mess", "can you clean this up", "what's wrong with my
-  function". Apply Clean Code principles proactively — don't wait for explicit
+  feedback, "this is a mess", "can you clean this up", "what's wrong with my function", "clean code principals".
+  Apply Clean Code principles proactively — don't wait for explicit
   requests.
 ---
 

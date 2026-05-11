@@ -4,8 +4,7 @@
 
 import { ParsedModule, UnusedExport } from "./DependencyGraph.ts";
 import { ExportInfo, ExportKind } from "./ExportParser.ts";
-import { formatClassNameFromPath, sanitizeId } from "./NameFormatter.ts";
-import { resolveImport } from "./resolveImport.ts";
+import { formatClassNameFromPath, resolveImport, sanitizeId } from "./helpers.ts";
 import { DiagramStyler } from "./DiagramStyler.ts";
 
 // ── Options ────────────────────────────────────────────────────────────────────
@@ -64,15 +63,15 @@ export class ClassDiagramGenerator {
 
     // Call generateClassDefs once and share the result
     const styler = new DiagramStyler(this.options);
-    const { classDefs, moduleToFolder } = styler.generateClassDefs(this.modules);
+    const { folderClassDefs } = styler.generateClassDefs(this.modules);
 
     lines.push(...this.generateHeader());
     lines.push("");
-    lines.push(...this.generateClasses(moduleToFolder));
+    lines.push(...this.generateClasses());
     lines.push("");
     lines.push(...this.generateRelationships());
     lines.push("");
-    lines.push(...classDefs);
+    lines.push(...folderClassDefs);
 
     return lines.join("\n");
   }
@@ -81,13 +80,17 @@ export class ClassDiagramGenerator {
     return ["classDiagram", "    direction LR"];
   }
 
-  private generateClasses(moduleToFolder: Map<string, string>): string[] {
+  private generateClasses(): string[] {
     const lines: string[] = [];
 
+    // Since we're not passing moduleStyles anymore, we compute the folder name directly
     for (const mod of this.modules) {
       const fileName = mod.path.split("/").pop()!;
       const className = formatClassNameFromPath(fileName);
-      const folder = moduleToFolder.get(mod.path)!;
+
+      // Compute folder name from path (same logic as in original)
+      const pathParts = mod.path.split("/");
+      const folder = pathParts.length > 1 ? pathParts[pathParts.length - 2] : "root";
       const sanitizedFolder = sanitizeId(folder);
 
       // Use the folder's classDef for styling

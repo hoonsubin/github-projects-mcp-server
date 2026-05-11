@@ -3,7 +3,7 @@
 // =============================================================================
 
 import type { ExportInfo } from "./ExportParser.ts";
-import { sanitizeId } from "./NameFormatter.ts";
+import { formatClassNameFromPath, sanitizeId } from "./helpers.ts";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -12,6 +12,12 @@ export interface ParsedModule {
   imports: string[];
   exports: ExportInfo[];
   content?: string;
+}
+
+export interface ModuleStyle {
+  className: string;
+  folder: string;
+  classDef: string;
 }
 
 interface StylerOptions {
@@ -54,25 +60,21 @@ export class DiagramStyler {
   }
 
   /**
-   * Generate Mermaid classDef style declarations grouped by folder.
+   * Generate Mermaid classDef style declarations and module styling data.
    * Each folder gets a unique color from the palette, and each module
    * references its folder's classDef.
    */
   generateClassDefs(modules: ParsedModule[]): {
-    classDefs: string[];
-    folderToColor: Map<string, string>;
-    moduleToFolder: Map<string, string>;
+    moduleStyles: ModuleStyle[];
+    folderClassDefs: string[];
   } {
     // Group modules by their parent folder
     const folderToModules = new Map<string, ParsedModule[]>();
-    const moduleToFolder = new Map<string, string>();
 
     for (const mod of modules) {
       const pathParts = mod.path.split("/");
       // Get the parent folder (second-to-last part) or root if it's at root level
       const folder = pathParts.length > 1 ? pathParts[pathParts.length - 2] : "root";
-
-      moduleToFolder.set(mod.path, folder);
 
       if (!folderToModules.has(folder)) {
         folderToModules.set(folder, []);
@@ -80,24 +82,38 @@ export class DiagramStyler {
       folderToModules.get(folder)!.push(mod);
     }
 
-    // Generate classDef entries for each folder
-    const classDefs: string[] = [];
+    // Generate classDef entries for each folder and module styles
+    const folderClassDefs: string[] = [];
+    const moduleStyles: ModuleStyle[] = [];
     const folderToColor = new Map<string, string>();
 
     let colorIndex = 0;
-    for (const [folder] of folderToModules.entries()) {
+    for (const [folder, folderModules] of folderToModules.entries()) {
       const color = this.palette[colorIndex % this.palette.length];
       folderToColor.set(folder, color);
 
       // Sanitize the folder name for use as a Mermaid ID
       const sanitizedFolder = sanitizeId(folder);
-      classDefs.push(
+      folderClassDefs.push(
         `    classDef ${sanitizedFolder} fill:${color},stroke:#333,stroke-width:2px,color:#000;`,
       );
+
+      // Create module styles for each module in this folder
+      for (const mod of folderModules) {
+        const fileName = mod.path.split("/").pop()!;
+        const className = formatClassNameFromPath(fileName);
+
+        moduleStyles.push({
+          className,
+          folder: sanitizedFolder,
+          classDef:
+            `    classDef ${sanitizedFolder} fill:${color},stroke:#333,stroke-width:2px,color:#000;`,
+        });
+      }
 
       colorIndex++;
     }
 
-    return { classDefs, folderToColor, moduleToFolder };
+    return { moduleStyles, folderClassDefs };
   }
 }

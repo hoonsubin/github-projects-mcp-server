@@ -121,8 +121,8 @@ export class GitHubProjectBackend implements ProjectBackend {
     statusValues: string[];
     priorityValues: string[];
   }): Promise<PlatformState> {
-    const liveStatusOptions = Object.values(this.config.statusOptions);
-    const livePriorityOptions = Object.values(this.config.priorityOptions);
+    const liveStatusOptions = Object.values(this.config.statusOptions); // display names
+    const livePriorityOptions = Object.values(this.config.priorityOptions); // display names
 
     const missingStatusOptions = declaredVocabulary.statusValues.filter(
       (v) => !liveStatusOptions.includes(v),
@@ -340,7 +340,8 @@ export class GitHubProjectBackend implements ProjectBackend {
   private async fetchRepoNodeId(): Promise<string> {
     // Fetch the repository node ID from GitHub GraphQL API
     const result = await this.gh.graphql<{ repository?: { id: string } }>(
-      `query { repository(owner: "${this.owner}", name: "${this.repo}") { id } }`,
+      `query GetRepo($owner: String!, $repo: String!) { repository(owner: $owner, name: $repo) { id } }`,
+      { owner: this.owner, repo: this.repo },
     );
     const nodeId = result?.repository?.id;
     if (!nodeId) {
@@ -371,7 +372,8 @@ export class GitHubProjectBackend implements ProjectBackend {
 
   private async resolveUserNodeId(login: string): Promise<string> {
     const result = await this.gh.graphql<{ user?: { id: string } }>(
-      `query { user(login: "${login}") { id } }`,
+      `query GetUser($login: String!) { user(login: $login) { id } }`,
+      { login },
     );
     const nodeId = result?.user?.id;
     if (!nodeId) {
@@ -595,11 +597,19 @@ export class GitHubProjectBackend implements ProjectBackend {
       { projectId: this.config.projectId, contentId: issue.id },
     );
 
-    return {
+    // After Step 6, after getting issue ref:
+    const storyRef = {
       number: issue.number,
       id: issue.id,
       itemId: addItemResult.addProjectV2ItemById?.item?.id,
     };
+
+    // Set priority as board field
+    if (input.priority) {
+      await this.setField(storyRef, "priority", input.priority);
+    }
+
+    return storyRef;
   }
 
   async updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void> {

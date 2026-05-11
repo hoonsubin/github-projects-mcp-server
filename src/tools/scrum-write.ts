@@ -27,7 +27,7 @@ import {
 } from "../schemas/scrum.ts";
 import { GraphQLQuerySchema } from "../schemas/inputs.ts";
 import { isMutationQuery } from "../services/mutation-validator.ts";
-import { formatError, graphql } from "../services/github.ts";
+import { enrichError, graphql } from "../services/github.ts";
 import { z } from "zod";
 
 // ── Helper types ──────────────────────────────────────────────────────────────
@@ -82,7 +82,7 @@ export function registerScrumWriteTools(
         };
       } catch (err) {
         return {
-          content: [{ type: "text", text: formatError(err) }],
+          content: [{ type: "text", text: enrichError(err, { operation: "add_vocabulary" }) }],
           isError: true,
         };
       }
@@ -125,7 +125,7 @@ export function registerScrumWriteTools(
         };
       } catch (err) {
         return {
-          content: [{ type: "text", text: formatError(err) }],
+          content: [{ type: "text", text: enrichError(err, { operation: "set_field" }) }],
           isError: true,
         };
       }
@@ -174,7 +174,7 @@ export function registerScrumWriteTools(
         };
       } catch (err) {
         return {
-          content: [{ type: "text", text: formatError(err) }],
+          content: [{ type: "text", text: enrichError(err, { operation: "update_story" }) }],
           isError: true,
         };
       }
@@ -218,7 +218,10 @@ export function registerScrumWriteTools(
           try {
             await backend.setField(storyRef, "sprint", params.sprint);
           } catch (err) {
-            failedFields.push({ field: "sprint", reason: formatError(err) });
+            failedFields.push({
+              field: "sprint",
+              reason: enrichError(err, { operation: "create_story" }),
+            });
           }
         }
 
@@ -226,7 +229,10 @@ export function registerScrumWriteTools(
           try {
             await backend.setField(storyRef, "story_points", params.story_points);
           } catch (err) {
-            failedFields.push({ field: "story_points", reason: formatError(err) });
+            failedFields.push({
+              field: "story_points",
+              reason: enrichError(err, { operation: "create_story" }),
+            });
           }
         }
 
@@ -234,7 +240,10 @@ export function registerScrumWriteTools(
           try {
             await backend.setField(storyRef, "priority", params.priority);
           } catch (err) {
-            failedFields.push({ field: "priority", reason: formatError(err) });
+            failedFields.push({
+              field: "priority",
+              reason: enrichError(err, { operation: "create_story" }),
+            });
           }
         }
 
@@ -246,7 +255,10 @@ export function registerScrumWriteTools(
           storyDetail = fetchedDetail.story;
         } catch (readErr) {
           // Story was created successfully — return partial success with issue ref
-          failedFields.push({ field: "read", reason: formatError(readErr) });
+          failedFields.push({
+            field: "read",
+            reason: enrichError(readErr, { operation: "create_story" }),
+          });
           storyDetail = { number: storyRef.number, id: storyRef.id }; // minimal shape
         }
 
@@ -268,7 +280,7 @@ export function registerScrumWriteTools(
         };
       } catch (err) {
         return {
-          content: [{ type: "text", text: formatError(err) }],
+          content: [{ type: "text", text: enrichError(err, { operation: "create_story" }) }],
           isError: true,
         };
       }
@@ -309,7 +321,10 @@ export function registerScrumWriteTools(
               await backend.setField(story.ref, "sprint", null);
               assigned.push(story.ref);
             } catch (err) {
-              skipped.push({ ref: story.ref, reason: formatError(err) });
+              skipped.push({
+                ref: story.ref,
+                reason: enrichError(err, { operation: "plan_sprint" }),
+              });
             }
           }
         }
@@ -320,7 +335,7 @@ export function registerScrumWriteTools(
             await backend.setField(ref, "sprint", params.sprint);
             assigned.push(ref);
           } catch (err) {
-            skipped.push({ ref, reason: formatError(err) });
+            skipped.push({ ref, reason: enrichError(err, { operation: "plan_sprint" }) });
           }
         }
 
@@ -335,7 +350,7 @@ export function registerScrumWriteTools(
         };
       } catch (err) {
         return {
-          content: [{ type: "text", text: formatError(err) }],
+          content: [{ type: "text", text: enrichError(err, { operation: "create_story" }) }],
           isError: true,
         };
       }
@@ -408,7 +423,7 @@ export function registerScrumWriteTools(
         };
       } catch (err) {
         return {
-          content: [{ type: "text", text: formatError(err) }],
+          content: [{ type: "text", text: enrichError(err, { operation: "log_impediment" }) }],
           isError: true,
         };
       }
@@ -456,7 +471,7 @@ export function registerScrumWriteTools(
         };
       } catch (err) {
         return {
-          content: [{ type: "text", text: formatError(err) }],
+          content: [{ type: "text", text: enrichError(err, { operation: "github_graphql" }) }],
           isError: true,
         };
       }

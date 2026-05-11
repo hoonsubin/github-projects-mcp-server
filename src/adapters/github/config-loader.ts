@@ -431,11 +431,11 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
     );
   }
 
-  // ── Step 7: Build canonical → option ID maps ────────────────────────────────
+  // ── Step 7: Build canonical → display name maps ────────────────────────────
   //
   // We join in two hops:
   //   canonical key (e.g. "done") → display name (e.g. "Done") via *_display
-  //   display name → option ID via live field nodes from GitHub
+  // The server resolves the ID-to-name mapping internally; agents should see display names.
 
   const statusOptions: Record<string, string> = {};
   const priorityOptions: Record<string, string> = {};
@@ -450,7 +450,7 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
       const displayToId = new Map(ssNode.options.map((o) => [o.name, o.id]));
       for (const [canonicalKey, displayName] of Object.entries(patchedGhConfig.status_display)) {
         const optionId = displayToId.get(displayName);
-        if (optionId) statusOptions[canonicalKey] = optionId;
+        if (optionId) statusOptions[canonicalKey] = displayName; // Store display name, not ID
       }
     }
 
@@ -458,7 +458,7 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
       const displayToId = new Map(ssNode.options.map((o) => [o.name, o.id]));
       for (const [canonicalKey, displayName] of Object.entries(patchedGhConfig.priority_display)) {
         const optionId = displayToId.get(displayName);
-        if (optionId) priorityOptions[canonicalKey] = optionId;
+        if (optionId) priorityOptions[canonicalKey] = displayName; // Store display name, not ID
       }
     }
   }
