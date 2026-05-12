@@ -10,7 +10,8 @@
 // =============================================================================
 
 import { parse } from "@std/yaml";
-import type { GitHubBackendConfig, IterationEntry, ScrumConfigYml } from "../../types.ts";
+import type { GitHubBackendConfig, IterationEntry } from "./types.ts";
+import type { ScrumConfigYml } from "../../domain/config.ts";
 
 // ── Runtime types ────────────────────────────────────────────────────────────
 
@@ -364,6 +365,7 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
   const fieldsResult = await github.graphql<ProjectFieldsResponse>(GET_PROJECT_FIELDS_QUERY, {
     login: owner,
     number: projectNumber,
+    // todo: `!isUser` === `isOrg`. No need for the redundant check
     isUser: ownerType === "user",
     isOrg: ownerType === "org",
   });

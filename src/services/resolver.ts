@@ -6,7 +6,7 @@
 // =============================================================================
 
 import type { RuntimeConfig } from "../adapters/github/config-loader.ts";
-import type { SprintRef, StoryRef } from "../types.ts";
+import type { SprintRef, StoryRef } from "../domain/types.ts";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

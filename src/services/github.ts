@@ -1,4 +1,4 @@
-import type { GraphQLResponse } from "../types.ts";
+import type { GraphQLResponse } from "../adapters/github/types.ts";
 import { log } from "./logger.ts";
 
 const GITHUB_API_URL = "https://api.github.com/graphql";

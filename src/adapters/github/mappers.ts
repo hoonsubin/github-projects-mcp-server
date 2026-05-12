@@ -1,14 +1,14 @@
 // =============================================================================
 // src/adapters/github/mappers.ts — GitHub raw types → domain types mappers
 //
-// Pure functions: take ProjectV2Item (or narrow input shapes) and return domain types.
+// Pure functions: take ProjectItem (or narrow input shapes) and return domain types.
 // =============================================================================
 
 import type { RuntimeConfig } from "./config-loader.ts";
-import type { ProjectV2Item, Story } from "../../types.ts";
+import type { Story } from "../../domain/types.ts";
 import type { BurndownStoryInput } from "../../scrum/ports.ts";
 import { classifyLabels, type StoryTypeLabel } from "../../domain/rules/labels.ts";
-import type { BoardFields, Comment, FieldValueNode, LinkedPr } from "./raw-types.ts";
+import type { BoardFields, Comment, FieldValueNode, LinkedPr, ProjectItem } from "./types.ts";
 
 // ── Local input shapes (private — only for function parameter types) ───────────
 
@@ -100,7 +100,7 @@ const extractBoardFields = (
  * DraftIssues are included: key is null, labels/url/epic are empty/null.
  */
 export const buildStoryFromRaw = (
-  item: ProjectV2Item,
+  item: ProjectItem,
   config: RuntimeConfig,
 ): Story | null => {
   const content = item.content;
@@ -221,11 +221,11 @@ export const buildLinkedPrList = (nodes: TimelineItemInput[]): LinkedPr[] =>
 // ── Burndown projection ────────────────────────────────────────────────────────
 
 /**
- * Project a ProjectV2Item to the four fields burndown computation needs.
+ * Project a ProjectItem to the four fields burndown computation needs.
  * Returns null for DraftIssues and items with no issue content.
  */
 export const buildBurndownStoryInput = (
-  item: ProjectV2Item,
+  item: ProjectItem,
   config: RuntimeConfig,
 ): BurndownStoryInput | null => {
   const content = item.content;

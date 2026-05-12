@@ -91,26 +91,6 @@ classDiagram
     }
 
     class Types:::root {
-        interface StoryRef
-        type SprintRef
-        interface Story
-        interface IterationEntry
-        type ItemContentType
-        interface ProjectV2ItemFieldValue
-        interface ProjectV2IssueContent
-        interface ProjectV2PRContent
-        interface ProjectV2DraftIssueContent
-        interface ProjectV2Item
-        interface GraphQLResponse
-        interface GitHubBackendConfig
-        interface ScrumConfigYml
-        interface BurndownResponse
-        interface BurndownSprintMeta
-        interface BurndownDayPoint
-        interface IdealDayPoint
-        interface BurndownStory
-        type ArtifactType
-        type TemplateResponse
     }
 
     class Queries:::github {
@@ -128,6 +108,21 @@ classDiagram
         +buildBurndownStoryInput()
     }
 
+    class Types:::github {
+        interface GitHubBackendConfig
+        interface GraphQLResponse
+        type ItemContentType
+        interface ProjectItemIssueContent
+        interface ProjectItemPRContent
+        interface ProjectItemDraftContent
+        interface ProjectItem
+        interface ItemFieldValue
+        interface FieldValueNode
+        interface BoardFields
+        interface Comment
+        interface LinkedPr
+    }
+
     class Config_Loader:::github {
         interface RuntimeConfig
         +loadConfig()
@@ -138,13 +133,23 @@ classDiagram
     }
 
     class Raw_Types:::github {
-        interface FieldValueNode
-        interface BoardFields
-        interface Comment
-        interface LinkedPr
     }
 
     class Index:::root {
+    }
+
+    class Types:::domain {
+        interface StoryRef
+        type SprintRef
+        interface Story
+        interface IterationEntry
+        interface BurndownResponse
+        interface BurndownSprintMeta
+        interface BurndownDayPoint
+        interface IdealDayPoint
+        interface BurndownStory
+        type ArtifactType
+        type TemplateResponse
     }
 
     class Acceptance_Criteria:::rules {
@@ -158,6 +163,10 @@ classDiagram
     class Labels:::rules {
         type StoryTypeLabel
         +classifyLabels()
+    }
+
+    class Config:::domain {
+        interface ScrumConfigYml
     }
 
     class Github:::services {
@@ -232,14 +241,16 @@ classDiagram
     Scrum_Write --> Github : "imports"
     Scrum --> Index : "imports"
     Inputs --> Index : "imports"
+    Types --> Config : "imports"
     Queries --> Index : "imports"
     Mappers --> Config_Loader : "imports"
     Mappers --> Types : "imports"
     Mappers --> Ports : "imports"
     Mappers --> Labels : "imports"
-    Mappers --> Raw_Types : "imports"
+    Types --> Github_Types : "imports"
     Config_Loader --> Index : "imports"
     Config_Loader --> Types : "imports"
+    Config_Loader --> Config : "imports"
     Backend --> Github : "imports"
     Backend --> Config_Loader : "imports"
     Backend --> Resolver : "imports"
@@ -256,6 +267,7 @@ classDiagram
     Index --> Logger : "imports"
     Index --> Ports : "imports"
     Index --> Types : "imports"
+    Config --> Types : "imports"
     Github --> Types : "imports"
     Github --> Logger : "imports"
     Pagination --> Config_Loader : "imports"
@@ -268,8 +280,9 @@ classDiagram
     classDef schemas fill:#cfc,stroke:#333,stroke-width:2px,color:#000;
     classDef root fill:#ffc,stroke:#333,stroke-width:2px,color:#000;
     classDef github fill:#fcc,stroke:#333,stroke-width:2px,color:#000;
-    classDef rules fill:#cff,stroke:#333,stroke-width:2px,color:#000;
-    classDef services fill:#fcf,stroke:#333,stroke-width:2px,color:#000;
+    classDef domain fill:#cff,stroke:#333,stroke-width:2px,color:#000;
+    classDef rules fill:#fcf,stroke:#333,stroke-width:2px,color:#000;
+    classDef services fill:#0ff,stroke:#333,stroke-width:2px,color:#000;
 ```
 
 

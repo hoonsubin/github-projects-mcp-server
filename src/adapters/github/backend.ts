@@ -37,16 +37,14 @@ import type {
   StoryUpdates,
   VocabularyKind,
 } from "../../scrum/ports.ts";
+import type { IterationEntry, SprintRef, Story, StoryRef } from "../../domain/types.ts";
 import type {
-  IterationEntry,
-  ProjectV2IssueContent,
-  ProjectV2Item,
-  ProjectV2ItemFieldValue,
-  ProjectV2PRContent,
-  SprintRef,
-  Story,
-  StoryRef,
-} from "../../types.ts";
+  GitHubBackendConfig,
+  ItemFieldValue,
+  ProjectItemIssueContent,
+  ProjectItem,
+  ProjectItemPRContent,
+} from "./types.ts";
 
 // ── Helper types ─────────────────────────────────────────────────────────────
 
@@ -214,7 +212,7 @@ export class GitHubProjectBackend implements ProjectBackend {
       const stories = iterItems
         .filter((item) => item.content !== null && item.content.__typename !== "DraftIssue")
         .map((item) => {
-          const content = item.content as ProjectV2IssueContent | ProjectV2PRContent;
+          const content = item.content as ProjectItemIssueContent | ProjectItemPRContent;
           const ptsFv = storyPointsFieldId
             ? item.fieldValues.nodes.find((v) => v.field?.id === storyPointsFieldId)
             : null;
@@ -280,7 +278,7 @@ export class GitHubProjectBackend implements ProjectBackend {
 
   async resolveCompletionTimestamps(input: BurndownInput): Promise<CompletionMap> {
     const doneStatusName = this.resolveTerminalStatusDisplayName();
-    const statusFieldName = this.config.yml.backends.github?.field_mapping.status ?? "Status";
+    const statusFieldName = (this.config.yml.backends.github as GitHubBackendConfig).field_mapping.status ?? "Status";
     const nodeIdToNumber = new Map(
       input.stories.map((s) => [s.number, s.number]), // already has number
     );
@@ -919,7 +917,7 @@ export class GitHubProjectBackend implements ProjectBackend {
 
   // ── Private helpers ──────────────────────────────────────────────────────
 
-  private async fetchAllItems(): Promise<ProjectV2Item[]> {
+  private async fetchAllItems(): Promise<ProjectItem[]> {
     const fetcher = new PaginatedProjectItemFetcher(this.config, { graphql: this.gh.graphql }, {
       includeIssueContent: true,
       includePRContent: true,
@@ -956,7 +954,7 @@ export class GitHubProjectBackend implements ProjectBackend {
    * status_display mapping. Falls back to `fallback` if the key is not found.
    */
   private resolveStatusDisplayName(canonicalKey: string, fallback: string): string {
-    const statusDisplay = this.config.yml.backends.github?.status_display;
+    const statusDisplay = (this.config.yml.backends.github as GitHubBackendConfig).status_display;
     if (!statusDisplay) return fallback;
     return statusDisplay[canonicalKey] ?? fallback;
   }
@@ -1099,5 +1097,5 @@ interface GetIssueDetailsResponse {
 }
 
 interface GetItemFieldsResponse {
-  node?: { fieldValues?: { nodes: ProjectV2ItemFieldValue[] } } | null;
+  node?: { fieldValues?: { nodes: ItemFieldValue[] } } | null;
 }

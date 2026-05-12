@@ -14,12 +14,13 @@
 
 import type { RuntimeConfig } from "../adapters/github/config-loader.ts";
 import type {
+  GitHubBackendConfig,
   ItemContentType,
-  ProjectV2DraftIssueContent,
-  ProjectV2IssueContent,
-  ProjectV2Item,
-  ProjectV2PRContent,
-} from "../types.ts";
+  ProjectItemDraftContent,
+  ProjectItemIssueContent,
+  ProjectItem,
+  ProjectItemPRContent,
+} from "../adapters/github/types.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -66,7 +67,7 @@ interface ProjectItemsResponse {
   };
 }
 
-/** Raw item from GraphQL — mapped to ProjectV2Item by the fetcher. */
+/** Raw item from GraphQL — mapped to ProjectItem by the fetcher. */
 interface RawProjectItem {
   id: string;
   type: ItemContentType;
@@ -80,9 +81,9 @@ interface RawProjectItem {
 }
 
 type RawContent =
-  | { __typename: "Issue" } & Omit<ProjectV2IssueContent, "__typename">
-  | { __typename: "PullRequest" } & Omit<ProjectV2PRContent, "__typename">
-  | { __typename: "DraftIssue" } & Omit<ProjectV2DraftIssueContent, "__typename">
+  | { __typename: "Issue" } & Omit<ProjectItemIssueContent, "__typename">
+  | { __typename: "PullRequest" } & Omit<ProjectItemPRContent, "__typename">
+  | { __typename: "DraftIssue" } & Omit<ProjectItemDraftContent, "__typename">
   | null;
 
 interface RawFieldValue {
@@ -257,7 +258,7 @@ export class PaginatedProjectItemFetcher {
   private hasNextPage: boolean = true;
   private endCursor: string | null = null;
   private totalCount: number = 0;
-  private buffer: ProjectV2Item[] = [];
+  private buffer: ProjectItem[] = [];
   private bufferIndex: number = 0;
   private query: string;
   private login: string;
@@ -277,7 +278,7 @@ export class PaginatedProjectItemFetcher {
     private github: { graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> },
     private options: ItemFetchConfig = {},
   ) {
-    const gh = config.yml.backends.github;
+    const gh = config.yml.backends.github as GitHubBackendConfig | undefined;
     if (!gh) throw new Error("No GitHub backend configured in config.yml.");
     this.login = gh.owner;
     this.projectNumber = gh.project_number;
@@ -324,15 +325,15 @@ export class PaginatedProjectItemFetcher {
     this.bufferIndex = 0;
   }
 
-  /** Convert a raw GraphQL item to a typed ProjectV2Item. */
-  private _rawToItem(raw: RawProjectItem): ProjectV2Item {
+  /** Convert a raw GraphQL item to a typed ProjectItem. */
+  private _rawToItem(raw: RawProjectItem): ProjectItem {
     return {
       id: raw.id,
       type: raw.type,
       createdAt: raw.createdAt,
       updatedAt: raw.updatedAt,
       isArchived: raw.isArchived,
-      content: raw.content as ProjectV2Item["content"],
+      content: raw.content as ProjectItem["content"],
       fieldValues: {
         nodes: (raw.fieldValues?.nodes ?? []).map((fv) => ({
           __typename: fv.__typename,
@@ -357,7 +358,7 @@ export class PaginatedProjectItemFetcher {
   }
 
   /** AsyncIterator protocol — enables `for await` syntax. */
-  async *[Symbol.asyncIterator](): AsyncIterator<ProjectV2Item> {
+  async *[Symbol.asyncIterator](): AsyncIterator<ProjectItem> {
     while (this.hasNextPage || this.bufferIndex < this.buffer.length) {
       if (this.bufferIndex >= this.buffer.length) {
         await this._fetchPage();
@@ -371,12 +372,12 @@ export class PaginatedProjectItemFetcher {
    * Collect all items (optionally filtered).
    *
    * @param filter - Optional predicate to filter items. If omitted, all items are collected.
-   * @returns Array of matching ProjectV2Item objects
+   * @returns Array of matching ProjectItem objects
    */
   async collect(
-    filter?: (item: ProjectV2Item) => boolean,
-  ): Promise<ProjectV2Item[]> {
-    const results: ProjectV2Item[] = [];
+    filter?: (item: ProjectItem) => boolean,
+  ): Promise<ProjectItem[]> {
+    const results: ProjectItem[] = [];
     for await (const item of this) {
       if (!filter || filter(item)) {
         results.push(item);
@@ -393,12 +394,12 @@ export class PaginatedProjectItemFetcher {
 /**
  * Check if a project item is in the backlog (no sprint assignment).
  *
- * @param item - ProjectV2Item to check
+ * @param item - ProjectItem to check
  * @param sprintFieldId - The GraphQL field ID for the sprint field
  * @returns true if the item has no sprint assigned
  */
 export const isBacklogItem = (
-  item: ProjectV2Item,
+  item: ProjectItem,
   sprintFieldId: string,
 ): boolean => {
   const sprintValue = item.fieldValues.nodes.find(

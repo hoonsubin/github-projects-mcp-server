@@ -1,3 +1,7 @@
 {
-  "recommendations": ["rooveterinaryinc.roo-cline", "pomdtr.excalidraw-editor"]
+  "recommendations": [
+    "rooveterinaryinc.roo-cline",
+    "pomdtr.excalidraw-editor",
+    "bierner.markdown-mermaid"
+  ]
 }
