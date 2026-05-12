@@ -5,7 +5,13 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 uv python install 3.12
 
-uv venv -n
+npm install -g @earendil-works/pi-coding-agent
+
+# Ensure user-local Python bin is on PATH for shells started later
+grep -qxF 'export PATH="$HOME/.local/bin:$PATH"' ~/.bashrc || \
+  echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+
+export PATH="$HOME/.local/bin:$PATH"
 
 uv tool install mempalace
 
@@ -13,12 +19,6 @@ uv tool install mempalace
 pi install npm:mempalace-pi
 
 deno install
-
-# Ensure user-local Python bin is on PATH for shells started later
-grep -qxF 'export PATH="$HOME/.local/bin:$PATH"' ~/.bashrc || \
-  echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-
-export PATH="$HOME/.local/bin:$PATH"
 
 if [ ! -f "$HOME/.mempalace/config.yaml" ]; then
   mempalace onboard \

@@ -5,15 +5,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates gnupg procps \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/* \
     && node --version && npm --version
-
-RUN npm install -g \
-      @earendil-works/pi-coding-agent \
-      npm@latest \
-    && pi --version && npm install -g acpx@latest
 
 # ── 4. vscode user ────────────────────────────────────────────────────────────
 ARG USERNAME=vscode

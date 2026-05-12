@@ -9,9 +9,6 @@
   // uv and Python are bootstrapped in postCreateCommand via the official uv installer.
   "features": {
     "ghcr.io/devcontainers-extra/features/deno:1": {},
-    "ghcr.io/devcontainers/features/node:2.0.0": {
-      "version": "lts"
-    },
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
 
@@ -56,8 +53,7 @@
     }
   },
 
-  // Expose MCP server + Qdrant ports
-  "forwardPorts": [3000, 6333, 6334],
+  "forwardPorts": [3000, 6333, 6334, 8080],
   "portsAttributes": {
     "3000": {
       "label": "MCP Server",
@@ -69,6 +65,10 @@
     },
     "6334": {
       "label": "Qdrant gRPC",
+      "onAutoForward": "silent"
+    },
+    "8080": {
+      "label": "SearXNG",
       "onAutoForward": "silent"
     }
   },
