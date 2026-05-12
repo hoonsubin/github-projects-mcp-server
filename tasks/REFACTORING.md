@@ -79,15 +79,15 @@ flowchart TD
 
 ### Write tools (7)
 
-| Tool                      | Purpose                                                                                     |
-| ------------------------- | ------------------------------------------------------------------------------------------- |
-| `scrum_create_story`      | Create a story and optionally place it on the board                                         |
-| `scrum_update_story`      | Edit story content (title, body, labels, assignees, epic)                                   |
-| `scrum_set_field`         | Single entry point for all board-field mutations                                            |
-| `scrum_plan_sprint`       | Bulk-assign stories to a sprint                                                             |
-| `scrum_log_impediment`    | Create an impediment; optionally link it to an affected story or sprint (or log as orphan)  |
-| `scrum_update_impediment` | Advance an impediment lifecycle: `open → in_progress → resolved`                            |
-| `scrum_add_vocabulary`    | Idempotent add of a field option or label to the platform schema                            |
+| Tool                      | Purpose                                                                                    |
+| ------------------------- | ------------------------------------------------------------------------------------------ |
+| `scrum_create_story`      | Create a story and optionally place it on the board                                        |
+| `scrum_update_story`      | Edit story content (title, body, labels, assignees, epic)                                  |
+| `scrum_set_field`         | Single entry point for all board-field mutations                                           |
+| `scrum_plan_sprint`       | Bulk-assign stories to a sprint                                                            |
+| `scrum_log_impediment`    | Create an impediment; optionally link it to an affected story or sprint (or log as orphan) |
+| `scrum_update_impediment` | Advance an impediment lifecycle: `open → in_progress → resolved`                           |
+| `scrum_add_vocabulary`    | Idempotent add of a field option or label to the platform schema                           |
 
 ### Deprecated
 
@@ -105,17 +105,17 @@ All backend abstraction (Phase 5), tool extraction (Phase 2), write tools (Phase
 
 Remaining open work lives in §5 (architectural debt) and §6 (pending feature work).
 
-| File                                    | State       | Notes                                                                       |
-| --------------------------------------- | ----------- | --------------------------------------------------------------------------- |
-| `src/scrum/get-sprint.ts`               | 🟡 Redesign | See §6b — `"all"` param, `StoryListing` return, `impediments` on snapshot   |
-| `src/scrum/get-backlog.ts`              | 🟡 Redesign | Active-item filter + `orphan_impediments` pending — see §6b                 |
-| `src/scrum/get-history.ts`              | 🟡 Redesign | Return shape alignment with `SprintSnapshot` + `impediments` — see §6b      |
-| `src/scrum/ports.ts`                    | 🟡 Redesign | Method signatures update pending — see §6b                                  |
-| `src/tools/scrum-read.ts`               | 🟡 Redesign | Tool descriptions + handlers update pending — see §6b                       |
-| `src/tools/scrum-write.ts`              | 🟡 Redesign | `scrum_log_impediment` signature change; add `scrum_update_impediment`       |
-| `src/adapters/github/backend.ts`        | 🟡 Debt     | Class too large; smells documented in §6a                                   |
-| `src/types.ts`                          | 🔴 Delete   | Tombstoned. Run `rm src/types.ts` locally.                                  |
-| `src/adapters/github/raw-types.ts`      | 🔴 Delete   | Tombstoned. Run `rm src/adapters/github/raw-types.ts` locally.              |
+| File                               | State       | Notes                                                                     |
+| ---------------------------------- | ----------- | ------------------------------------------------------------------------- |
+| `src/scrum/get-sprint.ts`          | 🟡 Redesign | See §6b — `"all"` param, `StoryListing` return, `impediments` on snapshot |
+| `src/scrum/get-backlog.ts`         | 🟡 Redesign | Active-item filter + `orphan_impediments` pending — see §6b               |
+| `src/scrum/get-history.ts`         | 🟡 Redesign | Return shape alignment with `SprintSnapshot` + `impediments` — see §6b    |
+| `src/scrum/ports.ts`               | 🟡 Redesign | Method signatures update pending — see §6b                                |
+| `src/tools/scrum-read.ts`          | 🟡 Redesign | Tool descriptions + handlers update pending — see §6b                     |
+| `src/tools/scrum-write.ts`         | 🟡 Redesign | `scrum_log_impediment` signature change; add `scrum_update_impediment`    |
+| `src/adapters/github/backend.ts`   | 🟡 Debt     | Class too large; smells documented in §6a                                 |
+| `src/types.ts`                     | 🔴 Delete   | Tombstoned. Run `rm src/types.ts` locally.                                |
+| `src/adapters/github/raw-types.ts` | 🔴 Delete   | Tombstoned. Run `rm src/adapters/github/raw-types.ts` locally.            |
 
 ---
 
@@ -240,7 +240,7 @@ interface ImpedimentListing {
   description: string;
   status: "open" | "in_progress" | "resolved";
   raised_by: string | null;
-  raised_at: string;      // ISO-8601
+  raised_at: string; // ISO-8601
   resolved_at: string | null;
 }
 
@@ -406,28 +406,28 @@ No use-case unit tests exist. All current tests are integration-level. Phase 5 s
 
 ## 7. Design Decisions
 
-| Topic                                   | Decision                                                                                                                                                                                                                  |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Epic field**                          | Maps to GitHub `Milestone`. `scrum_update_story` creates the Milestone if not found.                                                                                                                                      |
-| **Assignee writes**                     | Use `updateIssue` mutation only — not a separate project field.                                                                                                                                                           |
-| **Sprint "next" resolution**            | The scheduled iteration immediately after the active one, by iteration order.                                                                                                                                             |
-| **Sprint "all" resolution**             | Every iteration not in `config.iterations.completed` at call time.                                                                                                                                                        |
-| **`github_graphql` tool**               | Kept, deprecated. Mutations blocked at the tool level.                                                                                                                                                                    |
-| **Config file location**                | `.github/scrum/config.yml` in the repo — fetched via GitHub API at invocation time.                                                                                                                                       |
-| **Caching**                             | No server-side config cache in v1. Each tool invocation calls `loadConfig`.                                                                                                                                               |
-| **Stateless server**                    | No shared mutable state. All handlers call `loadConfig` at invocation time.                                                                                                                                               |
-| **Backend decoupling mode**             | Source-level (single Deno process). `index.ts` is the only file that knows the concrete implementation.                                                                                                                   |
-| **Listing tools return `StoryListing`** | Full `Story` (body, AC, comments, linked PRs) is only returned by `scrum_get_story`. All listing tools return `StoryListing`.                                                                                             |
-| **`statusOptions` map shape**           | `{ displayName → optionId }` — keys are display names (what the agent passes), values are GitHub internal option IDs (what mutations need).                                                                               |
-| **Active item filter**                  | Listing tools silently exclude archived items and items in terminal status belonging to completed sprints. No parameter needed; history is the only window into completed work.                                           |
-| **`scrum_get_history` shape parity**    | Returns `SprintSnapshot[]` — same structure as `scrum_get_sprint("all")`. History-specific stats are additions within `SprintSnapshot.totals`.                                                                            |
-| **`StoryRef` id-only model**            | `StoryRef` contains a single field: `id: string` (opaque `PVTI_...` handle). `Story.key` is display-only (human-readable issue number, null for Draft Issues). Lookup-by-key (`scrum_find_story`) is out of scope for v1. |
-| **Draft Issues in `StoryRef`**          | `resolveStory` handles Draft Issues: `issueId` and `issueNumber` return `null`. Write operations requiring a real Issue throw a clear error prompting conversion.                                                         |
-| **Impediment as first-class artifact**  | `impediment` is NOT a `StoryType`. Impediments are a separate artifact with `ImpedimentRef`, `ImpedimentListing`, and a 3-state lifecycle (`open → in_progress → resolved`). Surface: `scrum_get_story.impediments`, `SprintSnapshot.impediments`, `scrum_get_backlog.orphan_impediments`. |
-| **`scrum_log_impediment.affects`**      | Optional `{ story?: StoryRef; sprint?: SprintRef }`. At most one sub-field. Omit to log a project-level orphan. Bidirectional cross-reference created atomically.                                                          |
-| **Impediment lifecycle writes**         | Dedicated `scrum_update_impediment` tool handles `open → in_progress → resolved`. `scrum_set_field` is not overloaded — story and impediment artifacts remain distinct at the tool surface.                               |
-| **`ScrumConfig` (was `ScrumConfigYml`)** | Renamed in Phase C. All use-case signatures receive `scrumConfig: ScrumConfig`. Adapter accesses GitHub fields via `as GitHubBackendConfig`; use-case layer uses inline `type GhDisplay` shape cast.                     |
-| **`src/types.ts` and `raw-types.ts` removal** | Tombstoned in Phases B/C. Physical `rm` required locally. All types live at their architectural layer.                                                                                                              |
+| Topic                                         | Decision                                                                                                                                                                                                                                                                                   |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Epic field**                                | Maps to GitHub `Milestone`. `scrum_update_story` creates the Milestone if not found.                                                                                                                                                                                                       |
+| **Assignee writes**                           | Use `updateIssue` mutation only — not a separate project field.                                                                                                                                                                                                                            |
+| **Sprint "next" resolution**                  | The scheduled iteration immediately after the active one, by iteration order.                                                                                                                                                                                                              |
+| **Sprint "all" resolution**                   | Every iteration not in `config.iterations.completed` at call time.                                                                                                                                                                                                                         |
+| **`github_graphql` tool**                     | Kept, deprecated. Mutations blocked at the tool level.                                                                                                                                                                                                                                     |
+| **Config file location**                      | `.github/scrum/config.yml` in the repo — fetched via GitHub API at invocation time.                                                                                                                                                                                                        |
+| **Caching**                                   | No server-side config cache in v1. Each tool invocation calls `loadConfig`.                                                                                                                                                                                                                |
+| **Stateless server**                          | No shared mutable state. All handlers call `loadConfig` at invocation time.                                                                                                                                                                                                                |
+| **Backend decoupling mode**                   | Source-level (single Deno process). `index.ts` is the only file that knows the concrete implementation.                                                                                                                                                                                    |
+| **Listing tools return `StoryListing`**       | Full `Story` (body, AC, comments, linked PRs) is only returned by `scrum_get_story`. All listing tools return `StoryListing`.                                                                                                                                                              |
+| **`statusOptions` map shape**                 | `{ displayName → optionId }` — keys are display names (what the agent passes), values are GitHub internal option IDs (what mutations need).                                                                                                                                                |
+| **Active item filter**                        | Listing tools silently exclude archived items and items in terminal status belonging to completed sprints. No parameter needed; history is the only window into completed work.                                                                                                            |
+| **`scrum_get_history` shape parity**          | Returns `SprintSnapshot[]` — same structure as `scrum_get_sprint("all")`. History-specific stats are additions within `SprintSnapshot.totals`.                                                                                                                                             |
+| **`StoryRef` id-only model**                  | `StoryRef` contains a single field: `id: string` (opaque `PVTI_...` handle). `Story.key` is display-only (human-readable issue number, null for Draft Issues). Lookup-by-key (`scrum_find_story`) is out of scope for v1.                                                                  |
+| **Draft Issues in `StoryRef`**                | `resolveStory` handles Draft Issues: `issueId` and `issueNumber` return `null`. Write operations requiring a real Issue throw a clear error prompting conversion.                                                                                                                          |
+| **Impediment as first-class artifact**        | `impediment` is NOT a `StoryType`. Impediments are a separate artifact with `ImpedimentRef`, `ImpedimentListing`, and a 3-state lifecycle (`open → in_progress → resolved`). Surface: `scrum_get_story.impediments`, `SprintSnapshot.impediments`, `scrum_get_backlog.orphan_impediments`. |
+| **`scrum_log_impediment.affects`**            | Optional `{ story?: StoryRef; sprint?: SprintRef }`. At most one sub-field. Omit to log a project-level orphan. Bidirectional cross-reference created atomically.                                                                                                                          |
+| **Impediment lifecycle writes**               | Dedicated `scrum_update_impediment` tool handles `open → in_progress → resolved`. `scrum_set_field` is not overloaded — story and impediment artifacts remain distinct at the tool surface.                                                                                                |
+| **`ScrumConfig` (was `ScrumConfigYml`)**      | Renamed in Phase C. All use-case signatures receive `scrumConfig: ScrumConfig`. Adapter accesses GitHub fields via `as GitHubBackendConfig`; use-case layer uses inline `type GhDisplay` shape cast.                                                                                       |
+| **`src/types.ts` and `raw-types.ts` removal** | Tombstoned in Phases B/C. Physical `rm` required locally. All types live at their architectural layer.                                                                                                                                                                                     |
 
 ---
 
