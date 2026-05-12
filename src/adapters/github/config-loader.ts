@@ -11,13 +11,13 @@
 
 import { parse } from "@std/yaml";
 import type { GitHubBackendConfig, IterationEntry } from "./types.ts";
-import type { ScrumConfigYml } from "../../domain/config.ts";
+import type { ScrumConfig } from "../../domain/config.ts";
 
 // ── Runtime types ────────────────────────────────────────────────────────────
 
 /** Runtime configuration: parsed config overlaid with live GitHub field metadata. */
 export interface RuntimeConfig {
-  yml: ScrumConfigYml;
+  scrumConfig: ScrumConfig;
   projectId: string;
   fields: {
     sprintFieldId: string;
@@ -309,9 +309,9 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
     );
   }
 
-  let yml: ScrumConfigYml;
+  let parsedConfig: ScrumConfig;
   try {
-    yml = parse(rawYml) as ScrumConfigYml;
+    parsedConfig = parse(rawYml) as ScrumConfig;
   } catch (err) {
     throw new Error(
       `Failed to parse ${configPath}: ${err instanceof Error ? err.message : String(err)}`,
@@ -320,17 +320,17 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
 
   // ── Step 2: Validate required top-level sections ────────────────────────────
 
-  if (!yml.project) throw new Error(`${configPath} is missing required 'project' section.`);
-  if (!yml.scrum) throw new Error(`${configPath} is missing required 'scrum' section.`);
-  if (!yml.backends) throw new Error(`${configPath} is missing required 'backends' section.`);
-  if (!yml.backends.github) {
+  if (!parsedConfig.project) throw new Error(`${configPath} is missing required 'project' section.`);
+  if (!parsedConfig.scrum) throw new Error(`${configPath} is missing required 'scrum' section.`);
+  if (!parsedConfig.backends) throw new Error(`${configPath} is missing required 'backends' section.`);
+  if (!parsedConfig.backends.github) {
     throw new Error(
       `${configPath} is missing 'backends.github'. ` +
         `Only the GitHub backend is supported in this version.`,
     );
   }
 
-  const ghConfig = yml.backends.github as GitHubBackendConfig;
+  const ghConfig = parsedConfig.backends.github as GitHubBackendConfig;
 
   // ── Step 3: Resolve $ENV_VAR references in auth ─────────────────────────────
 
@@ -345,9 +345,9 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
 
   // ── Step 4: Validate config cross-references ────────────────────────────────
 
-  const canonicalStatusKeys = Object.keys(yml.scrum.status);
-  const canonicalPriorityKeys = yml.scrum.priority.map((p) => p.key);
-  const projectTeamNames = new Set(yml.project.team?.map((m) => m.name) ?? []);
+  const canonicalStatusKeys = Object.keys(parsedConfig.scrum.status);
+  const canonicalPriorityKeys = parsedConfig.scrum.priority.map((p) => p.key);
+  const projectTeamNames = new Set(parsedConfig.project.team?.map((m) => m.name) ?? []);
 
   validateStatusDisplay(canonicalStatusKeys, patchedGhConfig.status_display, "github", configPath);
   validatePriorityDisplay(
@@ -488,13 +488,13 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
   // Expose the patched config (with resolved token) internally. The token is
   // accessible to the backend adapter but never serialised into tool responses.
 
-  const patchedYml: ScrumConfigYml = {
-    ...yml,
-    backends: { ...yml.backends, github: patchedGhConfig },
+  const patchedConfig: ScrumConfig = {
+    ...parsedConfig,
+    backends: { ...parsedConfig.backends, github: patchedGhConfig },
   };
 
   return {
-    yml: patchedYml,
+    scrumConfig: patchedConfig,
     projectId: projectNode.id,
     fields: {
       sprintFieldId,

@@ -2,11 +2,12 @@
 // src/scrum/get-sprint.ts — getSprintUseCase
 //
 // Extracted from scrum-read.ts as part of Story B (Phase 5).
-// Receives backend: ProjectBackend and yml: ScrumConfigYml.
+// Receives backend: ProjectBackend and scrumConfig: ScrumConfig.
 // =============================================================================
 
 import type { ProjectBackend } from "./ports.ts";
-import type { ScrumConfigYml, SprintRef } from "../types.ts";
+import type { SprintRef } from "../domain/types.ts";
+import type { ScrumConfig } from "../domain/config.ts";
 import { buildSprintMeta, computeSprintTotals, groupStoriesByStatus } from "./sprint-math.ts";
 
 interface SprintBoardResult {
@@ -31,7 +32,7 @@ interface SprintBoardResult {
  */
 export const getSprintUseCase = async (
   backend: ProjectBackend,
-  yml: ScrumConfigYml,
+  scrumConfig: ScrumConfig,
   sprintRef: SprintRef,
 ): Promise<SprintBoardResult> => {
   const result = await backend.getSprintStories(sprintRef);
@@ -51,8 +52,10 @@ export const getSprintUseCase = async (
   // todo: Story.status currently returns platform display names. Once the mapper
   // translates to canonical keys, replace these display lookups with canonical keys
   // ("done", "in_progress", "blocked") and remove the status_display dependency.
-  const statusDisplay = yml.backends.github?.status_display ?? {};
-  const statusOrder = Object.keys(yml.scrum.status).map((k) => statusDisplay[k]).filter(Boolean);
+  // todo: Remove this cast once status uses canonical keys — backends is type-erased.
+  type GhDisplay = { status_display?: Record<string, string> };
+  const statusDisplay = (scrumConfig.backends.github as GhDisplay | undefined)?.status_display ?? {};
+  const statusOrder = Object.keys(scrumConfig.scrum.status).map((k) => statusDisplay[k]).filter(Boolean);
   const groups = groupStoriesByStatus(result.stories, statusOrder);
   const doneDisplay = statusDisplay["done"] ?? "Done";
   const inProgressDisplay = statusDisplay["in_progress"] ?? "In Progress";

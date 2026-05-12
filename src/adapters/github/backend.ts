@@ -279,7 +279,7 @@ export class GitHubProjectBackend implements ProjectBackend {
   async resolveCompletionTimestamps(input: BurndownInput): Promise<CompletionMap> {
     const doneStatusName = this.resolveTerminalStatusDisplayName();
     const statusFieldName =
-      (this.config.yml.backends.github as GitHubBackendConfig).field_mapping.status ?? "Status";
+      (this.config.scrumConfig.backends.github as GitHubBackendConfig).field_mapping.status ?? "Status";
     const nodeIdToNumber = new Map(
       input.stories.map((s) => [s.number, s.number]), // already has number
     );
@@ -955,7 +955,7 @@ export class GitHubProjectBackend implements ProjectBackend {
    * status_display mapping. Falls back to `fallback` if the key is not found.
    */
   private resolveStatusDisplayName(canonicalKey: string, fallback: string): string {
-    const statusDisplay = (this.config.yml.backends.github as GitHubBackendConfig).status_display;
+    const statusDisplay = (this.config.scrumConfig.backends.github as GitHubBackendConfig).status_display;
     if (!statusDisplay) return fallback;
     return statusDisplay[canonicalKey] ?? fallback;
   }
@@ -966,7 +966,7 @@ export class GitHubProjectBackend implements ProjectBackend {
    * its display name in backends.github.status_display.
    */
   private resolveTerminalStatusDisplayName(): string {
-    const scrumStatus = this.config.yml.scrum?.status ?? {};
+    const scrumStatus = this.config.scrumConfig.scrum?.status ?? {};
     const terminalKey = Object.entries(scrumStatus).find(([, meta]) => meta.terminal)?.[0];
     if (!terminalKey) return "Done"; // safe fallback
     return this.resolveStatusDisplayName(terminalKey, "Done");

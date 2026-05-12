@@ -6,7 +6,7 @@
 // =============================================================================
 
 import type { ProjectBackend } from "./ports.ts";
-import type { StoryRef } from "../types.ts";
+import type { StoryRef } from "../domain/types.ts";
 import { parseAcceptanceCriteria } from "../domain/rules/acceptance-criteria.ts";
 
 interface GetStoryResult {

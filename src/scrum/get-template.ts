@@ -2,11 +2,12 @@
 // src/scrum/get-template.ts — getTemplateUseCase
 //
 // Extracted from scrum-read.ts as part of Story B (Phase 5).
-// Receives backend: ProjectBackend and yml: ScrumConfigYml.
+// Receives backend: ProjectBackend and scrumConfig: ScrumConfig.
 // =============================================================================
 
 import type { ProjectBackend } from "./ports.ts";
-import type { ArtifactType, ScrumConfigYml, TemplateResponse } from "../types.ts";
+import type { ArtifactType, TemplateResponse } from "../domain/types.ts";
+import type { ScrumConfig } from "../domain/config.ts";
 
 /**
  * Fetch a ceremony artifact template by type.
@@ -14,10 +15,10 @@ import type { ArtifactType, ScrumConfigYml, TemplateResponse } from "../types.ts
  */
 export const getTemplateUseCase = async (
   backend: ProjectBackend,
-  yml: ScrumConfigYml,
+  scrumConfig: ScrumConfig,
   artifactType: ArtifactType,
 ): Promise<TemplateResponse> => {
-  const path = yml.templates?.[artifactType] ?? null;
+  const path = scrumConfig.templates?.[artifactType] ?? null;
   if (path === null) {
     return { content: null, source: "default" };
   }

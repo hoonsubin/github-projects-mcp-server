@@ -9,7 +9,7 @@
 // on either side of this interface.
 // =============================================================================
 
-import type { SprintRef, Story, StoryRef } from "../types.ts";
+import type { SprintRef, Story, StoryRef } from "../domain/types.ts";
 
 // ── Supporting types that cross the boundary ──────────────────────────────────
 

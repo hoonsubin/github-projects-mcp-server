@@ -16,7 +16,8 @@
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CreateStoryInput, ProjectBackend, StoryUpdates } from "../scrum/ports.ts";
-import type { ScrumConfigYml, Story, StoryRef } from "../types.ts";
+import type { Story, StoryRef } from "../domain/types.ts";
+import type { ScrumConfig } from "../domain/config.ts";
 import {
   AddVocabularySchema,
   CreateStorySchema,
@@ -43,7 +44,7 @@ interface PartialFailureResult {
 export function registerScrumWriteTools(
   server: McpServer,
   backend: ProjectBackend,
-  _yml: ScrumConfigYml,
+  _scrumConfig: ScrumConfig,
 ): void {
   // ── C1: scrum_add_vocabulary ──────────────────────────────────────────────────
 

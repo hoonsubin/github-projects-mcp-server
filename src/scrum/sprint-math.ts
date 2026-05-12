@@ -5,7 +5,7 @@
 // All functions depend only on domain types — no RuntimeConfig or GitHub types.
 // =============================================================================
 
-import type { BurndownDayPoint, IdealDayPoint, IterationEntry, Story } from "../types.ts";
+import type { BurndownDayPoint, IdealDayPoint, IterationEntry, Story } from "../domain/types.ts";
 import type { BurndownStoryInput } from "./ports.ts";
 
 // ── Sprint metadata ────────────────────────────────────────────────────────────

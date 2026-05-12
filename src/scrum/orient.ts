@@ -2,11 +2,11 @@
 // src/scrum/orient.ts — orientUseCase
 //
 // Extracted from scrum-read.ts as part of Story B (Phase 5).
-// Receives backend: ProjectBackend and yml: ScrumConfigYml.
+// Receives backend: ProjectBackend and scrumConfig: ScrumConfig.
 // =============================================================================
 
 import type { ProjectBackend } from "./ports.ts";
-import type { ScrumConfigYml } from "../types.ts";
+import type { ScrumConfig } from "../domain/config.ts";
 
 interface OrientResult {
   platform_state: {
@@ -46,13 +46,16 @@ interface OrientResult {
  */
 export const orientUseCase = async (
   backend: ProjectBackend,
-  yml: ScrumConfigYml,
+  scrumConfig: ScrumConfig,
 ): Promise<OrientResult> => {
   // todo: Once Story.status returns canonical keys, expose scrum.status semantic
   // metadata here instead of display names. For now, status_display values are
   // passed so the adapter can diff them against live platform options.
-  const statusVocab = yml.backends.github?.status_display ?? null;
-  const priorityVocab = yml.backends.github?.priority_display ?? null;
+  // todo: Remove this cast once status uses canonical keys — backends is type-erased.
+  type GhDisplay = { status_display?: Record<string, string>; priority_display?: Record<string, string> };
+  const ghDisplay = scrumConfig.backends.github as GhDisplay | undefined;
+  const statusVocab = ghDisplay?.status_display ?? null;
+  const priorityVocab = ghDisplay?.priority_display ?? null;
 
   const state = await backend.getPlatformState({
     statusValues: statusVocab ? Object.values(statusVocab) : [],
@@ -98,23 +101,23 @@ export const orientUseCase = async (
       status: statusVocab,
       priority: priorityVocab,
       story_points: {
-        scale: yml.scrum.sprint?.story_point_scale ?? null,
-        values: yml.scrum.sprint?.story_point_values ?? null,
+        scale: scrumConfig.scrum.sprint?.story_point_scale ?? null,
+        values: scrumConfig.scrum.sprint?.story_point_values ?? null,
       },
       sprint: {
         duration_days: null, // not modelled in new config — length_weeks is the source of truth
-        velocity_window: yml.scrum.sprint?.velocity_window ?? 5,
-        length_weeks: yml.scrum.sprint?.length_weeks ?? null,
+        velocity_window: scrumConfig.scrum.sprint?.velocity_window ?? 5,
+        length_weeks: scrumConfig.scrum.sprint?.length_weeks ?? null,
       },
-      team: yml.project.team ?? null,
-      definition_of_ready: yml.definition_of_ready ?? null,
-      definition_of_done: yml.definition_of_done ?? null,
+      team: scrumConfig.project.team ?? null,
+      definition_of_ready: scrumConfig.definition_of_ready ?? null,
+      definition_of_done: scrumConfig.definition_of_done ?? null,
       templates: {
-        sprint_review: yml.templates?.sprint_review ?? null,
-        retrospective: yml.templates?.retrospective ?? null,
-        standup: yml.templates?.standup ?? null,
-        sprint_planning: yml.templates?.sprint_planning ?? null,
-        refinement: yml.templates?.refinement ?? null,
+        sprint_review: scrumConfig.templates?.sprint_review ?? null,
+        retrospective: scrumConfig.templates?.retrospective ?? null,
+        standup: scrumConfig.templates?.standup ?? null,
+        sprint_planning: scrumConfig.templates?.sprint_planning ?? null,
+        refinement: scrumConfig.templates?.refinement ?? null,
       },
     },
   };

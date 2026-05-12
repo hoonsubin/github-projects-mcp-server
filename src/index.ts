@@ -23,7 +23,8 @@ import { graphql, rest } from "./services/github.ts";
 import { log } from "./services/logger.ts";
 import type { Socket } from "node:net";
 import type { ProjectBackend } from "./scrum/ports.ts";
-import type { GitHubBackendConfig, ScrumConfigYml } from "./types.ts";
+import type { GitHubBackendConfig } from "./adapters/github/types.ts";
+import type { ScrumConfig } from "./domain/config.ts";
 
 // ── Tool-call interceptor ────────────────────────────────────────────────────
 //
@@ -96,9 +97,9 @@ const wrapTransportLogging = (transport: Transport, label: string): void => {
 
 // ── Backend factory ──────────────────────────────────────────────────────────
 
-const createBackend = async (): Promise<{ backend: ProjectBackend; yml: ScrumConfigYml }> => {
+const createBackend = async (): Promise<{ backend: ProjectBackend; scrumConfig: ScrumConfig }> => {
   const config = await loadConfig({ github: { graphql } });
-  const gh = config.yml.backends.github as GitHubBackendConfig;
+  const gh = config.scrumConfig.backends.github as GitHubBackendConfig;
   const backend = new GitHubProjectBackend(
     config,
     { graphql, rest },
@@ -106,7 +107,7 @@ const createBackend = async (): Promise<{ backend: ProjectBackend; yml: ScrumCon
     gh.owner_type,
     gh.tracked_repos[0], // primary repo for issue operations; multi-repo support is future work
   );
-  return { backend, yml: config.yml };
+  return { backend, scrumConfig: config.scrumConfig };
 };
 
 // ── Server factory ───────────────────────────────────────────────────────────
@@ -119,9 +120,9 @@ const createMcpServer = async (): Promise<McpServer> => {
 
   patchToolLogging(server);
 
-  const { backend, yml } = await createBackend();
-  registerScrumReadTools(server, backend, yml);
-  registerScrumWriteTools(server, backend, yml);
+  const { backend, scrumConfig } = await createBackend();
+  registerScrumReadTools(server, backend, scrumConfig);
+  registerScrumWriteTools(server, backend, scrumConfig);
 
   return server;
 };

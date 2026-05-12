@@ -77,16 +77,17 @@ flowchart TD
 | `scrum_get_burndown` | Day-by-day burndown series + ideal line for a sprint                |
 | `scrum_get_template` | Fetch a project-configured ceremony artifact template               |
 
-### Write tools (6)
+### Write tools (7)
 
-| Tool                   | Purpose                                                          |
-| ---------------------- | ---------------------------------------------------------------- |
-| `scrum_create_story`   | Create a story and optionally place it on the board              |
-| `scrum_update_story`   | Edit story content (title, body, labels, assignees, epic)        |
-| `scrum_set_field`      | Single entry point for all board-field mutations                 |
-| `scrum_plan_sprint`    | Bulk-assign stories to a sprint                                  |
-| `scrum_log_impediment` | Create a blocking impediment linked to an affected story         |
-| `scrum_add_vocabulary` | Idempotent add of a field option or label to the platform schema |
+| Tool                      | Purpose                                                                                     |
+| ------------------------- | ------------------------------------------------------------------------------------------- |
+| `scrum_create_story`      | Create a story and optionally place it on the board                                         |
+| `scrum_update_story`      | Edit story content (title, body, labels, assignees, epic)                                   |
+| `scrum_set_field`         | Single entry point for all board-field mutations                                            |
+| `scrum_plan_sprint`       | Bulk-assign stories to a sprint                                                             |
+| `scrum_log_impediment`    | Create an impediment; optionally link it to an affected story or sprint (or log as orphan)  |
+| `scrum_update_impediment` | Advance an impediment lifecycle: `open → in_progress → resolved`                            |
+| `scrum_add_vocabulary`    | Idempotent add of a field option or label to the platform schema                            |
 
 ### Deprecated
 
@@ -100,16 +101,21 @@ flowchart TD
 
 All backend abstraction (Phase 5), tool extraction (Phase 2), write tools (Phase 3), and dead-code cleanup (Phase 4) are complete. The server is fully on the `scrum_*` surface. `index.ts` wires `registerScrumReadTools` and `registerScrumWriteTools` against `GitHubProjectBackend`.
 
+**Type restructure complete (Phases A / B / C):** `src/types.ts` (mixed barrel) and `src/adapters/github/raw-types.ts` are tombstoned. Types now live at their correct architectural layer: `src/domain/types.ts` (domain entities), `src/domain/config.ts` (`ScrumConfig` — renamed from `ScrumConfigYml`), `src/adapters/github/types.ts` (GitHub adapter projections grounded in the codegen schema). All use-case functions receive `scrumConfig: ScrumConfig`; adapter-layer casts use explicit `as GitHubBackendConfig`. Physical `rm` of the two tombstoned files is still required locally.
+
 Remaining open work lives in §5 (architectural debt) and §6 (pending feature work).
 
-| File                             | State       | Notes                                                 |
-| -------------------------------- | ----------- | ----------------------------------------------------- |
-| `src/scrum/get-sprint.ts`        | 🟡 Redesign | See §6 — `"all"` param, `StoryListing` return         |
-| `src/scrum/get-backlog.ts`       | 🟡 Redesign | Active-item filter pending — see §6                   |
-| `src/scrum/get-history.ts`       | 🟡 Redesign | Return shape alignment with `SprintSnapshot` — see §6 |
-| `src/scrum/ports.ts`             | 🟡 Redesign | Method signatures update pending — see §6             |
-| `src/tools/scrum-read.ts`        | 🟡 Redesign | Tool descriptions + handlers update pending — see §6  |
-| `src/adapters/github/backend.ts` | 🟡 Debt     | Class too large; smells documented in §6              |
+| File                                    | State       | Notes                                                                       |
+| --------------------------------------- | ----------- | --------------------------------------------------------------------------- |
+| `src/scrum/get-sprint.ts`               | 🟡 Redesign | See §6b — `"all"` param, `StoryListing` return, `impediments` on snapshot   |
+| `src/scrum/get-backlog.ts`              | 🟡 Redesign | Active-item filter + `orphan_impediments` pending — see §6b                 |
+| `src/scrum/get-history.ts`              | 🟡 Redesign | Return shape alignment with `SprintSnapshot` + `impediments` — see §6b      |
+| `src/scrum/ports.ts`                    | 🟡 Redesign | Method signatures update pending — see §6b                                  |
+| `src/tools/scrum-read.ts`               | 🟡 Redesign | Tool descriptions + handlers update pending — see §6b                       |
+| `src/tools/scrum-write.ts`              | 🟡 Redesign | `scrum_log_impediment` signature change; add `scrum_update_impediment`       |
+| `src/adapters/github/backend.ts`        | 🟡 Debt     | Class too large; smells documented in §6a                                   |
+| `src/types.ts`                          | 🔴 Delete   | Tombstoned. Run `rm src/types.ts` locally.                                  |
+| `src/adapters/github/raw-types.ts`      | 🔴 Delete   | Tombstoned. Run `rm src/adapters/github/raw-types.ts` locally.              |
 
 ---
 
@@ -202,14 +208,14 @@ The class's own inline comment acknowledges this: `//todo: this class is way too
 
 Independent of the §5 architectural debt, the class has accumulated concrete code smells:
 
-| # | Smell                                                      | Affected Areas                                                                              | Severity |
-| - | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
-| 1 | Label creation logic duplicated 3+ times                   | `resolveLabelNodeIds`, `resolveOrCreateLabel`, `addLabel`, `resolveOrCreateMilestoneNodeId` | High     |
-| 2 | String interpolation in GraphQL mutations (injection risk) | All `setField*` methods, `clearField`                                                       | High     |
-| 3 | `createStory` is 116 lines                                 | `createStory`                                                                               | High     |
-| 4 | Burndown completion logic too complex                      | `fetchAuditLogCompletions`, `fetchIssueCloseCompletions`                                    | Medium   |
-| 5 | `fetchAllItems` duplicates `PaginatedProjectItemFetcher`   | `fetchAllItems`, `getCompletedSprintHistory`                                                | Medium   |
-| 6 | Response types defined inline instead of in `raw-types.ts` | `GetIssueDetailsResponse`, `GetItemFieldsResponse`, `RawItem`, `RawFieldValue`              | Low      |
+| #   | Smell                                                      | Affected Areas                                                                              | Severity |
+| --- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
+| 1   | Label creation logic duplicated 3+ times                   | `resolveLabelNodeIds`, `resolveOrCreateLabel`, `addLabel`, `resolveOrCreateMilestoneNodeId` | High     |
+| 2   | String interpolation in GraphQL mutations (injection risk) | All `setField*` methods, `clearField`                                                       | High     |
+| 3   | `createStory` is 116 lines                                 | `createStory`                                                                               | High     |
+| 4   | Burndown completion logic too complex                      | `fetchAuditLogCompletions`, `fetchIssueCloseCompletions`                                    | Medium   |
+| 5   | `fetchAllItems` duplicates `PaginatedProjectItemFetcher`   | `fetchAllItems`, `getCompletedSprintHistory`                                                | Medium   |
+| 6   | Response types defined inline instead of in `raw-types.ts` | `GetIssueDetailsResponse`, `GetItemFieldsResponse`, `RawItem`, `RawFieldValue`              | Low      |
 
 ### 6b. Tool Surface Improvements
 
@@ -228,6 +234,16 @@ interface StoryListing {
   sprint: string | null;
 }
 
+// Lightweight impediment entry — returned inside Story, SprintSnapshot, and backlog orphan list.
+interface ImpedimentListing {
+  ref: { id: string };
+  description: string;
+  status: "open" | "in_progress" | "resolved";
+  raised_by: string | null;
+  raised_at: string;      // ISO-8601
+  resolved_at: string | null;
+}
+
 // Sprint + item listing — shared shape for both active and historical sprints.
 interface SprintSnapshot {
   sprint: {
@@ -243,6 +259,7 @@ interface SprintSnapshot {
     by_status: Record<string, number>;
     story_points: number;
   };
+  impediments: ImpedimentListing[]; // impediments logged directly against this sprint
 }
 ```
 
@@ -265,7 +282,11 @@ Files: `src/schemas/scrum.ts`, `src/scrum/ports.ts`, `src/scrum/get-sprint.ts`, 
 
 #### `scrum_get_backlog` changes
 
-No schema changes. Two silent backend filters added: exclude `isArchived === true`; exclude terminal-status items with no sprint. Files: `src/adapters/github/backend.ts`
+Two silent backend filters added: exclude `isArchived === true`; exclude terminal-status items with no sprint.
+
+One new return field: `orphan_impediments: ImpedimentListing[]` — unresolved impediments (status `"open"` or `"in_progress"`) with no `affects` context (no story or sprint reference). Resolved orphans excluded.
+
+Files: `src/schemas/scrum.ts`, `src/scrum/get-backlog.ts`, `src/scrum/ports.ts`, `src/adapters/github/backend.ts`, `src/tools/scrum-read.ts`
 
 #### `scrum_get_history` changes
 
@@ -282,6 +303,48 @@ No schema changes. Two silent backend filters added: exclude `isArchived === tru
 ```
 
 Files: `src/schemas/scrum.ts`, `src/scrum/ports.ts`, `src/scrum/get-history.ts`, `src/adapters/github/backend.ts`, `src/tools/scrum-read.ts`
+
+#### `scrum_log_impediment` changes
+
+`affects` becomes **optional** (was required `StoryRef`). New shape:
+
+```typescript
+affects?: {
+  story?: StoryRef;   // specific story being blocked
+  sprint?: SprintRef; // sprint goal or overall sprint being threatened
+}
+// Omit entirely to log a project-level orphan impediment.
+// Provide at most one of story / sprint.
+```
+
+Return shape changes:
+
+```typescript
+// Before: impediment as Story + linked_to StoryRef
+// After:
+{
+  impediment: ImpedimentListing;
+  affects: { story: StoryRef } | { sprint: SprintRef } | null;
+}
+```
+
+The bidirectional cross-reference is still created atomically on the affected artifact.
+
+Files: `src/schemas/scrum.ts`, `src/scrum/log-impediment.ts` (new use-case file), `src/scrum/ports.ts`, `src/adapters/github/backend.ts`, `src/tools/scrum-write.ts`
+
+#### `scrum_update_impediment` — new write tool
+
+New use case: advance an impediment through `open → in_progress → resolved`.
+
+```typescript
+// Arguments
+{ ref: ImpedimentRef; status: "open" | "in_progress" | "resolved"; resolution_notes?: string }
+
+// Returns
+ImpedimentListing
+```
+
+Files: `src/schemas/scrum.ts`, `src/scrum/update-impediment.ts` (new), `src/scrum/ports.ts`, `src/adapters/github/backend.ts`, `src/tools/scrum-write.ts`
 
 ### 6c. Unit Tests for Use Cases
 
@@ -360,6 +423,11 @@ No use-case unit tests exist. All current tests are integration-level. Phase 5 s
 | **`scrum_get_history` shape parity**    | Returns `SprintSnapshot[]` — same structure as `scrum_get_sprint("all")`. History-specific stats are additions within `SprintSnapshot.totals`.                                                                            |
 | **`StoryRef` id-only model**            | `StoryRef` contains a single field: `id: string` (opaque `PVTI_...` handle). `Story.key` is display-only (human-readable issue number, null for Draft Issues). Lookup-by-key (`scrum_find_story`) is out of scope for v1. |
 | **Draft Issues in `StoryRef`**          | `resolveStory` handles Draft Issues: `issueId` and `issueNumber` return `null`. Write operations requiring a real Issue throw a clear error prompting conversion.                                                         |
+| **Impediment as first-class artifact**  | `impediment` is NOT a `StoryType`. Impediments are a separate artifact with `ImpedimentRef`, `ImpedimentListing`, and a 3-state lifecycle (`open → in_progress → resolved`). Surface: `scrum_get_story.impediments`, `SprintSnapshot.impediments`, `scrum_get_backlog.orphan_impediments`. |
+| **`scrum_log_impediment.affects`**      | Optional `{ story?: StoryRef; sprint?: SprintRef }`. At most one sub-field. Omit to log a project-level orphan. Bidirectional cross-reference created atomically.                                                          |
+| **Impediment lifecycle writes**         | Dedicated `scrum_update_impediment` tool handles `open → in_progress → resolved`. `scrum_set_field` is not overloaded — story and impediment artifacts remain distinct at the tool surface.                               |
+| **`ScrumConfig` (was `ScrumConfigYml`)** | Renamed in Phase C. All use-case signatures receive `scrumConfig: ScrumConfig`. Adapter accesses GitHub fields via `as GitHubBackendConfig`; use-case layer uses inline `type GhDisplay` shape cast.                     |
+| **`src/types.ts` and `raw-types.ts` removal** | Tombstoned in Phases B/C. Physical `rm` required locally. All types live at their architectural layer.                                                                                                              |
 
 ---
 

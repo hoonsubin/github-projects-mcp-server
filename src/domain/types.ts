@@ -111,7 +111,7 @@ export interface BurndownStory {
 
 /**
  * The five ceremony artifact types for which custom templates can be declared.
- * Used in ScrumConfigYml.templates, GetTemplateSchema, and TemplateResponse.
+ * Used in ScrumConfig.templates, GetTemplateSchema, and TemplateResponse.
  */
 export type ArtifactType =
   | "sprint_review"

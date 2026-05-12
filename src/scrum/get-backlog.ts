@@ -2,11 +2,11 @@
 // src/scrum/get-backlog.ts — getBacklogUseCase
 //
 // Extracted from scrum-read.ts as part of Story B (Phase 5).
-// Receives backend: ProjectBackend and yml: ScrumConfigYml.
+// Receives backend: ProjectBackend and scrumConfig: ScrumConfig.
 // =============================================================================
 
 import type { ProjectBackend } from "./ports.ts";
-import type { ScrumConfigYml } from "../types.ts";
+import type { ScrumConfig } from "../domain/config.ts";
 import { computeReadinessSummary } from "../domain/rules/readiness.ts";
 
 interface GetBacklogParams {
@@ -28,7 +28,7 @@ interface GetBacklogResult {
  */
 export const getBacklogUseCase = async (
   backend: ProjectBackend,
-  _yml: ScrumConfigYml,
+  _scrumConfig: ScrumConfig,
   params: GetBacklogParams,
 ): Promise<GetBacklogResult> => {
   const allStories = await backend.getBacklogStories();

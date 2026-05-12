@@ -2,11 +2,11 @@
 // src/scrum/get-history.ts — getHistoryUseCase
 //
 // Extracted from scrum-read.ts as part of Story B (Phase 5).
-// Receives backend: ProjectBackend and yml: ScrumConfigYml.
+// Receives backend: ProjectBackend and scrumConfig: ScrumConfig.
 // =============================================================================
 
 import type { ProjectBackend } from "./ports.ts";
-import type { ScrumConfigYml } from "../types.ts";
+import type { ScrumConfig } from "../domain/config.ts";
 
 interface SprintSnapshot {
   name: string;
@@ -35,7 +35,7 @@ interface GetHistoryResult {
  */
 export const getHistoryUseCase = async (
   backend: ProjectBackend,
-  _yml: ScrumConfigYml,
+  _scrumConfig: ScrumConfig,
   window: number,
 ): Promise<GetHistoryResult> => {
   const entries = await backend.getCompletedSprintHistory(window);

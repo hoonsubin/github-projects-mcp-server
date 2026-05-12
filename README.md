@@ -317,11 +317,11 @@ flowchart TB
     subgraph server["MCP Server  ·  Deno / TypeScript"]
         direction TB
 
-        surface["Tool Surface\n13 scrum_* tools  ·  Zod-validated  ·  stateless per-call handlers"]
+        surface["Tool Surface\n14 scrum_* tools  ·  Zod-validated  ·  stateless per-call handlers"]
 
         usecases["Use Cases\none per tool  ·  pure domain logic  ·  no I/O"]
 
-        port(["&lt;&lt;interface&gt;&gt;\nProjectBackend\n13 methods in Scrum vocabulary\nowned by the use-case layer"])
+        port(["&lt;&lt;interface&gt;&gt;\nProjectBackend\n14 methods in Scrum vocabulary\nowned by the use-case layer"])
 
         subgraph adapters["Adapters"]
             direction LR
@@ -396,6 +396,7 @@ flowchart LR
         set_field["scrum_set_field"]
         plan["scrum_plan_sprint"]
         log_imp["scrum_log_impediment"]
+        upd_imp["scrum_update_impediment"]
         add_vocab["scrum_add_vocabulary"]
     end
 ```
@@ -409,10 +410,12 @@ These appear in arguments and return values across multiple tools.
 | `StoryRef`       | A reference to a single Story. Shape: `{ "id": "<opaque>" }` where `id` is the project-item handle returned by any read tool in `Story.ref.id`. The agent obtains an `id` from a listing tool first, then passes it to write tools. |
 | `SprintRef`      | A reference to a sprint. Accepted forms: `"current"`, `"next"`, `null` (= no sprint, i.e. the backlog), or an explicit sprint name or sprint ID that the backend accepts (e.g. `"Sprint 12", "31"`).                                |
 | `ScrumField`     | One of `status`, `sprint`, `story_points`, `priority`, `assignee`. The set is fixed; new field types are out of scope for v1.                                                                                                       |
-| `StoryType`      | One of `feature`, `bug`, `tech_debt`, `spike`, `impediment`. Drives the type label or category the backend applies.                                                                                                                 |
-| `StoryListing`   | Lightweight listing entry returned by all listing tools. See shape below.                                                                                                                                                           |
-| `SprintSnapshot` | Sprint metadata plus its `StoryListing[]`. The common envelope for `scrum_get_sprint` and `scrum_get_history`. See shape below.                                                                                                     |
-| `Story`          | Full story detail — body, comments, AC, linked PRs. Returned **only** by `scrum_get_story` and write tools. See shape below.                                                                                                        |
+| `StoryType`         | One of `feature`, `bug`, `tech_debt`, `spike`. Drives the type label or category the backend applies. Impediments are a separate first-class artifact — not a `StoryType`.                                                          |
+| `ImpedimentRef`     | A reference to a single Impediment. Shape: `{ "id": "<opaque>" }`. The opaque `id` is returned by `scrum_log_impediment` and appears in every `ImpedimentListing`. Pass it to `scrum_update_impediment`.                            |
+| `StoryListing`      | Lightweight listing entry returned by all listing tools. See shape below.                                                                                                                                                           |
+| `SprintSnapshot`    | Sprint metadata plus its `StoryListing[]` and `ImpedimentListing[]`. The common envelope for `scrum_get_sprint` and `scrum_get_history`. See shape below.                                                                           |
+| `Story`             | Full story detail — body, comments, AC, linked PRs, impediments. Returned **only** by `scrum_get_story` and write tools. See shape below.                                                                                           |
+| `ImpedimentListing` | Lightweight impediment entry. Full description always included (no separate detail fetch). See shape below.                                                                                                                         |
 
 #### StoryListing shape
 
@@ -440,8 +443,9 @@ The common envelope for sprint data. Used by both `scrum_get_sprint` and `scrum_
 | `sprint.days_remaining` | Days until end, or `null` for completed or future sprints.                               |
 | `items`                 | Array of `StoryListing` — the sprint's assigned items.                                   |
 | `total_count`           | Total matching items before `limit` is applied.                                          |
-| `totals.by_status`      | Map of status display name → item count (e.g. `{ "Done": 7, "In Progress": 2 }`).        |
-| `totals.story_points`   | Sum of `story_points` across all items in the snapshot (unestimated items contribute 0). |
+| `totals.by_status`      | Map of status display name → item count (e.g. `{ "Done": 7, "In Progress": 2 }`).                         |
+| `totals.story_points`   | Sum of `story_points` across all items in the snapshot (unestimated items contribute 0).                   |
+| `impediments`           | Array of `ImpedimentListing` — impediments logged directly against this sprint. Does NOT include story-level impediments of stories within the sprint; fetch those via `scrum_get_story`. Both open and resolved are included. |
 
 #### Story shape
 
@@ -452,7 +456,6 @@ Every full Story has this shape:
 | Field                      | Meaning                                                                                                                                      |
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ref`                      | `{ id: string }` — the opaque project-item handle. Pass `Story.ref.id` to any write tool that accepts a `StoryRef`.                          |
-| `key`                      | Human-readable identifier (`"42"`, `"PRO-123"`), or `null` for Draft Issues. Display-only — do not pass to write tools.                      |
 | `title`                    | The story title.                                                                                                                             |
 | `body`                     | The story body, rendered as markdown. Includes user-story format, AC checklist, dependencies, and technical notes — whatever the team wrote. |
 | `type`                     | `StoryType` resolved from the type label or category.                                                                                        |
@@ -465,6 +468,20 @@ Every full Story has this shape:
 | `epic`                     | Parent epic name, or `null`. Readable and writable.                                                                                          |
 | `created_at`, `updated_at` | ISO-8601 timestamps.                                                                                                                         |
 | `url`                      | Canonical URL to view the story in the backend UI, when available.                                                                           |
+| `impediments`              | Array of `ImpedimentListing` — all impediments that reference this story, ordered newest first. Both open and resolved are included.          |
+
+#### ImpedimentListing shape
+
+Returned in listing contexts: inside a `Story` (via `scrum_get_story`), inside a `SprintSnapshot` (via `scrum_get_sprint` and `scrum_get_history`), and as `orphan_impediments` from `scrum_get_backlog`. Because impediment content is a single description field rather than a structured document, the full description is always returned — there is no separate "impediment detail" fetch.
+
+| Field | Meaning |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `ref` | `{ id: string }` — opaque handle. Pass to `scrum_update_impediment`. |
+| `description` | The full impediment description text. |
+| `status` | One of `"open"`, `"in_progress"`, `"resolved"`. |
+| `raised_by` | Login of the person who surfaced it, or `null`. |
+| `raised_at` | ISO-8601 timestamp when the impediment was logged. |
+| `resolved_at` | ISO-8601 timestamp when resolved, or `null`. |
 
 ### Read tools
 
@@ -492,7 +509,7 @@ Returns a snapshot of one sprint or all active sprints as a `SprintSnapshot`. Ea
 **Arguments:**
 
 - `sprint` (optional, `SprintRef | "all"`): defaults to `"current"`. Pass `"next"` to inspect the upcoming sprint, an explicit sprint name to inspect a specific sprint, or `"all"` to retrieve every non-completed iteration in one call.
-- `limit` (optional, integer): maximum number of items per `SprintSnapshot`. If omitted, all items are returned.
+- `limit` (optional, integer, default 50): maximum number of items per `SprintSnapshot`. If omitted, the default limit of items are returned.
 
 **Returns:**
 
@@ -515,9 +532,9 @@ Returns the Product Backlog: all Stories not assigned to any sprint, ordered by 
 - `epic` (optional, string): include only Stories under this epic.
 - `limit` (optional, integer, default 50): cap on items returned.
 
-**Returns:** an object with `stories` (array of `StoryListing`), `total_count` (number matching the filter regardless of `limit`), and `readiness` (object summarising how many items are sprint-ready, in refinement, or future candidates — based on whether they have `story_points`, acceptance criteria in the body, and a priority).
+**Returns:** an object with `stories` (array of `StoryListing`), `total_count` (number matching the filter regardless of `limit`), `readiness` (object summarising how many items are sprint-ready, in refinement, or future candidates — based on whether they have `story_points`, acceptance criteria in the body, and a priority), and `orphan_impediments` (array of `ImpedimentListing` — unresolved impediments with no `affects` context that require Scrum Master triage).
 
-**Notes:** The readiness summary is a pure aggregation of observable facts, not a Scrum judgement. It reports what is present; it does not enforce DoR. Archived items and items in terminal status with no sprint (orphaned completed stories that were never cleaned up) are silently excluded. The agent calls `scrum_get_story` when it needs the full body, acceptance criteria, or comments for a specific item.
+**Notes:** The readiness summary is a pure aggregation of observable facts, not a Scrum judgement. It reports what is present; it does not enforce DoR. Archived items and items in terminal status with no sprint (orphaned completed stories that were never cleaned up) are silently excluded. `orphan_impediments` contains only unresolved impediments (status `"open"` or `"in_progress"`) with no story or sprint reference; resolved orphans are excluded. The agent calls `scrum_get_story` when it needs the full body, acceptance criteria, comments, or impediment detail for a specific item.
 
 **Does not:** modify ordering; create or estimate items; mark items as ready; return full story bodies.
 
@@ -529,9 +546,9 @@ Returns the full detail of one Story, including comments, linked PRs, and parsed
 
 - `ref` (required, `StoryRef`).
 
-**Returns:** a `Story` object plus `comments` (array of `{ author, body, created_at, url }`), `linked_prs` (array of PR references with state), `sub_tasks` (array of `{ title, status }` if the backend exposes sub-tasks), `acceptance_criteria` (array of `{ text, checked }` parsed from the body).
+**Returns:** a `Story` object plus `comments` (array of `{ author, body, created_at, url }`), `linked_prs` (array of PR references with state), `sub_tasks` (array of `{ title, status }` if the backend exposes sub-tasks), `acceptance_criteria` (array of `{ text, checked }` parsed from the body), and `impediments` (array of `ImpedimentListing` — all impediments that reference this story, ordered newest first, both open and resolved).
 
-**Notes:** Use when the agent needs deep context on a single item — assessing DoR compliance, drafting a status update, or diagnosing a blocked item. Comments include impediment cross-links posted by `scrum_log_impediment`, making this the primary tool for tracing blockers.
+**Notes:** Use when the agent needs deep context on a single item — assessing DoR compliance, drafting a status update, or diagnosing a blocked item. The `impediments` field is the primary way the agent traces what is blocking a story and whether any active impediments need escalation.
 
 **Does not:** return diff content of linked PRs, render image attachments, or follow links to other stories transitively.
 
@@ -542,7 +559,7 @@ Returns `SprintSnapshot` data for the last N completed sprints — the same stru
 **Arguments:**
 
 - `window` (optional, integer 1–10, default 5): number of most-recent closed sprints to include.
-- `limit` (optional, integer): maximum number of items per `SprintSnapshot`. If omitted, all items are returned.
+- `limit` (optional, integer, default 10): maximum number of items per `SprintSnapshot`. If omitted, the default limit of items are returned.
 
 **Returns:** `{ sprints: SprintSnapshot[], window: number, average_completed_points: number }`. Each `SprintSnapshot` is the standard shape with two history-specific additions inside `totals`:
 
@@ -675,20 +692,45 @@ Bulk-assigns multiple Stories to a sprint in one call. Used at sprint planning t
 
 #### `scrum_log_impediment`
 
-Creates a new impediment Story, links it bidirectionally to the affected Story, and marks it Blocked.
+Creates a new impediment and optionally links it to an affected story or sprint.
 
 **Arguments:**
 
-- `description` (required, string, markdown): the impediment body.
-- `affects` (required, `StoryRef`): the Story being blocked.
+- `description` (required, string, markdown): the impediment description. Impediments have a single description field rather than a separate title and body.
+- `affects` (optional, object): which artifact this impediment is blocking. If omitted, the impediment is logged as a project-level orphan visible through `scrum_get_backlog`. Provide at most one of the two sub-fields.
+  - `affects.story` (optional, `StoryRef`): the specific story being blocked.
+  - `affects.sprint` (optional, `SprintRef`): the sprint goal or overall sprint being threatened.
 - `raised_by` (optional, string): login of the person who surfaced it; defaults to the configured Scrum Master.
 - `priority` (optional, string): a value from `priority_vocabulary`; defaults to the highest tier.
 
-**Returns:** the impediment as a `Story`, plus `linked_to` containing the affected story's `StoryRef`.
+**Returns:**
 
-**Notes:** Impediments are first-class Stories so they appear on the sprint board and in history data. The bidirectional link is created as a cross-reference on both the impediment and the affected story. The agent discovers these links through `scrum_get_story` — the `comments` field surfaces the cross-reference notes, and `linked_prs` surfaces any associated PR.
+```
+{
+  impediment: ImpedimentListing,
+  affects: { story: StoryRef } | { sprint: SprintRef } | null
+}
+```
 
-**Does not:** notify the impediment owner, escalate after N days (the agent's standup ceremony does this), or close the affected story.
+**Notes:** Impediments are first-class objects on the backend. On GitHub, they are stored as labeled issues. The bidirectional cross-reference between the impediment and the affected story or sprint item is created atomically in this call. The agent discovers impediments through `scrum_get_story` (story-level), `scrum_get_sprint` (sprint-level), and `scrum_get_backlog` (orphans). Use `scrum_update_impediment` to advance an impediment through its lifecycle.
+
+**Does not:** notify the impediment owner, escalate after N days (the agent skill's standup ceremony handles this), or close the affected story.
+
+#### `scrum_update_impediment`
+
+Advances an impediment through its lifecycle or records its resolution.
+
+**Arguments:**
+
+- `ref` (required, `ImpedimentRef`): the impediment to update.
+- `status` (required, enum): one of `"open"`, `"in_progress"`, `"resolved"`. `"in_progress"` signals that the Scrum Master is actively working to remove the blocker; `"resolved"` closes it.
+- `resolution_notes` (optional, string, markdown): context on how the impediment was resolved or what action is being taken. Recorded as a note on the impediment. Required when `status` is `"resolved"` by convention, though not enforced by the server.
+
+**Returns:** the updated `ImpedimentListing`.
+
+**Notes:** Impediment status is independent of the status of any affected story — a story may be unblocked while the impediment is still tracked as `"in_progress"` (the underlying cause is being addressed). The agent skill decides when to update the affected story's status separately via `scrum_set_field`.
+
+**Does not:** close the affected story, remove the bidirectional link, or notify anyone.
 
 #### `scrum_add_vocabulary`
 
@@ -699,7 +741,7 @@ Idempotent addition of a vocabulary entry to the platform schema. Called by the 
 - `kind` (required, enum): one of `status_option`, `priority_option`, or `label`.
   - `status_option` — adds a missing option to the project's Status single-select field.
   - `priority_option` — adds a missing option to the project's Priority single-select field.
-  - `label` — creates a missing repository label (used for story typing: `feature`, `bug`, `tech_debt`, `spike`, `impediment`).
+  - `label` — creates a missing repository label (used for story typing: `feature`, `bug`, `tech_debt`, `spike`, and for impediment tracking).
 - `value` (required, string): the display name to add (e.g. `"Blocked"`, `"Critical"`, `"tech_debt"`).
 
 **Returns:** `{ created: boolean, kind, value, message }`. If the option or label already exists, `created` is `false` and no change is made.

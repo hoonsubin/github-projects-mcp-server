@@ -278,8 +278,8 @@ export class PaginatedProjectItemFetcher {
     private github: { graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> },
     private options: ItemFetchConfig = {},
   ) {
-    const gh = config.yml.backends.github as GitHubBackendConfig | undefined;
-    if (!gh) throw new Error("No GitHub backend configured in config.yml.");
+    const gh = config.scrumConfig.backends.github as GitHubBackendConfig | undefined;
+    if (!gh) throw new Error("No GitHub backend configured in config.scrumConfig.");
     this.login = gh.owner;
     this.projectNumber = gh.project_number;
     this.ownerType = gh.owner_type;

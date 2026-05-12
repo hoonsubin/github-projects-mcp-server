@@ -7,7 +7,7 @@
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ProjectBackend } from "../scrum/ports.ts";
-import type { ScrumConfigYml } from "../types.ts";
+import type { ScrumConfig } from "../domain/config.ts";
 
 import {
   GetBacklogSchema,
@@ -33,7 +33,7 @@ import { getBurndownUseCase } from "../scrum/get-burndown.ts";
 export const registerScrumReadTools = (
   server: McpServer,
   backend: ProjectBackend,
-  yml: ScrumConfigYml,
+  scrumConfig: ScrumConfig,
 ): void => {
   // ── scrum_orient ───────────────────────────────────────────────────────────
 
@@ -58,7 +58,7 @@ export const registerScrumReadTools = (
     },
     async () => {
       try {
-        const result = await orientUseCase(backend, yml);
+        const result = await orientUseCase(backend, scrumConfig);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
         return {

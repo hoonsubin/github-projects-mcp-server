@@ -1,7 +1,7 @@
 // =============================================================================
 // src/domain/config.ts — Platform-agnostic Scrum configuration types
 //
-// ScrumConfigYml is the shape of .github/scrum/config.yml as the domain layer
+// ScrumConfig is the shape of .github/scrum/config.yml as the domain layer
 // sees it. Backend adapter configs (GitHub tokens, project numbers, field
 // mappings) are type-erased here as `Record<string, unknown>` — each adapter
 // casts its own config out of `backends[platform]` without polluting the domain
@@ -37,7 +37,7 @@ interface StatusSemantics {
 // ── Top-level config shape ────────────────────────────────────────────────────
 
 /** Top-level shape of .github/scrum/config.yml. */
-export interface ScrumConfigYml {
+export interface ScrumConfig {
   /** Platform-agnostic project identity, agent behaviour, and team roster. */
   project: {
     name: string;

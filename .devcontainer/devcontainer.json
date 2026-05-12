@@ -22,7 +22,6 @@
         "denoland.vscode-deno",
         // RooCode AI assistant
         "rooveterinaryinc.roo-cline",
-        "charliermarsh.ruff",
         "ms-azuretools.vscode-docker",
         "mikestead.dotenv",
         "redhat.vscode-yaml",

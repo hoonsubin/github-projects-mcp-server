@@ -132,9 +132,6 @@ classDiagram
         class GitHubProjectBackend
     }
 
-    class Raw_Types:::github {
-    }
-
     class Index:::root {
     }
 
@@ -166,7 +163,7 @@ classDiagram
     }
 
     class Config:::domain {
-        interface ScrumConfigYml
+        interface ScrumConfig
     }
 
     class Github:::services {
@@ -200,12 +197,13 @@ classDiagram
 
 
     Orient --> Ports : "imports"
-    Orient --> Types : "imports"
+    Orient --> Config : "imports"
     Get_Backlog --> Ports : "imports"
-    Get_Backlog --> Types : "imports"
+    Get_Backlog --> Config : "imports"
     Get_Backlog --> Readiness : "imports"
     Get_Template --> Ports : "imports"
     Get_Template --> Types : "imports"
+    Get_Template --> Config : "imports"
     Sprint_Math --> Types : "imports"
     Sprint_Math --> Ports : "imports"
     Get_Story --> Ports : "imports"
@@ -213,16 +211,18 @@ classDiagram
     Get_Story --> Acceptance_Criteria : "imports"
     Get_Burndown --> Ports : "imports"
     Get_Burndown --> Types : "imports"
+    Get_Burndown --> Config : "imports"
     Get_Burndown --> Sprint_Math : "imports"
     Ports --> Types : "imports"
     Get_History --> Ports : "imports"
-    Get_History --> Types : "imports"
+    Get_History --> Config : "imports"
     Get_Sprint --> Ports : "imports"
     Get_Sprint --> Types : "imports"
+    Get_Sprint --> Config : "imports"
     Get_Sprint --> Sprint_Math : "imports"
     Scrum_Read --> Index : "imports"
     Scrum_Read --> Ports : "imports"
-    Scrum_Read --> Types : "imports"
+    Scrum_Read --> Config : "imports"
     Scrum_Read --> Scrum : "imports"
     Scrum_Read --> Github : "imports"
     Scrum_Read --> Orient : "imports"
@@ -235,13 +235,13 @@ classDiagram
     Scrum_Write --> Index : "imports"
     Scrum_Write --> Ports : "imports"
     Scrum_Write --> Types : "imports"
+    Scrum_Write --> Config : "imports"
     Scrum_Write --> Scrum : "imports"
     Scrum_Write --> Inputs : "imports"
     Scrum_Write --> Mutation_Validator : "imports"
     Scrum_Write --> Github : "imports"
     Scrum --> Index : "imports"
     Inputs --> Index : "imports"
-    Types --> Config : "imports"
     Queries --> Index : "imports"
     Mappers --> Config_Loader : "imports"
     Mappers --> Types : "imports"
@@ -267,6 +267,7 @@ classDiagram
     Index --> Logger : "imports"
     Index --> Ports : "imports"
     Index --> Types : "imports"
+    Index --> Config : "imports"
     Config --> Types : "imports"
     Github --> Types : "imports"
     Github --> Logger : "imports"
@@ -285,13 +286,15 @@ classDiagram
     classDef services fill:#0ff,stroke:#333,stroke-width:2px,color:#000;
 ```
 
+
 ## Unused Exports
 
 The following exports are never imported by any other module in the codebase:
 
-| Module                                            | Export                  | Kind       |
-| ------------------------------------------------- | ----------------------- | ---------- |
+| Module | Export | Kind |
+|--------|--------|------|
 | [`services/github.ts`](../src/services/github.ts) | `decodeRepoFileContent` | `function` |
+
 
 ## Notes
 
@@ -304,4 +307,4 @@ The following exports are never imported by any other module in the codebase:
 
 ---
 
-_Auto-generated — do not edit manually_
+*Auto-generated — do not edit manually*

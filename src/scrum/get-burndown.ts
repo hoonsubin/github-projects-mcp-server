@@ -2,17 +2,12 @@
 // src/scrum/get-burndown.ts — getBurndownUseCase
 //
 // Extracted from scrum-read.ts as part of Story B (Phase 5).
-// Receives backend: ProjectBackend and yml: ScrumConfigYml.
+// Receives backend: ProjectBackend and scrumConfig: ScrumConfig.
 // =============================================================================
 
 import type { ProjectBackend } from "./ports.ts";
-import type {
-  BurndownResponse,
-  BurndownSprintMeta,
-  BurndownStory,
-  ScrumConfigYml,
-  SprintRef,
-} from "../types.ts";
+import type { BurndownResponse, BurndownSprintMeta, BurndownStory, SprintRef } from "../domain/types.ts";
+import type { ScrumConfig } from "../domain/config.ts";
 import { buildDaySeries, buildIdealLine, buildSprintWindow } from "./sprint-math.ts";
 
 interface GetBurndownParams {
@@ -24,7 +19,7 @@ interface GetBurndownParams {
  */
 export const getBurndownUseCase = async (
   backend: ProjectBackend,
-  _yml: ScrumConfigYml,
+  _scrumConfig: ScrumConfig,
   params: GetBurndownParams,
 ): Promise<BurndownResponse | { message: string }> => {
   const sprintRef = params.sprint ?? "current";
