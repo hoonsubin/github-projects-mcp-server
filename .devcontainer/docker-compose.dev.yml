@@ -38,35 +38,35 @@ services:
       retries: 5
       start_period: 15s
 
-  crawl4ai:
-    image: unclecode/crawl4ai:latest
-    container_name: crawl4ai
-    ports:
-      - "11235:11235"
+  # crawl4ai:
+  #   image: unclecode/crawl4ai:latest
+  #   container_name: crawl4ai
+  #   ports:
+  #     - "11235:11235"
 
-    environment:
-      # Optional: Override specific settings
-      - CRAWL4AI_WORKERS=4
-      - CRAWL4AI_MAX_CONCURRENT_TASKS=10
-    volumes:
-      # Optional: Persist cache and data
-      - crawl4ai-cache:/app/.crawl4ai
-      # Optional: Custom configuration
-      - ./config/crawl4ai/config.yml:/app/config.yml:ro
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11235/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    # Resource limits (adjust based on your needs)
-    deploy:
-      resources:
-        limits:
-          memory: 4G
-        reservations:
-          memory: 2G
+  #   environment:
+  #     # Optional: Override specific settings
+  #     - CRAWL4AI_WORKERS=4
+  #     - CRAWL4AI_MAX_CONCURRENT_TASKS=10
+  #   volumes:
+  #     # Optional: Persist cache and data
+  #     - crawl4ai-cache:/app/.crawl4ai
+  #     # Optional: Custom configuration
+  #     - ./config/crawl4ai/config.yml:/app/config.yml:ro
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:11235/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 40s
+  #   # Resource limits (adjust based on your needs)
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 4G
+  #       reservations:
+  #         memory: 2G
   redis:
     container_name: redis
     image: docker.io/valkey/valkey:8-alpine

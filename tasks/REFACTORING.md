@@ -125,15 +125,6 @@ These are structural problems identified by architecture audit against Clean Arc
 
 ---
 
-### P0 — `types.ts` mixes domain types with GitHub API wire types
-
-`types.ts` is imported by every use case and is the closest thing the codebase has to an entity layer. It contains two incompatible categories of type:
-
-- **Domain types** — `Story`, `SprintRef`, `StoryRef`, `BurndownResponse`, `ArtifactType`, `IterationEntry`. These are stable, platform-agnostic, and belong at the innermost layer.
-- **GitHub GraphQL response shapes** — `ProjectV2Item`, `ProjectV2IssueContent`, `ProjectV2PRContent`, `ProjectV2DraftIssueContent`, `ProjectV2ItemFieldValue`, `ItemContentType`, `GraphQLResponse`. These are the raw wire format of a specific external API. They are adapter-layer details, not domain types.
-
-The Clean Architecture Dependency Rule states that inner layers must not name outer-layer details. By colocating GitHub's connection-node shapes with `Story` and `SprintRef`, every file that imports domain types transitively acknowledges that the backing platform is GitHub and uses its specific pagination and field-value node model. If a second backend is introduced, these types become dead weight in the domain layer's primary file.
-
 `adapters/github/raw-types.ts` already exists for this exact purpose and already holds `FieldValueNode`, `BoardFields`, `Comment`, and `LinkedPr`.
 
 ---
@@ -211,11 +202,14 @@ Independent of the §5 architectural debt, the class has accumulated concrete co
 | #   | Smell                                                      | Affected Areas                                                                              | Severity |
 | --- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
 | 1   | Label creation logic duplicated 3+ times                   | `resolveLabelNodeIds`, `resolveOrCreateLabel`, `addLabel`, `resolveOrCreateMilestoneNodeId` | High     |
-| 2   | String interpolation in GraphQL mutations (injection risk) | All `setField*` methods, `clearField`                                                       | High     |
-| 3   | `createStory` is 116 lines                                 | `createStory`                                                                               | High     |
-| 4   | Burndown completion logic too complex                      | `fetchAuditLogCompletions`, `fetchIssueCloseCompletions`                                    | Medium   |
-| 5   | `fetchAllItems` duplicates `PaginatedProjectItemFetcher`   | `fetchAllItems`, `getCompletedSprintHistory`                                                | Medium   |
-| 6   | Response types defined inline instead of in `raw-types.ts` | `GetIssueDetailsResponse`, `GetItemFieldsResponse`, `RawItem`, `RawFieldValue`              | Low      |
+| # | Smell                                                      | Affected Areas                                                                              | Severity |
+| - | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
+| 1 | Label creation logic duplicated 3+ times                   | `resolveLabelNodeIds`, `resolveOrCreateLabel`, `addLabel`, `resolveOrCreateMilestoneNodeId` | High     |
+| 2 | String interpolation in GraphQL mutations (injection risk) | All `setField*` methods, `clearField`                                                       | High     |
+| 3 | `createStory` is 116 lines                                 | `createStory`                                                                               | High     |
+| 4 | Burndown completion logic too complex                      | `fetchAuditLogCompletions`, `fetchIssueCloseCompletions`                                    | Medium   |
+| 5 | `fetchAllItems` duplicates `PaginatedProjectItemFetcher`   | `fetchAllItems`, `getCompletedSprintHistory`                                                | Medium   |
+| 6 | Response types defined inline instead of in `raw-types.ts` | `GetIssueDetailsResponse`, `GetItemFieldsResponse`, `RawItem`, `RawFieldValue`              | Low      |
 
 ### 6b. Tool Surface Improvements
 

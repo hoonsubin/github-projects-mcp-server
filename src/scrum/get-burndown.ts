@@ -6,7 +6,12 @@
 // =============================================================================
 
 import type { ProjectBackend } from "./ports.ts";
-import type { BurndownResponse, BurndownSprintMeta, BurndownStory, SprintRef } from "../domain/types.ts";
+import type {
+  BurndownResponse,
+  BurndownSprintMeta,
+  BurndownStory,
+  SprintRef,
+} from "../domain/types.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 import { buildDaySeries, buildIdealLine, buildSprintWindow } from "./sprint-math.ts";
 

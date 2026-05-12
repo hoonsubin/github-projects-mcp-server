@@ -10,8 +10,9 @@
 // =============================================================================
 
 import { parse } from "@std/yaml";
-import type { GitHubBackendConfig, IterationEntry } from "./types.ts";
+import type { GitHubBackendConfig } from "./types.ts";
 import type { ScrumConfig } from "../../domain/config.ts";
+import type { IterationEntry } from "../../domain/types.ts";
 
 // ── Runtime types ────────────────────────────────────────────────────────────
 
@@ -320,9 +321,13 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
 
   // ── Step 2: Validate required top-level sections ────────────────────────────
 
-  if (!parsedConfig.project) throw new Error(`${configPath} is missing required 'project' section.`);
+  if (!parsedConfig.project) {
+    throw new Error(`${configPath} is missing required 'project' section.`);
+  }
   if (!parsedConfig.scrum) throw new Error(`${configPath} is missing required 'scrum' section.`);
-  if (!parsedConfig.backends) throw new Error(`${configPath} is missing required 'backends' section.`);
+  if (!parsedConfig.backends) {
+    throw new Error(`${configPath} is missing required 'backends' section.`);
+  }
   if (!parsedConfig.backends.github) {
     throw new Error(
       `${configPath} is missing 'backends.github'. ` +

@@ -52,7 +52,10 @@ export const orientUseCase = async (
   // metadata here instead of display names. For now, status_display values are
   // passed so the adapter can diff them against live platform options.
   // todo: Remove this cast once status uses canonical keys — backends is type-erased.
-  type GhDisplay = { status_display?: Record<string, string>; priority_display?: Record<string, string> };
+  type GhDisplay = {
+    status_display?: Record<string, string>;
+    priority_display?: Record<string, string>;
+  };
   const ghDisplay = scrumConfig.backends.github as GhDisplay | undefined;
   const statusVocab = ghDisplay?.status_display ?? null;
   const priorityVocab = ghDisplay?.priority_display ?? null;

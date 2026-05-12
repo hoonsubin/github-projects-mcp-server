@@ -54,8 +54,11 @@ export const getSprintUseCase = async (
   // ("done", "in_progress", "blocked") and remove the status_display dependency.
   // todo: Remove this cast once status uses canonical keys — backends is type-erased.
   type GhDisplay = { status_display?: Record<string, string> };
-  const statusDisplay = (scrumConfig.backends.github as GhDisplay | undefined)?.status_display ?? {};
-  const statusOrder = Object.keys(scrumConfig.scrum.status).map((k) => statusDisplay[k]).filter(Boolean);
+  const statusDisplay = (scrumConfig.backends.github as GhDisplay | undefined)?.status_display ??
+    {};
+  const statusOrder = Object.keys(scrumConfig.scrum.status).map((k) => statusDisplay[k]).filter(
+    Boolean,
+  );
   const groups = groupStoriesByStatus(result.stories, statusOrder);
   const doneDisplay = statusDisplay["done"] ?? "Done";
   const inProgressDisplay = statusDisplay["in_progress"] ?? "In Progress";

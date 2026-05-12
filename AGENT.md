@@ -27,6 +27,7 @@ Guidance for coding agents working in this repository. Concise by design — see
 2. Load skill instructions first (small, <5000 tokens)
 3. Use skill guidance to identify which sections of large files to read
 4. Never load complete reference documentation without user direction
+5. Use MemPalace for memory-related search and save flows
 
 ## Architecture
 

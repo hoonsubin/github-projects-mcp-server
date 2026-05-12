@@ -1,9 +1,21 @@
 FROM denoland/deno:2.3.3
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      git curl wget unzip bash-completion ca-certificates \
+      curl wget git unzip bash-completion \
+      ca-certificates gnupg procps \
     && rm -rf /var/lib/apt/lists/*
 
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/* \
+    && node --version && npm --version
+
+RUN npm install -g \
+      @earendil-works/pi-coding-agent \
+      npm@latest \
+    && pi --version && npm install -g acpx@latest
+
+# ── 4. vscode user ────────────────────────────────────────────────────────────
 ARG USERNAME=vscode
 ARG USER_UID=1000
 ARG USER_GID=1000
@@ -11,10 +23,14 @@ ARG USER_GID=1000
 RUN groupadd --gid $USER_GID $USERNAME \
  && useradd  --uid $USER_UID --gid $USER_GID -m -s /bin/bash $USERNAME \
  && mkdir -p /home/$USERNAME/.cache/deno \
+ && mkdir -p /home/$USERNAME/.pi \
+ && mkdir -p /home/$USERNAME/.npm-global \
  && chown -R $USERNAME:$USERNAME /home/$USERNAME
 
 USER $USERNAME
 
 ENV DENO_DIR=/home/vscode/.cache/deno
+ENV NPM_CONFIG_PREFIX=/home/vscode/.npm-global
+ENV PATH=/home/vscode/.npm-global/bin:$PATH
 
 WORKDIR /workspace

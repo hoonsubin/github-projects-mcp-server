@@ -92,7 +92,7 @@ export const registerScrumReadTools = (
     },
     async (params: z.infer<typeof GetHistorySchema>) => {
       try {
-        const result = await getHistoryUseCase(backend, yml, params.window);
+        const result = await getHistoryUseCase(backend, scrumConfig, params.window);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
         return {
@@ -130,7 +130,7 @@ export const registerScrumReadTools = (
     },
     async (params: z.infer<typeof GetBacklogSchema>) => {
       try {
-        const result = await getBacklogUseCase(backend, yml, params);
+        const result = await getBacklogUseCase(backend, scrumConfig, params);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
         return {
@@ -164,7 +164,7 @@ export const registerScrumReadTools = (
     },
     async (params: z.infer<typeof GetSprintSchema>) => {
       try {
-        const result = await getSprintUseCase(backend, yml, params.sprint ?? "current");
+        const result = await getSprintUseCase(backend, scrumConfig, params.sprint ?? "current");
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
         return {
@@ -233,7 +233,7 @@ export const registerScrumReadTools = (
     },
     async (params: z.infer<typeof GetBurndownSchema>) => {
       try {
-        const result = await getBurndownUseCase(backend, yml, params);
+        const result = await getBurndownUseCase(backend, scrumConfig, params);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
         return {
@@ -270,7 +270,7 @@ export const registerScrumReadTools = (
     },
     async (params: z.infer<typeof GetTemplateSchema>) => {
       try {
-        const result = await getTemplateUseCase(backend, yml, params.artifact_type);
+        const result = await getTemplateUseCase(backend, scrumConfig, params.artifact_type);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
         return {

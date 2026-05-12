@@ -405,11 +405,11 @@ flowchart LR
 
 These appear in arguments and return values across multiple tools.
 
-| Type             | Meaning                                                                                                                                                                                                                             |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `StoryRef`       | A reference to a single Story. Shape: `{ "id": "<opaque>" }` where `id` is the project-item handle returned by any read tool in `Story.ref.id`. The agent obtains an `id` from a listing tool first, then passes it to write tools. |
-| `SprintRef`      | A reference to a sprint. Accepted forms: `"current"`, `"next"`, `null` (= no sprint, i.e. the backlog), or an explicit sprint name or sprint ID that the backend accepts (e.g. `"Sprint 12", "31"`).                                |
-| `ScrumField`     | One of `status`, `sprint`, `story_points`, `priority`, `assignee`. The set is fixed; new field types are out of scope for v1.                                                                                                       |
+| Type                | Meaning                                                                                                                                                                                                                             |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `StoryRef`          | A reference to a single Story. Shape: `{ "id": "<opaque>" }` where `id` is the project-item handle returned by any read tool in `Story.ref.id`. The agent obtains an `id` from a listing tool first, then passes it to write tools. |
+| `SprintRef`         | A reference to a sprint. Accepted forms: `"current"`, `"next"`, `null` (= no sprint, i.e. the backlog), or an explicit sprint name or sprint ID that the backend accepts (e.g. `"Sprint 12", "31"`).                                |
+| `ScrumField`        | One of `status`, `sprint`, `story_points`, `priority`, `assignee`. The set is fixed; new field types are out of scope for v1.                                                                                                       |
 | `StoryType`         | One of `feature`, `bug`, `tech_debt`, `spike`. Drives the type label or category the backend applies. Impediments are a separate first-class artifact — not a `StoryType`.                                                          |
 | `ImpedimentRef`     | A reference to a single Impediment. Shape: `{ "id": "<opaque>" }`. The opaque `id` is returned by `scrum_log_impediment` and appears in every `ImpedimentListing`. Pass it to `scrum_update_impediment`.                            |
 | `StoryListing`      | Lightweight listing entry returned by all listing tools. See shape below.                                                                                                                                                           |
@@ -434,17 +434,17 @@ Returned by listing tools (`scrum_get_sprint`, `scrum_get_backlog`, `scrum_get_h
 
 The common envelope for sprint data. Used by both `scrum_get_sprint` and `scrum_get_history` so the agent uses one mental model regardless of whether it is looking at active or historical sprints.
 
-| Field                   | Meaning                                                                                  |
-| ----------------------- | ---------------------------------------------------------------------------------------- |
-| `sprint.name`           | Sprint name.                                                                             |
-| `sprint.start_date`     | ISO-8601 start date.                                                                     |
-| `sprint.end_date`       | ISO-8601 end date.                                                                       |
-| `sprint.duration_days`  | Sprint length in calendar days.                                                          |
-| `sprint.days_remaining` | Days until end, or `null` for completed or future sprints.                               |
-| `items`                 | Array of `StoryListing` — the sprint's assigned items.                                   |
-| `total_count`           | Total matching items before `limit` is applied.                                          |
-| `totals.by_status`      | Map of status display name → item count (e.g. `{ "Done": 7, "In Progress": 2 }`).                         |
-| `totals.story_points`   | Sum of `story_points` across all items in the snapshot (unestimated items contribute 0).                   |
+| Field                   | Meaning                                                                                                                                                                                                                        |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `sprint.name`           | Sprint name.                                                                                                                                                                                                                   |
+| `sprint.start_date`     | ISO-8601 start date.                                                                                                                                                                                                           |
+| `sprint.end_date`       | ISO-8601 end date.                                                                                                                                                                                                             |
+| `sprint.duration_days`  | Sprint length in calendar days.                                                                                                                                                                                                |
+| `sprint.days_remaining` | Days until end, or `null` for completed or future sprints.                                                                                                                                                                     |
+| `items`                 | Array of `StoryListing` — the sprint's assigned items.                                                                                                                                                                         |
+| `total_count`           | Total matching items before `limit` is applied.                                                                                                                                                                                |
+| `totals.by_status`      | Map of status display name → item count (e.g. `{ "Done": 7, "In Progress": 2 }`).                                                                                                                                              |
+| `totals.story_points`   | Sum of `story_points` across all items in the snapshot (unestimated items contribute 0).                                                                                                                                       |
 | `impediments`           | Array of `ImpedimentListing` — impediments logged directly against this sprint. Does NOT include story-level impediments of stories within the sprint; fetch those via `scrum_get_story`. Both open and resolved are included. |
 
 #### Story shape
@@ -468,20 +468,20 @@ Every full Story has this shape:
 | `epic`                     | Parent epic name, or `null`. Readable and writable.                                                                                          |
 | `created_at`, `updated_at` | ISO-8601 timestamps.                                                                                                                         |
 | `url`                      | Canonical URL to view the story in the backend UI, when available.                                                                           |
-| `impediments`              | Array of `ImpedimentListing` — all impediments that reference this story, ordered newest first. Both open and resolved are included.          |
+| `impediments`              | Array of `ImpedimentListing` — all impediments that reference this story, ordered newest first. Both open and resolved are included.         |
 
 #### ImpedimentListing shape
 
 Returned in listing contexts: inside a `Story` (via `scrum_get_story`), inside a `SprintSnapshot` (via `scrum_get_sprint` and `scrum_get_history`), and as `orphan_impediments` from `scrum_get_backlog`. Because impediment content is a single description field rather than a structured document, the full description is always returned — there is no separate "impediment detail" fetch.
 
-| Field | Meaning |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `ref` | `{ id: string }` — opaque handle. Pass to `scrum_update_impediment`. |
-| `description` | The full impediment description text. |
-| `status` | One of `"open"`, `"in_progress"`, `"resolved"`. |
-| `raised_by` | Login of the person who surfaced it, or `null`. |
-| `raised_at` | ISO-8601 timestamp when the impediment was logged. |
-| `resolved_at` | ISO-8601 timestamp when resolved, or `null`. |
+| Field         | Meaning                                                              |
+| ------------- | -------------------------------------------------------------------- |
+| `ref`         | `{ id: string }` — opaque handle. Pass to `scrum_update_impediment`. |
+| `description` | The full impediment description text.                                |
+| `status`      | One of `"open"`, `"in_progress"`, `"resolved"`.                      |
+| `raised_by`   | Login of the person who surfaced it, or `null`.                      |
+| `raised_at`   | ISO-8601 timestamp when the impediment was logged.                   |
+| `resolved_at` | ISO-8601 timestamp when resolved, or `null`.                         |
 
 ### Read tools
 

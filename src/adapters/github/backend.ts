@@ -279,7 +279,8 @@ export class GitHubProjectBackend implements ProjectBackend {
   async resolveCompletionTimestamps(input: BurndownInput): Promise<CompletionMap> {
     const doneStatusName = this.resolveTerminalStatusDisplayName();
     const statusFieldName =
-      (this.config.scrumConfig.backends.github as GitHubBackendConfig).field_mapping.status ?? "Status";
+      (this.config.scrumConfig.backends.github as GitHubBackendConfig).field_mapping.status ??
+        "Status";
     const nodeIdToNumber = new Map(
       input.stories.map((s) => [s.number, s.number]), // already has number
     );
@@ -955,7 +956,8 @@ export class GitHubProjectBackend implements ProjectBackend {
    * status_display mapping. Falls back to `fallback` if the key is not found.
    */
   private resolveStatusDisplayName(canonicalKey: string, fallback: string): string {
-    const statusDisplay = (this.config.scrumConfig.backends.github as GitHubBackendConfig).status_display;
+    const statusDisplay =
+      (this.config.scrumConfig.backends.github as GitHubBackendConfig).status_display;
     if (!statusDisplay) return fallback;
     return statusDisplay[canonicalKey] ?? fallback;
   }
