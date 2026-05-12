@@ -125,10 +125,6 @@ These are structural problems identified by architecture audit against Clean Arc
 
 ---
 
-`adapters/github/raw-types.ts` already exists for this exact purpose and already holds `FieldValueNode`, `BoardFields`, `Comment`, and `LinkedPr`.
-
----
-
 ### P0 — Use cases are coupled to `ScrumConfigYml`, which embeds `GitHubBackendConfig`
 
 Every use case function signature is `(backend: ProjectBackend, yml: ScrumConfigYml, params)`. `ScrumConfigYml` contains a `backends.github?: GitHubBackendConfig` field that carries GitHub auth tokens, `owner`, `project_number`, `tracked_repos`, and `field_mapping`.
@@ -199,9 +195,6 @@ The class's own inline comment acknowledges this: `//todo: this class is way too
 
 Independent of the §5 architectural debt, the class has accumulated concrete code smells:
 
-| #   | Smell                                                      | Affected Areas                                                                              | Severity |
-| --- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
-| 1   | Label creation logic duplicated 3+ times                   | `resolveLabelNodeIds`, `resolveOrCreateLabel`, `addLabel`, `resolveOrCreateMilestoneNodeId` | High     |
 | # | Smell                                                      | Affected Areas                                                                              | Severity |
 | - | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
 | 1 | Label creation logic duplicated 3+ times                   | `resolveLabelNodeIds`, `resolveOrCreateLabel`, `addLabel`, `resolveOrCreateMilestoneNodeId` | High     |
