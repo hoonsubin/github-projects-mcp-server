@@ -1,5 +1,6 @@
 import type { GraphQLResponse } from "../adapters/github/types.ts";
 import { log } from "./logger.ts";
+import { GitHubApiError } from "../adapters/github/errors.ts";
 
 const GITHUB_API_URL = "https://api.github.com/graphql";
 const REST_API_URL = "https://api.github.com";
@@ -17,17 +18,6 @@ const REQUEST_TIMEOUT_MS = 30_000;
 export interface RestResponse<T> {
   data: T;
   linkHeader: string | null;
-}
-
-export class GitHubApiError extends Error {
-  constructor(
-    message: string,
-    public readonly statusCode?: number,
-    public readonly graphqlErrors?: string[],
-  ) {
-    super(message);
-    this.name = "GitHubApiError";
-  }
 }
 
 const getToken = (): string => {

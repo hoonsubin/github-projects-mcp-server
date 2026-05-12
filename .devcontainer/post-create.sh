@@ -7,7 +7,6 @@ uv python install 3.12
 
 npm install -g @earendil-works/pi-coding-agent
 
-# Ensure user-local Python bin is on PATH for shells started later
 grep -qxF 'export PATH="$HOME/.local/bin:$PATH"' ~/.bashrc || \
   echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 
@@ -15,22 +14,28 @@ export PATH="$HOME/.local/bin:$PATH"
 
 uv tool install mempalace
 
-# Install the Pi extension package that exposes MemPalace commands/tools
 pi install npm:mempalace-pi
 
 deno install
 
+# --- MemPalace: scripted onboard (global, once per user home) ---
 if [ ! -f "$HOME/.mempalace/config.yaml" ]; then
-  mempalace onboard \
-    --name  "${MEMPALACE_USER_NAME:-vscode}" \
-    --email "${MEMPALACE_USER_EMAIL:-}" \
+  ONBOARD_ARGS=(
+    --name "${MEMPALACE_USER_NAME:-vscode}"
     --non-interactive
+  )
+  if [ -n "${MEMPALACE_USER_EMAIL:-}" ]; then
+    ONBOARD_ARGS+=(--email "$MEMPALACE_USER_EMAIL")
+  fi
+  mempalace onboard "${ONBOARD_ARGS[@]}"
 fi
 
+# --- MemPalace: scripted project init (once per workspace) ---
 if [ ! -f "/workspace/mempalace.yaml" ]; then
   mempalace init /workspace \
     --wing "${MEMPALACE_WING:-$(basename /workspace)}" \
     --no-mine
 fi
 
+# --- MemPalace: index workspace, respecting .gitignore ---
 mempalace mine /workspace --gitignore-aware

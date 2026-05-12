@@ -39,7 +39,7 @@ This plan addresses all items in [`tasks/REFACTORING.md`](tasks/REFACTORING.md) 
 
 ---
 
-## Phase 2: Extract GitHubApiError (Prerequisite for Phase 3)
+## Phase 2: Extract GitHubApiError (Prerequisite for Phase 3) FINISHED
 
 **Goal:** Move `GitHubApiError` out of `src/services/github.ts` into its own file at `src/adapters/github/errors.ts`, so `error-formatter.ts` (Phase 3) can import just the error class without a transitive dependency on the full HTTP transport file.
 
