@@ -2,7 +2,7 @@
 // scripts/graphql-codegen.ts
 //
 // Phase 1 — Schema    Fetch the GitHub GraphQL schema → src/schemas/schema.graphql
-// Phase 2 — Validate  Parse src/graphql/operations.graphql and validate against schema
+// Phase 2 — Validate  Parse src/adapters/github/operations.graphql and validate against schema
 // Phase 3 — Generate  Emit TypeScript types for every schema type → src/generated/github-types.ts
 //
 // Usage:
@@ -34,7 +34,6 @@ import {
   printSchema,
   validate as gqlValidate,
 } from "graphql";
-import { getToken } from "../src/services/github.ts";
 
 const GITHUB_API_URL = "https://api.github.com/graphql";
 
@@ -54,7 +53,7 @@ if (args.help) {
 
 const SCHEMA_JSON_PATH = "src/generated/schema.json";
 const SCHEMA_SDL_PATH = "src/generated/schema.graphql";
-const OPERATIONS_PATH = "src/graphql/operations.graphql";
+const OPERATIONS_PATH = "src/adapters/github/operations.graphql";
 const GENERATED_PATH = "src/generated/github-types.ts";
 const skipFetch = args["skip-fetch"] as boolean;
 const validateOnly = args["validate"] as boolean;
@@ -86,8 +85,8 @@ const phase1 = async (): Promise<void> => {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${getToken()}`,
-      "User-Agent": "github-projects-mcp-server/1.0.0",
+      Authorization: `Bearer ${Deno.env.get("GITHUB_TOKEN")}`,
+      "User-Agent": "dev-script/1.0.0",
       "X-Github-Next-Global-ID": "1",
     },
     body: JSON.stringify({ query: getIntrospectionQuery() }),
@@ -103,7 +102,7 @@ const phase1 = async (): Promise<void> => {
   console.log(`  ✓ wrote ${SCHEMA_JSON_PATH} and ${SCHEMA_SDL_PATH}`);
 };
 
-// Reads src/graphql/operations.graphql and validates every named operation
+// Reads src/adapters/github/operations.graphql and validates every named operation
 // against the schema.  Field-type conflicts on mutually exclusive union branches
 // (e.g. Issue.state vs PullRequest.state) are demoted to warnings because
 // graphql-js flags them even though they are safe at runtime.

@@ -52,7 +52,7 @@
         "roo-cline.embeddingProvider": "openai-compatible",
         "roo-cline.embeddingBaseUrl": "http://host.docker.internal:1234/v1",
         "roo-cline.embeddingModel": "text-embedding-nomic-embed-text-v2-moe",
-        "roo-cline.embeddingDimension": 1536
+        "roo-cline.embeddingDimension": 768
       }
     }
   },
@@ -85,7 +85,7 @@
   // 1. Install uv (official installer) + Python 3.12 managed by uv
   // 2. Install mempalace for AI memory tooling
   // 3. Cache Deno dependencies declared in deno.json
-  "postCreateCommand": "curl -LsSf https://astral.sh/uv/install.sh | sh && ~/.local/bin/uv python install 3.12 && ~/.local/bin/uv tool install mempalace && deno install",
+  "postCreateCommand": "curl -LsSf https://astral.sh/uv/install.sh | sh && ~/.local/bin/uv python install 3.12 && ~/.local/bin/uv venv && ~/.local/bin/uv tool install mempalace && deno install",
 
   "remoteUser": "vscode"
 }

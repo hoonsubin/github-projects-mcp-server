@@ -170,11 +170,29 @@ The `services/` folder is currently a mixed bag: the HTTP client (`github.ts`), 
 
 ### P1 — `GitHubProjectBackend` violates Single Responsibility
 
-`GitHubProjectBackend` is ~1,160 lines and handles sprint resolution, paginated item fetching, field ID resolution, story mapping, label creation, milestone management, config state inspection, burndown completion fetching, and both GraphQL and REST execution. Each of these is a distinct reason for the class to change.
+`GitHubProjectBackend` is more than 600 lines and handles sprint resolution, paginated item fetching, field ID resolution, story mapping, label creation, milestone management, config state inspection, burndown completion fetching, and both GraphQL and REST execution. Each of these is a distinct reason for the class to change.
 
 The Single Responsibility Principle defines responsibility as "a reason to change" — the class should have only one. Under the current design, a change to how burndown completion timestamps are fetched, a change to how labels are resolved, and a change to how sprint iterations are enumerated all require editing the same class. This makes changes harder to isolate, test, and review.
 
 The class's own inline comment acknowledges this: `//todo: this class is way too massive. It should be broken down even further and separate reusable logic outside of the class`.
+
+**Target:** Split into 6 cohesive services (§6d below). Target backend size: ~200 lines.
+
+---
+
+### P1 — `github.ts` conflates three unrelated concerns
+
+`src/services/github.ts` (488 lines) bundles three unrelated responsibilities:
+
+| Role                | Exports                                                      | Lines   | Correct Home                     |
+| ------------------- | ------------------------------------------------------------ | ------- | -------------------------------- |
+| HTTP transport      | `graphql()`, `rest()`                                        | 62–267  | `adapters/github/http-client.ts` |
+| Error enrichment    | `GitHubApiError`, `enrichError()`, `REQUIRED_PERMISSION` map | 22–406  | `tools/error-formatter.ts`       |
+| GitHub Contents API | `fetchRepoFile()`, `decodeRepoFileContent()`                 | 408–487 | `adapters/github/contents.ts`    |
+
+**Problem:** `enrichError()` contains GitHub-specific domain knowledge (token scope requirements, regex patterns matching GitHub error messages) placed in a generic `services/` directory. Tool handlers (`scrum-read.ts:21`, `scrum-write.ts:30`) import it directly, bypassing the `ProjectBackend` abstraction. This means the tool layer has a direct dependency on a GitHub service — violating the dependency rule in §2.
+
+**Impact:** Adding a second backend requires either modifying `enrichError()` for the new platform's error format or duplicating it. The `services/` folder is a mixed bag: HTTP client, logger, mutation validator, pagination (GitHub-specific), resolver (GitHub-specific), and error enrichment (GitHub-specific).
 
 ---
 
@@ -268,6 +286,58 @@ Files: `src/schemas/scrum.ts`, `src/scrum/ports.ts`, `src/scrum/get-history.ts`,
 ### 6c. Unit Tests for Use Cases
 
 No use-case unit tests exist. All current tests are integration-level. Phase 5 specified at least one unit test per use case with a stubbed `ProjectBackend`. Low priority until coverage becomes a concern.
+
+---
+
+### 6d. Backend Split — `GitHubProjectBackend` → 6 Cohesive Services
+
+**Problem:** The class has 960 lines and 10+ responsibilities. Each `setField*` method duplicates the same GraphQL mutation pattern. Label resolution fetches the same `GET_REPO_LABELS_QUERY` three times independently. `createStory()` is 116 lines handling 6 distinct concerns.
+
+**Split plan:**
+
+| Service                 | Extracted From                                                                                              | Lines Removed |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------- | ------------- |
+| `LabelResolver`         | `resolveLabelNodeIds`, `resolveOrCreateLabel`, `addLabel`, `hashToColor`, `fetchRepoNodeId`                 | ~130          |
+| `FieldValueMutator`     | `clearField`, `setFieldStatus`, `setFieldSprint`, `setFieldStoryPoints`, `setFieldPriority`                 | ~80           |
+| `BurndownCalculator`    | `getBurndownInput`, `resolveCompletionTimestamps`, `fetchAuditLogCompletions`, `fetchIssueCloseCompletions` | ~170          |
+| `SprintHistoryService`  | `getCompletedSprintHistory`                                                                                 | ~50           |
+| `VocabularyManager`     | `addVocabulary`, `addStatusOption`, `addPriorityOption`, `addSingleSelectOption`                            | ~75           |
+| `UserMilestoneResolver` | `resolveUserNodeId`, `resolveUserNodeIds`, `resolveOrCreateMilestoneNodeId`                                 | ~85           |
+
+**Result:** `GitHubProjectBackend` becomes a ~200-line coordinator that delegates to injected services (DIP). All services live in `adapters/github/internal/`.
+
+### 6e. `github.ts` Split — Three Separate Modules
+
+**Problem:** `services/github.ts` (488 lines) conflates HTTP transport, error enrichment, and GitHub Contents API. Tool handlers import `enrichError` directly from it, creating a dependency path `tools → github.ts` that bypasses `ProjectBackend`.
+
+**Split plan:**
+
+| New File                         | Contents                                                                                              |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `adapters/github/http-client.ts` | `graphql()`, `rest()` — pure HTTP transport                                                           |
+| `adapters/github/errors.ts`      | `GitHubApiError` class only                                                                           |
+| `tools/error-formatter.ts`       | `enrichError()`, `formatError()`, `REQUIRED_PERMISSION` — error formatting belongs with tool handlers |
+| `adapters/github/contents.ts`    | `fetchRepoFile()`, `decodeRepoFileContent()`, `RepoFileResponse`                                      |
+
+**Result:** No file imports `services/github.ts`. Transport lives in the adapter, error formatting lives with tools, Contents API lives in the adapter.
+
+### 6f. `ProjectBackend` Port Pollution
+
+**Problem:** The `ProjectBackend` interface (the clean port) leaks GitHub-specific details:
+
+- `fetchRepoFile(path)` — GitHub Contents API method on a platform-agnostic interface
+- `VocabularyKind = "status_option" \| "priority_option" \| "label"` — GitHub terminology
+- `addVocabulary(kind, value)` — GitHub-specific vocabulary management
+
+**Impact:** A Jira or Azure DevOps backend must implement `fetchRepoFile()`, understand GitHub label terminology, and implement vocabulary management that may not map to the target platform.
+
+**Fix:** Remove `fetchRepoFile()` from `ProjectBackend` (handle in tool handlers directly). Generalize `VocabularyKind` or move `addVocabulary` to an extended `ProjectWriter` interface. Keep `setField()` field names — they are domain-neutral scrum concepts.
+
+### 6g. `services/pagination.ts` and `services/resolver.ts` Misplacement
+
+**Problem:** Both files are 100% GitHub-specific but live in `services/` alongside generic infrastructure. `pagination.ts` constructs GitHub GraphQL queries and consumes raw GitHub project item node shapes. `resolver.ts` operates on `PVTI_` project item node IDs.
+
+**Fix:** Move both to `adapters/github/internal/`. The `services/` folder should contain only truly generic utilities (logger, mutation validator).
 
 ---
 
