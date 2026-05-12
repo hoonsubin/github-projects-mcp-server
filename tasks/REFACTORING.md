@@ -102,14 +102,14 @@ All backend abstraction (Phase 5), tool extraction (Phase 2), write tools (Phase
 
 Remaining open work lives in §5 (architectural debt) and §6 (pending feature work).
 
-| File                             | State       | Notes                                                          |
-| -------------------------------- | ----------- | -------------------------------------------------------------- |
-| `src/scrum/get-sprint.ts`        | 🟡 Redesign | See §6 — `"all"` param, `StoryListing` return                 |
-| `src/scrum/get-backlog.ts`       | 🟡 Redesign | Active-item filter pending — see §6                            |
-| `src/scrum/get-history.ts`       | 🟡 Redesign | Return shape alignment with `SprintSnapshot` — see §6          |
-| `src/scrum/ports.ts`             | 🟡 Redesign | Method signatures update pending — see §6                      |
-| `src/tools/scrum-read.ts`        | 🟡 Redesign | Tool descriptions + handlers update pending — see §6           |
-| `src/adapters/github/backend.ts` | 🟡 Debt     | Class too large; smells documented in §6                       |
+| File                             | State       | Notes                                                 |
+| -------------------------------- | ----------- | ----------------------------------------------------- |
+| `src/scrum/get-sprint.ts`        | 🟡 Redesign | See §6 — `"all"` param, `StoryListing` return         |
+| `src/scrum/get-backlog.ts`       | 🟡 Redesign | Active-item filter pending — see §6                   |
+| `src/scrum/get-history.ts`       | 🟡 Redesign | Return shape alignment with `SprintSnapshot` — see §6 |
+| `src/scrum/ports.ts`             | 🟡 Redesign | Method signatures update pending — see §6             |
+| `src/tools/scrum-read.ts`        | 🟡 Redesign | Tool descriptions + handlers update pending — see §6  |
+| `src/adapters/github/backend.ts` | 🟡 Debt     | Class too large; smells documented in §6              |
 
 ---
 
@@ -184,14 +184,14 @@ The class's own inline comment acknowledges this: `//todo: this class is way too
 
 Independent of the §5 architectural debt, the class has accumulated concrete code smells:
 
-| # | Smell | Affected Areas | Severity |
-|---|-------|----------------|----------|
-| 1 | Label creation logic duplicated 3+ times | `resolveLabelNodeIds`, `resolveOrCreateLabel`, `addLabel`, `resolveOrCreateMilestoneNodeId` | High |
-| 2 | String interpolation in GraphQL mutations (injection risk) | All `setField*` methods, `clearField` | High |
-| 3 | `createStory` is 116 lines | `createStory` | High |
-| 4 | Burndown completion logic too complex | `fetchAuditLogCompletions`, `fetchIssueCloseCompletions` | Medium |
-| 5 | `fetchAllItems` duplicates `PaginatedProjectItemFetcher` | `fetchAllItems`, `getCompletedSprintHistory` | Medium |
-| 6 | Response types defined inline instead of in `raw-types.ts` | `GetIssueDetailsResponse`, `GetItemFieldsResponse`, `RawItem`, `RawFieldValue` | Low |
+| #   | Smell                                                      | Affected Areas                                                                              | Severity |
+| --- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
+| 1   | Label creation logic duplicated 3+ times                   | `resolveLabelNodeIds`, `resolveOrCreateLabel`, `addLabel`, `resolveOrCreateMilestoneNodeId` | High     |
+| 2   | String interpolation in GraphQL mutations (injection risk) | All `setField*` methods, `clearField`                                                       | High     |
+| 3   | `createStory` is 116 lines                                 | `createStory`                                                                               | High     |
+| 4   | Burndown completion logic too complex                      | `fetchAuditLogCompletions`, `fetchIssueCloseCompletions`                                    | Medium   |
+| 5   | `fetchAllItems` duplicates `PaginatedProjectItemFetcher`   | `fetchAllItems`, `getCompletedSprintHistory`                                                | Medium   |
+| 6   | Response types defined inline instead of in `raw-types.ts` | `GetIssueDetailsResponse`, `GetItemFieldsResponse`, `RawItem`, `RawFieldValue`              | Low      |
 
 ### 6b. Tool Surface Improvements
 
@@ -273,32 +273,31 @@ No use-case unit tests exist. All current tests are integration-level. Phase 5 s
 
 ## 7. Design Decisions
 
-| Topic | Decision |
-| ----- | -------- |
-| **Epic field** | Maps to GitHub `Milestone`. `scrum_update_story` creates the Milestone if not found. |
-| **Assignee writes** | Use `updateIssue` mutation only — not a separate project field. |
-| **Sprint "next" resolution** | The scheduled iteration immediately after the active one, by iteration order. |
-| **Sprint "all" resolution** | Every iteration not in `config.iterations.completed` at call time. |
-| **`github_graphql` tool** | Kept, deprecated. Mutations blocked at the tool level. |
-| **Config file location** | `.github/scrum/config.yml` in the repo — fetched via GitHub API at invocation time. |
-| **Caching** | No server-side config cache in v1. Each tool invocation calls `loadConfig`. |
-| **Stateless server** | No shared mutable state. All handlers call `loadConfig` at invocation time. |
-| **Backend decoupling mode** | Source-level (single Deno process). `index.ts` is the only file that knows the concrete implementation. |
-| **Listing tools return `StoryListing`** | Full `Story` (body, AC, comments, linked PRs) is only returned by `scrum_get_story`. All listing tools return `StoryListing`. |
-| **`statusOptions` map shape** | `{ displayName → optionId }` — keys are display names (what the agent passes), values are GitHub internal option IDs (what mutations need). |
-| **Active item filter** | Listing tools silently exclude archived items and items in terminal status belonging to completed sprints. No parameter needed; history is the only window into completed work. |
-| **`scrum_get_history` shape parity** | Returns `SprintSnapshot[]` — same structure as `scrum_get_sprint("all")`. History-specific stats are additions within `SprintSnapshot.totals`. |
-| **`StoryRef` id-only model** | `StoryRef` contains a single field: `id: string` (opaque `PVTI_...` handle). `Story.key` is display-only (human-readable issue number, null for Draft Issues). Lookup-by-key (`scrum_find_story`) is out of scope for v1. |
-| **Draft Issues in `StoryRef`** | `resolveStory` handles Draft Issues: `issueId` and `issueNumber` return `null`. Write operations requiring a real Issue throw a clear error prompting conversion. |
+| Topic                                   | Decision                                                                                                                                                                                                                  |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Epic field**                          | Maps to GitHub `Milestone`. `scrum_update_story` creates the Milestone if not found.                                                                                                                                      |
+| **Assignee writes**                     | Use `updateIssue` mutation only — not a separate project field.                                                                                                                                                           |
+| **Sprint "next" resolution**            | The scheduled iteration immediately after the active one, by iteration order.                                                                                                                                             |
+| **Sprint "all" resolution**             | Every iteration not in `config.iterations.completed` at call time.                                                                                                                                                        |
+| **`github_graphql` tool**               | Kept, deprecated. Mutations blocked at the tool level.                                                                                                                                                                    |
+| **Config file location**                | `.github/scrum/config.yml` in the repo — fetched via GitHub API at invocation time.                                                                                                                                       |
+| **Caching**                             | No server-side config cache in v1. Each tool invocation calls `loadConfig`.                                                                                                                                               |
+| **Stateless server**                    | No shared mutable state. All handlers call `loadConfig` at invocation time.                                                                                                                                               |
+| **Backend decoupling mode**             | Source-level (single Deno process). `index.ts` is the only file that knows the concrete implementation.                                                                                                                   |
+| **Listing tools return `StoryListing`** | Full `Story` (body, AC, comments, linked PRs) is only returned by `scrum_get_story`. All listing tools return `StoryListing`.                                                                                             |
+| **`statusOptions` map shape**           | `{ displayName → optionId }` — keys are display names (what the agent passes), values are GitHub internal option IDs (what mutations need).                                                                               |
+| **Active item filter**                  | Listing tools silently exclude archived items and items in terminal status belonging to completed sprints. No parameter needed; history is the only window into completed work.                                           |
+| **`scrum_get_history` shape parity**    | Returns `SprintSnapshot[]` — same structure as `scrum_get_sprint("all")`. History-specific stats are additions within `SprintSnapshot.totals`.                                                                            |
+| **`StoryRef` id-only model**            | `StoryRef` contains a single field: `id: string` (opaque `PVTI_...` handle). `Story.key` is display-only (human-readable issue number, null for Draft Issues). Lookup-by-key (`scrum_find_story`) is out of scope for v1. |
+| **Draft Issues in `StoryRef`**          | `resolveStory` handles Draft Issues: `issueId` and `issueNumber` return `null`. Write operations requiring a real Issue throw a clear error prompting conversion.                                                         |
 
 ---
 
 ## 8. Open Questions
 
-| Question | Status |
-| -------- | ------ |
-| Does `projects_v2_item.field_value_updated` exist in the GitHub Enterprise Cloud Audit Log? | Unverified against live schema |
-| Should `scrum_get_burndown` skip non-working days in the series? | Deferred. v1 includes all calendar days. |
-| Should the burndown ideal line use team capacity rather than a straight line? | Deferred. Straight line is the Scrum standard. |
-| Should `scrum_get_history` support iteration by date range rather than just count? | Deferred. `window` (count) is sufficient for v1. |
-| Should `scrum_get_sprint("all")` include iterations with zero assigned items? | Unresolved. Likely yes — an empty sprint is visible information. |
+| Question                                                                           | Status                                                                                                       |
+| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Should `scrum_get_burndown` skip non-working days in the series?                   | Deferred. v1 includes all calendar days.                                                                     |
+| Should the burndown ideal line use team capacity rather than a straight line?      | Deferred. Straight line is the Scrum standard.                                                               |
+| Should `scrum_get_history` support iteration by date range rather than just count? | Deferred. `window` (count) is sufficient for v1.                                                             |
+| Should `scrum_get_sprint("all")` include iterations with zero assigned items?      | Yes — an empty sprint is visible information. But the agent skill should account for what to do in this case |
