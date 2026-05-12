@@ -93,8 +93,7 @@ export interface ProjectItemIssueContent
 }
 
 export interface ProjectItemPRContent
-  extends
-    Required<Pick<GH.PullRequest, "id" | "number" | "title" | "body" | "url" | "isDraft">> {
+  extends Required<Pick<GH.PullRequest, "id" | "number" | "title" | "body" | "url" | "isDraft">> {
   __typename: "PullRequest";
   state: GH.PullRequestState; // "OPEN" | "CLOSED" | "MERGED" — grounded in generated enum
   assignees: { nodes: Array<{ login: string }> };

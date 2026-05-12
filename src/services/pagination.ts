@@ -16,9 +16,9 @@ import type { RuntimeConfig } from "../adapters/github/config-loader.ts";
 import type {
   GitHubBackendConfig,
   ItemContentType,
+  ProjectItem,
   ProjectItemDraftContent,
   ProjectItemIssueContent,
-  ProjectItem,
   ProjectItemPRContent,
 } from "../adapters/github/types.ts";
 

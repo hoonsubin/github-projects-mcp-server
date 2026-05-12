@@ -38,7 +38,7 @@ const SprintRefSchema = z
     "Which sprint to target. " +
       '"current" = the active sprint, ' +
       '"next" = the upcoming sprint, ' +
-      'null = backlog / clear sprint assignment, ' +
+      "null = backlog / clear sprint assignment, " +
       'or an exact sprint name string (e.g. "Sprint 5"). ' +
       "Use scrum_orient to see all valid sprint names.",
   );
@@ -289,14 +289,14 @@ export const LogImpedimentSchema = z
       .string()
       .optional()
       .describe(
-        "GitHub login of the team member raising the impediment (e.g. \"hoonsubin\"). " +
+        'GitHub login of the team member raising the impediment (e.g. "hoonsubin"). ' +
           "Defaults to the Scrum Master configured in config.yml.",
       ),
     priority: z
       .string()
       .optional()
       .describe(
-        "Urgency vocabulary display name (e.g. \"Must\"). " +
+        'Urgency vocabulary display name (e.g. "Must"). ' +
           "Defaults to the highest-tier priority value. " +
           "Call scrum_orient to see valid priority values.",
       ),

@@ -41,8 +41,8 @@ import type { IterationEntry, SprintRef, Story, StoryRef } from "../../domain/ty
 import type {
   GitHubBackendConfig,
   ItemFieldValue,
-  ProjectItemIssueContent,
   ProjectItem,
+  ProjectItemIssueContent,
   ProjectItemPRContent,
 } from "./types.ts";
 
@@ -278,7 +278,8 @@ export class GitHubProjectBackend implements ProjectBackend {
 
   async resolveCompletionTimestamps(input: BurndownInput): Promise<CompletionMap> {
     const doneStatusName = this.resolveTerminalStatusDisplayName();
-    const statusFieldName = (this.config.yml.backends.github as GitHubBackendConfig).field_mapping.status ?? "Status";
+    const statusFieldName =
+      (this.config.yml.backends.github as GitHubBackendConfig).field_mapping.status ?? "Status";
     const nodeIdToNumber = new Map(
       input.stories.map((s) => [s.number, s.number]), // already has number
     );
@@ -917,7 +918,7 @@ export class GitHubProjectBackend implements ProjectBackend {
 
   // ── Private helpers ──────────────────────────────────────────────────────
 
-  private async fetchAllItems(): Promise<ProjectItem[]> {
+  private fetchAllItems(): Promise<ProjectItem[]> {
     const fetcher = new PaginatedProjectItemFetcher(this.config, { graphql: this.gh.graphql }, {
       includeIssueContent: true,
       includePRContent: true,

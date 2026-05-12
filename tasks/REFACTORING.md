@@ -202,14 +202,14 @@ The class's own inline comment acknowledges this: `//todo: this class is way too
 
 Independent of the §5 architectural debt, the class has accumulated concrete code smells:
 
-| #   | Smell                                                      | Affected Areas                                                                              | Severity |
-| --- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
-| 1   | Label creation logic duplicated 3+ times                   | `resolveLabelNodeIds`, `resolveOrCreateLabel`, `addLabel`, `resolveOrCreateMilestoneNodeId` | High     |
-| 2   | String interpolation in GraphQL mutations (injection risk) | All `setField*` methods, `clearField`                                                       | High     |
-| 3   | `createStory` is 116 lines                                 | `createStory`                                                                               | High     |
-| 4   | Burndown completion logic too complex                      | `fetchAuditLogCompletions`, `fetchIssueCloseCompletions`                                    | Medium   |
-| 5   | `fetchAllItems` duplicates `PaginatedProjectItemFetcher`   | `fetchAllItems`, `getCompletedSprintHistory`                                                | Medium   |
-| 6   | Response types defined inline instead of in `raw-types.ts` | `GetIssueDetailsResponse`, `GetItemFieldsResponse`, `RawItem`, `RawFieldValue`              | Low      |
+| # | Smell                                                      | Affected Areas                                                                              | Severity |
+| - | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
+| 1 | Label creation logic duplicated 3+ times                   | `resolveLabelNodeIds`, `resolveOrCreateLabel`, `addLabel`, `resolveOrCreateMilestoneNodeId` | High     |
+| 2 | String interpolation in GraphQL mutations (injection risk) | All `setField*` methods, `clearField`                                                       | High     |
+| 3 | `createStory` is 116 lines                                 | `createStory`                                                                               | High     |
+| 4 | Burndown completion logic too complex                      | `fetchAuditLogCompletions`, `fetchIssueCloseCompletions`                                    | Medium   |
+| 5 | `fetchAllItems` duplicates `PaginatedProjectItemFetcher`   | `fetchAllItems`, `getCompletedSprintHistory`                                                | Medium   |
+| 6 | Response types defined inline instead of in `raw-types.ts` | `GetIssueDetailsResponse`, `GetItemFieldsResponse`, `RawItem`, `RawFieldValue`              | Low      |
 
 ### 6b. Tool Surface Improvements
 

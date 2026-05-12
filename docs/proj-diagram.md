@@ -285,15 +285,13 @@ classDiagram
     classDef services fill:#0ff,stroke:#333,stroke-width:2px,color:#000;
 ```
 
-
 ## Unused Exports
 
 The following exports are never imported by any other module in the codebase:
 
-| Module | Export | Kind |
-|--------|--------|------|
+| Module                                            | Export                  | Kind       |
+| ------------------------------------------------- | ----------------------- | ---------- |
 | [`services/github.ts`](../src/services/github.ts) | `decodeRepoFileContent` | `function` |
-
 
 ## Notes
 
@@ -306,4 +304,4 @@ The following exports are never imported by any other module in the codebase:
 
 ---
 
-*Auto-generated — do not edit manually*
+_Auto-generated — do not edit manually_

@@ -450,7 +450,7 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
     if (node.name === statusFieldName) {
       // Build a display-name → option-ID lookup for this field
       const displayToId = new Map(ssNode.options.map((o) => [o.name, o.id]));
-      for (const [canonicalKey, displayName] of Object.entries(patchedGhConfig.status_display)) {
+      for (const displayName of Object.values(patchedGhConfig.status_display)) {
         const optionId = displayToId.get(displayName);
         if (optionId) statusOptions[displayName] = optionId; // displayName → optionId
       }
@@ -458,7 +458,7 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
 
     if (priorityFieldName && node.name === priorityFieldName) {
       const displayToId = new Map(ssNode.options.map((o) => [o.name, o.id]));
-      for (const [canonicalKey, displayName] of Object.entries(patchedGhConfig.priority_display)) {
+      for (const displayName of Object.values(patchedGhConfig.priority_display)) {
         const optionId = displayToId.get(displayName);
         if (optionId) priorityOptions[displayName] = optionId; // displayName → optionId
       }

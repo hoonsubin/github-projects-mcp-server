@@ -34,4 +34,3 @@ export function isMutationQuery(query: string): boolean {
 
   return mutationPattern.test(normalized);
 }
-
