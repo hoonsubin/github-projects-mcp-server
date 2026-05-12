@@ -6,7 +6,7 @@
 // =============================================================================
 
 /** Parsed acceptance criterion from markdown checkbox syntax. */
-export interface AcceptanceCriterion {
+interface AcceptanceCriterion {
   text: string;
   checked: boolean;
 }

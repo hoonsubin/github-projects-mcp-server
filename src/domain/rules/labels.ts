@@ -9,7 +9,7 @@
  * The set of story type labels recognized by the domain.
  * Centralized here so consumers do not hard-code or repeat the values.
  */
-export const STORY_TYPE_LABELS = ["feature", "bug", "tech_debt", "spike"] as const;
+const STORY_TYPE_LABELS = ["feature", "bug", "tech_debt", "spike"] as const;
 
 /** A story type value — derived from STORY_TYPE_LABELS for type safety. */
 export type StoryTypeLabel = (typeof STORY_TYPE_LABELS)[number];

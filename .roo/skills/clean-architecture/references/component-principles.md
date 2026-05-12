@@ -1,6 +1,6 @@
 # Component Principles — which classes go together, and how components depend
 
-A *component* is the unit of independent deployment — a `.jar`, gem, Python package, Rust crate, Lambda, service. Two questions govern component design:
+A _component_ is the unit of independent deployment — a `.jar`, gem, Python package, Rust crate, Lambda, service. Two questions govern component design:
 
 1. **Cohesion**: which classes belong inside the same component? (REP, CCP, CRP)
 2. **Coupling**: how should one component depend on another? (ADP, SDP, SAP)
@@ -35,11 +35,11 @@ CRP is **ISP at component scope**. Classes that are reused together belong toget
 
 ### The Cohesion Tension
 
-REP and CCP are *inclusive* — they push components larger. CRP is *exclusive* — it pushes them smaller.
+REP and CCP are _inclusive_ — they push components larger. CRP is _exclusive_ — it pushes them smaller.
 
 - Early in a project: **CCP dominates** — develop-ability matters more than reuse; components grow.
 - As it matures: **CRP and REP** pull in — components fragment along reuse lines.
-- The component structure of a healthy project *evolves*. A static partition decided up front is almost always wrong.
+- The component structure of a healthy project _evolves_. A static partition decided up front is almost always wrong.
 
 ## Component Coupling
 
@@ -52,6 +52,7 @@ Cycles cause "morning after syndrome" — you arrive to find your work broken by
 **Detecting cycles:** Use static analysis in CI: `madge` (JS), `pydeps` (Python), `cargo-modules` (Rust), `jdepend` (Java), `NDepend` (.NET), `go-mod-graph` (Go). Fail the build on any new cycle.
 
 **Breaking cycles:**
+
 1. **DIP:** introduce an interface in the more stable component; have the less stable one implement it.
 2. **Extract a third component** both former cycle members depend on.
 
@@ -72,14 +73,14 @@ Volatile components depend on stable ones — never the reverse. Stability = cos
 Stable + concrete = **Zone of Pain** (can't modify because it's depended on; can't extend because it's concrete). Unstable + abstract = **Zone of Uselessness** (abstract code nobody implements).
 
 **A metric:** `A = Na / Nc` (abstract classes + interfaces / total classes).
-**D metric:** `D = |A + I − 1|` — distance from the Main Sequence. `D = 0` is ideal. Flag components with `D > 0.1` and track `D` over time; drift away from the Main Sequence is an early warning of architectural decay.
+**D metric:** `D = |A + I − 1|` — distance from the Main Sequence. `D = 0` is ideal.
 
-| Position | Meaning |
-|---|---|
-| Low I, high A | Policy components — stable and extensible |
-| High I, low A | Detail/driver components — free to change |
-| Low I, low A | Zone of Pain — avoid for volatile code |
-| High I, high A | Zone of Uselessness — clean up |
+- **Interpreting Metrics**:
+  - **Low I, high A**: Policy components (stable and extensible)
+  - **High I, low A**: Detail/driver components (free to change)
+  - **Low I, low A**: Zone of Pain (avoid for volatile code)
+  - **High I, high A**: Zone of Uselessness (clean up)
+- **Early Warning**: Track `D` over time; drift away from the Main Sequence indicates architectural decay.
 
 ## How to apply
 
@@ -87,4 +88,4 @@ Stable + concrete = **Zone of Pain** (can't modify because it's depended on; can
 2. Add cycle detection to CI from day one; it's cheap and catches the most expensive class of architectural error.
 3. At each release, compute I/A/D for a sample of components and watch for drift.
 4. When a change hits multiple components, ask whether the partition is misaligned with how the system actually changes.
-5. Name components for what they *do*, not which technology they use (`BillingPolicy`, not `BillingService`).
+5. Name components for what they _do_, not which technology they use (`BillingPolicy`, not `BillingService`).

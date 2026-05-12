@@ -23,7 +23,7 @@ def render_page_with_setups_and_teardowns(page_data, is_suite):
 
 ## Rule 2: Do One Thing
 
-> *"Functions should do one thing. They should do it well. They should do it only."*
+> _"Functions should do one thing. They should do it well. They should do it only."_
 
 **Test:** Can you describe the function in one sentence with no "and"?
 
@@ -67,13 +67,16 @@ Use the **Stepdown Rule**: arrange functions top-to-bottom as a narrative, each 
 
 ## Rule 4: Fewer Arguments
 
-| Arity | Name | Notes |
-|---|---|---|
-| 0 | niladic | Ideal |
-| 1 | monadic | Good — clear transformation |
-| 2 | dyadic | Acceptable |
-| 3 | triadic | Use sparingly |
-| 4+ | polyadic | Refactor into a Parameter Object |
+- Follow the ideal arity:
+  - Aim for a niladic function (0 arguments) when possible for simplicity and clarity.
+- Prefer monadic functions:
+  - Functions with a single argument (monadic) are preferred as they provide clear transformation and are easier to understand.
+- Acceptable use of dyadic functions:
+  - Functions with two arguments (dyadic) are acceptable but use them sparingly.
+- Limit the use of triadic functions:
+  - Functions with three arguments (triadic) should be used sparingly as they can make the code harder to understand and maintain.
+- Refactor polyadic functions:
+  - For functions with four or more arguments (polyadic), consider refactoring them into a Parameter Object to improve readability and maintainability.
 
 **Avoid flag (boolean) arguments** — they announce the function does two things:
 
@@ -140,7 +143,7 @@ def delete(page):
 
 ## Rule 8: Don't Repeat Yourself (DRY)
 
-Every copy-paste is a future bug — you'll fix it in one place, not the other. Extract repeated logic into a named function named after its *intent*, not its *implementation*.
+Every copy-paste is a future bug — you'll fix it in one place, not the other. Extract repeated logic into a named function named after its _intent_, not its _implementation_.
 
 ## Quick Checklist
 

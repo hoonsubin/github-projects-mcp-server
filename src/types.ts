@@ -45,13 +45,6 @@ export interface Story {
   url: string | null; // canonical URL in the backend UI
 }
 
-export interface PageInfo {
-  hasNextPage: boolean;
-  hasPreviousPage: boolean;
-  startCursor: string | null;
-  endCursor: string | null;
-}
-
 // ── Shared primitives ────────────────────────────────────────────────────────
 
 /**
@@ -70,6 +63,7 @@ export interface IterationEntry {
 
 export type ItemContentType = "Issue" | "PullRequest" | "DraftIssue";
 
+// todo: all `ProjectV2` types must be removed from this code, and replace them with actual graphQL schema where it can
 export interface ProjectV2ItemFieldValue {
   __typename: string;
   field: { id: string; name: string };
@@ -149,7 +143,7 @@ export interface GraphQLResponse<T> {
  * highest) defines relative urgency. The agent reasons in these keys; each
  * backend maps them to its own display labels via priority_display.
  */
-export interface PriorityTier {
+interface PriorityTier {
   key: string; // e.g. "p0", "p1", "p2", "p3"
 }
 
@@ -159,7 +153,7 @@ export interface PriorityTier {
  * blocking — indicates the story is impeding sprint flow; used for impediment
  *            inference when explicit dependency link data is unavailable.
  */
-export interface StatusSemantics {
+interface StatusSemantics {
   terminal: boolean;
   blocking: boolean;
 }

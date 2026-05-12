@@ -23,6 +23,7 @@ Repeat one five-step cycle per use case (hours to days, not weeks). Each cycle l
 ## Stage 1 — Pick a target slice
 
 A slice is one named use case ("register a customer", "process a payment"). Pick one that is:
+
 - **Visible value** — stakeholders care about it
 - **Moderate complexity** — not the simplest, not the most tangled
 - **Active** — changed recently and likely to change soon
@@ -33,6 +34,7 @@ Aim for a slice you can finish in 1–3 days.
 ## Stage 2 — Define the target shape
 
 Sketch what the slice should look like in clean form:
+
 - Entity: domain noun + critical rules
 - Use case interactor: input DTO → steps → output DTO
 - Ports: interfaces the use case needs — **interfaces live with the use case**
@@ -43,6 +45,7 @@ Don't write code yet. The sketch keeps you oriented as you move incrementally.
 ## Stage 3 — Introduce ports as seams
 
 **Add interfaces before moving any logic.** For each port the use case needs:
+
 1. Define the interface in the use-case package in domain language.
 2. Implement it with a thin adapter wrapping the existing messy code. Behavior is unchanged.
 3. Register the adapter in Main.
@@ -63,6 +66,7 @@ Rules: one change at a time; preserve behavior (note bugs, fix them in separate 
 ## Stage 5 — Verify and stabilize
 
 Before declaring done:
+
 - All tests pass
 - Use case can be unit-tested with fakes
 - Framework class has no business rules
@@ -79,21 +83,23 @@ After 3–8 slices, patterns emerge: repeated ports (`Clock`, `EventPublisher`),
 
 - **Architecture astronaut creep** — every slice doesn't need a registry, factory, event bus, and CQRS read-side. Use the simplest seam that fits.
 - **Recreating the framework's structure** — if the use case looks like the controller it replaced, you haven't inverted anything.
-- **Premature interface explosion** — define ports the *current slice* needs, not every imaginable future need.
+- **Premature interface explosion** — define ports the _current slice_ needs, not every imaginable future need.
 - **Skipping Main** — wiring concrete adapters inside use cases or domain code rebuilds the original mess.
 - **Anemic entities** — rules ending up in "services" while entities become bags of fields is the procedural style under a domain veneer.
 
 ## Worked example (Django)
 
 **Before:**
-```
+
+```text
 app/
 ├── views.py   ← validation + business logic + ORM queries + response building
 ├── models.py  ← Django models with @classmethod "business" helpers
 ```
 
 **After one slice ("create order"):**
-```
+
+```text
 app/
 ├── orders/
 │   ├── domain/order.py              ← Order entity, no framework

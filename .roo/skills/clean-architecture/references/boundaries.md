@@ -15,12 +15,22 @@ Boundaries belong **on axes of change** — where two pieces of code change for 
 
 ## Decoupling modes (cheapest → strongest)
 
-| Mode                 | Communication cost            | Deployment                     | Use when                                                   |
-| -------------------- | ----------------------------- | ------------------------------ | ---------------------------------------------------------- |
-| **Source-level**     | Function call (free)          | Single binary                  | **Default** — use unless there's a concrete reason not to  |
-| **Deployment-level** | Function call + link overhead | Multiple files, single process | Independent release cadences matter                        |
-| **Process-level**    | System calls + marshalling    | Multiple processes             | Fault isolation; different runtimes or privilege levels    |
-| **Service-level**    | Network (10ms–seconds)        | Independent services           | Independent scaling or full operational autonomy justified |
+- **Source-level**
+  - **Communication cost**: Function call (free)
+  - **Deployment**: Single binary
+  - **Use when**: Default mode unless there's a specific reason not to
+- **Deployment-level**
+  - **Communication cost**: Function call + link overhead
+  - **Deployment**: Multiple files, single process
+  - **Use when**: Independent release cadences matter
+- **Process-level**
+  - **Communication cost**: System calls + marshalling
+  - **Deployment**: Multiple processes
+  - **Use when**: Fault isolation; different runtimes or privilege levels are needed
+- **Service-level**
+  - **Communication cost**: Network (10ms–seconds)
+  - **Deployment**: Independent services
+  - **Use when**: Independent scaling or full operational autonomy is justified
 
 **Default to source-level.** Service-level decoupling is expensive and not even the most architecturally decoupled — services can still be tightly coupled through shared data formats and cross-service transactions. Decoupling lives in the source code, not the network topology.
 
@@ -37,11 +47,17 @@ A **full boundary** has reciprocal interfaces, input/output DTOs, dependency inv
 
 **Partial boundary options:**
 
-| Option                 | What it is                                                     | Risk                                                                  |
-| ---------------------- | -------------------------------------------------------------- | --------------------------------------------------------------------- |
-| **Skip-the-last-step** | Full structure compiled as a single component                  | Dependencies leak across the seam without build enforcement           |
-| **Strategy pattern**   | Single interface in the inner side; one direction of inversion | Backchannel: caller reaches past the interface directly into the impl |
-| **Facade**             | Curated entry point; no DIP                                    | Client transitively sees everything behind the Facade                 |
+- **Skip-the-last-step**
+  - Full structure compiled as a single component
+  - **Risk**: Dependencies leak across the seam without build enforcement
+- **Strategy pattern**
+  - Single interface in the inner side
+  - One direction of inversion
+  - **Risk**: Backchannel - caller reaches past the interface directly into the implementation
+- **Facade**
+  - Curated entry point
+  - No Dependency Inversion (DIP)
+  - **Risk**: Client transitively sees everything behind the Facade
 
 Add the right degree of boundary at the _inflection point_ — when the cost of adding it becomes less than the cost of not having it. YAGNI applies to features; architectural seams that cost a fortune to retrofit deserve earlier consideration.
 

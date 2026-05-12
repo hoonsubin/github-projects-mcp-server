@@ -9,7 +9,7 @@
 // on either side of this interface.
 // =============================================================================
 
-import type { Story, StoryRef } from "../types.ts";
+import type { SprintRef, Story, StoryRef } from "../types.ts";
 
 // ── Supporting types that cross the boundary ──────────────────────────────────
 
@@ -56,26 +56,28 @@ export interface StoryDetail {
   }>;
 }
 
+/**
+ * Lightweight per-story projection shared by history and burndown.
+ * Defined here (at the port boundary) so both the use-case layer (sprint-math)
+ * and the adapter layer (mappers) can reference a single canonical type.
+ */
+export interface BurndownStoryInput {
+  number: number;
+  title: string;
+  points: number;
+  status: string | null;
+}
+
 /** One completed sprint's worth of data for history. */
 export interface SprintHistoryEntry {
   info: SprintInfo;
-  stories: Array<{
-    number: number;
-    title: string;
-    points: number;
-    status: string | null;
-  }>;
+  stories: BurndownStoryInput[];
 }
 
 /** Stories + sprint geometry needed to compute a burndown series. */
 export interface BurndownInput {
   sprint: SprintInfo;
-  stories: Array<{
-    number: number;
-    title: string;
-    points: number;
-    status: string | null;
-  }>;
+  stories: BurndownStoryInput[];
 }
 
 /** Completion timestamps per story number. */
@@ -107,7 +109,6 @@ export interface StoryUpdates {
   epic?: string | null;
 }
 
-export type SprintRef = "current" | "next" | null | string;
 export type VocabularyKind = "status_option" | "priority_option" | "label";
 
 // ── The interface ──────────────────────────────────────────────────────────────

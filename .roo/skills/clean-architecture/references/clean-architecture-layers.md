@@ -4,12 +4,18 @@ Clean Architecture synthesizes Hexagonal/Ports-and-Adapters, BCE, and DCI into c
 
 ## The four layers
 
-| Ring | Layer | Contents | Depends on |
-|---|---|---|---|
-| outermost | Frameworks and Drivers | DB, web, UI, devices, external APIs | Interface Adapters |
-| 3 | Interface Adapters | Controllers, presenters, gateways, view-models | Use Cases |
-| 2 | Use Cases | Application policy | Entities |
-| innermost | Entities | Enterprise policy and data | Nothing |
+- **Outermost (Framework and Drivers)**
+  - **Contents**: DB, web, UI, devices, external APIs
+  - **Depends on**: Interface Adapters
+- **Interface Adapters (Ring 3)**
+  - **Contents**: Controllers, presenters, gateways, view-models
+  - **Depends on**: Use Cases
+- **Use Cases (Ring 2)**
+  - **Contents**: Application policy
+  - **Depends on**: Entities
+- **Entities (Innermost Ring)**
+  - **Contents**: Enterprise policy and data
+  - **Depends on**: Nothing
 
 Source-code dependencies point inward only — outer layers depend on inner, never the reverse.
 

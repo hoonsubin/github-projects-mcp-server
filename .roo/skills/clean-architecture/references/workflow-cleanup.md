@@ -7,16 +7,18 @@ This is a recovery operation measured in months. Goal: stop the bleeding, then i
 ## Stage 0 — Set realistic expectations
 
 Get explicit agreement before starting:
+
 - Cleanup must be funded as real capacity — not "do it on the side" (50% of one engineer, or 20% of every engineer).
 - No big-bang rewrite. The plan is incremental.
 - Some areas will stay messy forever — code that works and never changes doesn't need cleanup.
-- Velocity will *appear* to drop short-term before bending back up.
+- Velocity will _appear_ to drop short-term before bending back up.
 
 If you can't get this agreement, cleanup will fail before it starts.
 
 ## Stage 1 — Make the system observable
 
 Before changing anything, establish a safety net:
+
 1. Add CI that runs on every commit.
 2. Add at least one end-to-end smoke test of the most important happy path.
 3. Add static analysis with a low bar — just establish a baseline so new violations are visible.
@@ -27,6 +29,7 @@ Before changing anything, establish a safety net:
 ## Stage 2 — Triage: where is the change pressure?
 
 Target the parts the team **needs to change frequently**. For each top-level module measure:
+
 - Change frequency: `git log --since="6 months ago" --pretty=format: --name-only | sort | uniq -c | sort -rn`
 - Defect frequency from issue tracker
 - Cross-contamination: when this module changes, how many others also change?
@@ -46,9 +49,9 @@ This is the **anti-corruption layer** — it localizes the mess so the rest of t
 
 ## Stage 4 — Add tests at the seam
 
-Write **characterization tests** that pin down the current behavior at the seam — not "is this right?", but "is this the *current* behavior?" Their job is to prevent the mess from getting worse during cleanup.
+Write **characterization tests** that pin down the current behavior at the seam — not "is this right?", but "is this the _current_ behavior?" Their job is to prevent the mess from getting worse during cleanup.
 
-Cover the most common happy paths, each known bug, and each branch in calling code. Don't aim for full coverage — aim for *enough to refactor with confidence*.
+Cover the most common happy paths, each known bug, and each branch in calling code. Don't aim for full coverage — aim for _enough to refactor with confidence_.
 
 ## Stage 5 — Refactor inside the seam
 

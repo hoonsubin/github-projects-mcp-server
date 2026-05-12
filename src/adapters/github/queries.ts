@@ -89,7 +89,7 @@ for (const def of _doc.definitions) {
  * Includes all fragment definitions the operation references.
  * Throws immediately (at startup) if the name is not in operations.graphql.
  */
-export function getQuery(name: string): string {
+function getQuery(name: string): string {
   const q = _ops.get(name);
   if (!q) {
     throw new Error(
@@ -99,12 +99,11 @@ export function getQuery(name: string): string {
   return q;
 }
 
-/** All operation names available in operations.graphql. */
-export const OPERATION_NAMES: ReadonlySet<string> = new Set(_ops.keys());
+// ── Named constants ───────────────────────────────────────────────────────────
+// Each call to getQuery() validates that the operation exists in operations.graphql
+// at startup — throwing immediately if any expected name is absent.
 
-// ── Named constants (backward-compatible with existing imports) ───────────────
-
-export const GET_PROJECT_ITEMS_QUERY = getQuery("GetUserProjectItems");
+getQuery("GetUserProjectItems"); // startup validation only; not imported elsewhere
 export const GET_ISSUE_DETAILS_QUERY = getQuery("GetIssueDetails");
 export const GET_ITEM_FIELDS_QUERY = getQuery("GetItemFields");
 export const GET_REPO_LABELS_QUERY = getQuery("GetRepoLabels");

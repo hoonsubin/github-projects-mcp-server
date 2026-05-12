@@ -28,14 +28,9 @@ classDiagram
         +buildSprintMeta()
         +groupStoriesByStatus()
         +computeSprintTotals()
-        interface SprintWindow
         +buildSprintWindow()
-        interface IdealDayPoint
         +buildIdealLine()
-        interface BurndownDayPoint
-        interface BurndownStoryInput
         +buildDaySeries()
-        %% Unused: SprintWindow, IdealDayPoint, BurndownDayPoint
     }
 
     class Get_Story:::scrum {
@@ -50,12 +45,12 @@ classDiagram
         interface SprintInfo
         interface PlatformState
         interface StoryDetail
+        interface BurndownStoryInput
         interface SprintHistoryEntry
         interface BurndownInput
         interface CompletionMap
         interface CreateStoryInput
         interface StoryUpdates
-        type SprintRef
         type VocabularyKind
         interface ProjectBackend
     }
@@ -77,10 +72,6 @@ classDiagram
     }
 
     class Scrum:::schemas {
-        +var StoryRefSchema
-        +var SprintRefSchema
-        +var ScrumFieldSchema
-        +var StoryTypeSchema
         +var GetSprintSchema
         +var GetBacklogSchema
         +var GetStorySchema
@@ -93,70 +84,26 @@ classDiagram
         +var LogImpedimentSchema
         +var AddVocabularySchema
         +var GetTemplateSchema
-        %% Unused: StoryRefSchema, SprintRefSchema, ScrumFieldSchema, StoryTypeSchema
     }
 
     class Inputs:::schemas {
-        +var PaginationSchema
-        +var OwnerTypeSchema
-        +var ListProjectsSchema
-        +var GetProjectSchema
-        +var UpdateProjectSchema
-        +var ListItemsSchema
-        +var AddItemSchema
-        +var AddDraftIssueSchema
-        +var DeleteItemSchema
-        +var ArchiveItemSchema
-        +var FieldValueUnion
-        type ResolvedFieldValue
-        +resolveFieldValue()
-        +var UpdateFieldValueSchema
-        +var GetProjectFieldsSchema
-        +var GetSprintStatusSchema
-        +var GetVelocitySchema
-        +var GetBacklogItemsSchema
-        +var BulkUpdateItemFieldSchema
-        +var CloseSprintSchema
-        +var GenerateSprintReportSchema
-        +var GetIssueNodeIdSchema
-        +var GetUserNodeIdSchema
         +var GraphQLQuerySchema
-        +var GetRepoFileSchema
-        +var CreateIssueSchema
-        +var UpdateIssueSchema
-        +var CreateCommentSchema
-        +var WriteRepoFileSchema
-        %% Unused: PaginationSchema, OwnerTypeSchema, ListProjectsSchema, GetProjectSchema, UpdateProjectSchema, ListItemsSchema, AddItemSchema, AddDraftIssueSchema, DeleteItemSchema, ArchiveItemSchema, FieldValueUnion, ResolvedFieldValue, resolveFieldValue, UpdateFieldValueSchema, GetProjectFieldsSchema, GetSprintStatusSchema, GetVelocitySchema, GetBacklogItemsSchema, BulkUpdateItemFieldSchema, CloseSprintSchema, GenerateSprintReportSchema, GetIssueNodeIdSchema, GetUserNodeIdSchema, GetRepoFileSchema, CreateIssueSchema, UpdateIssueSchema, CreateCommentSchema, WriteRepoFileSchema
     }
 
     class Types:::root {
         interface StoryRef
         type SprintRef
-        type ScrumField
-        type StoryType
         interface Story
-        interface PageInfo
         interface IterationEntry
-        interface ProjectV2
-        interface ProjectV2Field
         type ItemContentType
         interface ProjectV2ItemFieldValue
-        interface LinkedContentBase
         interface ProjectV2IssueContent
         interface ProjectV2PRContent
         interface ProjectV2DraftIssueContent
         interface ProjectV2Item
         interface GraphQLResponse
-        interface PriorityTier
-        interface StatusSemantics
         interface GitHubBackendConfig
         interface ScrumConfigYml
-        interface SprintHistoryResponse
-        interface SprintSnapshot
-        interface SprintStory
-        interface SprintSummary
-        interface StoryReadiness
-        interface GetBacklogResult
         interface BurndownResponse
         interface BurndownSprintMeta
         interface BurndownDayPoint
@@ -164,37 +111,26 @@ classDiagram
         interface BurndownStory
         type ArtifactType
         type TemplateResponse
-        %% Unused: ScrumField, StoryType, PageInfo, LinkedContentBase, PriorityTier, StatusSemantics, SprintHistoryResponse, SprintSnapshot, SprintStory, SprintSummary, GetBacklogResult, BurndownDayPoint, IdealDayPoint
     }
 
     class Queries:::github {
-        +getQuery() string
-        +ReadonlySet<string> OPERATION_NAMES
-        +var GET_PROJECT_ITEMS_QUERY
         +var GET_ISSUE_DETAILS_QUERY
         +var GET_ITEM_FIELDS_QUERY
         +var GET_REPO_LABELS_QUERY
-        %% Unused: getQuery, OPERATION_NAMES, GET_PROJECT_ITEMS_QUERY
     }
 
     class Mappers:::github {
         interface IssueDetailsInput
-        +extractBoardFields()
         +buildStoryFromRaw()
         +buildEnrichedStory()
         +buildCommentList()
         +buildLinkedPrList()
-        interface BurndownStoryInput
         +buildBurndownStoryInput()
-        %% Unused: extractBoardFields
     }
 
     class Config_Loader:::github {
         interface RuntimeConfig
-        interface ConfigParams
-        +classifyIterations()
         +loadConfig()
-        %% Unused: ConfigParams, classifyIterations
     }
 
     class Backend:::github {
@@ -212,80 +148,45 @@ classDiagram
     }
 
     class Acceptance_Criteria:::rules {
-        interface AcceptanceCriterion
         +parseAcceptanceCriteria()
-        %% Unused: AcceptanceCriterion
     }
 
     class Readiness:::rules {
-        type ReadinessLevel
-        +computeStoryReadiness()
         +computeReadinessSummary()
-        %% Unused: ReadinessLevel, computeStoryReadiness
     }
 
     class Labels:::rules {
-        +var STORY_TYPE_LABELS
         type StoryTypeLabel
         +classifyLabels()
-        %% Unused: STORY_TYPE_LABELS
     }
 
     class Github:::services {
-        +var GITHUB_API_URL
         interface RestResponse
         class GitHubApiError
-        +getToken()
         +graphql()
         +rest()
-        +formatError()
-        interface EnrichErrorContext
         +enrichError()
-        interface RepoFileResponse
         +decodeRepoFileContent()
         +fetchRepoFile()
-        %% Unused: GITHUB_API_URL, getToken, formatError, EnrichErrorContext, RepoFileResponse, decodeRepoFileContent
-    }
-
-    class Readiness:::services {
-        +computeStoryReadiness()
-        +computeReadinessSummary()
-        %% Unused: computeStoryReadiness
+        %% Unused: decodeRepoFileContent
     }
 
     class Pagination:::services {
-        interface ItemFetchConfig
         class PaginatedProjectItemFetcher
         +isBacklogItem()
-        %% Unused: ItemFetchConfig
     }
 
     class Resolver:::services {
-        interface ResolvedStory
         +resolveSprint()
         +resolveStory()
-        +resolveBacklogItems()
-        %% Unused: ResolvedStory, resolveBacklogItems
     }
 
     class Mutation_Validator:::services {
         +isMutationQuery() boolean
-        class MutationBlockError
-        %% Unused: MutationBlockError
     }
 
     class Logger:::services {
         +var log
-    }
-
-    class Formatters:::services {
-        +var PROJECT_CORE_FRAGMENT
-        +var ITEM_CONTENT_FRAGMENT
-        +var ITEM_FIELD_VALUES_FRAGMENT
-        +formatProject()
-        +formatItem()
-        +formatField()
-        %% Unused: PROJECT_CORE_FRAGMENT, ITEM_CONTENT_FRAGMENT, ITEM_FIELD_VALUES_FRAGMENT, formatProject, formatItem, formatField
     }
 
 
@@ -297,6 +198,7 @@ classDiagram
     Get_Template --> Ports : "imports"
     Get_Template --> Types : "imports"
     Sprint_Math --> Types : "imports"
+    Sprint_Math --> Ports : "imports"
     Get_Story --> Ports : "imports"
     Get_Story --> Types : "imports"
     Get_Story --> Acceptance_Criteria : "imports"
@@ -333,6 +235,7 @@ classDiagram
     Queries --> Index : "imports"
     Mappers --> Config_Loader : "imports"
     Mappers --> Types : "imports"
+    Mappers --> Ports : "imports"
     Mappers --> Labels : "imports"
     Mappers --> Raw_Types : "imports"
     Config_Loader --> Index : "imports"
@@ -355,13 +258,10 @@ classDiagram
     Index --> Types : "imports"
     Github --> Types : "imports"
     Github --> Logger : "imports"
-    Readiness --> Types : "imports"
     Pagination --> Config_Loader : "imports"
     Pagination --> Types : "imports"
     Resolver --> Config_Loader : "imports"
     Resolver --> Types : "imports"
-    Resolver --> Pagination : "imports"
-    Formatters --> Types : "imports"
 
     classDef scrum fill:#f9f,stroke:#333,stroke-width:2px,color:#000;
     classDef tools fill:#ccf,stroke:#333,stroke-width:2px,color:#000;
@@ -372,87 +272,15 @@ classDiagram
     classDef services fill:#fcf,stroke:#333,stroke-width:2px,color:#000;
 ```
 
+
 ## Unused Exports
 
 The following exports are never imported by any other module in the codebase:
 
-| Module                                                                              | Export                       | Kind        |
-| ----------------------------------------------------------------------------------- | ---------------------------- | ----------- |
-| [`scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                               | `SprintWindow`               | `interface` |
-| [`scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                               | `IdealDayPoint`              | `interface` |
-| [`scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                               | `BurndownDayPoint`           | `interface` |
-| [`schemas/scrum.ts`](../src/schemas/scrum.ts)                                       | `StoryRefSchema`             | `var`       |
-| [`schemas/scrum.ts`](../src/schemas/scrum.ts)                                       | `SprintRefSchema`            | `var`       |
-| [`schemas/scrum.ts`](../src/schemas/scrum.ts)                                       | `ScrumFieldSchema`           | `var`       |
-| [`schemas/scrum.ts`](../src/schemas/scrum.ts)                                       | `StoryTypeSchema`            | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `PaginationSchema`           | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `OwnerTypeSchema`            | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `ListProjectsSchema`         | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `GetProjectSchema`           | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `UpdateProjectSchema`        | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `ListItemsSchema`            | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `AddItemSchema`              | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `AddDraftIssueSchema`        | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `DeleteItemSchema`           | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `ArchiveItemSchema`          | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `FieldValueUnion`            | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `ResolvedFieldValue`         | `type`      |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `resolveFieldValue`          | `function`  |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `UpdateFieldValueSchema`     | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `GetProjectFieldsSchema`     | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `GetSprintStatusSchema`      | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `GetVelocitySchema`          | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `GetBacklogItemsSchema`      | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `BulkUpdateItemFieldSchema`  | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `CloseSprintSchema`          | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `GenerateSprintReportSchema` | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `GetIssueNodeIdSchema`       | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `GetUserNodeIdSchema`        | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `GetRepoFileSchema`          | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `CreateIssueSchema`          | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `UpdateIssueSchema`          | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `CreateCommentSchema`        | `var`       |
-| [`schemas/inputs.ts`](../src/schemas/inputs.ts)                                     | `WriteRepoFileSchema`        | `var`       |
-| [`types.ts`](../src/types.ts)                                                       | `ScrumField`                 | `type`      |
-| [`types.ts`](../src/types.ts)                                                       | `StoryType`                  | `type`      |
-| [`types.ts`](../src/types.ts)                                                       | `PageInfo`                   | `interface` |
-| [`types.ts`](../src/types.ts)                                                       | `LinkedContentBase`          | `interface` |
-| [`types.ts`](../src/types.ts)                                                       | `PriorityTier`               | `interface` |
-| [`types.ts`](../src/types.ts)                                                       | `StatusSemantics`            | `interface` |
-| [`types.ts`](../src/types.ts)                                                       | `SprintHistoryResponse`      | `interface` |
-| [`types.ts`](../src/types.ts)                                                       | `SprintSnapshot`             | `interface` |
-| [`types.ts`](../src/types.ts)                                                       | `SprintStory`                | `interface` |
-| [`types.ts`](../src/types.ts)                                                       | `SprintSummary`              | `interface` |
-| [`types.ts`](../src/types.ts)                                                       | `GetBacklogResult`           | `interface` |
-| [`types.ts`](../src/types.ts)                                                       | `BurndownDayPoint`           | `interface` |
-| [`types.ts`](../src/types.ts)                                                       | `IdealDayPoint`              | `interface` |
-| [`adapters/github/queries.ts`](../src/adapters/github/queries.ts)                   | `getQuery`                   | `function`  |
-| [`adapters/github/queries.ts`](../src/adapters/github/queries.ts)                   | `OPERATION_NAMES`            | `var`       |
-| [`adapters/github/queries.ts`](../src/adapters/github/queries.ts)                   | `GET_PROJECT_ITEMS_QUERY`    | `var`       |
-| [`adapters/github/mappers.ts`](../src/adapters/github/mappers.ts)                   | `extractBoardFields`         | `function`  |
-| [`adapters/github/config-loader.ts`](../src/adapters/github/config-loader.ts)       | `ConfigParams`               | `interface` |
-| [`adapters/github/config-loader.ts`](../src/adapters/github/config-loader.ts)       | `classifyIterations`         | `function`  |
-| [`domain/rules/acceptance-criteria.ts`](../src/domain/rules/acceptance-criteria.ts) | `AcceptanceCriterion`        | `interface` |
-| [`domain/rules/readiness.ts`](../src/domain/rules/readiness.ts)                     | `ReadinessLevel`             | `type`      |
-| [`domain/rules/readiness.ts`](../src/domain/rules/readiness.ts)                     | `computeStoryReadiness`      | `function`  |
-| [`domain/rules/labels.ts`](../src/domain/rules/labels.ts)                           | `STORY_TYPE_LABELS`          | `var`       |
-| [`services/github.ts`](../src/services/github.ts)                                   | `GITHUB_API_URL`             | `var`       |
-| [`services/github.ts`](../src/services/github.ts)                                   | `getToken`                   | `function`  |
-| [`services/github.ts`](../src/services/github.ts)                                   | `formatError`                | `function`  |
-| [`services/github.ts`](../src/services/github.ts)                                   | `EnrichErrorContext`         | `interface` |
-| [`services/github.ts`](../src/services/github.ts)                                   | `RepoFileResponse`           | `interface` |
-| [`services/github.ts`](../src/services/github.ts)                                   | `decodeRepoFileContent`      | `function`  |
-| [`services/readiness.ts`](../src/services/readiness.ts)                             | `computeStoryReadiness`      | `function`  |
-| [`services/pagination.ts`](../src/services/pagination.ts)                           | `ItemFetchConfig`            | `interface` |
-| [`services/resolver.ts`](../src/services/resolver.ts)                               | `ResolvedStory`              | `interface` |
-| [`services/resolver.ts`](../src/services/resolver.ts)                               | `resolveBacklogItems`        | `function`  |
-| [`services/mutation-validator.ts`](../src/services/mutation-validator.ts)           | `MutationBlockError`         | `class`     |
-| [`services/formatters.ts`](../src/services/formatters.ts)                           | `PROJECT_CORE_FRAGMENT`      | `var`       |
-| [`services/formatters.ts`](../src/services/formatters.ts)                           | `ITEM_CONTENT_FRAGMENT`      | `var`       |
-| [`services/formatters.ts`](../src/services/formatters.ts)                           | `ITEM_FIELD_VALUES_FRAGMENT` | `var`       |
-| [`services/formatters.ts`](../src/services/formatters.ts)                           | `formatProject`              | `function`  |
-| [`services/formatters.ts`](../src/services/formatters.ts)                           | `formatItem`                 | `function`  |
-| [`services/formatters.ts`](../src/services/formatters.ts)                           | `formatField`                | `function`  |
+| Module | Export | Kind |
+|--------|--------|------|
+| [`services/github.ts`](../src/services/github.ts) | `decodeRepoFileContent` | `function` |
+
 
 ## Notes
 
@@ -461,8 +289,8 @@ The following exports are never imported by any other module in the codebase:
 - Relationships show which modules import which
 - Test files are excluded by default
 - Generated code and GraphQL operations are excluded
-- External imports (npm:, jsr:, @std/\*) are filtered out
+- External imports (npm:, jsr:, @std/*) are filtered out
 
 ---
 
-_Auto-generated — do not edit manually_
+*Auto-generated — do not edit manually*

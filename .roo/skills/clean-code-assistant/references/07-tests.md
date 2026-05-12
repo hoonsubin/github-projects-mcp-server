@@ -1,12 +1,13 @@
 # Unit Tests (Ch. 9)
 
-> *"Tests preserve and enhance the flexibility, maintainability, and reusability of the production code."*
+> _"Tests preserve and enhance the flexibility, maintainability, and reusability of the production code."_
 
 Test code is **not** second-class. The same standards that apply to production code apply to test code. Dirty tests rot faster than dirty production code.
 
 ## Test-Driven Development (TDD)
 
 The three laws:
+
 1. **No production code until you have a failing test.**
 2. **No more test than is sufficient to fail** (compilation failure counts).
 3. **No more production code than is sufficient to pass the failing test.**
@@ -15,19 +16,17 @@ This creates a cycle measured in seconds with comprehensive coverage that evolve
 
 ## The FIRST Rules
 
-| Rule | Meaning |
-|---|---|
-| **Fast** | Must run quickly — slow tests don't get run |
-| **Independent** | Must not depend on each other — any order, any subset |
-| **Repeatable** | Must work in any environment — no network, no database required |
-| **Self-Validating** | Boolean output: pass or fail — no manual inspection |
-| **Timely** | Write just *before* the production code they test |
+- Fast: Must run quickly — slow tests don't get run
+- Independent: Must not depend on each other — any order, any subset
+- Repeatable: Must work in any environment — no network, no database required
+- Self-Validating: Boolean output: pass or fail — no manual inspection
+- Timely: Write just _before_ the production code they test
 
 ## Clean Tests
 
 ### One Concept per Test
 
-Each test verifies a single concept. Multiple asserts are acceptable only if they all verify aspects of the *same* concept.
+Each test verifies a single concept. Multiple asserts are acceptable only if they all verify aspects of the _same_ concept.
 
 ```python
 # Bad: three unrelated concepts in one test

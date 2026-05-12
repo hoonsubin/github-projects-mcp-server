@@ -35,16 +35,3 @@ export function isMutationQuery(query: string): boolean {
   return mutationPattern.test(normalized);
 }
 
-/**
- * Error thrown when a mutation is detected in a query that should only allow queries.
- */
-export class MutationBlockError extends Error {
-  constructor(query: string) {
-    super(
-      `Mutation detected in GraphQL query. The deprecated github_graphql tool only supports read queries. Query: "${
-        query.slice(0, 100)
-      }..."`,
-    );
-    this.name = "MutationBlockError";
-  }
-}

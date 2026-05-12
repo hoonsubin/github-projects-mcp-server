@@ -77,12 +77,17 @@ Don't add _gratuitous_ context: if the app is "Gas Station Deluxe", `Address` is
 
 ## Quick Reference: Name Anti-Patterns
 
-| Anti-Pattern         | Example                        | Fix                                      |
-| -------------------- | ------------------------------ | ---------------------------------------- |
-| Cryptic abbreviation | `d`, `r`, `hp`                 | `elapsed_days`, `response`, `hit_points` |
-| Noise word           | `ProductData`, `NameString`    | `Product`, `Name`                        |
-| Wrong type implied   | `account_list` (it's a set)    | `accounts`                               |
-| Vague/generic        | `Manager`, `Processor`, `Info` | Name the specific responsibility         |
-| Inconsistent verbs   | `fetch` here, `get` there      | Pick one, use everywhere                 |
-| Magic number         | `if score > 7:`                | `if score > PASSING_SCORE:`              |
-| Commented meaning    | `d  # days elapsed`            | `days_elapsed`                           |
+- Avoid cryptic abbreviations:
+  - Use meaningful names like `elapsed_days`, `response`, `hit_points` instead of `d`, `r`, `hp`.
+- Remove unnecessary noise words:
+  - Eliminate words like `ProductData`, `NameString` in favor of simpler names like `Product`, `Name`.
+- Clarify data types:
+  - Be specific with data types, e.g., use `accounts` instead of `account_list`.
+- Provide descriptive names:
+  - Instead of generic names like `Manager`, `Processor`, `Info`, give them names that reflect their specific responsibility.
+- Use consistent naming conventions:
+  - Stick to one naming convention throughout the codebase, e.g., always use `fetch` or `get` consistently.
+- Avoid magic numbers:
+  - Replace magic numbers like `if score > 7:` with named constants like `if score > PASSING_SCORE:`.
+- Remove commented meanings:
+  - Instead of using comments to explain what a variable does, use meaningful names that convey the information directly.

@@ -10,7 +10,7 @@
  * Readiness level for a story against Definition of Ready criteria.
  * Replaces the awkward three-boolean StoryReadiness interface.
  */
-export type ReadinessLevel = "ready" | "partially_ready" | "not_ready";
+type ReadinessLevel = "ready" | "partially_ready" | "not_ready";
 
 /**
  * Check if body matches user story format.
@@ -50,7 +50,7 @@ const isTooLarge = (body: string): boolean =>
  * @param storyPoints - Assigned story points (null = unestimated)
  * @returns ReadinessLevel assessment
  */
-export const computeStoryReadiness = (
+const computeStoryReadiness = (
   body: string,
   storyPoints: number | null,
 ): ReadinessLevel => {

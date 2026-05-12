@@ -6,7 +6,7 @@ A reference layout for a new clean-architecture project, **packaged by component
 
 ## The layout
 
-```
+```text
 project-root/
 │
 ├── README.md
@@ -63,7 +63,7 @@ project-root/
 
 Read as: **a folder may import from folders below it in this list, never above.**
 
-```
+```text
 1.  shared_kernel/                ← most stable, most depended on
 2.  <feature>/domain/             ← depends only on shared_kernel
 3.  <feature>/port/               ← depends on its own domain

@@ -8,9 +8,10 @@ A system that cannot be tested should never be deployed. The discipline of testa
 
 ## Rule 2: No Duplication
 
-> *"Duplication is the primary enemy of a well-designed system."*
+> _"Duplication is the primary enemy of a well-designed system."_
 
 **Identical code** → extract:
+
 ```python
 # Bad
 def size(self): return len(self._items)
@@ -22,6 +23,7 @@ def is_empty(self): return self.size() == 0
 ```
 
 **Structural duplication** across subclasses → Template Method:
+
 ```python
 class VacationPolicy(ABC):
     def accrue_vacation(self):
@@ -50,15 +52,22 @@ Code must clearly communicate intent — you understand your code now, but maint
 
 ## Rule 4: Minimal Classes and Methods (Lowest Priority)
 
-Don't over-apply rules 1–3 to the point of creating hundreds of trivial classes or interfaces. Satisfy rules 1–3 with the *minimum amount of code necessary*. Complexity created in the name of clean design is still complexity.
+Don't over-apply rules 1–3 to the point of creating hundreds of trivial classes or interfaces. Satisfy rules 1–3 with the _minimum amount of code necessary_. Complexity created in the name of clean design is still complexity.
 
 ## Summary
 
-| Rule | What it produces |
-|---|---|
-| Runs all tests | Decoupled, injectable, small classes |
-| No duplication | DRY, reusable components, good abstractions |
-| Expressive | Self-documenting code, meaningful patterns |
-| Minimal | Right-sized design — not over-engineered |
+- **Runs all tests**
+  - Implement decoupled, injectable, and small classes to facilitate comprehensive testing.
+- **No duplication**
+  - Apply the DRY (Don't Repeat Yourself) principle to eliminate code duplication.
+  - Create reusable components to promote code reuse and maintainability.
+  - Design good abstractions to simplify complex systems and enhance modularity.
+- **Expressive**
+  - Write self-documenting code by using meaningful names and clear structure.
+  - Employ meaningful design patterns that convey the intent and purpose of the code.
+- **Minimal**
+  - Design the system to be right-sized, avoiding over-engineering.
+  - Strive for minimalism by only including necessary components and features.
+  - Focus on essential functionality to keep the design clean and efficient.
 
 Apply all four together. The emergent result is clean, maintainable architecture — without an upfront grand design.

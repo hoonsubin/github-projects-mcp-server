@@ -17,9 +17,6 @@ import {
   buildEnrichedStory,
   buildLinkedPrList,
   buildStoryFromRaw,
-  type BurndownStoryInput,
-  // extractBoardFields kept for potential future use in write path
-  extractBoardFields as _extractBoardFields,
   type IssueDetailsInput,
 } from "./mappers.ts";
 import {
@@ -29,13 +26,13 @@ import {
 } from "./queries.ts";
 import type {
   BurndownInput,
+  BurndownStoryInput,
   CompletionMap,
   CreateStoryInput,
   PlatformState,
   ProjectBackend,
   SprintHistoryEntry,
   SprintInfo,
-  SprintRef,
   StoryDetail,
   StoryUpdates,
   VocabularyKind,
@@ -46,6 +43,7 @@ import type {
   ProjectV2Item,
   ProjectV2ItemFieldValue,
   ProjectV2PRContent,
+  SprintRef,
   Story,
   StoryRef,
 } from "../../types.ts";

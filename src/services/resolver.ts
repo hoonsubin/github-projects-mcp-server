@@ -17,7 +17,7 @@ import type { SprintRef, StoryRef } from "../types.ts";
  * Write tools that require a real Issue (e.g. addComment) must guard on null
  * and throw a clear error rather than crashing.
  */
-export interface ResolvedStory {
+interface ResolvedStory {
   itemId: string; // project item node ID (PVTI_...)
   issueId: string | null; // issue node ID (I_kwDO...), null for DraftIssues
   issueNumber: number | null; // user-facing issue number, null for DraftIssues

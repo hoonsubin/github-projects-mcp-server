@@ -1,69 +1,77 @@
 ---
 name: clean-code-assistant
-description: >-
-  Expert coding assistant. Use when writing new code, reviewing or refactoring existing code, naming variables/
-  functions/classes, designing class structures, handling errors, or writing
-  tests.
-  Trigger on: "is this clean?", "how do I improve this?", "the code smells", code pasted for
-  feedback, "this is a mess", "can you clean this up", "what's wrong with my function", "clean code principals".
-  Apply Clean Code principles proactively — don't wait for explicit
-  requests.
+description: "Clean Code skill. Writing, reviewing, or refactoring code; naming variables/functions/classes; class design; error handling; tests; reducing duplication; code smells; SRP, OCP, DIP. Phrases: 'is this clean', 'clean this up', 'what's wrong with my function', 'how do I improve this', pasting code for feedback or rewrite. Apply proactively to any coding task."
 ---
 
 # Clean Code Assistant
 
-Core rule: **code is read far more than it is written — every decision optimizes for the reader.**
+**Fundamental rule: code is read far more than it is written (> 10:1 ratio). Every decision optimizes for the reader.**
 
----
+## Usage
 
-## How to Apply This Skill
+**Reviewing code:** Identify smells by category (use `references/10-smells.md` for labeled G/N/F/T/C/E codes), explain *why* each is a problem, show the refactored version.
 
-**Reviewing:** Work through each relevant reference file. Identify smells by category, explain *why* each is a problem, show the refactored version.
+**Writing new code:** Apply the principles below before producing output. Prefer expressive names, short functions, and minimal coupling from the start.
 
-**Writing:** Apply principles before producing output — expressive names, short functions, minimal coupling from the start.
+**User stuck on naming or structure:** Ask *"What does this actually do? Can you say it in one sentence?"* — the answer is usually the name.
 
-**Naming / structure questions:** Ask *"What does this actually do? Can you say it in one sentence?"* — the answer is usually the name.
+## Reference files
 
-**Reference files — load when relevant:**
-- `references/01-naming.md` — Meaningful names, naming patterns, anti-patterns
-- `references/02-functions.md` — Function size, SRP, arguments, side effects
-- `references/03-comments.md` — When comments help vs. hurt; self-documenting code
-- `references/04-formatting.md` — File size, vertical/horizontal layout rules
-- `references/05-objects-data.md` — Abstraction, Law of Demeter, OOP vs. procedural
+Load when relevant to the task:
+
+- `references/01-naming.md` — Meaningful names, anti-patterns, searchability
+- `references/02-functions.md` — Size, SRP, arguments, side effects, DRY
+- `references/03-comments.md` — Good vs. bad comments; self-documenting code
+- `references/04-formatting.md` — File size, vertical/horizontal layout
+- `references/05-objects-data.md` — Abstraction, Law of Demeter, objects vs. data structures
 - `references/06-error-handling.md` — Exceptions, null handling, error isolation
 - `references/07-tests.md` — TDD, FIRST rules, clean test structure
-- `references/08-classes.md` — SRP, OCP, cohesion, dependency inversion
+- `references/08-classes.md` — SRP, OCP, cohesion, DIP
 - `references/09-emergence.md` — Kent Beck's four rules of Simple Design
-- `references/10-smells.md` — Master heuristics list (G, N, F, T, C, E, J codes)
+- `references/10-smells.md` — Master heuristics list (G, N, F, T, C, E codes)
 
----
+## Core principles
 
-## Core Principles (always active)
+### 1. Meaningful Names
+- Names must **reveal intent**: `elapsed_time_in_days` not `d`
+- Avoid disinformation: `account_list` must actually be a list type
+- Use **searchable** names for constants: `WORK_DAYS_PER_WEEK` not `5`
+- Pick **one word per concept**: don't mix `fetch`, `retrieve`, `get` for the same operation
+- Name at the correct **abstraction level** — don't leak implementation details into the name
 
-**Meaningful Names:** reveal intent (`elapsedTimeInDays` not `d`); no disinformation; one word per concept (`get` or `fetch`, never both); searchable constants; no Hungarian notation; name at the right abstraction level.
+### 2. Functions
+- **Do one thing** — if a meaningful sub-function can be extracted, it does more than one
+- **Short** (ideally < 20 lines); `if`/`while` blocks should be one line = a function call
+- **One level of abstraction per function** — don't mix high-level policy with low-level detail
+- **Fewer arguments**: niladic > monadic > dyadic > triadic; never flag (boolean) arguments
+- **No side effects** — `check_password` must not also initialize a session
+- **Prefer exceptions over error codes**; put error handling in its own function
 
-**Functions:** do one thing; under ~20 lines; one level of abstraction; ≤2 args (use a Parameter Object for more); no side effects not in the name; prefer exceptions over error codes; error handling is its own function.
+### 3. Comments
+- The best comment is no comment — rewrite code to be self-explanatory; comments lie over time, code doesn't
+- **Good comments**: legal headers, intent explanation (*why*, not *what*), opaque API clarification, TODO, warnings of consequences
+- **Bad comments**: redundant, misleading, commented-out code (delete — use VCS), journal/changelog entries, section banners
 
-**Comments:** the best comment rewrites the code. Good: legal headers, intent explanation (*why* not *what*), obscure API clarification, TODO, consequence warnings. Bad: redundant, misleading, commented-out code (delete it), changelogs.
+### 4. Classes
+- **SRP**: one reason to change — if the class can't be described without "and", split it
+- **OCP**: open for extension, closed for modification — new behavior = new code, not edits to existing code
+- **DIP**: depend on abstractions, not concretions — inject dependencies via constructor
+- **High cohesion**: if a subset of methods only uses a subset of instance variables, the class wants to split
 
-**Classes:** SRP — one reason to change; OCP — extend via new code, not edits; DIP — depend on abstractions; high cohesion (most methods use most variables); prefer many small classes.
+### 5. Four Rules of Simple Design (Kent Beck) — in priority order
+1. **Runs all the tests** — untestable systems should never deploy; testability forces decoupling
+2. **No duplication (DRY)** — duplication is the root of most software evil
+3. **Expresses intent** — good names, small units, standard patterns
+4. **Minimal classes and methods** — smallest design that satisfies rules 1–3; don't over-engineer
 
-**Simple Design (Kent Beck, in priority order):**
-1. Runs all the tests
-2. No duplication (DRY)
-3. Expresses intent
-4. Minimal classes and methods
-
----
-
-## Response Format
+## Response format
 
 **Reviewing:**
 1. Brief overall assessment (1–2 sentences)
 2. Issues grouped by category (Names / Functions / Comments / Classes / etc.)
 3. Before/after code for each issue
-4. Prioritized by impact
+4. Most impactful changes first
 
-**Writing:** clean from the start; annotate surprising decisions (e.g., class split, naming choice) briefly.
+**Writing:** Clean from the start — never produce "working but messy" code. Briefly annotate surprising design decisions (class splits, naming choices).
 
-**Refactoring:** name the smell → cite the principle → show the fix. Break large refactors into incremental steps the user can apply one at a time.
+**Refactoring:** Explain the smell, cite the principle, show the fix. For large refactors, break into incremental steps.

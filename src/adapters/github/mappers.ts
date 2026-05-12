@@ -6,6 +6,7 @@
 
 import type { RuntimeConfig } from "./config-loader.ts";
 import type { ProjectV2Item, Story } from "../../types.ts";
+import type { BurndownStoryInput } from "../../scrum/ports.ts";
 import { classifyLabels, type StoryTypeLabel } from "../../domain/rules/labels.ts";
 import type { BoardFields, Comment, FieldValueNode, LinkedPr } from "./raw-types.ts";
 
@@ -54,7 +55,7 @@ export interface IssueDetailsInput {
 // ── Field extraction ───────────────────────────────────────────────────────────
 
 /** Extract board fields from a field-value node array. */
-export const extractBoardFields = (
+const extractBoardFields = (
   nodes: FieldValueNode[],
   fields: RuntimeConfig["fields"],
 ): BoardFields => {
@@ -218,14 +219,6 @@ export const buildLinkedPrList = (nodes: TimelineItemInput[]): LinkedPr[] =>
   });
 
 // ── Burndown projection ────────────────────────────────────────────────────────
-
-/** Lightweight burndown story projection — four fields burndown computation needs. */
-export interface BurndownStoryInput {
-  number: number;
-  title: string;
-  points: number;
-  status: string | null;
-}
 
 /**
  * Project a ProjectV2Item to the four fields burndown computation needs.

@@ -5,7 +5,8 @@
 // All functions depend only on domain types — no RuntimeConfig or GitHub types.
 // =============================================================================
 
-import type { IterationEntry, Story } from "../types.ts";
+import type { BurndownDayPoint, IdealDayPoint, IterationEntry, Story } from "../types.ts";
+import type { BurndownStoryInput } from "./ports.ts";
 
 // ── Sprint metadata ────────────────────────────────────────────────────────────
 
@@ -109,7 +110,7 @@ export const computeSprintTotals = (
 // ── Sprint window ──────────────────────────────────────────────────────────────
 
 /** Computed sprint window — pure derivation of an IterationEntry. */
-export interface SprintWindow {
+interface SprintWindow {
   name: string;
   startDate: Date;
   endDate: Date;
@@ -148,12 +149,6 @@ export const buildSprintWindow = (iterEntry: IterationEntry): SprintWindow => {
 
 // ── Burndown helpers ───────────────────────────────────────────────────────────
 
-/** One entry in the ideal burndown line. */
-export interface IdealDayPoint {
-  date: string;
-  remaining_points: number;
-}
-
 /**
  * Compute the ideal burndown line: one entry per calendar day.
  * Values rounded to one decimal place.
@@ -174,21 +169,6 @@ export const buildIdealLine = (
 
   return ideal;
 };
-
-/** One entry in the actual burndown series. */
-export interface BurndownDayPoint {
-  date: string;
-  remaining_points: number;
-  completed_points: number;
-}
-
-/** Lightweight per-story projection for burndown computation. */
-export interface BurndownStoryInput {
-  number: number;
-  title: string;
-  points: number;
-  status: string | null;
-}
 
 /**
  * Build the actual burndown series: one entry per calendar day.

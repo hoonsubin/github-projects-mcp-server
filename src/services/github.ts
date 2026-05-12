@@ -30,7 +30,7 @@ export class GitHubApiError extends Error {
   }
 }
 
-export const getToken = (): string => {
+const getToken = (): string => {
   const token = Deno.env.get("GITHUB_TOKEN");
   if (!token) {
     throw new GitHubApiError(
@@ -267,7 +267,7 @@ export const rest = async <T>(
 };
 
 /** Format a GitHubApiError into a human-readable MCP tool error string. */
-export const formatError = (err: unknown): string => {
+const formatError = (err: unknown): string => {
   if (err instanceof GitHubApiError) {
     return `Error: ${err.message}`;
   }
@@ -290,7 +290,7 @@ export const formatError = (err: unknown): string => {
 // Usage: replace formatError(err) with enrichError(err, { operation: "..." })
 // in tool handlers. Falls back to formatError() for non-GitHubApiError types.
 
-export interface EnrichErrorContext {
+interface EnrichErrorContext {
   /**
    * The tool operation name (e.g. "get_repo_file", "create_issue").
    * Used to include the exact token permission required by that operation.
@@ -413,7 +413,7 @@ export const enrichError = (err: unknown, ctx: EnrichErrorContext = {}): string 
  * On 404, the existing `rest<T>()` error classification fires:
  * `GitHubApiError(404, ...)`.
  */
-export interface RepoFileResponse {
+interface RepoFileResponse {
   type: "file";
   encoding: "base64";
   content: string; // base64-encoded, may include newlines
@@ -433,6 +433,7 @@ export interface RepoFileResponse {
  * These must be stripped before decoding — atob() rejects strings with whitespace.
  *
  * Exported for unit testing.
+ * todo: this function is only used inside unit tests. Doesn't have to be exported
  */
 export const decodeRepoFileContent = (encoded: string): string => atob(encoded.replace(/\s/g, ""));
 

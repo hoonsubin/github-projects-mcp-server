@@ -53,7 +53,7 @@ raise ValueError(
 
 ## Define Exception Classes Based on Caller Needs
 
-Wrap third-party APIs to translate their many exception types into one that makes sense for *your* callers:
+Wrap third-party APIs to translate their many exception types into one that makes sense for _your_ callers:
 
 ```python
 # Bad: caller must handle multiple third-party exception types
@@ -97,11 +97,9 @@ def get_employee(name) -> Employee:
 
 ## Quick Rules
 
-| Situation | Action |
-|---|---|
-| Signaling failure | Throw an exception, not an error code |
-| Writing error-prone code | Write `try-catch` first, then fill in logic |
-| Third-party library | Wrap it — translate their exceptions to yours |
-| Returning "not found" | Raise an exception |
-| Optional arguments | Use keyword args with defaults, not `None` sentinels |
-| No context in exception | Always add a descriptive message |
+- Signaling failure: Throw an exception, not an error code
+- Writing error-prone code: Write try-catch first, then fill in logic
+- Third-party library: Wrap it — translate their exceptions to yours
+- Returning "not found": Raise an exception
+- Optional arguments: Use keyword args with defaults, not None sentinels
+- No context in exception: Always add a descriptive message

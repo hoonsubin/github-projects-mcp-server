@@ -6,8 +6,8 @@ Use when no code exists yet. Resist the urge to pick a stack and run `rails new`
 
 Write a list of use cases in business language — no UI, no DB, no framework, no protocol.
 
-Bad: *"User submits POST to /api/users; controller validates and writes to the users table."*
-Good: *"A new customer provides identity and contact info; the system verifies uniqueness, records the customer, and returns confirmation."*
+Bad: _"User submits POST to /api/users; controller validates and writes to the users table."_
+Good: _"A new customer provides identity and contact info; the system verifies uniqueness, records the customer, and returns confirmation."_
 
 If you can't write a use case without naming a technology, you don't yet understand the use case.
 
@@ -15,7 +15,7 @@ If you can't write a use case without naming a technology, you don't yet underst
 
 ## Stage 2 — Identify entities and critical business rules
 
-For each use case, ask: *what nouns does this manipulate, and what rules govern those nouns?*
+For each use case, ask: _what nouns does this manipulate, and what rules govern those nouns?_
 
 A good entity has a domain name (`Loan`, not `LoanRecord`), holds the data and rules that would exist on paper, and has **no technical references** — no ORM annotations, no logging, no auto-increment IDs.
 
@@ -24,12 +24,13 @@ A good entity has a domain name (`Loan`, not `LoanRecord`), holds the data and r
 ## Stage 3 — Sketch the use-case interactors
 
 For each use case, write:
+
 - **Input DTO:** data the use case needs to start (no `HttpRequest`, no session, no framework type)
 - **Output DTO:** data it produces (no JSON, no framework type)
 - **Steps:** in terms of entities and abstract gateways
 - **Required ports:** interfaces the use case needs — these **live with the use case**, not with their implementations
 
-```
+```text
 UseCase: RegisterNewCustomer
 Input:  { name, email, address }
 Output: { customerId, registeredAt }
@@ -47,7 +48,7 @@ Steps:
 
 ## Stage 4 — Defer details deliberately
 
-For each of the following, write the answer ("defer") and the *latest moment you must commit*:
+For each of the following, write the answer ("defer") and the _latest moment you must commit_:
 
 Database, web framework, UI, DI framework, message broker, cloud provider, auth provider — all defer. Use cases don't know they're called over HTTP; entities don't know how they're persisted.
 
@@ -84,7 +85,7 @@ The first slice is the architectural sanity check. If it reveals friction, **rev
 
 - **"We'll add boundaries later."** Adding boundaries to a grown codebase is one of the most expensive things you can do.
 - **"It's just a prototype."** Every successful prototype becomes a product. Architecture during the prototype phase is cheap; the cost of not having it once it ships is enormous.
-- **"The framework gives us the structure."** It gives you *its* structure, optimized for *its* concerns.
+- **"The framework gives us the structure."** It gives you _its_ structure, optimized for _its_ concerns.
 - **"We need to decide the database first."** Sketch the data model in domain terms; the schema is a later translation.
 
 ## Output checklist

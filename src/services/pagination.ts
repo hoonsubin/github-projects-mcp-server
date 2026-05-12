@@ -29,7 +29,7 @@ import type {
  * Configuration for what data to fetch per project item.
  * Controls the GraphQL payload to minimize bandwidth.
  */
-export interface ItemFetchConfig {
+interface ItemFetchConfig {
   /** Which sprint field IDs to include in fieldValues (for backlog filtering). */
   sprintFieldIds?: string[];
   /** Whether to fetch Issue content (default true) */

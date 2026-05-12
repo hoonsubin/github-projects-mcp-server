@@ -1,100 +1,105 @@
 ---
 name: clean-architecture
-description: >-
-  ONLY trigger on:
-  - planning a new project
-  - "how do I structure this"
-  - "massive refactoring" or "house cleaning"
-  - applying SOLID, or reasoning about dependency direction
-  DO NOT activate for:
-  - Single-phase questions (use phase-specific skills instead)
-  - General architecture questions (use clean-arch skill)
-  - Debugging specific files (use search, not full read)
+description: "Clean Architecture skill. Project structure, layer design, dependency direction, SOLID, module/component boundaries, monolith vs microservices, decoupling, coupling/cohesion metrics, refactoring a big ball of mud, architecture audits, greenfield design, separation of concerns. Phrases: 'where does this go', 'how do I structure this', 'hard to change', 'fragile', 'circular dependency', 'should I use microservices', 'starting a new project', 'decouple X from Y', 'design review', 'this is a mess'. Any stack or domain."
 ---
 
 # Clean Architecture — System Architecting Skill
 
-Architecture is the continuous shape of decisions across a system — designed deliberately or grown by accident. Every system has one.
+Based on Robert C. Martin's *Clean Architecture*. Every system has an architecture — the question is whether it was deliberate.
 
-## When to use this skill
+## Workflow selection
 
-Pick the matching workflow and follow it. Don't blend workflows.
+Identify the user's situation and read the matching workflow file before advising. Each workflow encodes the order of decisions; don't improvise from this file alone.
 
 | Situation | Workflow file |
 |---|---|
 | Starting fresh — no code yet, or rewriting from zero | `references/workflow-new-project.md` |
-| Existing project, working — verify or harden architecture | `references/workflow-audit.md` |
-| Messy, fragile codebase — needs untangling | `references/workflow-cleanup.md` |
+| Working project — verify or harden architecture | `references/workflow-audit.md` |
+| Messy, fragile, or "big ball of mud" | `references/workflow-cleanup.md` |
 | Works but dirty — incremental migration to clean | `references/workflow-strangle.md` |
 
-Read the matching workflow file before giving advice.
+## Core principles
 
-## Core mental model
+**1. Structure over behavior.** Behavior is what the system does today; structure is how easily it changes tomorrow. A system that works but can't be changed becomes useless the moment requirements shift. Structure is the higher value even when it never feels urgent.
 
-**1. Structure is the higher value.** Behavior is what the system does today; structure is how easy it is to change tomorrow. Stakeholders sacrifice structure for behavior — that's the wrong trade.
+**2. Minimize lifetime effort.** Good architecture keeps the cost curve flat — adding a feature next year costs roughly the same as today. When effort scales super-linearly with features, the architecture is failing regardless of how it looks.
 
-**2. Minimize human effort over the system's lifetime.** Architecture wins when the cost of adding a feature stays flat year over year. A flat effort curve beats a clever early design.
+**3. Keep options open.** A good architect maximizes undecided decisions. Database, framework, UI, auth provider, deployment topology — these are *details* that should be deferred as long as possible because later decisions use more information. Design so each could be reversed even after it's been made.
 
-**3. Maximize decisions not yet made.** Database, framework, UI, auth provider — these are *details*. Defer them as long as possible; treat them as plugins to business logic, never as foundations beneath it.
+**4. Separate policy from details. Dependencies point inward.** Policy = business rules valuable even on paper, independent of automation. Details = database, web server, framework, UI. Policy must not know about details. Source-code dependencies point *inward*, from volatile concrete details toward stable abstract policy. This is the **Dependency Rule** — the single most load-bearing idea in this skill.
 
-**4. Separate policy from details. Point dependencies at policy.** Policy = business rules (valuable on paper, no computer needed). Details = everything that only exists because we automated. Source-code dependencies point *inward*, from volatile details toward stable abstract policy. This is the **Dependency Rule**.
+**5. Architecture screams the use cases, not the framework.** Opening the top-level directory should reveal the domain ("shopping cart", "payroll", "reactor sim"), not the stack ("Rails", "Spring", "Unity"). If the project looks identical to every other project in its language, there is no architecture — only a framework's opinion.
 
-**5. The architecture should scream the use cases, not the framework.** Opening the repo should reveal "shopping cart" or "payroll", not "Rails" or "Spring". Frameworks are tools, never architectures.
+## SOLID — class and module level (`references/solid-principles.md`)
 
-## Quick principle reference
+- **SRP** — A module answers to one *actor* (one source of change), not one function. Merge conflicts from unrelated changes to one file are a symptom.
+- **OCP** — Extend by writing new code; don't modify old code. New behavior arrives as new implementations of an abstraction.
+- **LSP** — Subtypes must be substitutable for their base type without surprising callers. Violations force special-case dispatch into code that should be agnostic.
+- **ISP** — Don't force clients to depend on methods they don't use. Wide interfaces propagate unneeded recompiles and transitive dependencies.
+- **DIP** — Depend on abstractions, not concretions. Interfaces live with the *consumer* (high-level policy), not the implementer. Concrete construction is concentrated in Main.
 
-**SOLID** — class/module level (see `references/solid-principles.md`)
-- **SRP**: one module, one *actor* (one source of change — not "one function")
-- **OCP**: new behavior arrives as new code, not edits to old code
-- **LSP**: subtypes must be substitutable without surprising callers
-- **ISP**: don't force clients to depend on methods they don't use
-- **DIP**: depend on abstractions; volatile concretions are plugins
+## Component cohesion (`references/component-principles.md`)
 
-**Component cohesion** — which classes belong together (see `references/component-principles.md`)
-- **REP**: granule of reuse = granule of release
-- **CCP**: things that change together belong together (SRP at component scope)
-- **CRP**: don't force consumers to depend on what they don't use (ISP at component scope)
+- **REP** — The granule of reuse is the granule of release. Classes in a component must share a coherent release.
+- **CCP** — Things that change together belong together. (SRP at component scope.) A change request should touch as few components as possible.
+- **CRP** — Don't force consumers to depend on what they don't use. (ISP at component scope.) Leave unrelated classes out.
 
-**Component coupling** — how components depend on each other (see `references/component-principles.md`)
-- **ADP**: no cycles in the component dependency graph — ever
-- **SDP**: depend in the direction of stability; volatile depends on stable, never the reverse
-- **SAP**: stable components must be abstract; stable + concrete = Zone of Pain
+REP and CCP are inclusive (push components larger); CRP is exclusive (push components smaller). The right balance shifts as the project ages — early projects favor CCP; mature ones favor CRP and REP.
 
-**Layers** — innermost to outermost (see `references/clean-architecture-layers.md`)
-1. **Entities** — enterprise business rules + critical data; depends on nothing
-2. **Use Cases** — application-specific rules; orchestrates entities via declared interfaces
-3. **Interface Adapters** — controllers, presenters, gateways; translates outer ↔ inner
-4. **Frameworks & Drivers** — DB, web, UI; all details live here at the edge
+## Component coupling (`references/component-principles.md`)
 
-**Dependency Rule**: source-code dependencies point only inward. Nothing in an inner circle may name anything in an outer circle.
+- **ADP** — No cycles in the component dependency graph. Break cycles with DIP or by extracting a third component.
+- **SDP** — Depend in the direction of stability. Volatile components depend on stable ones; never the reverse.
+- **SAP** — Stable components are abstract; unstable components are concrete. Stable + concrete = Zone of Pain. Abstract + unstable = Zone of Uselessness.
+
+Metrics: **I = Ce / (Ca + Ce)** (instability, 0=stable, 1=unstable), **A = Na / Nc** (abstractness), **D = |A + I − 1|** (distance from Main Sequence, target ≤ 0.1).
+
+## Clean Architecture layers (`references/clean-architecture-layers.md`)
+
+Innermost (most stable, most abstract) → outermost (most volatile, most concrete):
+
+1. **Entities** — enterprise business rules + the data they operate on. No external imports.
+2. **Use Cases** — application-specific orchestration of entities. Port interfaces declared here; implementations live in outer layers.
+3. **Interface Adapters** — controllers, presenters, gateways. Translate between use-case DTOs and external formats. All SQL lives here or further out.
+4. **Frameworks & Drivers** — DB, web framework, UI, devices. The details that live at the edge.
+
+**Dependency Rule**: source-code dependencies point only inward. An inner layer never names anything declared in an outer layer — no imports, no class references, no shared data formats authored by an outer layer.
+
+**Humble Object pattern**: wherever a boundary separates testable from hard-to-test behavior (GUI, DB, network), split it in two. The humble object holds only the hard-to-test part (as thin and logic-free as possible); the testable object holds everything else. Every boundary in a clean architecture corresponds to a Humble Object split.
+
+**Main component**: the one place that depends on concretions — constructs all implementations, wires them into inner layers via constructor injection, then hands control to policy. Inner layers never import Main. Multiple Mains (dev, prod, per-region) are a plugin to the application, not its foundation.
 
 ## Decision shortcuts
 
-- *"Where does this code go?"* → Innermost layer that doesn't require importing anything more concrete than itself.
-- *"Should I pick a DB/framework now?"* → No. Sketch use cases first; treat the missing piece as an interface.
-- *"Should I use microservices?"* → Almost certainly not yet. Start with source-level decoupling inside a monolith; promote to services only when operational pressure justifies it.
-- *"Should I add this abstraction now?"* → Note the seam. If adding it later costs significantly more, add a partial boundary (Strategy or Facade — see `references/boundaries.md`).
-- *"Circular dependency?"* → Defect. Break via DIP (interface in the more stable component) or extract a third component.
-- *"How do I make this testable?"* → Wedge abstraction between the volatile thing and the policy (Humble Object — see `references/clean-architecture-layers.md`).
+**"Where does this code go?"** — The innermost layer that doesn't force a dependency on anything more concrete. If it would need to import a framework, DB, or UI type to live there, move it outward.
 
-## How the agent should respond
+**"Should I pick a database / framework now?"** — No. Sketch use cases and entities first; treat the missing piece as an interface with no implementation yet.
 
-- **Diagnose before prescribing.** Identify which workflow situation applies; the right move differs sharply between "starting fresh" and "fixing what exists".
-- **Stay tech-agnostic by default.** These principles apply equally to a Rust CLI, Python pipeline, Unity game, or microservice fleet.
-- **Resist over-engineering.** A 200-line script doesn't need four named layers — but dependency direction and policy/detail separation matter at any size.
-- **Push back on structural shortcuts.** Make the trade-off visible: "just add it to the controller" has a real long-term cost.
-- **Diagrams help, prose helps more.** Use Mermaid for boundaries and dependency direction; the reasoning lives in prose.
+**"Should I use microservices?"** — Start with source-level decoupling inside a monolith. Promote individual boundaries to deployment units → processes → services only when operational pressure justifies it. The architecture should support sliding up and down that scale without rewriting. Service-level decoupling is not free and is not automatically the most decoupled — tightly coupled services over a network are worse than a well-structured monolith.
 
-## Files in this skill
+**"Should I add this abstraction now?"** — Note the seam. If adding it later will cost much more than now, add a partial boundary (Strategy or Facade — see `references/boundaries.md`). YAGNI applies to features; it applies less to architectural seams, which are exponentially more expensive to retrofit.
+
+**"There's a circular dependency."** — It is a defect. Break it via DIP (introduce an interface in the more stable component) or by extracting a third component both depend on. See `references/component-principles.md` (ADP).
+
+**"How do I make this testable?"** — Drive a wedge of abstraction between the volatile thing (UI, DB, network, time, randomness) and the policy. Policy depends on an interface; the volatile thing implements it; tests substitute a fake. This is the Humble Object pattern.
+
+## Response guidance
+
+- Identify which workflow situation applies before prescribing — the right move differs sharply between greenfield and recovery.
+- Stay tech-agnostic until the user's stack is confirmed; Clean Architecture applies equally to any language or domain.
+- Scale layers to complexity: a 200-line script doesn't need four named concentric layers. The *direction* of dependencies and separation of policy from details matter at every scale.
+- When stakeholders push structural shortcuts ("just add it to the controller", "we'll deal with this later"), name the cost curve impact explicitly.
+
+## Reference files
 
 ```
 clean-architecture/
 ├── SKILL.md
 ├── references/
-│   ├── solid-principles.md
-│   ├── component-principles.md
-│   ├── clean-architecture-layers.md
-│   ├── boundaries.md
+│   ├── solid-principles.md            ← SRP, OCP, LSP, ISP, DIP
+│   ├── component-principles.md        ← REP/CCP/CRP, ADP/SDP/SAP, I/A/D metrics
+│   ├── clean-architecture-layers.md   ← Four layers, Dependency Rule, Humble Object
+│   ├── boundaries.md                  ← Boundary anatomy, partial boundaries, decoupling modes
 │   ├── workflow-new-project.md
 │   ├── workflow-audit.md
 │   ├── workflow-cleanup.md
@@ -103,5 +108,3 @@ clean-architecture/
     ├── audit-checklist.md
     └── project-skeleton.md
 ```
-
-When a workflow or principle file is relevant, **read it** before continuing the conversation.

@@ -53,7 +53,7 @@ interface GitHubClient {
 }
 
 /** Config loader parameters. Only the GitHub client is required. */
-export interface ConfigParams {
+interface ConfigParams {
   github: GitHubClient;
   /** Path to the config file. Defaults to ".github/scrum/config.yml". */
   configPath?: string;
@@ -166,7 +166,7 @@ interface ProjectFieldsResponse {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Classify iterations into active, next, completed, and all categories. */
-export const classifyIterations = (
+const classifyIterations = (
   activeIterations: IterationEntry[],
   completedIterations: IterationEntry[],
 ): RuntimeConfig["iterations"] => {

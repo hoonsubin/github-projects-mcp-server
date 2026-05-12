@@ -15,7 +15,7 @@ import { z } from "zod";
 
 // Accepted as input by any tool that references a story.
 // Every read tool returns Story.ref.id — pass that value here.
-export const StoryRefSchema = z.object({
+const StoryRefSchema = z.object({
   id: z
     .string()
     .describe(
@@ -27,7 +27,7 @@ export const StoryRefSchema = z.object({
 });
 
 // Sprint targeting: "current", "next", null (= backlog / clear sprint), or explicit sprint name.
-export const SprintRefSchema = z
+const SprintRefSchema = z
   .union([
     z.literal("current"),
     z.literal("next"),
@@ -44,7 +44,7 @@ export const SprintRefSchema = z
   );
 
 // The five board fields the agent can write via scrum_set_field. Fixed set for v1.
-export const ScrumFieldSchema = z
+const ScrumFieldSchema = z
   .enum(["status", "sprint", "story_points", "priority", "assignee"])
   .describe(
     "Board field to update. " +
@@ -58,7 +58,7 @@ export const ScrumFieldSchema = z
 
 // Story type — drives the type label applied by the backend.
 // NOTE: "impediment" is NOT a StoryType. scrum_log_impediment uses type:"spike" + an "impediment" label.
-export const StoryTypeSchema = z
+const StoryTypeSchema = z
   .enum(["feature", "bug", "tech_debt", "spike"])
   .describe(
     '"feature" = new functionality, ' +

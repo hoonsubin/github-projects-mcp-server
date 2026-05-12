@@ -404,15 +404,15 @@ flowchart LR
 
 These appear in arguments and return values across multiple tools.
 
-| Type             | Meaning                                                                                                                                                                                                                           |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Type             | Meaning                                                                                                                                                                                                                             |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `StoryRef`       | A reference to a single Story. Shape: `{ "id": "<opaque>" }` where `id` is the project-item handle returned by any read tool in `Story.ref.id`. The agent obtains an `id` from a listing tool first, then passes it to write tools. |
-| `SprintRef`      | A reference to a sprint. Accepted forms: `"current"`, `"next"`, `null` (= no sprint, i.e. the backlog), or an explicit sprint name (e.g. `"Sprint 12"`).                                                                          |
-| `ScrumField`     | One of `status`, `sprint`, `story_points`, `priority`, `assignee`. The set is fixed; new field types are out of scope for v1.                                                                                                     |
-| `StoryType`      | One of `feature`, `bug`, `tech_debt`, `spike`. Drives the type label or category the backend applies.                                                                                                                             |
-| `StoryListing`   | Lightweight listing entry returned by all listing tools. See shape below.                                                                                                                                                         |
-| `SprintSnapshot` | Sprint metadata plus its `StoryListing[]`. The common envelope for `scrum_get_sprint` and `scrum_get_history`. See shape below.                                                                                                   |
-| `Story`          | Full story detail — body, comments, AC, linked PRs. Returned **only** by `scrum_get_story` and write tools. See shape below.                                                                                                      |
+| `SprintRef`      | A reference to a sprint. Accepted forms: `"current"`, `"next"`, `null` (= no sprint, i.e. the backlog), or an explicit sprint name (e.g. `"Sprint 12"`).                                                                            |
+| `ScrumField`     | One of `status`, `sprint`, `story_points`, `priority`, `assignee`. The set is fixed; new field types are out of scope for v1.                                                                                                       |
+| `StoryType`      | One of `feature`, `bug`, `tech_debt`, `spike`. Drives the type label or category the backend applies.                                                                                                                               |
+| `StoryListing`   | Lightweight listing entry returned by all listing tools. See shape below.                                                                                                                                                           |
+| `SprintSnapshot` | Sprint metadata plus its `StoryListing[]`. The common envelope for `scrum_get_sprint` and `scrum_get_history`. See shape below.                                                                                                     |
+| `Story`          | Full story detail — body, comments, AC, linked PRs. Returned **only** by `scrum_get_story` and write tools. See shape below.                                                                                                        |
 
 #### StoryListing shape
 
@@ -451,8 +451,8 @@ Every full Story has this shape:
 
 | Field                      | Meaning                                                                                                                                      |
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ref`                      | `{ id: string }` — the opaque project-item handle. Pass `Story.ref.id` to any write tool that accepts a `StoryRef`.                         |
-| `key`                      | Human-readable identifier (`"42"`, `"PRO-123"`), or `null` for Draft Issues. Display-only — do not pass to write tools.                     |
+| `ref`                      | `{ id: string }` — the opaque project-item handle. Pass `Story.ref.id` to any write tool that accepts a `StoryRef`.                          |
+| `key`                      | Human-readable identifier (`"42"`, `"PRO-123"`), or `null` for Draft Issues. Display-only — do not pass to write tools.                      |
 | `title`                    | The story title.                                                                                                                             |
 | `body`                     | The story body, rendered as markdown. Includes user-story format, AC checklist, dependencies, and technical notes — whatever the team wrote. |
 | `type`                     | `StoryType` resolved from the type label or category.                                                                                        |
