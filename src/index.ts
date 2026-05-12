@@ -23,7 +23,7 @@ import { graphql, rest } from "./services/github.ts";
 import { log } from "./services/logger.ts";
 import type { Socket } from "node:net";
 import type { ProjectBackend } from "./scrum/ports.ts";
-import type { ScrumConfigYml } from "./types.ts";
+import type { GitHubBackendConfig, ScrumConfigYml } from "./types.ts";
 
 // ── Tool-call interceptor ────────────────────────────────────────────────────
 //
@@ -98,7 +98,7 @@ const wrapTransportLogging = (transport: Transport, label: string): void => {
 
 const createBackend = async (): Promise<{ backend: ProjectBackend; yml: ScrumConfigYml }> => {
   const config = await loadConfig({ github: { graphql } });
-  const gh = config.yml.backends.github!;
+  const gh = config.yml.backends.github as GitHubBackendConfig;
   const backend = new GitHubProjectBackend(
     config,
     { graphql, rest },
