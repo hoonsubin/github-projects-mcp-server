@@ -34,6 +34,9 @@ classDiagram
         %% Unused: groupStoriesByStatus, computeSprintTotals
     }
 
+    class Get_Backlog_Test:::scrum {
+    }
+
     class Get_Story:::scrum {
         +getStoryUseCase()
     }
@@ -60,7 +63,7 @@ classDiagram
         interface SprintTotalsHistory
         interface SprintSnapshot
         interface ProjectBackend
-        %% Unused: Ref, ImpedimentListing, SprintTotalsActive, SprintTotalsHistory
+        %% Unused: Ref, SprintTotalsActive, SprintTotalsHistory
     }
 
     class Get_History:::scrum {
@@ -216,12 +219,18 @@ classDiagram
     Orient --> Config : "imports"
     Get_Backlog --> Ports : "imports"
     Get_Backlog --> Config : "imports"
+    Get_Backlog --> Types : "imports"
     Get_Backlog --> Readiness : "imports"
     Get_Template --> Ports : "imports"
     Get_Template --> Types : "imports"
     Get_Template --> Config : "imports"
     Sprint_Math --> Types : "imports"
     Sprint_Math --> Ports : "imports"
+    Get_Backlog_Test --> Index : "imports"
+    Get_Backlog_Test --> Get_Backlog : "imports"
+    Get_Backlog_Test --> Ports : "imports"
+    Get_Backlog_Test --> Types : "imports"
+    Get_Backlog_Test --> Config : "imports"
     Get_Story --> Ports : "imports"
     Get_Story --> Types : "imports"
     Get_Story --> Acceptance_Criteria : "imports"
@@ -314,7 +323,6 @@ The following exports are never imported by any other module in the codebase:
 | [`scrum/sprint-math.ts`](../src/scrum/sprint-math.ts) | `groupStoriesByStatus`  | `function`  |
 | [`scrum/sprint-math.ts`](../src/scrum/sprint-math.ts) | `computeSprintTotals`   | `function`  |
 | [`scrum/ports.ts`](../src/scrum/ports.ts)             | `Ref`                   | `interface` |
-| [`scrum/ports.ts`](../src/scrum/ports.ts)             | `ImpedimentListing`     | `interface` |
 | [`scrum/ports.ts`](../src/scrum/ports.ts)             | `SprintTotalsActive`    | `interface` |
 | [`scrum/ports.ts`](../src/scrum/ports.ts)             | `SprintTotalsHistory`   | `interface` |
 | [`domain/types.ts`](../src/domain/types.ts)           | `ImpedimentRef`         | `interface` |

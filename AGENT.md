@@ -19,25 +19,6 @@ Guidance for coding agents working in this repository. Concise by design — see
 - **Tasks:** On high context noise, break into tasks → `tasks/TODO.md`. Remove outdated entries when done.
 - **Skills:** Check `.roo/skills/` first; load skill file before any large doc.
 
-**Memory (`memory`)** — use the knowledge graph, not in-context repetition:
-
-- Session start → `create_entities` + `create_relations` (task, active files, key actors).
-- New non-obvious fact learned → `add_observations` immediately.
-- Before reading any source file → `search_nodes` first; skip the read if nodes already exist.
-- New sub-task → `open_nodes` to reload prior session context.
-
-**Reasoning (`sequentialthinking`)** — call before:
-
-- Designing or modifying any handler, service, or type in `src/`.
-- Choosing between two implementation approaches.
-- Debugging a non-obvious error (≥3 thought steps before touching code).
-
-**Web search (`searxng_web_search`)** — search before you guess; do not infer API behavior from names:
-
-- Any external API, SDK, or CLI method you have not verified this session.
-- Unfamiliar Deno std, GitHub GraphQL field, MCP SDK option, or Zod edge case.
-- Any error string you haven't seen before — search it verbatim.
-
 ## Architecture
 
 Three layers. Inner layers never import outer.

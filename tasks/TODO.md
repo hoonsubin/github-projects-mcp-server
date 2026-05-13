@@ -684,7 +684,7 @@ The handler call signature is unchanged (`params.window`). Only the description 
 
 ---
 
-## Phase 7: Redesign scrum_get_backlog
+## Phase 7: Redesign scrum_get_backlog FINISHED
 
 **Goal:** Change the `stories` return from `Story[]` to `StoryListing[]`; add the active-item filter; add the `orphan_impediments` field.
 

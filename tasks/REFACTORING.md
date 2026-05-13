@@ -12,6 +12,7 @@ This document is the authoritative source of truth for the MCP server's architec
 6. [Pending Work](#6-pending-work)
 7. [Design Decisions](#7-design-decisions)
 8. [Open Questions](#8-open-questions)
+9. [Agent Layer Fixes](#6h-agent-layer-fixes) ← subsection of §6
 
 ---
 
@@ -101,37 +102,24 @@ flowchart TD
 
 All backend abstraction (Phase 5), tool extraction (Phase 2), write tools (Phase 3), and dead-code cleanup (Phase 4) are complete. The server is fully on the `scrum_*` surface. `index.ts` wires `registerScrumReadTools` and `registerScrumWriteTools` against `GitHubProjectBackend`.
 
-**Type restructure complete (Phases A / B / C):** `src/types.ts` (mixed barrel) and `src/adapters/github/raw-types.ts` are tombstoned. Types now live at their correct architectural layer: `src/domain/types.ts` (domain entities), `src/domain/config.ts` (`ScrumConfig` — renamed from `ScrumConfigYml`), `src/adapters/github/types.ts` (GitHub adapter projections grounded in the codegen schema). All use-case functions receive `scrumConfig: ScrumConfig`; adapter-layer casts use explicit `as GitHubBackendConfig`. Physical `rm` of the two tombstoned files is still required locally.
+**Type restructure complete (Phases A / B / C):** Types now live at their correct architectural layer: `src/domain/types.ts` (domain entities), `src/domain/config.ts` (`ScrumConfig`), `src/adapters/github/types.ts`. `raw-types.ts` has been deleted. `src/types.ts` is a tombstone comment file awaiting `rm`.
+
+**Sprint listing redesign complete:** `SprintSnapshot`, `StoryListing`, and `ImpedimentListing` are defined in `src/scrum/ports.ts`. `scrum_get_sprint` (including `"all"` support) and `scrum_get_history` return the aligned shape. `scrum_get_backlog` returns `StoryListing[]` with active-item filtering and an `orphan_impediments` field; `getOrphanImpediments()` is declared on `ProjectBackend` but the backend implementation is a stub returning `[]`. `SprintSnapshot.impediments` is hardcoded to `[]` in all listing tools pending Phase 7 enrichment.
 
 Remaining open work lives in §5 (architectural debt) and §6 (pending feature work).
 
-| File                               | State       | Notes                                                                     |
-| ---------------------------------- | ----------- | ------------------------------------------------------------------------- |
-| `src/scrum/get-sprint.ts`          | 🟡 Redesign | See §6b — `"all"` param, `StoryListing` return, `impediments` on snapshot |
-| `src/scrum/get-backlog.ts`         | 🟡 Redesign | Active-item filter + `orphan_impediments` pending — see §6b               |
-| `src/scrum/get-history.ts`         | 🟡 Redesign | Return shape alignment with `SprintSnapshot` + `impediments` — see §6b    |
-| `src/scrum/ports.ts`               | 🟡 Redesign | Method signatures update pending — see §6b                                |
-| `src/tools/scrum-read.ts`          | 🟡 Redesign | Tool descriptions + handlers update pending — see §6b                     |
-| `src/tools/scrum-write.ts`         | 🟡 Redesign | `scrum_log_impediment` signature change; add `scrum_update_impediment`    |
-| `src/adapters/github/backend.ts`   | 🟡 Debt     | Class too large; smells documented in §6a                                 |
-| `src/types.ts`                     | 🔴 Delete   | Tombstoned. Run `rm src/types.ts` locally.                                |
-| `src/adapters/github/raw-types.ts` | 🔴 Delete   | Tombstoned. Run `rm src/adapters/github/raw-types.ts` locally.            |
+| File                             | State      | Notes                                                                                    |
+| -------------------------------- | ---------- | ---------------------------------------------------------------------------------------- |
+| `src/scrum/get-backlog.ts`       | 🟡 Partial | Use case done; `getOrphanImpediments()` backend query is a stub — see §6b                |
+| `src/tools/scrum-write.ts`       | 🟡 Pending | `scrum_log_impediment` signature + priority fix; add `scrum_update_impediment` — see §6b |
+| `src/adapters/github/backend.ts` | 🟡 Debt    | 1042 lines; `getOrphanImpediments()` is a TODO stub — see §6a, §6d                       |
+| `src/types.ts`                   | 🔴 Delete  | Tombstoned. Run `rm src/types.ts`.                                                       |
 
 ---
 
 ## 5. Architectural Debt
 
 These are structural problems identified by architecture audit against Clean Architecture principles. They are not crashes or functional bugs — they are constraints that will increase the cost of change as the system grows. Ordered by severity.
-
----
-
-### P0 — Use cases are coupled to `ScrumConfigYml`, which embeds `GitHubBackendConfig`
-
-Every use case function signature is `(backend: ProjectBackend, yml: ScrumConfigYml, params)`. `ScrumConfigYml` contains a `backends.github?: GitHubBackendConfig` field that carries GitHub auth tokens, `owner`, `project_number`, `tracked_repos`, and `field_mapping`.
-
-Use cases do not read these fields today — but they have structural access to them, and the type system does not prevent it. More importantly, `ScrumConfigYml` is the shape of a configuration YAML file. A YAML file is an infrastructure detail. Under the Dependency Rule, infrastructure details must not be visible to the use-case layer.
-
-The use-case layer should receive only the domain-relevant subset of configuration — sprint cadence, priority tiers, status vocabulary, Definition of Ready/Done, team roster, template paths. Platform connection details (`backends.github`) belong exclusively in the adapter that uses them. The current shape means introducing a second backend requires touching every use case signature.
 
 ---
 
@@ -163,7 +151,7 @@ The `services/` folder is currently a mixed bag: the HTTP client (`github.ts`), 
 
 ### P1 — `GitHubProjectBackend` violates Single Responsibility
 
-`GitHubProjectBackend` is more than 600 lines and handles sprint resolution, paginated item fetching, field ID resolution, story mapping, label creation, milestone management, config state inspection, burndown completion fetching, and both GraphQL and REST execution. Each of these is a distinct reason for the class to change.
+`GitHubProjectBackend` is 1042 lines and handles sprint resolution, paginated item fetching, field ID resolution, story mapping, label creation, milestone management, config state inspection, burndown completion fetching, and both GraphQL and REST execution. Each of these is a distinct reason for the class to change.
 
 The Single Responsibility Principle defines responsibility as "a reason to change" — the class should have only one. Under the current design, a change to how burndown completion timestamps are fetched, a change to how labels are resolved, and a change to how sprint iterations are enumerated all require editing the same class. This makes changes harder to isolate, test, and review.
 
@@ -173,19 +161,11 @@ The class's own inline comment acknowledges this: `//todo: this class is way too
 
 ---
 
-### P1 — `github.ts` conflates three unrelated concerns
+### P1 — `github.ts` conflates unrelated concerns (partially resolved)
 
-`src/services/github.ts` (488 lines) bundles three unrelated responsibilities:
+`GitHubApiError` and `enrichError()` have been extracted: errors now live in `src/adapters/github/errors.ts` and `src/services/error-enrichment.ts` respectively. `src/services/github.ts` is now ~338 lines.
 
-| Role                | Exports                                                      | Lines   | Correct Home                     |
-| ------------------- | ------------------------------------------------------------ | ------- | -------------------------------- |
-| HTTP transport      | `graphql()`, `rest()`                                        | 62–267  | `adapters/github/http-client.ts` |
-| Error enrichment    | `GitHubApiError`, `enrichError()`, `REQUIRED_PERMISSION` map | 22–406  | `tools/error-formatter.ts`       |
-| GitHub Contents API | `fetchRepoFile()`, `decodeRepoFileContent()`                 | 408–487 | `adapters/github/contents.ts`    |
-
-**Problem:** `enrichError()` contains GitHub-specific domain knowledge (token scope requirements, regex patterns matching GitHub error messages) placed in a generic `services/` directory. Tool handlers (`scrum-read.ts:21`, `scrum-write.ts:30`) import it directly, bypassing the `ProjectBackend` abstraction. This means the tool layer has a direct dependency on a GitHub service — violating the dependency rule in §2.
-
-**Impact:** Adding a second backend requires either modifying `enrichError()` for the new platform's error format or duplicating it. The `services/` folder is a mixed bag: HTTP client, logger, mutation validator, pagination (GitHub-specific), resolver (GitHub-specific), and error enrichment (GitHub-specific).
+The remaining concern is HTTP transport and the GitHub Contents API still bundled together. `scrum-write.ts` also imports `graphql` directly from `services/github.ts` — only used by the deprecated `github_graphql` tool. Remaining splits are tracked in §6e.
 
 ---
 
@@ -193,155 +173,178 @@ The class's own inline comment acknowledges this: `//todo: this class is way too
 
 ### 6a. Backend Code Quality — `src/adapters/github/backend.ts`
 
-Independent of the §5 architectural debt, the class has accumulated concrete code smells:
+**Why:** `backend.ts` has grown to 1042 lines with accumulated smells that increase the cost of the §6d split and ongoing feature work. Address these before or alongside the split.
 
-| # | Smell                                                      | Affected Areas                                                                              | Severity |
-| - | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
-| 1 | Label creation logic duplicated 3+ times                   | `resolveLabelNodeIds`, `resolveOrCreateLabel`, `addLabel`, `resolveOrCreateMilestoneNodeId` | High     |
-| 2 | String interpolation in GraphQL mutations (injection risk) | All `setField*` methods, `clearField`                                                       | High     |
-| 3 | `createStory` is 116 lines                                 | `createStory`                                                                               | High     |
-| 4 | Burndown completion logic too complex                      | `fetchAuditLogCompletions`, `fetchIssueCloseCompletions`                                    | Medium   |
-| 5 | `fetchAllItems` duplicates `PaginatedProjectItemFetcher`   | `fetchAllItems`, `getCompletedSprintHistory`                                                | Medium   |
-| 6 | Response types defined inline instead of in `raw-types.ts` | `GetIssueDetailsResponse`, `GetItemFieldsResponse`, `RawItem`, `RawFieldValue`              | Low      |
+1. **Label creation duplicated** — `resolveLabelNodeIds`, `resolveOrCreateLabel`, `addLabel`, and `resolveOrCreateMilestoneNodeId` all implement the same fetch-or-create pattern against the repo labels API (`resolveOrCreateLabel` is called 6 times). Extract a single canonical `resolveOrCreateLabel(name): Promise<string>` collaborator.
+
+2. **String interpolation in GraphQL mutations** — `setFieldStatus`, `setFieldSprint`, `setFieldStoryPoints`, `setFieldPriority`, and `clearField` use template literals (`${itemId}`, `${fieldId}`, `${optionId}`) directly in mutation strings. Replace with parameterized GraphQL variables to eliminate injection risk.
+
+3. **`createStory` is 119 lines** — handles six distinct concerns (draft creation, label resolution, milestone resolution, field assignment, comment posting, result projection). Extract helpers or delegate to §6d services.
+
+4. **`getOrphanImpediments()` is a TODO stub** — declared on `ProjectBackend` and called by the `get-backlog` use case but the implementation returns nothing. Needs a real query: fetch issues labeled `"impediment"` from `tracked_repos` and filter to those whose comment bodies contain no `PVTI_` project item ID (i.e., not linked to any story or sprint). Project to `ImpedimentListing`.
+
+5. **`fetchAllItems` duplicates `PaginatedProjectItemFetcher`** — two independent pagination implementations cover the same query. Remove one.
 
 ### 6b. Tool Surface Improvements
 
-Three listing tools need redesign to address two problems found through agent trace analysis: invisible items (no tool surfaces items in non-current sprints with non-terminal status) and token bloat (full `Story` bodies returned in listing contexts where only title + ref is needed).
+#### `getOrphanImpediments()` — backend implementation
 
-#### New shared types (add to `src/scrum/ports.ts`)
+**Why:** The `get-backlog` use case calls `backend.getOrphanImpediments()`, which is declared on `ProjectBackend` but returns `[]` in `GitHubProjectBackend`. Every `scrum_get_backlog` response has an empty `orphan_impediments` field, making project-level impediments invisible to the agent.
 
-```typescript
-// Lightweight listing entry — for scrum_get_sprint and scrum_get_backlog.
-interface StoryListing {
-  ref: { number: number; id: string };
-  title: string;
-  status: string | null;
-  story_points: number | null;
-  priority: string | null;
-  sprint: string | null;
-}
+**Changes:** Implement `getOrphanImpediments()` in `backend.ts`: query issues labeled `"impediment"` across `tracked_repos`; filter out any issue whose comment bodies contain a `PVTI_` project item ID (those are already linked to a story or sprint); project each remaining issue to `ImpedimentListing`.
 
-// Lightweight impediment entry — returned inside Story, SprintSnapshot, and backlog orphan list.
-interface ImpedimentListing {
-  ref: { id: string };
-  description: string;
-  status: "open" | "in_progress" | "resolved";
-  raised_by: string | null;
-  raised_at: string; // ISO-8601
-  resolved_at: string | null;
-}
+**Files:** `src/adapters/github/backend.ts`
 
-// Sprint + item listing — shared shape for both active and historical sprints.
-interface SprintSnapshot {
-  sprint: {
-    name: string;
-    start_date: string;
-    end_date: string;
-    duration_days: number;
-    days_remaining: number | null; // null for completed or future sprints
-  };
-  items: StoryListing[];
-  total_count: number;
-  totals: {
-    by_status: Record<string, number>;
-    story_points: number;
-  };
-  impediments: ImpedimentListing[]; // impediments logged directly against this sprint
-}
-```
+**Acceptance criteria:**
 
-#### Active item definition
+- Unlinked impediment issues appear in `scrum_get_backlog.orphan_impediments`
+- Issues with a `PVTI_` reference in any comment are excluded
+- An empty array (not an error) is returned when no orphans exist
 
-An item is **active** if: `isArchived === false` AND NOT (terminal status + assigned to a completed sprint). Items Done within the current sprint are still active. Done items in closed sprints are visible only through `scrum_get_history`. Done items with no sprint assigned are excluded from the backlog.
+---
 
-#### `scrum_get_sprint` changes
+#### `SprintSnapshot.impediments` — enrichment (Phase 7)
 
-```typescript
-// Schema: adds "all" value and optional limit
-{ sprint?: SprintRef | "all", limit?: number }
+**Why:** `scrum_get_sprint` and `scrum_get_history` both return `SprintSnapshot` with `impediments: []` hardcoded. Sprint-level impediment context is invisible to the agent when reviewing sprint state or history.
 
-// Return: single snapshot for specific ref, array for "all"
-sprint = "current"|"next"|<name>  →  { sprint: SprintSnapshot }
-sprint = "all"                    →  { sprints: SprintSnapshot[], total_count: number }
-```
+**Changes:** Add `getSprintImpediments(sprint: SprintRef): Promise<ImpedimentListing[]>` to `ProjectBackend`. Implement in `backend.ts`: query issues labeled `"impediment"` whose bodies or comments reference the sprint's iteration name. In `get-sprint.ts` and `get-history.ts`, replace the hardcoded `[]` with a call to this method.
 
-Files: `src/schemas/scrum.ts`, `src/scrum/ports.ts`, `src/scrum/get-sprint.ts`, `src/adapters/github/backend.ts`, `src/tools/scrum-read.ts`
+**Files:** `src/scrum/ports.ts`, `src/scrum/get-sprint.ts`, `src/scrum/get-history.ts`, `src/adapters/github/backend.ts`
 
-#### `scrum_get_backlog` changes
+**Acceptance criteria:**
 
-Two silent backend filters added: exclude `isArchived === true`; exclude terminal-status items with no sprint.
+- `SprintSnapshot.impediments` contains all impediments associated with the sprint
+- An empty array is returned when no impediments exist for the sprint
 
-One new return field: `orphan_impediments: ImpedimentListing[]` — unresolved impediments (status `"open"` or `"in_progress"`) with no `affects` context (no story or sprint reference). Resolved orphans excluded.
+---
 
-Files: `src/schemas/scrum.ts`, `src/scrum/get-backlog.ts`, `src/scrum/ports.ts`, `src/adapters/github/backend.ts`, `src/tools/scrum-read.ts`
+#### Hardcoded terminal status detection
 
-#### `scrum_get_history` changes
+**Why:** `get-backlog.ts` and `get-history.ts` both use `.toLowerCase() === "done"` to identify terminal items. This silently breaks for any team that renames their done column. The canonical terminal status is already declared in `config.yml` (`scrum.status.<key>.terminal: true`). The `_scrumConfig` parameter in `get-history.ts` is passed but unused; `get-backlog.ts` receives `scrumConfig` but does not use it for this check.
 
-```typescript
-// Schema: adds limit
-{ window?: number, limit?: number }
+**Changes:** In both files, replace the hardcoded `"done"` comparison with a lookup: find the status key where `terminal: true` in `scrumConfig.scrum.status`, then compare against its `status_display` value from the backend config. Activate `_scrumConfig` → `scrumConfig` in `get-history.ts`.
 
-// Return: aligned with scrum_get_sprint("all") shape + velocity stats
-{
-  sprints: SprintSnapshot[],         // SprintSnapshot.totals gains committed_points, completed_points
-  window: number,
-  average_completed_points: number,
-}
-```
+**Files:** `src/scrum/get-backlog.ts`, `src/scrum/get-history.ts`
 
-Files: `src/schemas/scrum.ts`, `src/scrum/ports.ts`, `src/scrum/get-history.ts`, `src/adapters/github/backend.ts`, `src/tools/scrum-read.ts`
+**Acceptance criteria:**
 
-#### `scrum_log_impediment` changes
+- Active-item filter uses the config-declared terminal status, not a hardcoded string
+- Renaming the done status in `config.yml` correctly affects filtering without code changes
 
-`affects` becomes **optional** (was required `StoryRef`). New shape:
+---
 
-```typescript
-affects?: {
-  story?: StoryRef;   // specific story being blocked
-  sprint?: SprintRef; // sprint goal or overall sprint being threatened
-}
-// Omit entirely to log a project-level orphan impediment.
-// Provide at most one of story / sprint.
-```
+#### `scrum_log_impediment` — optional `affects` and priority fix
 
-Return shape changes:
+**Why:** `affects` is a required `StoryRef` — a project-level impediment not attributable to a single story cannot be logged. The handler also hardcodes `"Must"` as the default priority, violating the vocabulary rule: display labels must always be derived from config, never hardcoded.
 
-```typescript
-// Before: impediment as Story + linked_to StoryRef
-// After:
-{
-  impediment: ImpedimentListing;
-  affects: { story: StoryRef } | { sprint: SprintRef } | null;
-}
-```
+**Changes:**
 
-The bidirectional cross-reference is still created atomically on the affected artifact.
+- Make `affects` optional in `LogImpedimentSchema`: `affects?: { story?: StoryRef; sprint?: SprintRef }`. At most one sub-field. Omitting logs a project-level orphan.
+- Update return shape: `{ impediment: ImpedimentListing; affects: { story: StoryRef } | { sprint: SprintRef } | null }`
+- In `registerScrumWriteTools`, rename `_scrumConfig` → `scrumConfig` and derive the p0 display label from `scrumConfig` at runtime.
 
-Files: `src/schemas/scrum.ts`, `src/scrum/log-impediment.ts` (new use-case file), `src/scrum/ports.ts`, `src/adapters/github/backend.ts`, `src/tools/scrum-write.ts`
+**Files:** `src/schemas/scrum.ts`, `src/tools/scrum-write.ts`
+
+**Acceptance criteria:**
+
+- `scrum_log_impediment` succeeds with no `affects` field; return includes `affects: null`
+- Default priority resolves to the p0 label from `config.yml`, not a hardcoded string
+
+---
 
 #### `scrum_update_impediment` — new write tool
 
-New use case: advance an impediment through `open → in_progress → resolved`.
+**Why:** The impediment lifecycle (`open → in_progress → resolved`) is declared in §3 and §7 but no tool exists to advance it. The agent can log impediments but never close them.
+
+**Changes:** Add `scrum_update_impediment`:
 
 ```typescript
 // Arguments
 { ref: ImpedimentRef; status: "open" | "in_progress" | "resolved"; resolution_notes?: string }
-
-// Returns
-ImpedimentListing
+// Returns: ImpedimentListing
 ```
 
-Files: `src/schemas/scrum.ts`, `src/scrum/update-impediment.ts` (new), `src/scrum/ports.ts`, `src/adapters/github/backend.ts`, `src/tools/scrum-write.ts`
+Add `UpdateImpedimentSchema` to schemas. Create `src/scrum/update-impediment.ts` use case. Add `updateImpediment(ref, status, notes?): Promise<ImpedimentListing>` to `ProjectBackend`. Implement in `backend.ts` (update label + append resolution comment). Register in `scrum-write.ts`.
+
+**Files:** `src/schemas/scrum.ts`, `src/scrum/update-impediment.ts` (new), `src/scrum/ports.ts`, `src/adapters/github/backend.ts`, `src/tools/scrum-write.ts`
+
+**Acceptance criteria:**
+
+- `scrum_update_impediment` with `status: "resolved"` updates the label and posts `resolution_notes` as a comment
+- Returns `ImpedimentListing` with the updated status
+- Tool appears in `scrum_orient`'s tool surface listing
+
+---
+
+#### `scrum_orient` — response shape correctness
+
+**Why:** The agent's session-start rules extract `vocabulary.status`, `vocabulary.priority`, `vocabulary.dor`, `vocabulary.dod`, `vocabulary.team`, `vocabulary.autonomy`, and `platform_state.missing_options` from `scrum_orient`. The actual response uses `declared_vocabulary` as the top-level key, `definition_of_ready`/`definition_of_done` as field names, two nested `missing_options` arrays under each field, and omits `autonomy`. Every agent session starts with silent field-path mismatches that break vocabulary-dependent logic.
+
+**Changes:**
+
+- Rename `declared_vocabulary` → `vocabulary` in `OrientResult` and `orientUseCase`
+- Rename `vocabulary.definition_of_ready` → `vocabulary.dor` and `vocabulary.definition_of_done` → `vocabulary.dod`
+- Add `vocabulary.autonomy: { require_confirmation_above_n_items: number }` sourced from `scrumConfig.project.agent.autonomy`
+- Flatten `platform_state.fields.status.missing_options` and `platform_state.fields.priority.missing_options` into a single `platform_state.missing_options: string[]`
+
+**Files:** `src/scrum/orient.ts`
+
+**Acceptance criteria:**
+
+- `scrum_orient` returns `vocabulary` (not `declared_vocabulary`) at the top level
+- `vocabulary.dor`, `vocabulary.dod`, `vocabulary.autonomy` are present with correct values from `config.yml`
+- `platform_state.missing_options` is a flat string array merging all field gaps
+
+---
+
+#### `scrum_update_story` — comment field
+
+**Why:** The conduct rule `prefer_comments_over_body_edits` instructs the agent to use `scrum_update_story` with a `comment` field for ceremony notes and progress updates. `UpdateStorySchema` has no `comment` field, making the rule unenforceable. `backend.addComment()` already exists on `ProjectBackend`.
+
+**Changes:**
+
+- Add optional `comment: string` to `UpdateStorySchema`
+- Handler calls `backend.addComment(ref, comment)` after content updates when `comment` is provided
+- `comment` and content fields (`title`, `body`, etc.) can be combined in one call
+
+**Files:** `src/schemas/scrum.ts`, `src/tools/scrum-write.ts`
+
+**Acceptance criteria:**
+
+- `scrum_update_story` with only `{ ref, comment }` posts a comment and leaves all other fields unchanged
+- Return is the updated `Story` object (same as existing behavior)
+- `UpdateStorySchema` remains `.strict()`
+
+---
+
+#### `scrum_plan_sprint` — sprint goal
+
+**Why:** The sprint planning ceremony calls `scrum_plan_sprint` with the agreed sprint goal. `PlanSprintSchema` has no `goal` field, so the goal is silently dropped — the sprint starts with no documented goal, which is a core ceremony failure.
+
+**Changes:**
+
+- Add optional `goal: string` to `PlanSprintSchema`
+- Echo `goal` in the response alongside `sprint`, `assigned`, `skipped`
+- The server echoes the goal back; the agent records it in the sprint planning ceremony artifact (see §6h.4)
+
+**Files:** `src/schemas/scrum.ts`, `src/tools/scrum-write.ts`
+
+**Acceptance criteria:**
+
+- `scrum_plan_sprint` accepts an optional `goal` and echoes it in the response
+- Existing calls without `goal` remain valid (no breaking change)
+
+---
 
 ### 6c. Unit Tests for Use Cases
 
-No use-case unit tests exist. All current tests are integration-level. Phase 5 specified at least one unit test per use case with a stubbed `ProjectBackend`. Low priority until coverage becomes a concern.
+One test file exists (`src/scrum/get-backlog.test.ts`) but coverage is minimal. No other use-case unit tests exist. Phase 5 specified at least one unit test per use case with a stubbed `ProjectBackend`. Low priority until coverage becomes a concern.
 
 ---
 
 ### 6d. Backend Split — `GitHubProjectBackend` → 6 Cohesive Services
 
-**Problem:** The class has 960 lines and 10+ responsibilities. Each `setField*` method duplicates the same GraphQL mutation pattern. Label resolution fetches the same `GET_REPO_LABELS_QUERY` three times independently. `createStory()` is 116 lines handling 6 distinct concerns.
+**Problem:** The class has 1042 lines and 10+ responsibilities. Each `setField*` method duplicates the same GraphQL mutation pattern. Label resolution fetches the same `GET_REPO_LABELS_QUERY` independently multiple times. `createStory()` is 119 lines handling 6 distinct concerns.
 
 **Split plan:**
 
@@ -356,20 +359,23 @@ No use-case unit tests exist. All current tests are integration-level. Phase 5 s
 
 **Result:** `GitHubProjectBackend` becomes a ~200-line coordinator that delegates to injected services (DIP). All services live in `adapters/github/internal/`.
 
-### 6e. `github.ts` Split — Three Separate Modules
+### 6e. `github.ts` Split — Remaining Extractions
 
-**Problem:** `services/github.ts` (488 lines) conflates HTTP transport, error enrichment, and GitHub Contents API. Tool handlers import `enrichError` directly from it, creating a dependency path `tools → github.ts` that bypasses `ProjectBackend`.
+**Why:** `GitHubApiError` and `enrichError()` have already been extracted (`adapters/github/errors.ts` and `services/error-enrichment.ts`). `services/github.ts` (~338 lines) still bundles HTTP transport and the GitHub Contents API in one file. `scrum-write.ts` also imports `graphql` directly from it — only for the deprecated `github_graphql` tool — leaving a `tools → services/github.ts` dependency path that bypasses `ProjectBackend`.
 
-**Split plan:**
+**Remaining splits:**
 
-| New File                         | Contents                                                                                              |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `adapters/github/http-client.ts` | `graphql()`, `rest()` — pure HTTP transport                                                           |
-| `adapters/github/errors.ts`      | `GitHubApiError` class only                                                                           |
-| `tools/error-formatter.ts`       | `enrichError()`, `formatError()`, `REQUIRED_PERMISSION` — error formatting belongs with tool handlers |
-| `adapters/github/contents.ts`    | `fetchRepoFile()`, `decodeRepoFileContent()`, `RepoFileResponse`                                      |
+| Extract from `services/github.ts`                           | Target                           |
+| ----------------------------------------------------------- | -------------------------------- |
+| `graphql()`, `rest()` — HTTP transport                      | `adapters/github/http-client.ts` |
+| `fetchRepoFile()`, `decodeRepoFileContent()` — Contents API | `adapters/github/contents.ts`    |
 
-**Result:** No file imports `services/github.ts`. Transport lives in the adapter, error formatting lives with tools, Contents API lives in the adapter.
+Remove the `graphql` import from `scrum-write.ts` when the deprecated `github_graphql` tool is removed or redirected to `http-client.ts`.
+
+**Acceptance criteria:**
+
+- No file outside `adapters/github/` imports from `services/github.ts`
+- `services/github.ts` can be deleted without breaking any import
 
 ### 6f. `ProjectBackend` Port Pollution
 
@@ -388,6 +394,111 @@ No use-case unit tests exist. All current tests are integration-level. Phase 5 s
 **Problem:** Both files are 100% GitHub-specific but live in `services/` alongside generic infrastructure. `pagination.ts` constructs GitHub GraphQL queries and consumes raw GitHub project item node shapes. `resolver.ts` operates on `PVTI_` project item node IDs.
 
 **Fix:** Move both to `adapters/github/internal/`. The `services/` folder should contain only truly generic utilities (logger, mutation validator).
+
+---
+
+### 6h. Agent Layer Fixes
+
+Changes to `.roo/rules-scrum-master/*.xml` and `.roo/skills/scrum-master/SKILL.md`. No TypeScript files are touched.
+
+**Execution dependency:** 6h.2 must follow the §6b `scrum_orient` response fix. 6h.1 (item 4) must follow the §6b `scrum_update_story` comment field addition. All other items are independent.
+
+---
+
+#### 6h.1 Wrong tool references in ceremony rules
+
+**Why:** Four places in the rules reference tools for operations those tools do not support. The agent will fail silently or perform an unintended action.
+
+**Changes:**
+
+`4_transitions.xml` — board_catchup Phase 2 and stale_recovery Phase 4:
+
+- "Mark as Done via `scrum_update_story`" → call `scrum_set_field` with `field: "status"` and value from `vocabulary.status.done`. Status is a board field; `scrum_update_story` handles content only.
+
+`3_sm_stance.xml` — `dod_lowered_for_deadline` dysfunction signal:
+
+- "Create a tech-debt story immediately via `scrum_update_story`" → `scrum_create_story` with `type: "tech_debt"`. `scrum_update_story` edits existing stories; creating a new one requires `scrum_create_story`.
+
+`1_workflow.xml` — sprint_planning ceremony Step 5:
+
+- Remove "capacity" from the `scrum_plan_sprint` call description. Capacity is agent-computed from `scrum_get_sprint`; it is not a tool parameter.
+- State that the agreed `goal` is passed as the `goal` parameter.
+
+`2_conduct.xml` — `prefer_comments_over_body_edits` rule:
+
+- Clarify that this works because `scrum_update_story` now accepts a `comment` field (§6b). No logic change — confirm the mechanism so the rule is self-explanatory.
+
+**Acceptance criteria:**
+
+- No rule in any file references `scrum_update_story` for a status change
+- No rule references `scrum_update_story` for creating a new story
+- Sprint planning Step 5 mentions `goal` as a parameter and does not mention `capacity` as one
+
+---
+
+#### 6h.2 `scrum_orient` field paths in `1_workflow.xml` Step 1
+
+**Why:** After the §6b `scrum_orient` response fix, Step 1's extraction list must match the actual response shape or every session will fail to extract the vocabulary it depends on.
+
+**Changes (`1_workflow.xml` Step 1 only):**
+
+- `vocabulary.status`, `vocabulary.priority`, `vocabulary.dor`, `vocabulary.dod`, `vocabulary.team` are now correct (the rename makes them match)
+- Replace `config.autonomy` → `vocabulary.autonomy.require_confirmation_above_n_items`
+- Replace the `missing_options` reference with `platform_state.missing_options` (the flat merged array)
+
+**Acceptance criteria:**
+
+- Every field path listed in Step 1 exists as a key in a real `scrum_orient` response
+- No reference to `declared_vocabulary`, `config.autonomy`, or nested `fields.*.missing_options` remains in Step 1
+
+---
+
+#### 6h.3 Impediment de-duplication guidance
+
+**Why:** The session-start health check (`1_workflow.xml` Step 3) tells the agent to call `scrum_log_impediment` for every blocked item with no logged impediment. There is no guidance on how to determine "no logged impediment," causing the agent to create duplicate impediment stories on every session start.
+
+**Change (`1_workflow.xml` Step 3):**
+
+- Before the `scrum_log_impediment` call, add: "Call `scrum_get_backlog` with `labels: ['impediment']` first. Only call `scrum_log_impediment` for blocked stories that have no matching open entry in that result."
+
+**Acceptance criteria:**
+
+- The health check step describes the de-duplication check before logging
+- Duplicate impediment creation across sessions is not possible by following the rule
+
+---
+
+#### 6h.4 Ceremony template delivery path
+
+**Why:** Every ceremony playbook ends with "Call `scrum_get_template` when a ceremony record is needed" but none say what to do with the returned markdown. `config.yml` declares `ceremony_records.backend: github_discussions` and `ceremony_records.discussion_category: Ceremonies`, but no rule instructs the agent to post there. Ceremony documents are fetched and discarded.
+
+**Change (`1_workflow.xml` — add final step to each ceremony's `tool_sequence`):**
+
+- "Fill in the blank sections with session data. Post the completed document to GitHub Discussions under the `ceremony_records.discussion_category` from `config.yml` using `gh discussion create` via `execute_command`."
+
+**Acceptance criteria:**
+
+- Each of the five ceremony playbooks (sprint_planning, daily_standup, backlog_refinement, sprint_review, retrospective) has an explicit final step naming the delivery target and command
+
+---
+
+#### 6h.5 SKILL.md — tool-grounded coaching pattern
+
+**Why:** The routing table correctly points to reference files for coaching topics, but the reference files contain illustrative example data (sample velocity figures, hypothetical dysfunction patterns). When `scrum_*` tools are available, the agent may reason from these examples instead of actual board data, undermining coaching quality.
+
+**Change (`.roo/skills/scrum-master/SKILL.md` — add a section before the routing table):**
+
+- Title: "When `scrum_*` tools are available"
+- Rule: For any coaching response that references project metrics, call the relevant read tool first. Reference files provide frameworks, never data.
+  - Velocity, completion trends, retro history → `scrum_get_history` first
+  - Burndown or sprint progress → `scrum_get_burndown` / `scrum_get_sprint` first
+  - Current sprint state → `scrum_get_sprint` first
+- Keep the section to ≤8 lines.
+
+**Acceptance criteria:**
+
+- Section is present and precedes the routing table
+- It does not duplicate any routing table entry
 
 ---
 
@@ -415,6 +526,7 @@ No use-case unit tests exist. All current tests are integration-level. Phase 5 s
 | **Impediment lifecycle writes**               | Dedicated `scrum_update_impediment` tool handles `open → in_progress → resolved`. `scrum_set_field` is not overloaded — story and impediment artifacts remain distinct at the tool surface.                                                                                                |
 | **`ScrumConfig` (was `ScrumConfigYml`)**      | Renamed in Phase C. All use-case signatures receive `scrumConfig: ScrumConfig`. Adapter accesses GitHub fields via `as GitHubBackendConfig`; use-case layer uses inline `type GhDisplay` shape cast.                                                                                       |
 | **`src/types.ts` and `raw-types.ts` removal** | Tombstoned in Phases B/C. Physical `rm` required locally. All types live at their architectural layer.                                                                                                                                                                                     |
+| **Sprint goal storage**                       | `scrum_plan_sprint` echoes the `goal` string in its response but does not persist it to GitHub. The agent records the sprint goal in the sprint planning ceremony artifact (GitHub Discussions via `execute_command`). Server-side goal persistence is out of scope for v1.                |
 
 ---
 

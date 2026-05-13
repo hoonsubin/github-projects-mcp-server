@@ -6,7 +6,7 @@ services:
       dockerfile: .devcontainer/Dockerfile.dev
     volumes:
       - ..:/workspace:cached
-      - deno-cache:/home/vscode/.cache/deno
+      - workspace-cache:/home/vscode
     working_dir: /workspace
     command: sleep infinity
     environment:
@@ -98,7 +98,7 @@ services:
         max-file: "1"
 
 volumes:
-  deno-cache:
+  workspace-cache:
   qdrant-storage:
   crawl4ai-cache:
   valkey-data2:
