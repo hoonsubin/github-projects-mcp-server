@@ -5,11 +5,11 @@
 // =============================================================================
 
 import { assert, assertEquals } from "jsr:@std/assert@^1.0.0";
-import { getBacklogUseCase } from "../../src/scrum/get-backlog.ts";
-import type { CompletionMap, ProjectBackend, SprintInfo } from "../../src/scrum/ports.ts";
-import type { StoryRef } from "../../src/domain/types.ts";
-import type { ScrumConfig } from "../../src/domain/config.ts";
-import type { Story } from "../../src/domain/types.ts";
+import { getBacklogUseCase } from "./get-backlog.ts";
+import type { CompletionMap, ProjectBackend, SprintInfo } from "./ports.ts";
+import type { StoryRef } from "../domain/types.ts";
+import type { ScrumConfig } from "../domain/config.ts";
+import type { Story } from "../domain/types.ts";
 
 // ── Test fixtures ──────────────────────────────────────────────────────────────
 
