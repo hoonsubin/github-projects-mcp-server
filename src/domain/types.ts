@@ -20,6 +20,14 @@ export interface StoryRef {
 }
 
 /**
+ * A reference to an impediment (spike story tagged 'impediment').
+ * Backend-agnostic: the id is an opaque project-item handle.
+ */
+export interface ImpedimentRef {
+  id: string;
+}
+
+/**
  * A reference to a sprint.
  * Accepted forms: `"current"`, `"next"`, `null` (= no sprint, i.e., the backlog),
  * or an explicit sprint name (e.g., `"Sprint 12"`).

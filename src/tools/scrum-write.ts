@@ -28,7 +28,8 @@ import {
 } from "../schemas/scrum.ts";
 import { GraphQLQuerySchema } from "../schemas/inputs.ts";
 import { isMutationQuery } from "../services/mutation-validator.ts";
-import { enrichError, graphql } from "../services/github.ts";
+import { enrichError } from "../services/error-enrichment.ts";
+import { graphql } from "../services/github.ts";
 import { z } from "zod";
 
 // ── Helper types ──────────────────────────────────────────────────────────────

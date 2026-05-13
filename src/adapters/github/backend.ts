@@ -6,7 +6,8 @@
 // This file imports no MCP SDK types.
 // =============================================================================
 
-import { fetchRepoFile, GitHubApiError, graphql, rest } from "../../services/github.ts";
+import { fetchRepoFile, graphql, rest } from "../../services/github.ts";
+import { GitHubApiError } from "./errors.ts";
 import type { RestResponse } from "../../services/github.ts";
 import { type RuntimeConfig } from "./config-loader.ts";
 import { resolveSprint, resolveStory } from "../../services/resolver.ts";
@@ -29,6 +30,7 @@ import type {
   BurndownStoryInput,
   CompletionMap,
   CreateStoryInput,
+  ImpedimentListing,
   PlatformState,
   ProjectBackend,
   SprintHistoryEntry,
@@ -277,29 +279,6 @@ export class GitHubProjectBackend implements ProjectBackend {
   }
 
   async resolveCompletionTimestamps(input: BurndownInput): Promise<CompletionMap> {
-    const doneStatusName = this.resolveTerminalStatusDisplayName();
-    const statusFieldName =
-      (this.config.scrumConfig.backends.github as GitHubBackendConfig).field_mapping.status ??
-        "Status";
-    const nodeIdToNumber = new Map(
-      input.stories.map((s) => [s.number, s.number]), // already has number
-    );
-    if (this.ownerType === "org") {
-      try {
-        const completions = await this.fetchAuditLogCompletions(
-          nodeIdToNumber,
-          new Date(input.sprint.startDate),
-          new Date(input.sprint.endDate),
-          this.owner,
-          doneStatusName,
-          statusFieldName,
-        );
-        return { completions, dataSource: "audit_log" };
-      } catch (err) {
-        if (!(err instanceof GitHubApiError) || err.statusCode !== 403) throw err;
-        // 403 = org audit log disabled; fall through to issue-close proxy
-      }
-    }
     const completions = await this.fetchIssueCloseCompletions(input.stories, input.sprint);
     return {
       completions,
@@ -463,6 +442,12 @@ export class GitHubProjectBackend implements ProjectBackend {
 
   fetchRepoFile(path: string): Promise<string> {
     return fetchRepoFile(this.owner, this.repo, path);
+  }
+
+  getOrphanImpediments(): Promise<ImpedimentListing[]> {
+    // TODO: Implement orphan impediment detection logic
+    // Query for issues with label "impediment" whose comment bodies contain no PVTI_ item ID
+    return Promise.resolve([]);
   }
 
   // ── Write stubs ──────────────────────────────────────────────────────────
@@ -972,53 +957,6 @@ export class GitHubProjectBackend implements ProjectBackend {
     const terminalKey = Object.entries(scrumStatus).find(([, meta]) => meta.terminal)?.[0];
     if (!terminalKey) return "Done"; // safe fallback
     return this.resolveStatusDisplayName(terminalKey, "Done");
-  }
-
-  private async fetchAuditLogCompletions(
-    nodeIdToNumber: Map<number, number>,
-    _startDate: Date,
-    endDate: Date,
-    org: string,
-    doneStatusName: string,
-    statusFieldName: string,
-  ): Promise<Map<number, string>> {
-    let url =
-      `/orgs/${org}/audit-log?phrase=action:projects_v2_item.field_value_updated&order=asc&per_page=100`;
-    const completions = new Map<number, string>();
-    while (url) {
-      const response: RestResponse<unknown> = await rest(url.split("?")[0], {
-        params: Object.fromEntries(new URLSearchParams(url.split("?")[1] ?? "")),
-      });
-      const entries = (response.data as {
-        total_count: number;
-        data: Array<{
-          created_at: string;
-          field_type: string;
-          field_name: string;
-          value: string;
-          project_item_node_id: string;
-        }>;
-      })?.data ?? [];
-      for (const entry of entries) {
-        if (
-          entry.field_type === "single_select" && entry.field_name === statusFieldName &&
-          entry.value === doneStatusName
-        ) {
-          const issueNumber = Array.from(nodeIdToNumber.values()).find((n) =>
-            n === Number(entry.project_item_node_id.slice(-6))
-          );
-          if (issueNumber !== undefined) {
-            completions.set(issueNumber, entry.created_at);
-          }
-        }
-        if (new Date(entry.created_at) > endDate) return completions;
-      }
-      if (entries.length === 0) break;
-      const nextUrl = this.extractLinkHeader(response.linkHeader);
-      if (!nextUrl) break;
-      url = nextUrl;
-    }
-    return completions;
   }
 
   private async fetchIssueCloseCompletions(

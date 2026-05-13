@@ -26,21 +26,25 @@ const StoryRefSchema = z.object({
     ),
 });
 
-// Sprint targeting: "current", "next", null (= backlog / clear sprint), or explicit sprint name.
+// Sprint targeting: "current", "next", "all", null (= backlog / clear sprint), or explicit sprint name.
+// NOTE: "all" is intentionally excluded from SprintRef because it is a query-mode flag,
+// not a sprint reference. Other tools that accept SprintRef will resolve "all" to null.
 const SprintRefSchema = z
   .union([
     z.literal("current"),
     z.literal("next"),
+    z.literal("all"),
     z.null(),
     z.string().min(1),
   ])
   .describe(
-    "Which sprint to target. " +
-      '"current" = the active sprint, ' +
+    'Which sprint to target. "current" = the active sprint, ' +
       '"next" = the upcoming sprint, ' +
+      '"all" = active sprint + next sprint + completed sprints (up to limit), ' +
       "null = backlog / clear sprint assignment, " +
       'or an exact sprint name string (e.g. "Sprint 5"). ' +
-      "Use scrum_orient to see all valid sprint names.",
+      "Use scrum_orient to see all valid sprint names. " +
+      'NOTE: "all" is only meaningful for scrum_get_sprint; other tools resolve it to null.',
   );
 
 // The five board fields the agent can write via scrum_set_field. Fixed set for v1.
@@ -77,8 +81,17 @@ export const GetSprintSchema = z
   .object({
     sprint: SprintRefSchema.optional().describe(
       'Which sprint to fetch. Defaults to "current" if omitted. ' +
-        "Pass null to get a backlog-style view instead.",
+        'Pass "all" to receive every sprint as an array of snapshots.',
     ),
+    limit: z
+      .number()
+      .int()
+      .positive()
+      .default(50)
+      .describe(
+        'Maximum number of sprints to return when sprint="all". ' +
+          "Ignored for single-sprint requests. Defaults to 50.",
+      ),
   })
   .strict();
 
@@ -88,7 +101,10 @@ export const GetBacklogSchema = z
     search: z
       .string()
       .optional()
-      .describe("Case-insensitive substring matched against story title and body."),
+      .describe(
+        "Case-insensitive substring matched against story title and body. " +
+          "Results are filtered before applying limit.",
+      ),
     labels: z
       .array(z.string())
       .optional()
@@ -109,7 +125,10 @@ export const GetBacklogSchema = z
       .int()
       .positive()
       .default(50)
-      .describe("Maximum number of stories to return. Defaults to 50."),
+      .describe(
+        "Maximum number of stories to return. Defaults to 50. " +
+          "Applied after active-item filter and user-supplied filters.",
+      ),
   })
   .strict();
 

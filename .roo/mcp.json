@@ -1,50 +1,67 @@
 {
-  "mcpServers": {
-    "github-projects": {
-      "command": "deno",
-      "args": ["task", "start"],
-      "env": {
-        "MCP_TRANSPORT": "stdio"
-      },
-      "alwaysAllow": [
-        "scrum_get_sprint",
-        "scrum_get_backlog",
-        "scrum_orient",
-        "scrum_get_history",
-        "scrum_get_story"
-      ],
-      "timeout": 300
-    },
-    "memory": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-memory"],
-      "alwaysAllow": [
-        "create_entities",
-        "create_relations",
-        "add_observations",
-        "read_graph",
-        "search_nodes",
-        "open_nodes"
-      ]
-    },
-    "mempalace": {
-      "command": "/root/.local/pipx/venvs/mempalace/bin/python",
-      "args": ["-m", "mempalace.mcp_server"],
-      "type": "stdio",
-      "disabled": false
-    },
-    "sequentialthinking": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
-      "alwaysAllow": ["sequentialthinking"]
-    },
-    "searxng": {
-      "command": "npx",
-      "args": ["-y", "mcp-searxng"],
-      "env": {
-        "SEARXNG_URL": "http://searxng:8080"
-      },
-      "alwaysAllow": ["searxng_web_search", "web_url_read"]
-    }
-  }
+	"mcpServers": {
+		"github-projects": {
+			"command": "deno",
+			"args": [
+				"task",
+				"start"
+			],
+			"env": {
+				"MCP_TRANSPORT": "stdio"
+			},
+			"alwaysAllow": [
+				"scrum_get_sprint",
+				"scrum_get_backlog",
+				"scrum_orient",
+				"scrum_get_history",
+				"scrum_get_story"
+			],
+			"timeout": 300
+		},
+		"memory": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@modelcontextprotocol/server-memory"
+			],
+			"alwaysAllow": [
+				"create_entities",
+				"create_relations",
+				"add_observations",
+				"read_graph",
+				"search_nodes",
+				"open_nodes"
+			],
+			"disabled": false
+		},
+		"mempalace": {
+			"command": "mempalace-mcp",
+			"args": [],
+			"disabled": false
+		},
+		"sequentialthinking": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@modelcontextprotocol/server-sequential-thinking"
+			],
+			"alwaysAllow": [
+				"sequentialthinking"
+			]
+		},
+		"searxng": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"mcp-searxng"
+			],
+			"env": {
+				"SEARXNG_URL": "http://searxng:8080"
+			},
+			"alwaysAllow": [
+				"searxng_web_search",
+				"web_url_read"
+			]
+		}
+	}
 }

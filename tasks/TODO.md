@@ -79,7 +79,7 @@ All existing callers of `GitHubApiError` inside `github.ts` continue to work thr
 
 ---
 
-## Phase 3: Create error-formatter.ts and Update Tool Imports
+## Phase 3: Create error-formatter.ts and Update Tool Imports FINISHED
 
 **Goal:** Extract error-formatting utilities from `src/services/github.ts` into `src/tools/error-formatter.ts`. Update both tool files to import from the new location. Fix the `graphql` import in `scrum-write.ts` at the same time.
 
@@ -174,7 +174,7 @@ import { graphql } from "../services/github.ts"; // graphql stays here until the
 
 ---
 
-## Phase 4: Define New Domain and Port Types
+## Phase 4: Define New Domain and Port Types FINISHED
 
 **Goal:** Add all new types required by Phases 5–9 to their correct architectural layers before any use-case or handler code is written.
 
@@ -288,7 +288,7 @@ Do not yet update any logic in `get-history.ts` — that is Phase 6's job.
 
 ---
 
-## Phase 5: Redesign scrum_get_sprint
+## Phase 5: Redesign scrum_get_sprint FINISHED
 
 **Goal:** Add `"all"` value and `limit` parameter to the schema; rewrite the use case to return `SprintSnapshot` for single requests and `SprintSnapshot[]` for `"all"`; simplify the handler.
 
@@ -517,7 +517,7 @@ export const getSprintUseCase = async (
 Replace the handler body:
 
 ```typescript
-async (params: z.infer<typeof GetSprintSchema>) => {
+(async (params: z.infer<typeof GetSprintSchema>) => {
   try {
     const sprintParam = params.sprint ?? "current";
     const result = await getSprintUseCase(
@@ -537,7 +537,7 @@ async (params: z.infer<typeof GetSprintSchema>) => {
       isError: true,
     };
   }
-};
+});
 ```
 
 No branching on result type in the handler — both `SprintSingleResult` (`{ sprint: ... }`) and `SprintAllResult` (`{ sprints: [...] }`) serialize to distinct JSON shapes. The agent reads the key names to distinguish them.
@@ -546,7 +546,7 @@ No branching on result type in the handler — both `SprintSingleResult` (`{ spr
 
 ---
 
-## Phase 6: Redesign scrum_get_history
+## Phase 6: Redesign scrum_get_history FINISHED
 
 **Goal:** Align the return shape with `SprintSnapshot`; add velocity stats (`average_completed_points`). The schema is unchanged — `window` (1–10) already serves as the item count limit. Do not add a separate `limit` parameter.
 
@@ -578,12 +578,7 @@ The local `SprintSnapshot` and `GetHistoryResult` interfaces were removed in Pha
 
 ```typescript
 // src/scrum/get-history.ts — getHistoryUseCase
-import type {
-  ProjectBackend,
-  SprintSnapshot,
-  SprintHistoryEntry,
-  StoryListing,
-} from "./ports.ts";
+import type { ProjectBackend, SprintHistoryEntry, SprintSnapshot, StoryListing } from "./ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 
 interface GetHistoryResult {
@@ -657,8 +652,7 @@ export const getHistoryUseCase = async (
     (sum, s) => sum + (s.totals.completed_points ?? 0),
     0,
   );
-  const average_completed_points =
-    Math.round((totalCompleted / sprints.length) * 100) / 100;
+  const average_completed_points = Math.round((totalCompleted / sprints.length) * 100) / 100;
 
   return { sprints, window, average_completed_points };
 };
@@ -669,7 +663,7 @@ export const getHistoryUseCase = async (
 The handler call signature is unchanged (`params.window`). Only the description needs updating — the use case signature did not add any new parameters:
 
 ```typescript
-async (params: z.infer<typeof GetHistorySchema>) => {
+(async (params: z.infer<typeof GetHistorySchema>) => {
   try {
     const result = await getHistoryUseCase(backend, scrumConfig, params.window);
     return {
@@ -683,7 +677,7 @@ async (params: z.infer<typeof GetHistorySchema>) => {
       isError: true,
     };
   }
-};
+});
 ```
 
 **Verification:** Call with `{ window: 3 }`. Confirm the response has `sprints: SprintSnapshot[]`, `average_completed_points: number`, and each snapshot has `totals.committed_points` and `totals.completed_points`.
@@ -721,11 +715,7 @@ Replace the entire file:
 
 ```typescript
 // src/scrum/get-backlog.ts — getBacklogUseCase
-import type {
-  ProjectBackend,
-  ImpedimentListing,
-  StoryListing,
-} from "./ports.ts";
+import type { ImpedimentListing, ProjectBackend, StoryListing } from "./ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 import type { Story } from "../domain/types.ts";
 import { computeReadinessSummary } from "../domain/rules/readiness.ts";
@@ -794,9 +784,7 @@ export const getBacklogUseCase = async (
     );
   }
   if (params.labels?.length) {
-    stories = stories.filter((s) =>
-      params.labels!.every((l) => s.labels.includes(l)),
-    );
+    stories = stories.filter((s) => params.labels!.every((l) => s.labels.includes(l)));
   }
   if (params.priority) {
     stories = stories.filter((s) => s.priority === params.priority);
@@ -912,11 +900,7 @@ This use-case file owns all orchestration logic. The handler in step 8c delegate
 
 ```typescript
 // src/scrum/log-impediment.ts — logImpedimentUseCase
-import type {
-  ProjectBackend,
-  CreateStoryInput,
-  ImpedimentListing,
-} from "./ports.ts";
+import type { CreateStoryInput, ImpedimentListing, ProjectBackend } from "./ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 import type { StoryRef } from "../domain/types.ts";
 
@@ -1074,12 +1058,7 @@ server.registerTool(
 Add `ImpedimentRef` to the existing import from `../domain/types.ts`:
 
 ```typescript
-import type {
-  SprintRef,
-  Story,
-  StoryRef,
-  ImpedimentRef,
-} from "../domain/types.ts";
+import type { ImpedimentRef, SprintRef, Story, StoryRef } from "../domain/types.ts";
 ```
 
 Add `updateImpediment` to the Write section of the `ProjectBackend` interface:
@@ -1138,7 +1117,7 @@ export const UpdateImpedimentSchema = z
 
 ```typescript
 // src/scrum/update-impediment.ts — updateImpedimentUseCase
-import type { ProjectBackend, ImpedimentListing } from "./ports.ts";
+import type { ImpedimentListing, ProjectBackend } from "./ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 import type { ImpedimentRef } from "../domain/types.ts";
 
@@ -1184,8 +1163,7 @@ server.registerTool(
   "scrum_update_impediment",
   {
     title: "Update Impediment",
-    description:
-      "Advance an impediment through its lifecycle: open → in_progress → resolved.\n\n" +
+    description: "Advance an impediment through its lifecycle: open → in_progress → resolved.\n\n" +
       "Use after scrum_log_impediment to track progress toward resolving a blocker.\n\n" +
       "Args:\n" +
       "  ref              { id: string } — impediment item ID from scrum_log_impediment\n" +

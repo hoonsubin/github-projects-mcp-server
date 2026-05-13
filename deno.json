@@ -22,11 +22,12 @@
     "lib": [
       "ES2022",
       "deno.ns",
-      "deno.window"
+      "dom"
     ],
     "strict": true,
     "noImplicitAny": true,
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    "skipLibCheck": true
   },
   "fmt": {
     "useTabs": false,

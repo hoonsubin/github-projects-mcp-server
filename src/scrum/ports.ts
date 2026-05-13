@@ -66,6 +66,7 @@ export interface BurndownStoryInput {
   title: string;
   points: number;
   status: string | null;
+  ref?: { id: string } | null;
 }
 
 /** One completed sprint's worth of data for history. */
@@ -110,6 +111,85 @@ export interface StoryUpdates {
 }
 
 export type VocabularyKind = "status_option" | "priority_option" | "label";
+
+// ── Listing types (SprintSnapshot items) ────────────────────────────────────────
+
+/**
+ * Base reference for listing entries.
+ * StoryListing and ImpedimentListing extend this pattern.
+ */
+export interface Ref {
+  id: string;
+}
+
+/**
+ * Lightweight listing entry for story collections.
+ * Does NOT include body, comments, or linked PRs — use StoryDetail for full content.
+ *
+ * ref.key matches Story.key: the human-readable issue number as a string (e.g. "42"),
+ * or null for Draft Issues.
+ *
+ * writable: true for active sprint items (safe to mutate), false for history/read-only items.
+ */
+export interface StoryListing {
+  ref: { id: string; key: string | null };
+  title: string;
+  status: string | null;
+  story_points: number | null;
+  priority: string | null;
+  sprint: string | null;
+  writable: boolean; // true for active items, false for history/read-only
+}
+
+/**
+ * Lightweight impediment entry for collections.
+ */
+export interface ImpedimentListing {
+  ref: { id: string };
+  description: string;
+  status: "open" | "in_progress" | "resolved";
+  raised_by: string | null;
+  raised_at: string;
+  resolved_at: string | null;
+}
+
+/**
+ * Totals for an active sprint snapshot.
+ * History snapshots use SprintTotalsHistory instead.
+ */
+export interface SprintTotalsActive {
+  by_status: Record<string, number>;
+  story_points: number;
+}
+
+/**
+ * Totals for a completed sprint snapshot.
+ * Extends SprintTotalsActive with velocity metrics.
+ */
+export interface SprintTotalsHistory extends SprintTotalsActive {
+  committed_points: number;
+  completed_points: number;
+}
+
+/**
+ * Sprint + item listing — canonical shape for both active and historical sprints.
+ *
+ * totals uses SprintTotalsActive for active sprints, SprintTotalsHistory for history.
+ * Consumers distinguish by checking for committed_points presence.
+ */
+export interface SprintSnapshot {
+  sprint: {
+    name: string;
+    start_date: string;
+    end_date: string;
+    duration_days: number;
+    days_remaining: number | null;
+  };
+  items: StoryListing[];
+  total_count: number;
+  totals: SprintTotalsActive | SprintTotalsHistory;
+  impediments: ImpedimentListing[];
+}
 
 // ── The interface ──────────────────────────────────────────────────────────────
 
@@ -164,6 +244,19 @@ export interface ProjectBackend {
    * Fetch a file from the team's repository by repo-relative path.
    */
   fetchRepoFile(path: string): Promise<string>;
+
+  /**
+   * Return all impediments (issues tagged "impediment") that have no
+   * cross-reference to a story or sprint — i.e., logged as project-level orphans.
+   *
+   * Only unresolved impediments (status "open" or "in_progress") are returned.
+   * Resolved orphans are excluded.
+   *
+   * NOTE: This is a port interface declaration only. Adapter implementation details
+   * (e.g., querying for issues with label "impediment" whose comment bodies contain
+   * no PVTI_ item ID) belong in the adapter layer, not here.
+   */
+  getOrphanImpediments(): Promise<ImpedimentListing[]>;
 
   // ── Write (stubbed in Phase 5) ────────────────────────────────────────────
 

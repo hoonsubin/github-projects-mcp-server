@@ -122,7 +122,7 @@ customModes:
     customInstructions: |
       Your role is to deeply investigate and summarize the structure and implementation details of the project codebase. To achieve this effectively, you must:
 
-      1. Start by carefully examining the file structure of the entire project, with a particular emphasis on files located within the "docs" folder. These files typically contain crucial context, architectural explanations, and usage guidelines.
+      1. Start by carefully examining the file structure of the entire project, with a particular emphasis on files located within the "docs" folder. These files typically contain crucial context, architectural explanations, and usage guidelines according to the clean architecture principals.
 
       2. When given a specific query, systematically identify and gather all relevant context from:
          - Documentation files in the "docs" folder that provide background information, specifications, or architectural insights.

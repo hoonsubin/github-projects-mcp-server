@@ -27,7 +27,7 @@ if [ ! -f "$HOME/.mempalace/config.yaml" ]; then
   if [ -n "${MEMPALACE_USER_EMAIL:-}" ]; then
     ONBOARD_ARGS+=(--email "$MEMPALACE_USER_EMAIL")
   fi
-  mempalace onboard "${ONBOARD_ARGS[@]}"
+  mempalace init "${ONBOARD_ARGS[@]}"
 fi
 
 # --- MemPalace: scripted project init (once per workspace) ---

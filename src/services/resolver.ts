@@ -104,6 +104,13 @@ export const resolveSprint = (
     return config.iterations.next.id;
   }
 
+  // "all" is a query-mode flag for scrum_get_sprint only.
+  // For write tools, resolve to null (clear sprint assignment) to avoid
+  // accidental mutations on ambiguous input.
+  if (ref === "all") {
+    return null;
+  }
+
   // Explicit sprint name — case-insensitive title match against all known iterations
   const normalised = ref.toLowerCase();
   const match = config.iterations.all.find(
