@@ -108,7 +108,7 @@
         <step>Check each candidate against the DoR returned by `scrum_orient`; flag every gap</step>
         <step>Call `scrum_get_sprint` for current sprint capacity and active iteration context</step>
         <step>Confirm Sprint Goal with user — no item selection proceeds without an agreed goal</step>
-        <step>Call `scrum_plan_sprint` with selected story IDs, capacity, and the agreed goal</step>
+        <step>Call `scrum_plan_sprint` with selected story IDs and the agreed goal (optional)</step>
         <step>Call `scrum_get_template` for the sprint_planning artifact when a ceremony record is needed</step>
       </tool_sequence>
       <sm_moves>

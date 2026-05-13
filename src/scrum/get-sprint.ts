@@ -10,7 +10,15 @@
 // to null via resolveSprint(), which is safe for their use case.
 // =============================================================================
 
-import type { BurndownStoryInput, ProjectBackend, SprintSnapshot, StoryListing } from "./ports.ts";
+import type {
+  BurndownPort,
+  BurndownStoryInput,
+  HistoryPort,
+  ImpedimentPort,
+  SprintPort,
+  SprintSnapshot,
+  StoryListing,
+} from "./ports.ts";
 import type { SprintRef, Story } from "../domain/types.ts";
 import { buildSprintMeta } from "./sprint-math.ts";
 
@@ -40,7 +48,7 @@ const storyListingFromHistory = (story: BurndownStoryInput): StoryListing => ({
 
 /** Build a SprintSnapshot for a single sprint resolved from a SprintRef. */
 const buildSingleSnapshot = async (
-  backend: ProjectBackend,
+  backend: SprintPort & ImpedimentPort,
   sprintRef: SprintRef,
 ): Promise<SprintSnapshot> => {
   const result = await backend.getSprintStories(sprintRef);
@@ -77,6 +85,9 @@ const buildSingleSnapshot = async (
     duration: durationDays,
   });
 
+  // Fetch impediments associated with this sprint
+  const impediments = await backend.getSprintImpediments(sprintRef);
+
   return {
     sprint: {
       name,
@@ -93,7 +104,7 @@ const buildSingleSnapshot = async (
       by_status,
       story_points: items.reduce((s, i) => s + (i.story_points ?? 0), 0),
     },
-    impediments: [], // enriched in Phase 7
+    impediments,
   };
 };
 
@@ -120,7 +131,7 @@ interface SprintAllResult {
  * may not exist (e.g. no next sprint has been scheduled yet).
  */
 const buildAllSnapshots = async (
-  backend: ProjectBackend,
+  backend: SprintPort & ImpedimentPort & HistoryPort,
   limit: number,
 ): Promise<SprintAllResult> => {
   const [currentResult, nextResult, historyEntries] = await Promise.all([
@@ -182,7 +193,7 @@ const buildAllSnapshots = async (
  * @returns SprintSingleResult for single sprint, SprintAllResult for "all"
  */
 export const getSprintUseCase = async (
-  backend: ProjectBackend,
+  backend: SprintPort & ImpedimentPort & HistoryPort,
   sprintRef: SprintRef | "all",
   limit = 50,
 ): Promise<SprintSingleResult | SprintAllResult> => {

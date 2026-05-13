@@ -19,7 +19,7 @@ import { registerScrumReadTools } from "./tools/scrum-read.ts";
 import { registerScrumWriteTools } from "./tools/scrum-write.ts";
 import { loadConfig } from "./adapters/github/config-loader.ts";
 import { GitHubProjectBackend } from "./adapters/github/backend.ts";
-import { graphql, rest } from "./services/github.ts";
+import { graphql, rest } from "./adapters/github/internal/http-client.ts";
 import { log } from "./services/logger.ts";
 import type { Socket } from "node:net";
 import type { ProjectBackend } from "./scrum/ports.ts";

@@ -70,6 +70,11 @@ classDiagram
         +getHistoryUseCase()
     }
 
+    class Update_Impediment:::scrum {
+        +updateImpedimentUseCase()
+        %% Unused: updateImpedimentUseCase
+    }
+
     class Get_Sprint:::scrum {
         +getSprintUseCase()
     }
@@ -93,6 +98,7 @@ classDiagram
         +var SetFieldSchema
         +var PlanSprintSchema
         +var LogImpedimentSchema
+        +var UpdateImpedimentSchema
         +var AddVocabularySchema
         +var GetTemplateSchema
     }
@@ -241,6 +247,7 @@ classDiagram
     Ports --> Types : "imports"
     Get_History --> Ports : "imports"
     Get_History --> Config : "imports"
+    Update_Impediment --> Ports : "imports"
     Get_Sprint --> Ports : "imports"
     Get_Sprint --> Types : "imports"
     Get_Sprint --> Sprint_Math : "imports"
@@ -314,19 +321,22 @@ classDiagram
     classDef services fill:#0ff,stroke:#333,stroke-width:2px,color:#000;
 ```
 
+
 ## Unused Exports
 
 The following exports are never imported by any other module in the codebase:
 
-| Module                                                | Export                  | Kind        |
-| ----------------------------------------------------- | ----------------------- | ----------- |
-| [`scrum/sprint-math.ts`](../src/scrum/sprint-math.ts) | `groupStoriesByStatus`  | `function`  |
-| [`scrum/sprint-math.ts`](../src/scrum/sprint-math.ts) | `computeSprintTotals`   | `function`  |
-| [`scrum/ports.ts`](../src/scrum/ports.ts)             | `Ref`                   | `interface` |
-| [`scrum/ports.ts`](../src/scrum/ports.ts)             | `SprintTotalsActive`    | `interface` |
-| [`scrum/ports.ts`](../src/scrum/ports.ts)             | `SprintTotalsHistory`   | `interface` |
-| [`domain/types.ts`](../src/domain/types.ts)           | `ImpedimentRef`         | `interface` |
-| [`services/github.ts`](../src/services/github.ts)     | `decodeRepoFileContent` | `function`  |
+| Module | Export | Kind |
+|--------|--------|------|
+| [`scrum/sprint-math.ts`](../src/scrum/sprint-math.ts) | `groupStoriesByStatus` | `function` |
+| [`scrum/sprint-math.ts`](../src/scrum/sprint-math.ts) | `computeSprintTotals` | `function` |
+| [`scrum/ports.ts`](../src/scrum/ports.ts) | `Ref` | `interface` |
+| [`scrum/ports.ts`](../src/scrum/ports.ts) | `SprintTotalsActive` | `interface` |
+| [`scrum/ports.ts`](../src/scrum/ports.ts) | `SprintTotalsHistory` | `interface` |
+| [`scrum/update-impediment.ts`](../src/scrum/update-impediment.ts) | `updateImpedimentUseCase` | `function` |
+| [`domain/types.ts`](../src/domain/types.ts) | `ImpedimentRef` | `interface` |
+| [`services/github.ts`](../src/services/github.ts) | `decodeRepoFileContent` | `function` |
+
 
 ## Notes
 
@@ -339,4 +349,4 @@ The following exports are never imported by any other module in the codebase:
 
 ---
 
-_Auto-generated — do not edit manually_
+*Auto-generated — do not edit manually*

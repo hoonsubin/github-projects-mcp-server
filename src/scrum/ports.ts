@@ -7,6 +7,10 @@
 //
 // No GitHub field IDs, GraphQL shapes, or platform-specific primitives appear
 // on either side of this interface.
+//
+// Phase C (Structural Cleanup): Decomposed into focused interfaces following
+// the Interface Segregation Principle. Each use case imports only the port it
+// needs. ProjectBackend remains as a composition type for backward compatibility.
 // =============================================================================
 
 import type { SprintRef, Story, StoryRef } from "../domain/types.ts";
@@ -191,75 +195,100 @@ export interface SprintSnapshot {
   impediments: ImpedimentListing[];
 }
 
-// ── The interface ──────────────────────────────────────────────────────────────
+// ── Focused port interfaces (Interface Segregation) ─────────────────────────────
 
-export interface ProjectBackend {
-  // ── Read ──────────────────────────────────────────────────────────────────
+/**
+ * Backlog port — returns stories not assigned to any sprint and orphan impediments.
+ * Used by: getBacklogUseCase
+ */
+export interface BacklogPort {
+  getBacklogStories(): Promise<Story[]>;
+  getOrphanImpediments(): Promise<ImpedimentListing[]>;
+}
 
-  /**
-   * Return what currently exists on the PM platform.
-   * The adapter computes missingOptions by diffing declared vocabulary values
-   * against live platform option names.
-   */
-  getPlatformState(declaredVocabulary: {
-    statusValues: string[];
-    priorityValues: string[];
-  }): Promise<PlatformState>;
-
-  /**
-   * All stories assigned to a sprint, resolved from a SprintRef.
-   */
+/**
+ * Sprint port — returns stories assigned to a specific sprint.
+ * Used by: getSprintUseCase
+ */
+export interface SprintPort {
   getSprintStories(sprint: SprintRef): Promise<{
     stories: Story[];
     sprintInfo: SprintInfo | null;
   }>;
+}
 
-  /**
-   * All stories not assigned to any sprint.
-   */
-  getBacklogStories(): Promise<Story[]>;
-
-  /**
-   * Full detail for one story: content, board fields, comments, linked PRs.
-   */
+/**
+ * Story port — returns full detail for a single story.
+ * Used by: getStoryUseCase
+ */
+export interface StoryPort {
   getStoryDetail(ref: StoryRef): Promise<StoryDetail>;
+}
 
-  /**
-   * Lightweight story rows for the last `window` completed sprints,
-   * most-recent-first.
-   */
+/**
+ * History port — returns completed sprint history.
+ * Used by: getHistoryUseCase
+ */
+export interface HistoryPort {
   getCompletedSprintHistory(window: number): Promise<SprintHistoryEntry[]>;
+}
 
-  /**
-   * Stories in a sprint shaped for burndown computation.
-   */
+/**
+ * Burndown port — returns burndown data and completion timestamps.
+ * Used by: getBurndownUseCase
+ */
+export interface BurndownPort {
   getBurndownInput(sprint: SprintRef): Promise<BurndownInput>;
-
-  /**
-   * Resolve completion timestamps for the stories in a burndown input.
-   */
   resolveCompletionTimestamps(input: BurndownInput): Promise<CompletionMap>;
+}
 
-  /**
-   * Fetch a file from the team's repository by repo-relative path.
-   */
+/**
+ * Impediment port — returns sprint-specific impediments and allows status updates.
+ * Used by: getSprintUseCase, updateImpedimentUseCase
+ */
+export interface ImpedimentPort {
+  getSprintImpediments(sprint: SprintRef): Promise<ImpedimentListing[]>;
+  updateImpediment(
+    ref: StoryRef,
+    status: "open" | "in_progress" | "resolved",
+    resolutionNotes?: string,
+  ): Promise<ImpedimentListing>;
+}
+
+/**
+ * Template port — fetches repository files for ceremony templates.
+ * Used by: getTemplateUseCase
+ *
+ * NOTE: This is GitHub-specific. Non-GitHub backends should not implement this.
+ */
+export interface TemplatePort {
   fetchRepoFile(path: string): Promise<string>;
+}
 
-  /**
-   * Return all impediments (issues tagged "impediment") that have no
-   * cross-reference to a story or sprint — i.e., logged as project-level orphans.
-   *
-   * Only unresolved impediments (status "open" or "in_progress") are returned.
-   * Resolved orphans are excluded.
-   *
-   * NOTE: This is a port interface declaration only. Adapter implementation details
-   * (e.g., querying for issues with label "impediment" whose comment bodies contain
-   * no PVTI_ item ID) belong in the adapter layer, not here.
-   */
-  getOrphanImpediments(): Promise<ImpedimentListing[]>;
+/**
+ * Project reader — composition of all read ports.
+ * Used by: orientUseCase (via getPlatformState), scrum-read tools
+ */
+export interface ProjectReader
+  extends
+    BacklogPort,
+    SprintPort,
+    StoryPort,
+    HistoryPort,
+    BurndownPort,
+    ImpedimentPort,
+    TemplatePort {
+  getPlatformState(declaredVocabulary: {
+    statusValues: string[];
+    priorityValues: string[];
+  }): Promise<PlatformState>;
+}
 
-  // ── Write (stubbed in Phase 5) ────────────────────────────────────────────
-
+/**
+ * Project writer — all mutation operations.
+ * Used by: scrum-write tools
+ */
+export interface ProjectWriter {
   createStory(input: CreateStoryInput): Promise<StoryRef>;
   updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void>;
   setField(
@@ -273,3 +302,11 @@ export interface ProjectBackend {
     value: string,
   ): Promise<{ created: boolean }>;
 }
+
+// ── Legacy composition type (backward compatibility) ────────────────────────────
+
+/**
+ * ProjectBackend — the full interface combining all ports.
+ * Kept for backward compatibility; new code should import specific ports.
+ */
+export interface ProjectBackend extends ProjectReader, ProjectWriter {}

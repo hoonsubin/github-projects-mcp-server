@@ -5,7 +5,7 @@
 // Receives backend: ProjectBackend and scrumConfig: ScrumConfig.
 // =============================================================================
 
-import type { ProjectBackend } from "./ports.ts";
+import type { TemplatePort } from "./ports.ts";
 import type { ArtifactType, TemplateResponse } from "../domain/types.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 
@@ -14,7 +14,7 @@ import type { ScrumConfig } from "../domain/config.ts";
  * Returns { content: null, source: "default" } when no custom template is declared.
  */
 export const getTemplateUseCase = async (
-  backend: ProjectBackend,
+  backend: TemplatePort,
   scrumConfig: ScrumConfig,
   artifactType: ArtifactType,
 ): Promise<TemplateResponse> => {

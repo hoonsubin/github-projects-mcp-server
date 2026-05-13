@@ -1,5 +1,5 @@
 // =============================================================================
-// src/services/pagination.ts — PaginatedProjectItemFetcher
+// src/adapters/github/internal/pagination.ts — PaginatedProjectItemFetcher
 //
 // Reusable abstraction for fetching GitHub Projects v2 items with cursor-based
 // pagination. Optimized for minimal payload by allowing callers to specify
@@ -12,7 +12,7 @@
 //   - Future tools — any tool needing project item access
 // =============================================================================
 
-import type { RuntimeConfig } from "../adapters/github/config-loader.ts";
+import type { RuntimeConfig } from "../config-loader.ts";
 import type {
   GitHubBackendConfig,
   ItemContentType,
@@ -20,7 +20,7 @@ import type {
   ProjectItemDraftContent,
   ProjectItemIssueContent,
   ProjectItemPRContent,
-} from "../adapters/github/types.ts";
+} from "../types.ts";
 
 // ---------------------------------------------------------------------------
 // Types

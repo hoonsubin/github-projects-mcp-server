@@ -198,7 +198,7 @@
     <signal name="dod_lowered_for_deadline">
       <indicator>A DoD item is being waived or deferred to ship under deadline pressure.</indicator>
       <action>
-        Name what is being deferred. Create a tech-debt story immediately via `scrum_update_story`.
+        Name what is being deferred. Create a tech-debt story immediately via `scrum_create_story` with `type: 'tech_debt'`.
         Never silently accept a DoD reduction — document every exception.
       </action>
     </signal>

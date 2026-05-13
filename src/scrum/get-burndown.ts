@@ -5,7 +5,7 @@
 // Receives backend: ProjectBackend and scrumConfig: ScrumConfig.
 // =============================================================================
 
-import type { ProjectBackend } from "./ports.ts";
+import type { BurndownPort } from "./ports.ts";
 import type {
   BurndownResponse,
   BurndownSprintMeta,
@@ -23,7 +23,7 @@ interface GetBurndownParams {
  * Get the sprint burndown chart.
  */
 export const getBurndownUseCase = async (
-  backend: ProjectBackend,
+  backend: BurndownPort,
   _scrumConfig: ScrumConfig,
   params: GetBurndownParams,
 ): Promise<BurndownResponse | { message: string }> => {

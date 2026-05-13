@@ -247,6 +247,14 @@ export const UpdateStorySchema = z
         "Milestone title to assign to, or null to detach from the current epic. " +
           "Omit entirely to leave unchanged.",
       ),
+    comment: z
+      .string()
+      .optional()
+      .describe(
+        "Post a comment on the story after updating. " +
+          "Can be combined with content fields (title, body, etc.) in one call. " +
+          "Use with only { ref, comment } to post a comment without changing story content.",
+      ),
   })
   .strict();
 
@@ -290,10 +298,17 @@ export const PlanSprintSchema = z
           "true = CLEAR all current sprint stories first, then assign the list. " +
           "Use replace:true only when fully replanning a sprint.",
       ),
+    goal: z
+      .string()
+      .optional()
+      .describe(
+        "Sprint goal — a short statement of what the team aims to achieve this sprint.",
+      ),
   })
   .strict();
 
-// scrum_log_impediment — creates a "spike" story with an "impediment" label linked to the affected story
+// scrum_log_impediment — creates a "spike" story with an "impediment" label
+// Optionally links to a story or sprint; omit to log a project-level orphan.
 export const LogImpedimentSchema = z
   .object({
     description: z
@@ -303,7 +318,15 @@ export const LogImpedimentSchema = z
         "Full description of the blocker. Be specific — this becomes the impediment story body " +
           "and the comment posted to the affected story.",
       ),
-    affects: StoryRefSchema.describe("The story this impediment is blocking (required)."),
+    affects: z
+      .union([
+        z.object({ story: StoryRefSchema }),
+        z.object({ sprint: SprintRefSchema }),
+      ])
+      .optional()
+      .describe(
+        "The story or sprint this impediment affects. Omit to log a project-level orphan.",
+      ),
     raised_by: z
       .string()
       .optional()
@@ -319,6 +342,28 @@ export const LogImpedimentSchema = z
           "Defaults to the highest-tier priority value. " +
           "Call scrum_orient to see valid priority values.",
       ),
+  })
+  .strict();
+
+// scrum_update_impediment — update impediment status and resolution notes
+export const UpdateImpedimentSchema = z
+  .object({
+    ref: z
+      .object({
+        id: z
+          .string()
+          .describe(
+            "Impediment project item ID from scrum_get_backlog or scrum_get_sprint.",
+          ),
+      })
+      .describe("Reference to the impediment to update."),
+    status: z
+      .enum(["open", "in_progress", "resolved"])
+      .describe("New impediment status."),
+    resolution_notes: z
+      .string()
+      .optional()
+      .describe("Notes explaining why this impediment was resolved."),
   })
   .strict();
 

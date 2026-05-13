@@ -5,7 +5,7 @@
 // Receives backend: ProjectBackend.
 // =============================================================================
 
-import type { ProjectBackend } from "./ports.ts";
+import type { StoryPort } from "./ports.ts";
 import type { StoryRef } from "../domain/types.ts";
 import { parseAcceptanceCriteria } from "../domain/rules/acceptance-criteria.ts";
 
@@ -22,7 +22,7 @@ interface GetStoryResult {
  * Get full details for a single story.
  */
 export const getStoryUseCase = async (
-  backend: ProjectBackend,
+  backend: StoryPort,
   ref: StoryRef,
 ): Promise<GetStoryResult> => {
   const detail = await backend.getStoryDetail(ref);

@@ -100,6 +100,16 @@ const createMockBackend = (
   setField: () => Promise.resolve(),
   addComment: () => Promise.resolve(),
   addVocabulary: () => Promise.resolve({ created: false }),
+  getSprintImpediments: () => Promise.resolve([]),
+  updateImpediment: () =>
+    Promise.resolve({
+      ref: { id: "" },
+      description: "",
+      status: "open",
+      raised_by: null,
+      raised_at: "",
+      resolved_at: null,
+    }),
   ...Object.fromEntries(
     Object.entries(overrides).map(([k, v]) => [k, typeof v === "function" ? v : v]),
   ),

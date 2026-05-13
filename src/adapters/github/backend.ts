@@ -6,12 +6,12 @@
 // This file imports no MCP SDK types.
 // =============================================================================
 
-import { fetchRepoFile, graphql, rest } from "../../services/github.ts";
 import { GitHubApiError } from "./errors.ts";
-import type { RestResponse } from "../../services/github.ts";
+import { graphql, rest, type RestResponse } from "./internal/http-client.ts";
+import { fetchRepoFile } from "./internal/contents.ts";
 import { type RuntimeConfig } from "./config-loader.ts";
-import { resolveSprint, resolveStory } from "../../services/resolver.ts";
-import { isBacklogItem, PaginatedProjectItemFetcher } from "../../services/pagination.ts";
+import { resolveSprint, resolveStory } from "./internal/resolver.ts";
+import { isBacklogItem, PaginatedProjectItemFetcher } from "./internal/pagination.ts";
 import {
   buildBurndownStoryInput,
   buildCommentList,
@@ -444,10 +444,271 @@ export class GitHubProjectBackend implements ProjectBackend {
     return fetchRepoFile(this.owner, this.repo, path);
   }
 
-  getOrphanImpediments(): Promise<ImpedimentListing[]> {
-    // TODO: Implement orphan impediment detection logic
-    // Query for issues with label "impediment" whose comment bodies contain no PVTI_ item ID
-    return Promise.resolve([]);
+  async getOrphanImpediments(): Promise<ImpedimentListing[]> {
+    // Query for issues with label "impediment" in the tracked repo
+    const query = `
+      query GetImpediments($owner: String!, $repo: String!) {
+        repository(owner: $owner, name: $repo) {
+          issues(first: 100, labels: ["impediment"], states: [OPEN]) {
+            nodes {
+              id
+              number
+              title
+              body
+              state
+              createdAt
+              closedAt
+              author { login }
+              comments(first: 100) {
+                nodes { body }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const result = await this.gh.graphql<{
+      repository?: {
+        issues?: {
+          nodes: Array<{
+            id: string;
+            number: number;
+            title: string;
+            body: string | null;
+            state: string;
+            createdAt: string;
+            closedAt: string | null;
+            author?: { login: string } | null;
+            comments?: { nodes: Array<{ body: string | null }> };
+          }>;
+        };
+      };
+    }>(query, {
+      owner: this.owner,
+      repo: this.repo,
+    });
+
+    const issues = result?.repository?.issues?.nodes ?? [];
+    const PVTI_PATTERN = /PVTI_\d+/;
+
+    const orphanImpediments: ImpedimentListing[] = [];
+
+    for (const issue of issues) {
+      // Check if any comment body contains a PVTI_ reference
+      const comments = issue.comments?.nodes ?? [];
+      const hasPvtiRef = comments.some((c) => c.body && PVTI_PATTERN.test(c.body));
+
+      if (hasPvtiRef) {
+        continue; // Already linked to a story or sprint
+      }
+
+      // Map GitHub issue state to impediment status
+      const status: "open" | "in_progress" | "resolved" = issue.state === "OPEN"
+        ? "open"
+        : "in_progress";
+
+      orphanImpediments.push({
+        ref: { id: issue.id },
+        description: issue.body ?? "",
+        status,
+        raised_by: issue.author?.login ?? null,
+        raised_at: issue.createdAt,
+        resolved_at: issue.closedAt,
+      });
+    }
+
+    return orphanImpediments;
+  }
+
+  async getSprintImpediments(sprint: SprintRef): Promise<ImpedimentListing[]> {
+    // Resolve iteration ID from SprintRef, then look up the iteration title
+    const iterationId = resolveSprint(sprint, this.config);
+    if (!iterationId) {
+      return [];
+    }
+
+    const iterEntry = this.config.iterations.all.find((i) => i.id === iterationId);
+    if (!iterEntry) {
+      return [];
+    }
+
+    const sprintName = iterEntry.title;
+
+    // Query for issues with label "impediment" that reference the sprint name
+    const query = `
+      query GetImpedimentsForSprint($owner: String!, $repo: String!) {
+        repository(owner: $owner, name: $repo) {
+          issues(first: 100, labels: ["impediment"], states: [OPEN, CLOSED]) {
+            nodes {
+              id
+              number
+              title
+              body
+              state
+              createdAt
+              closedAt
+              author { login }
+              comments(first: 100) {
+                nodes { body }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const result = await this.gh.graphql<{
+      repository?: {
+        issues?: {
+          nodes: Array<{
+            id: string;
+            number: number;
+            title: string;
+            body: string | null;
+            state: string;
+            createdAt: string;
+            closedAt: string | null;
+            author?: { login: string } | null;
+            comments?: { nodes: Array<{ body: string | null }> };
+          }>;
+        };
+      };
+    }>(query, {
+      owner: this.owner,
+      repo: this.repo,
+    });
+
+    const issues = result?.repository?.issues?.nodes ?? [];
+    const sprintNameLower = sprintName.toLowerCase();
+
+    const sprintImpediments: ImpedimentListing[] = [];
+
+    for (const issue of issues) {
+      // Check if body or any comment references the sprint name
+      const bodyMatches = issue.body?.toLowerCase().includes(sprintNameLower) ?? false;
+      const comments = issue.comments?.nodes ?? [];
+      const commentMatches = comments.some((c) =>
+        c.body?.toLowerCase().includes(sprintNameLower) ?? false
+      );
+
+      if (!bodyMatches && !commentMatches) {
+        continue; // Not associated with this sprint
+      }
+
+      // Map GitHub issue state to impediment status
+      const status: "open" | "in_progress" | "resolved" = issue.state === "OPEN"
+        ? "open"
+        : "resolved";
+
+      sprintImpediments.push({
+        ref: { id: issue.id },
+        description: issue.body ?? "",
+        status,
+        raised_by: issue.author?.login ?? null,
+        raised_at: issue.createdAt,
+        resolved_at: issue.closedAt,
+      });
+    }
+
+    return sprintImpediments;
+  }
+
+  async updateImpediment(
+    ref: StoryRef,
+    status: "open" | "in_progress" | "resolved",
+    resolutionNotes?: string,
+  ): Promise<ImpedimentListing> {
+    // Resolve the project item to get the underlying issue ID
+    const resolved = await resolveStory(ref, { graphql: this.gh.graphql });
+    if (!resolved.issueId) {
+      throw new Error(
+        `Impediment "${ref.id}" is a Draft Issue — status updates are not supported. ` +
+          "Convert it to a real issue to update its status.",
+      );
+    }
+
+    // Fetch the current issue to get its number and labels
+    const issueResult = await this.gh.graphql<{
+      node: {
+        __typename: "Issue";
+        number: number;
+        labels?: { nodes: Array<{ name: string; id: string }> };
+        closed: boolean;
+        closedAt: string | null;
+      };
+    }>(
+      `
+      query GetIssue($issueId: ID!) {
+        node(id: $issueId) {
+          ... on Issue {
+            number
+            labels(first: 20) { nodes { name id } }
+            closed
+            closedAt
+          }
+        }
+      }
+    `,
+      { issueId: resolved.issueId },
+    );
+
+    const issue = issueResult?.node;
+    if (!issue || issue.__typename !== "Issue") {
+      throw new Error(`Could not resolve impediment "${ref.id}" to an issue.`);
+    }
+
+    // Update the issue labels to reflect the new status
+    // Remove old status labels and add the new one
+    const oldStatusLabels = issue.labels?.nodes.filter((l) => l.name.startsWith("status_")) ?? [];
+    const newStatusLabel = `status_${status}`;
+
+    // Build the mutation to update labels
+    const currentLabelIds = issue.labels?.nodes.map((l) => l.id) ?? [];
+    const newLabelId = await this.resolveOrCreateLabel(newStatusLabel);
+
+    // Remove old status labels and add new one
+    const updatedLabelIds = currentLabelIds
+      .filter((id) => !oldStatusLabels.find((l) => l.id === id))
+      .concat(newLabelId ?? []);
+
+    // Use the GraphQL mutation to update issue labels
+    await this.gh.graphql(
+      `mutation UpdateIssueLabels($issueId: ID!, $labelIds: [ID!]!) {
+        addLabelsToLabelable(input: { subjectId: $issueId, labelIds: $labelIds }) {
+          issue { number }
+        }
+      }`,
+      { issueId: resolved.issueId, labelIds: updatedLabelIds },
+    );
+
+    // If status is resolved and resolution notes are provided, post a comment
+    if (status === "resolved" && resolutionNotes) {
+      await this.gh.graphql(
+        `mutation AddComment($subjectId: ID!, $body: String!) {
+          addComment(input: { subjectId: $subjectId, body: $body }) {
+            comment { id }
+          }
+        }`,
+        { subjectId: resolved.issueId, body: resolutionNotes },
+      );
+    }
+
+    // Map GitHub issue state to impediment status
+    const impedimentStatus: "open" | "in_progress" | "resolved" = issue.closed
+      ? "resolved"
+      : status === "resolved"
+      ? "resolved"
+      : status;
+
+    return {
+      ref: { id: ref.id },
+      description: "", // We don't have the body here; the caller already knows it
+      status: impedimentStatus,
+      raised_by: null, // Would require fetching the issue author
+      raised_at: "", // Would require fetching created_at
+      resolved_at: issue.closedAt,
+    };
   }
 
   // ── Write stubs ──────────────────────────────────────────────────────────

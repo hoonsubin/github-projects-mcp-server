@@ -5,7 +5,7 @@
 // Receives backend: ProjectBackend and scrumConfig: ScrumConfig.
 // =============================================================================
 
-import type { ProjectBackend } from "./ports.ts";
+import type { ProjectReader } from "./ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 
 interface OrientResult {
@@ -16,6 +16,7 @@ interface OrientResult {
       story_points: { exists: boolean };
       priority: { exists: boolean; options: string[]; missing_options: string[] };
     };
+    missing_options: string[]; // convenience: concat of status + priority missing_options
     labels: { existing: string[]; expected: string[]; missing: string[] };
     iterations: {
       active: { name: string; start_date: string; duration_days: number } | null;
@@ -23,14 +24,15 @@ interface OrientResult {
       completed_count: number;
     };
   };
-  declared_vocabulary: {
+  vocabulary: {
     status: Record<string, string> | null;
     priority: Record<string, string> | null;
     story_points: { scale: string | null; values: number[] | null };
     sprint: { duration_days: number | null; velocity_window: number; length_weeks: number | null };
     team: unknown;
-    definition_of_ready: unknown;
-    definition_of_done: unknown;
+    dor: unknown; // was definition_of_ready
+    dod: unknown; // was definition_of_done
+    autonomy: { level: string } | null;
     templates: {
       sprint_review: string | null;
       retrospective: string | null;
@@ -45,7 +47,7 @@ interface OrientResult {
  * Orient to the project: return platform state and declared vocabulary.
  */
 export const orientUseCase = async (
-  backend: ProjectBackend,
+  backend: ProjectReader,
   scrumConfig: ScrumConfig,
 ): Promise<OrientResult> => {
   // todo: Once Story.status returns canonical keys, expose scrum.status semantic
@@ -81,6 +83,10 @@ export const orientUseCase = async (
           missing_options: state.fields.priority.missingOptions,
         },
       },
+      missing_options: [
+        ...state.fields.status.missingOptions,
+        ...state.fields.priority.missingOptions,
+      ],
       labels: state.labels,
       iterations: {
         active: state.iterations.active
@@ -100,7 +106,7 @@ export const orientUseCase = async (
         completed_count: state.iterations.completedCount,
       },
     },
-    declared_vocabulary: {
+    vocabulary: {
       status: statusVocab,
       priority: priorityVocab,
       story_points: {
@@ -113,8 +119,9 @@ export const orientUseCase = async (
         length_weeks: scrumConfig.scrum.sprint?.length_weeks ?? null,
       },
       team: scrumConfig.project.team ?? null,
-      definition_of_ready: scrumConfig.definition_of_ready ?? null,
-      definition_of_done: scrumConfig.definition_of_done ?? null,
+      dor: scrumConfig.definition_of_ready ?? null,
+      dod: scrumConfig.definition_of_done ?? null,
+      autonomy: scrumConfig.project.agent?.autonomy ?? null,
       templates: {
         sprint_review: scrumConfig.templates?.sprint_review ?? null,
         retrospective: scrumConfig.templates?.retrospective ?? null,

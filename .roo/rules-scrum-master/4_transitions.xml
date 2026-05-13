@@ -144,7 +144,7 @@
       <question>"Do any of these items reflect work that's already done, or work that's no longer relevant?"</question>
       <branches>
         <branch condition="done items identified">
-          Mark as Done via `scrum_update_story`. Note for velocity reconstruction in Phase 3.
+          Mark as Done via `scrum_set_field` with `field: 'status'` and `value: 'Done'`. Note for velocity reconstruction in Phase 3.
         </branch>
         <branch condition="irrelevant items identified">
           Label as icebox or archive. Never delete — preserve history.
@@ -408,7 +408,7 @@
         Rough groupings are fine — we don't need exact dates."</question>
       <actions>
         <action>For each item the human describes as completed:
-          (a) Find a matching board item → mark Done via `scrum_update_story`.
+          (a) Find a matching board item → mark Done via `scrum_set_field` with `field: 'status'` and `value: 'Done'`.
           (b) No matching item → create a new item and immediately mark Done.
               This reconstructs history without inventing fictional sprints.
           (c) Item was partially completed → update the body to reflect current state;

@@ -1,6 +1,13 @@
-import type { GraphQLResponse } from "../adapters/github/types.ts";
-import { log } from "./logger.ts";
-import { GitHubApiError } from "../adapters/github/errors.ts";
+// =============================================================================
+// src/adapters/github/internal/http-client.ts — GitHub HTTP transport layer
+//
+// Extracted from services/github.ts as part of Phase C (Structural Cleanup).
+// Provides GraphQL and REST transport to the GitHub API.
+// =============================================================================
+
+import type { GraphQLResponse } from "../types.ts";
+import { log } from "../../../services/logger.ts";
+import { GitHubApiError } from "../errors.ts";
 
 const GITHUB_API_URL = "https://api.github.com/graphql";
 const REST_API_URL = "https://api.github.com";
@@ -31,6 +38,7 @@ const getToken = (): string => {
   }
   return token;
 };
+
 // ---------------------------------------------------------------------------
 // GraphQL operation name extractor
 // ---------------------------------------------------------------------------
@@ -254,85 +262,4 @@ export const rest = async <T>(
 
   log.debug(`← rest:${method} ${path} OK (${ms}ms)`);
   return { data, linkHeader };
-};
-
-// ── GitHub Contents API types and helpers ─────────────────────────────────────
-
-/**
- * GitHub REST endpoint `GET /repos/{owner}/{repo}/contents/{path}` response
- * for a single file hit. On a directory, it returns an array instead.
- * On 404, the existing `rest<T>()` error classification fires:
- * `GitHubApiError(404, ...)`.
- */
-interface RepoFileResponse {
-  type: "file";
-  encoding: "base64";
-  content: string; // base64-encoded, may include newlines
-  name: string;
-  path: string;
-  size: number;
-  sha: string;
-  url: string;
-  html_url: string;
-  download_url: string | null;
-}
-
-/**
- * Decode a base64-encoded file body returned by the GitHub Contents API.
- *
- * GitHub's API includes newline characters in the base64 string for readability.
- * These must be stripped before decoding — atob() rejects strings with whitespace.
- *
- * Exported for unit testing.
- * todo: this function is only used inside unit tests. Doesn't have to be exported
- */
-export const decodeRepoFileContent = (encoded: string): string => atob(encoded.replace(/\s/g, ""));
-
-/**
- * Fetch the content of a single file from the repo via the GitHub Contents API.
- *
- * Returns the decoded UTF-8 file content as a string.
- *
- * Throws GitHubApiError with an actionable message if:
- *   - The file does not exist (404) — with a hint to add the file or
- *     set the template path to null in config.yml.
- *   - The path resolves to a directory rather than a file.
- *   - Any other GitHub API error (permissions, rate limit, etc.).
- */
-/**
- * Fetch the content of a single file from the repo via the GitHub Contents API.
- * Exported for use by scrum_get_template handler.
- */
-export const fetchRepoFile = async (
-  owner: string,
-  repo: string,
-  path: string,
-): Promise<string> => {
-  let response: RepoFileResponse | RepoFileResponse[];
-
-  try {
-    const result = await rest<RepoFileResponse | RepoFileResponse[]>(
-      `/repos/${owner}/${repo}/contents/${path}`,
-    );
-    response = result.data;
-  } catch (err) {
-    if (err instanceof GitHubApiError && err.statusCode === 404) {
-      throw new GitHubApiError(
-        `Template file "${path}" is declared in config.yml but was not found ` +
-          `in the repository. Either add the file or set the template path to null ` +
-          `in config.yml under the templates section.`,
-        404,
-      );
-    }
-    throw err;
-  }
-
-  if (Array.isArray(response)) {
-    throw new GitHubApiError(
-      `Template path "${path}" resolves to a directory, not a file. ` +
-        `Provide the path to a specific file in config.yml.`,
-    );
-  }
-
-  return decodeRepoFileContent(response.content);
 };

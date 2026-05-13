@@ -5,7 +5,7 @@
 // Active-item filter excludes Done stories with no sprint assigned.
 // =============================================================================
 
-import type { ImpedimentListing, ProjectBackend, StoryListing } from "./ports.ts";
+import type { BacklogPort, ImpedimentListing, StoryListing } from "./ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 import type { Story } from "../domain/types.ts";
 import { computeReadinessSummary } from "../domain/rules/readiness.ts";
@@ -37,23 +37,41 @@ const storyToListing = (story: Story): StoryListing => ({
 });
 
 /**
- * Active-item definition: exclude items where status is "done" (case-insensitive)
+ * Check if a status string matches the terminal (done) status declared in config.
+ *
+ * Looks up the canonical key where `terminal: true` in `scrumConfig.scrum.status`,
+ * then resolves its display name via `scrumConfig.backends.github.status_display`.
+ * Falls back to `"Done"` if no terminal key is found.
+ */
+const isTerminalStatus = (status: string | null, config: ScrumConfig): boolean => {
+  const scrumStatus = config.scrum.status ?? {};
+  const terminalKey = Object.entries(scrumStatus).find(([, meta]) => meta.terminal)?.[0];
+  if (!terminalKey) return (status?.toLowerCase() ?? "") === "done";
+
+  const ghConfig = config.backends.github as Record<string, unknown>;
+  const statusDisplay = (ghConfig.status_display as Record<string, string>) ?? {};
+  const displayValue = statusDisplay[terminalKey] ?? "Done";
+
+  return (status?.toLowerCase() ?? "") === displayValue.toLowerCase();
+};
+
+/**
+ * Active-item definition: exclude items where status is terminal (done)
  * AND sprint is null (no sprint assigned). Stories that are Done inside an open
  * sprint remain visible. Stories that are Done with no sprint assigned are stale
  * and are excluded.
  *
- * TODO: Consider making this config-driven via ScrumConfig.doneStatuses[] for
- * teams using alternative status names like "Completed", "Closed", etc.
+ * Uses config-driven terminal status detection via `isTerminalStatus()`.
  */
-const isActiveItem = (story: Story): boolean => {
-  const isDoneStatus = story.status?.toLowerCase() === "done";
+const isActiveItem = (story: Story, config: ScrumConfig): boolean => {
+  const isDoneStatus = isTerminalStatus(story.status, config);
   const hasNoSprint = story.sprint === null;
   return !(isDoneStatus && hasNoSprint);
 };
 
 export const getBacklogUseCase = async (
-  backend: ProjectBackend,
-  _scrumConfig: ScrumConfig,
+  backend: BacklogPort,
+  scrumConfig: ScrumConfig,
   params: GetBacklogParams,
 ): Promise<GetBacklogResult> => {
   // Fetch stories and orphan impediments in parallel
@@ -63,7 +81,7 @@ export const getBacklogUseCase = async (
   ]);
 
   // Apply active-item filter before any user-supplied filters to prevent stale data exposure
-  let stories = allStories.filter(isActiveItem);
+  let stories = allStories.filter((s) => isActiveItem(s, scrumConfig));
 
   // Apply optional query filters
   if (params.search) {

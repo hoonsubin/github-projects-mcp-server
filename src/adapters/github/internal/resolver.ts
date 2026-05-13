@@ -1,12 +1,12 @@
 // =============================================================================
-// src/services/resolver.ts
+// src/adapters/github/internal/resolver.ts
 //
 // ── resolveSprint: resolve SprintRef → GitHub iteration ID ───────────────────
 // ── resolveStory:  resolve StoryRef  → GitHub node IDs needed for mutations ──
 // =============================================================================
 
-import type { RuntimeConfig } from "../adapters/github/config-loader.ts";
-import type { SprintRef, StoryRef } from "../domain/types.ts";
+import type { RuntimeConfig } from "../config-loader.ts";
+import type { SprintRef, StoryRef } from "../../../domain/types.ts";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

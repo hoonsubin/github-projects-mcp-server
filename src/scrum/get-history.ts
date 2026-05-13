@@ -3,7 +3,13 @@
 // Aligned with SprintSnapshot from ports.ts.
 // Adds velocity statistics (average_completed_points).
 
-import type { ProjectBackend, SprintHistoryEntry, SprintSnapshot, StoryListing } from "./ports.ts";
+import type {
+  HistoryPort,
+  ImpedimentPort,
+  SprintHistoryEntry,
+  SprintSnapshot,
+  StoryListing,
+} from "./ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 
 // ── Return type ────────────────────────────────────────────────────────────────
@@ -35,13 +41,31 @@ const projectStoriesToListings = (
   }));
 
 /**
+ * Check if a status string matches the terminal (done) status declared in config.
+ *
+ * Looks up the canonical key where `terminal: true` in `scrumConfig.scrum.status`,
+ * then resolves its display name via `scrumConfig.backends.github.status_display`.
+ * Falls back to `"Done"` if no terminal key is found.
+ */
+const isTerminalStatus = (status: string | null, config: ScrumConfig): boolean => {
+  const scrumStatus = config.scrum.status ?? {};
+  const terminalKey = Object.entries(scrumStatus).find(([, meta]) => meta.terminal)?.[0];
+  if (!terminalKey) return (status?.toLowerCase() ?? "") === "done";
+
+  const ghConfig = config.backends.github as Record<string, unknown>;
+  const statusDisplay = (ghConfig.status_display as Record<string, string>) ?? {};
+  const displayValue = statusDisplay[terminalKey] ?? "Done";
+
+  return (status?.toLowerCase() ?? "") === displayValue.toLowerCase();
+};
+
+/**
  * Compute totals for a sprint's stories.
- * "Done" detection uses case-insensitive match on the status display name.
- * This is a pragmatic approximation until canonical status keys are available
- * via scrumConfig. Follow-up: replace with config-driven terminal status lookup.
+ * Uses config-driven terminal status detection via `isTerminalStatus()`.
  */
 const computeTotals = (
   stories: SprintHistoryEntry["stories"],
+  config: ScrumConfig,
 ): {
   by_status: Record<string, number>;
   committed_points: number;
@@ -54,7 +78,7 @@ const computeTotals = (
   }
   const committed_points = stories.reduce((sum, s) => sum + s.points, 0);
   const completed_points = stories
-    .filter((s) => s.status?.toLowerCase() === "done")
+    .filter((s) => isTerminalStatus(s.status, config))
     .reduce((sum, s) => sum + s.points, 0);
   return { by_status, committed_points, completed_points };
 };
@@ -62,11 +86,19 @@ const computeTotals = (
 /**
  * Convert a completed SprintHistoryEntry to the canonical SprintSnapshot shape.
  */
-const entryToSnapshot = (entry: SprintHistoryEntry): SprintSnapshot => {
+const entryToSnapshot = async (
+  entry: SprintHistoryEntry,
+  backend: ImpedimentPort,
+  scrumConfig: ScrumConfig,
+): Promise<SprintSnapshot> => {
   const items = projectStoriesToListings(entry.stories, entry.info.name);
   const { by_status, committed_points, completed_points } = computeTotals(
     entry.stories,
+    scrumConfig,
   );
+
+  // Fetch impediments associated with this sprint
+  const impediments = await backend.getSprintImpediments(entry.info.name);
 
   return {
     sprint: {
@@ -84,15 +116,15 @@ const entryToSnapshot = (entry: SprintHistoryEntry): SprintSnapshot => {
       committed_points,
       completed_points,
     },
-    impediments: [], // enriched in Phase 7
+    impediments,
   };
 };
 
 // ── Public use case ────────────────────────────────────────────────────────────
 
 export const getHistoryUseCase = async (
-  backend: ProjectBackend,
-  _scrumConfig: ScrumConfig,
+  backend: HistoryPort & ImpedimentPort,
+  scrumConfig: ScrumConfig,
   window: number,
 ): Promise<GetHistoryResult> => {
   const entries = await backend.getCompletedSprintHistory(window);
@@ -101,7 +133,9 @@ export const getHistoryUseCase = async (
     return { sprints: [], window, average_completed_points: 0 };
   }
 
-  const sprints = entries.map(entryToSnapshot);
+  const sprints = await Promise.all(
+    entries.map((entry) => entryToSnapshot(entry, backend, scrumConfig)),
+  );
 
   const totalCompleted = sprints.reduce(
     (sum, s) => sum + ("committed_points" in s.totals ? (s.totals.completed_points ?? 0) : 0),

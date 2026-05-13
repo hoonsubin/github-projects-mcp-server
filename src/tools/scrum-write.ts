@@ -1,18 +1,5 @@
 // =============================================================================
 // src/tools/scrum-write.ts — Register all scrum_* write tools + deprecated github_graphql
-//
-// Implementation order (each builds on the previous):
-//   Step 11: Stub all 5 write tools + scrum_add_vocabulary + register github_graphql
-//   Step 12: Swap index.ts to registerScrumReadTools + registerScrumWriteTools (server starts,
-//            all 11 tools appear in tool list — minimum functioning build checkpoint)
-//   Step 13: Implement write tools in this order:
-//     13a. scrum_add_vocabulary  (simplest — single field/label mutation, no resolver needed)
-//     13b. scrum_set_field       (core primitive — all other write tools depend on it internally)
-//     13c. scrum_update_story
-//     13d. scrum_create_story  (C4)
-//     13e. scrum_plan_sprint   (C5)
-//     13f. scrum_log_impediment (C6)
-// =============================================================================
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CreateStoryInput, ProjectBackend, StoryUpdates } from "../scrum/ports.ts";
@@ -24,12 +11,13 @@ import {
   LogImpedimentSchema,
   PlanSprintSchema,
   SetFieldSchema,
+  UpdateImpedimentSchema,
   UpdateStorySchema,
 } from "../schemas/scrum.ts";
 import { GraphQLQuerySchema } from "../schemas/inputs.ts";
 import { isMutationQuery } from "../services/mutation-validator.ts";
 import { enrichError } from "../services/error-enrichment.ts";
-import { graphql } from "../services/github.ts";
+import { graphql } from "../adapters/github/internal/http-client.ts";
 import { z } from "zod";
 
 // ── Helper types ──────────────────────────────────────────────────────────────
@@ -40,13 +28,24 @@ interface PartialFailureResult {
   failedFields: Array<{ field: string; reason: string }>;
 }
 
+// ── Derived constants ─────────────────────────────────────────────────────────
+
+/** Resolve the p0 (highest-tier) priority display label from config. */
+const resolveP0PriorityDisplay = (scrumConfig: ScrumConfig): string => {
+  const p0Key = scrumConfig.scrum.priority?.[0]?.key ?? "p0";
+  const ghConfig = scrumConfig.backends.github as Record<string, unknown>;
+  const priorityDisplay = (ghConfig.priority_display as Record<string, string>) ?? {};
+  return priorityDisplay[p0Key] ?? "Must";
+};
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export function registerScrumWriteTools(
   server: McpServer,
   backend: ProjectBackend,
-  _scrumConfig: ScrumConfig,
+  scrumConfig: ScrumConfig,
 ): void {
+  const p0PriorityDisplay = resolveP0PriorityDisplay(scrumConfig);
   // ── C1: scrum_add_vocabulary ──────────────────────────────────────────────────
 
   server.registerTool(
@@ -151,7 +150,8 @@ export function registerScrumWriteTools(
         "  body       string — replacement markdown body (omit to leave unchanged)\n" +
         "  labels     string[] — REPLACES all existing labels (omit to leave unchanged)\n" +
         "  assignees  string[] — REPLACES all existing assignees, GitHub logins (omit to leave unchanged)\n" +
-        "  epic       string | null — Milestone title to assign to; null detaches from epic (omit to leave unchanged)\n\n" +
+        "  epic       string | null — Milestone title to assign to; null detaches from epic (omit to leave unchanged)\n" +
+        "  comment    string — Post a comment on the story after updating (omit to skip)\n\n" +
         "Returns: updated Story object.",
       inputSchema: UpdateStorySchema.shape,
       annotations: { role: "admin" },
@@ -166,6 +166,11 @@ export function registerScrumWriteTools(
         if (params.epic !== undefined) updates.epic = params.epic;
 
         await backend.updateStory(params.ref, updates as StoryUpdates);
+
+        // Post comment if provided
+        if (params.comment !== undefined) {
+          await backend.addComment(params.ref, params.comment);
+        }
 
         // Fetch and return updated story
         const updated = await backend.getStoryDetail(params.ref);
@@ -341,11 +346,15 @@ export function registerScrumWriteTools(
           }
         }
 
-        const result = {
+        const result: Record<string, unknown> = {
           sprint: params.sprint,
           assigned,
           skipped,
         };
+        // Include goal in response if provided (echo only, not persisted)
+        if (params.goal !== undefined) {
+          result.goal = params.goal;
+        }
 
         return {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
@@ -373,7 +382,7 @@ export function registerScrumWriteTools(
         "Args:\n" +
         "  description  string (required) — full description of the blocker; becomes the story body\n" +
         "               and the comment posted to the affected story\n" +
-        "  affects      { number } | { id } — the story being blocked (required)\n" +
+        "  affects      { story: { id } } | { sprint: string } — optional; omit to log a project-level orphan\n" +
         "  raised_by    string — GitHub login of the person raising it; defaults to Scrum Master\n" +
         '  priority     string — vocabulary display name (e.g. "Must"); defaults to highest tier\n\n' +
         "Returns: the created impediment Story object.",
@@ -387,34 +396,47 @@ export function registerScrumWriteTools(
           title: `Impediment: ${params.description.slice(0, 80)}`,
           body: params.description,
           type: "spike",
-          priority: params.priority ?? "Must",
+          priority: params.priority ?? p0PriorityDisplay,
           labels: ["impediment"],
         };
 
         // Step 2: Create the impediment story
         const storyRef = await backend.createStory(impedimentInput);
 
-        // Step 3: Add comment to the AFFECTED story
-        const affectedComment = [
-          ":warning: **Impediment logged**",
-          "",
-          params.description,
-          "",
-          `> Created by ${params.raised_by ?? "agent"}`,
-        ].join("\n");
+        // Step 3: Conditional branching based on affects presence
+        if (params.affects) {
+          if ("story" in params.affects) {
+            // Story case: post warning on affected story + back-link on impediment
+            const affectedComment = [
+              ":warning: **Impediment logged**",
+              "",
+              params.description,
+              "",
+              `> Created by ${params.raised_by ?? "agent"}`,
+            ].join("\n");
 
-        await backend.addComment(params.affects, affectedComment);
+            await backend.addComment(params.affects.story, affectedComment);
 
-        // Step 4: Add comment to the impediment story itself (bidirectional linking)
-        const affectsRef = params.affects.id;
-        const impedimentComment = [
-          ":link: This impediment affects story",
-          `  - Story item ID: ${affectsRef}`,
-        ].join("\n");
+            const affectsRef = params.affects.story.id;
+            const impedimentComment = [
+              ":link: This impediment affects story",
+              `  - Story item ID: ${affectsRef}`,
+            ].join("\n");
 
-        await backend.addComment(storyRef, impedimentComment);
+            await backend.addComment(storyRef, impedimentComment);
+          } else if ("sprint" in params.affects) {
+            // Sprint case: post single cross-reference comment on impediment
+            const sprintName = params.affects.sprint;
+            const impedimentComment = [
+              ":link: This impediment affects sprint",
+              `  - Sprint: ${sprintName}`,
+            ].join("\n");
 
-        // Step 5: Return the impediment story
+            await backend.addComment(storyRef, impedimentComment);
+          }
+        }
+
+        // Step 4: Return the impediment story
         const detail = await backend.getStoryDetail(storyRef);
         return {
           content: [{ type: "text", text: JSON.stringify(detail.story, null, 2) }],
@@ -428,7 +450,41 @@ export function registerScrumWriteTools(
     },
   );
 
-  // ── C7: github_graphql (deprecated) ───────────────────────────────────────────
+  // ── C7: scrum_update_impediment ──────────────────────────────────────────────
+
+  server.registerTool(
+    "scrum_update_impediment",
+    {
+      title: "Update Impediment",
+      description: "Update an impediment's status and optionally add resolution notes.\n\n" +
+        "Args:\n" +
+        "  ref              { id } — impediment project item ID from scrum_get_backlog or scrum_get_sprint\n" +
+        '  status           "open" | "in_progress" | "resolved" — new impediment status\n' +
+        "  resolution_notes  string (optional) — notes explaining why this impediment was resolved\n\n" +
+        "Returns: the updated ImpedimentListing.",
+      inputSchema: UpdateImpedimentSchema.shape,
+      annotations: { role: "admin" },
+    },
+    async (params: z.infer<typeof UpdateImpedimentSchema>) => {
+      try {
+        const result = await backend.updateImpediment(
+          params.ref,
+          params.status,
+          params.resolution_notes,
+        );
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      } catch (err) {
+        return {
+          content: [{ type: "text", text: enrichError(err, { operation: "update_impediment" }) }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // ── C8: github_graphql (deprecated) ───────────────────────────────────────────
 
   server.registerTool(
     "github_graphql",
