@@ -2,19 +2,22 @@
 // scripts/diagram/DiagramStyler.ts — Generate Mermaid classDef style declarations
 // =============================================================================
 
-import { formatClassNameFromPath, sanitizeId } from "./helpers.ts";
-import type { ModuleStyle } from "./types.ts";
 import { ParsedModule } from "./ParsedModule.ts";
+import { Layer, LayerMapping } from "./types.ts";
 // ── Options ──────────────────────────────────────────────────────────────────────
 
 interface StylerOptions {
   colorPalette?: readonly string[];
-  withNamespace?: boolean;
+  layerMapping?: LayerMapping;
 }
 
+interface NamespaceDef {
+  name: Layer;
+  children: ParsedModule[]; // mermaid class name
+}
 // ── Color Palette ──────────────────────────────────────────────────────────────
 
-export const MODULE_COLOR_PALETTE = [
+const MODULE_COLOR_PALETTE = [
   "#f9f", // pink
   "#ccf", // light blue
   "#cfc", // light green
@@ -35,6 +38,19 @@ export const MODULE_COLOR_PALETTE = [
   "#ff8000", // orange
 ] as const;
 
+/**
+ * Default layer mapping based on the project structure.
+ */
+const DEFAULT_LAYER_MAPPING: LayerMapping = {
+  "src/tools/": Layer.FRAMEWORK,
+  "src/schemas/": Layer.FRAMEWORK,
+  "src/scrum/": Layer.USE_CASE,
+  "src/domain/": Layer.USE_CASE,
+  "src/services/": Layer.USE_CASE,
+  "src/adapters/": Layer.ADAPTER,
+  "src/generated/": Layer.ADAPTER,
+};
+
 // ── DiagramStyler ──────────────────────────────────────────────────────────────
 
 /**
@@ -42,68 +58,87 @@ export const MODULE_COLOR_PALETTE = [
  */
 export class DiagramStyler {
   private readonly palette: readonly string[];
-  private readonly withNamespace: boolean;
-  constructor(options?: StylerOptions) {
+
+  private classDefs: string[] = [];
+  private namespaceDefs: NamespaceDef[] = [];
+
+  private namespaceLayerMap: LayerMapping;
+
+  constructor(private modules: ParsedModule[], private readonly options?: StylerOptions) {
     this.palette = options?.colorPalette ?? MODULE_COLOR_PALETTE;
-    // Defaults to false
-    this.withNamespace = !!options?.withNamespace;
-  }
 
-  /**
-   * Generate Mermaid classDef style declarations and module styling data.
-   * Each folder gets a unique color from the palette, and each module
-   * references its folder's classDef.
-   */
-  generateClassDefs(modules: ParsedModule[]): {
-    moduleStyles: ModuleStyle[];
-    folderClassDefs: string[];
-  } {
-    // Group modules by their parent folder
-    const folderToModules = new Map<string, ParsedModule[]>();
-
-    for (const mod of modules) {
-      const pathParts = mod.filePathName.split("/");
-      // Get the parent folder (second-to-last part) or root if it's at root level
-      const folder = pathParts.length > 1 ? pathParts[pathParts.length - 2] : "root";
-
-      if (!folderToModules.has(folder)) {
-        folderToModules.set(folder, []);
-      }
-      folderToModules.get(folder)!.push(mod);
+    if (!modules) {
+      throw new Error("No modules passed to the styler!");
     }
 
-    // Generate classDef entries for each folder and module styles
-    const folderClassDefs: string[] = [];
-    const moduleStyles: ModuleStyle[] = [];
-    const folderToColor = new Map<string, string>();
+    this.namespaceLayerMap = options?.layerMapping ?? DEFAULT_LAYER_MAPPING;
+
+    this.generateClassDefs();
+    this.generateNamespaces();
+  }
+
+  public getClassDefs() {
+    return this.classDefs;
+  }
+  public getNamespaceDefs() {
+    return this.namespaceDefs;
+  }
+
+  private detectNamespace(moduleNode: ParsedModule): Layer {
+    for (const [prefix, layer] of Object.entries(this.namespaceLayerMap)) {
+      if (moduleNode.filePathName.match(prefix)) {
+        return layer;
+      }
+    }
+    return Layer.OTHER;
+  }
+
+  private generateNamespaces() {
+    const namespaceToModule = new Map<Layer, ParsedModule[]>();
+
+    for (const mod of this.modules) {
+      const layer = this.detectNamespace(mod);
+
+      if (!namespaceToModule.has(layer)) {
+        // initialize the list
+        namespaceToModule.set(layer, []);
+      }
+      // push the current item
+      namespaceToModule.get(layer)!.push(mod);
+    }
+
+    for (const layer of namespaceToModule.keys()) {
+      this.namespaceDefs.push({
+        name: layer,
+        children: namespaceToModule.get(layer)!,
+      });
+    }
+  }
+
+  private generateClassDefs(): void {
+    // Group modules by their parent folder
+    const folderToClassName = new Map<string, string[]>();
+
+    for (const mod of this.modules) {
+      // Get the parent folder (second-to-last part) or root if it's at root level
+      const folder = mod.getParentFolderName();
+
+      if (!folderToClassName.has(folder)) {
+        folderToClassName.set(folder, []);
+      }
+      folderToClassName.get(folder)!.push(mod.getMermaidClassName());
+    }
 
     let colorIndex = 0;
-    for (const [folder, folderModules] of folderToModules.entries()) {
+    for (const [folder, _className] of folderToClassName.entries()) {
       const color = this.palette[colorIndex % this.palette.length];
-      folderToColor.set(folder, color);
-
-      // Sanitize the folder name for use as a Mermaid ID
-      const sanitizedFolder = sanitizeId(folder);
-      folderClassDefs.push(
-        `    classDef ${sanitizedFolder} fill:${color},stroke:#333,stroke-width:2px,color:#000;`,
-      );
 
       // Create module styles for each module in this folder
-      for (const mod of folderModules) {
-        const fileName = mod.filePathName.split("/").pop()!;
-        const className = formatClassNameFromPath(fileName);
-
-        moduleStyles.push({
-          className,
-          folder: sanitizedFolder,
-          classDef:
-            `    classDef ${sanitizedFolder} fill:${color},stroke:#333,stroke-width:2px,color:#000;`,
-        });
-      }
+      this.classDefs.push(
+        `    classDef ${folder} fill:${color},stroke:#333,stroke-width:2px,color:#000;`,
+      );
 
       colorIndex++;
     }
-
-    return { moduleStyles, folderClassDefs };
   }
 }

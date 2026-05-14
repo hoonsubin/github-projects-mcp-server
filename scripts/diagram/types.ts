@@ -1,5 +1,5 @@
 export interface UnusedExport extends ExportInfo {
-  modulePath: string;
+  modulePathName: string;
 }
 
 export interface ExportInfo {
@@ -8,16 +8,12 @@ export interface ExportInfo {
   type?: string;
   returnType?: string;
 }
+
 export interface ImportInfo {
   name: string;
   kind: ImportKind;
   path: string;
   alias?: string;
-}
-export interface ModuleStyle {
-  className: string;
-  folder: string;
-  classDef: string;
 }
 
 export type ExportKind =
@@ -36,3 +32,28 @@ export type ImportKind =
   | "default"
   | "namespace"
   | "type";
+
+/**
+ * Represents the architectural layers of the system.
+ */
+export enum Layer {
+  FRAMEWORK = "Framework",
+  USE_CASE = "Use-Case",
+  ADAPTER = "Adapter",
+  OTHER = "Other",
+}
+
+/**
+ * Configuration for mapping directory prefixes to architectural layers.
+ */
+export interface LayerMapping {
+  [prefix: string]: Layer;
+}
+
+export interface ClassDiagramOptions {
+  showUnusedExports?: boolean;
+  showDependencyArrows?: boolean;
+  colorPalette?: readonly string[];
+  showNameSpaces?: boolean;
+  layerMapping?: LayerMapping;
+}

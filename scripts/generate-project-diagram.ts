@@ -57,7 +57,7 @@ const parseArgs = (): {
         src = args[++i] ?? src;
         break;
       case "--include-external":
-        includeExternal = true;
+        includeExternal = false;
         break;
       case "--help":
       case "-h":
@@ -101,11 +101,6 @@ const scanModules = async (
           if (!isExcluded(relPath, DEFAULT_EXCLUSIONS)) {
             const content = await Deno.readTextFile(full);
             const currentMod = new ParsedModule(full, content, includeExternal);
-            console.log({
-              name: currentMod.filePathName,
-              imported: currentMod.getImports(),
-              exporting: currentMod.getExports(),
-            });
             modules.push(currentMod);
           }
         }
@@ -150,8 +145,8 @@ const generateMarkdown = (
     const unusedRows = unusedExports
       .map(
         (i) =>
-          `| [\`${i.modulePath}\`](${
-            path.relative(path.dirname(outputDir), i.modulePath)
+          `| [\`${i.modulePathName}\`](${
+            path.relative(path.dirname(outputDir), i.modulePathName)
           }) | \`${i.name}\` | \`${i.kind}\` |`,
       )
       .join("\n");

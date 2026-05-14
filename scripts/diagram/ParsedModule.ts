@@ -1,5 +1,6 @@
 import * as ts from "typescript";
 import { ExportInfo, ExportKind, ImportInfo } from "./types.ts";
+import * as path from "@std/path";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -91,6 +92,14 @@ export class ParsedModule {
     return this.moduleSourceFile;
   }
 
+  public getMermaidClassName() {
+    return path.basename(this.filePathName);
+  }
+
+  public getParentFolderName() {
+    return path.basename(path.dirname(this.filePathName));
+  }
+
   public getExports() {
     return this.exports;
   }
@@ -111,8 +120,7 @@ export class ParsedModule {
       // Named imports (e.g., { Foo, Bar })
 
       // Escape if it's not an internal module and the object doesn't include externals
-      const isInternal = modulePath.startsWith(".") || modulePath.startsWith("/");
-      if (!isInternal && !this.includeExternal) return;
+      if (!modulePath.startsWith(".") && !this.includeExternal) return;
 
       if (
         node.importClause?.namedBindings && ts.isNamedImports(node.importClause.namedBindings)

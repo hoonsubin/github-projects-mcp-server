@@ -4,17 +4,18 @@
 
 import { ParsedModule } from "./ParsedModule.ts";
 import { ExportInfo, ExportKind, UnusedExport } from "./types.ts";
-import { formatClassNameFromPath, resolveImport } from "./helpers.ts";
+import { resolveImport } from "./helpers.ts";
 import { DiagramStyler } from "./DiagramStyler.ts";
+import * as path from "@std/path";
 
 // ── Options ────────────────────────────────────────────────────────────────────
 
 export interface ClassDiagramOptions {
   showUnusedExports?: boolean;
   showDependencyArrows?: boolean;
-  colorPalette?: readonly string[];
-  showNameSpaces?: boolean;
 }
+
+type MermaidClassNode = Map<string, ParsedModule>;
 
 // ── Export Formatting (strategy map) ───────────────────────────────────────────
 
@@ -54,18 +55,30 @@ const formatExportAsMember = (exp: ExportInfo): string => {
  * Orchestrate class definitions and relationships.
  */
 export class ClassDiagramGenerator {
+  private readonly styler: DiagramStyler;
+  private readonly unusedExports: UnusedExport[];
+  private readonly options?: ClassDiagramOptions;
+  private readonly diagramNodeMap: MermaidClassNode = new Map<string, ParsedModule>();
+
   constructor(
-    private readonly modules: ParsedModule[],
-    private readonly unusedExports: UnusedExport[],
-    private readonly options?: ClassDiagramOptions,
-  ) {}
+    modules: ParsedModule[],
+    unusedExports: UnusedExport[],
+    options?: ClassDiagramOptions,
+  ) {
+    this.unusedExports = unusedExports;
+    this.options = options;
+    this.styler = new DiagramStyler(modules);
+
+    // initialize the node map
+    for (const ns of this.styler.getNamespaceDefs()) {
+      for (const mod of ns.children) {
+        this.diagramNodeMap.set(mod.getMermaidClassName(), mod);
+      }
+    }
+  }
 
   generate(): string {
     const lines: string[] = [];
-
-    // Call generateClassDefs once and share the result
-    const styler = new DiagramStyler(this.options);
-    const { folderClassDefs } = styler.generateClassDefs(this.modules);
 
     lines.push(...["classDiagram", "    direction LR"]);
     lines.push("");
@@ -73,72 +86,63 @@ export class ClassDiagramGenerator {
     lines.push("");
     lines.push(...this.generateRelationships());
     lines.push("");
-    lines.push(...folderClassDefs);
+    this.styler.getClassDefs().forEach((classDef) => {
+      lines.push(classDef);
+    });
 
     return lines.join("\n");
   }
 
   private generateClasses(): string[] {
     const lines: string[] = [];
-    // todo: add grouping classes into name spaces based on the project architectural layers
-    /**
-    ```mermaid
-    flowchart TD
 
-      subgraph Framework["FRAMEWORK LAYER src/tools/ + src/schemas/"]
-        direction TB
-        FW["MCP tool registration thin handlers Zod param parsing"]
-      end
+    const test = this.styler.getNamespaceDefs().map((i) => {
+      return {
+        name: i.name,
+        modules: i.children.map((j) => {
+          return j.getMermaidClassName();
+        }),
+      };
+    });
 
-      subgraph UseCase["USE-CASE LAYER src/scrum/ + src/domain/ + src/services/"]
-        direction TB
-        UC["Scrum orchestration domain rules pure computation"]
-        PB["interface ProjectBackend (src/scrum/ports.ts)"]
-      end
+    console.log(test);
 
-      subgraph Adapter["ADAPTER LAYER src/adapters/ + src/generated/"]
-        direction TB
-        AD["GitHubProjectBackend implements ProjectBackend"]
-        SVC["internal/ services (LabelResolver, FieldValueMutator, etc.)"]
-        AD -->|delegates to| SVC
-      end
+    for (const namespaceDef of this.styler.getNamespaceDefs()) {
+      lines.push(`    namespace ${namespaceDef.name} {`);
 
-      FW -->|calls use-case functions| UC
-      UC -->|depends on focused port| PB
-      AD -.->|implements Dependency Inversion| PB
-    ```
-    */
+      for (const namespaceChild of namespaceDef.children) {
+        const hasExports = !!namespaceChild.getExports();
 
-    for (const mod of this.modules) {
-      const className = mod.filePathName.split("/").pop()!;
-
-      // Compute folder name from path (same logic as in original)
-      const pathParts = mod.filePathName.split("/");
-      const folder = pathParts.length > 1 ? pathParts[pathParts.length - 2] : "root";
-      //const sanitizedFolder = sanitizeId(folder);
-
-      // todo: this will result in a curly brace even if there is no export member at all
-      // Use the folder's classDef for styling
-      lines.push(`    class ${className}:::${folder} {`);
-
-      for (const exp of mod.getExports()) {
-        const memberLine = formatExportAsMember(exp);
-        lines.push(`        ${memberLine}`);
-      }
-
-      if (this.options?.showUnusedExports) {
-        const unused = this.unusedExports.filter(
-          (e) => e.modulePath === mod.filePathName,
-        );
-        if (unused.length > 0) {
+        if (hasExports) {
           lines.push(
-            `        %% Unused: ${unused.map((u) => u.name).join(", ")}`,
+            `            class ${namespaceChild.getMermaidClassName()}:::${namespaceChild.getParentFolderName()} {`,
+          );
+
+          for (const exp of namespaceChild.getExports()) {
+            const memberLine = formatExportAsMember(exp);
+            lines.push(`                ${memberLine}`);
+          }
+
+          if (this.options?.showUnusedExports) {
+            const unused = this.unusedExports.filter(
+              (e) => e.modulePathName === namespaceChild.filePathName,
+            );
+            if (unused.length > 0) {
+              lines.push(
+                `                %% Unused: ${unused.map((u) => u.name).join(", ")}`,
+              );
+            }
+          }
+
+          lines.push("            }");
+        } else {
+          lines.push(
+            `            class ${namespaceChild.getMermaidClassName()}:::${namespaceChild.getParentFolderName()}`,
           );
         }
       }
-      // todo: this will result in a curly brace even if there is no export member at all
+
       lines.push("    }");
-      lines.push("");
     }
 
     return lines;
@@ -150,27 +154,65 @@ export class ClassDiagramGenerator {
 
     const relationList = new Set<string>();
 
-    for (const mod of this.modules) {
-      for (const imp of mod.getImports()) {
-        const resolved = resolveImport(mod.filePathName, imp.name);
+    for (const [moduleName, moduleObj] of this.diagramNodeMap.entries()) {
+      for (const imports of moduleObj.getImports()) {
+        const isExternal = !imports.path.startsWith(".");
+        const resolved = resolveImport(moduleObj.filePathName, imports.path);
         if (!resolved) continue;
 
-        const srcFile = mod.filePathName.split("/").pop()!;
-        const tgtFile = resolved.split("/").pop()!;
+        // need a way to get the target module class name
+        const tgtClass = isExternal ? imports.name : path.basename(resolved);
 
-        if (srcFile === tgtFile) continue;
+        if (moduleName === tgtClass) continue;
 
-        const srcClass = formatClassNameFromPath(srcFile);
-        const tgtClass = formatClassNameFromPath(tgtFile);
-
-        const relKey = `${srcClass} -> ${tgtClass}`;
+        const relKey = `${moduleName} -> ${tgtClass}`;
         if (!relationList.has(relKey)) {
           relationList.add(relKey);
-          lines.push(`    ${srcClass} --> ${tgtClass} : "imports"`);
+          lines.push(`    ${moduleName} --> ${tgtClass} : "imports"`);
         }
       }
     }
 
     return lines;
+  }
+
+  public findUnusedExports(): UnusedExport[] {
+    const usedNamesByModule = new Map<string, Set<string>>();
+    const unreferencedExports: UnusedExport[] = [];
+    // Track usage
+    for (const mod of this.diagramNodeMap.values()) {
+      for (const imp of mod.getImports()) {
+        const resolved = resolveImport(mod.filePathName, imp.path);
+        if (!resolved || !this.diagramNodeMap.has(resolved)) continue;
+
+        const targetMod = this.diagramNodeMap.get(resolved)!;
+        const usedSet = usedNamesByModule.get(resolved)!;
+
+        if (imp.kind === "named" || imp.kind === "type") {
+          // For named/type imports, the 'name' property is the exported name in the target module
+          usedSet.add(imp.name);
+        } else if (imp.kind === "namespace") {
+          // Namespace import (* as Foo) implies all exports are potentially used
+          for (const exp of targetMod.getExports()) {
+            usedSet.add(exp.name);
+          }
+        } else if (imp.kind === "default") {
+          // Best effort for default imports: use the local name as a fallback
+          usedSet.add(imp.name);
+        }
+      }
+
+      const usedSet = usedNamesByModule.get(mod.filePathName)!;
+      for (const exp of mod.getExports()) {
+        if (!usedSet.has(exp.name)) {
+          unreferencedExports.push({
+            ...exp,
+            modulePathName: mod.filePathName,
+          });
+        }
+      }
+    }
+
+    return unreferencedExports;
   }
 }
