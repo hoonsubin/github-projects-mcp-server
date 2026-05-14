@@ -2,26 +2,14 @@
 // scripts/diagram/DiagramStyler.ts — Generate Mermaid classDef style declarations
 // =============================================================================
 
-import type { ExportInfo } from "./ExportParser.ts";
 import { formatClassNameFromPath, sanitizeId } from "./helpers.ts";
-
-// ── Types ──────────────────────────────────────────────────────────────────────
-
-export interface ParsedModule {
-  path: string;
-  imports: string[];
-  exports: ExportInfo[];
-  content?: string;
-}
-
-export interface ModuleStyle {
-  className: string;
-  folder: string;
-  classDef: string;
-}
+import type { ModuleStyle } from "./types.ts";
+import { ParsedModule } from "./ParsedModule.ts";
+// ── Options ──────────────────────────────────────────────────────────────────────
 
 interface StylerOptions {
   colorPalette?: readonly string[];
+  withNamespace?: boolean;
 }
 
 // ── Color Palette ──────────────────────────────────────────────────────────────
@@ -54,9 +42,11 @@ export const MODULE_COLOR_PALETTE = [
  */
 export class DiagramStyler {
   private readonly palette: readonly string[];
-
+  private readonly withNamespace: boolean;
   constructor(options?: StylerOptions) {
     this.palette = options?.colorPalette ?? MODULE_COLOR_PALETTE;
+    // Defaults to false
+    this.withNamespace = !!options?.withNamespace;
   }
 
   /**
@@ -72,7 +62,7 @@ export class DiagramStyler {
     const folderToModules = new Map<string, ParsedModule[]>();
 
     for (const mod of modules) {
-      const pathParts = mod.path.split("/");
+      const pathParts = mod.filePathName.split("/");
       // Get the parent folder (second-to-last part) or root if it's at root level
       const folder = pathParts.length > 1 ? pathParts[pathParts.length - 2] : "root";
 
@@ -100,7 +90,7 @@ export class DiagramStyler {
 
       // Create module styles for each module in this folder
       for (const mod of folderModules) {
-        const fileName = mod.path.split("/").pop()!;
+        const fileName = mod.filePathName.split("/").pop()!;
         const className = formatClassNameFromPath(fileName);
 
         moduleStyles.push({

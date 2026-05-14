@@ -14,22 +14,10 @@ export PATH="$HOME/.local/bin:$PATH"
 
 uv tool install mempalace
 
-
-
-# --- MemPalace: scripted onboard (global, once per user home) ---
-if [ ! -f "$HOME/.mempalace/config.yaml" ]; then
-  mempalace init . --no-mine
-fi
-
-# --- MemPalace: scripted project init (once per workspace) ---
-if [ ! -f "/workspace/mempalace.yaml" ]; then
-  mempalace init /workspace \
-    --wing "${MEMPALACE_WING:-$(basename /workspace)}" \
-    --no-mine
-fi
+mempalace init /workspace
 
 # --- MemPalace: index workspace, respecting .gitignore ---
-mempalace mine /workspace --gitignore-aware
+mempalace sync /workspace --gitignore-aware
 
 pi install npm:mempalace-pi
 

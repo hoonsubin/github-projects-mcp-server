@@ -9,6 +9,7 @@
   "imports": {
     "@modelcontextprotocol/inspector": "npm:@modelcontextprotocol/inspector@^0.21.2",
     "@modelcontextprotocol/sdk": "npm:@modelcontextprotocol/sdk@^1.29.0",
+    "@std/path": "jsr:@std/path@^1.1.4",
     "@types/express": "npm:@types/express@^5.0.6",
     "express": "npm:express@^5.2.1",
     "graphql": "npm:graphql@^16.13.2",

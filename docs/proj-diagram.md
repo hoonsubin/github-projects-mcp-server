@@ -12,19 +12,19 @@ This diagram shows the class structure of the codebase, with each module as a cl
 classDiagram
     direction LR
 
-    class Orient:::scrum {
+    class orient.ts:::scrum {
         +orientUseCase()
     }
 
-    class Get_Backlog:::scrum {
+    class get-backlog.ts:::scrum {
         +getBacklogUseCase()
     }
 
-    class Get_Template:::scrum {
+    class get-template.ts:::scrum {
         +getTemplateUseCase()
     }
 
-    class Sprint_Math:::scrum {
+    class sprint-math.ts:::scrum {
         +buildSprintMeta()
         +groupStoriesByStatus()
         +computeSprintTotals()
@@ -34,18 +34,15 @@ classDiagram
         %% Unused: groupStoriesByStatus, computeSprintTotals
     }
 
-    class Get_Backlog_Test:::scrum {
-    }
-
-    class Get_Story:::scrum {
+    class get-story.ts:::scrum {
         +getStoryUseCase()
     }
 
-    class Get_Burndown:::scrum {
+    class get-burndown.ts:::scrum {
         +getBurndownUseCase()
     }
 
-    class Ports:::scrum {
+    class ports.ts:::scrum {
         interface SprintInfo
         interface PlatformState
         interface StoryDetail
@@ -75,28 +72,28 @@ classDiagram
         %% Unused: SprintTotalsActive, SprintTotalsHistory, ProjectWriter
     }
 
-    class Get_History:::scrum {
+    class get-history.ts:::scrum {
         +getHistoryUseCase()
     }
 
-    class Update_Impediment:::scrum {
+    class update-impediment.ts:::scrum {
         +updateImpedimentUseCase()
         %% Unused: updateImpedimentUseCase
     }
 
-    class Get_Sprint:::scrum {
+    class get-sprint.ts:::scrum {
         +getSprintUseCase()
     }
 
-    class Scrum_Read:::tools {
+    class scrum-read.ts:::tools {
         +registerScrumReadTools()
     }
 
-    class Scrum_Write:::tools {
+    class scrum-write.ts:::tools {
         +registerScrumWriteTools() void
     }
 
-    class Scrum:::schemas {
+    class scrum.ts:::schemas {
         +var GetSprintSchema
         +var GetBacklogSchema
         +var GetStorySchema
@@ -112,22 +109,22 @@ classDiagram
         +var GetTemplateSchema
     }
 
-    class Inputs:::schemas {
+    class inputs.ts:::schemas {
         +var GraphQLQuerySchema
     }
 
-    class Errors:::github {
+    class errors.ts:::github {
         class GitHubApiError
     }
 
-    class Queries:::github {
+    class queries.ts:::github {
         +var GET_ISSUE_DETAILS_QUERY
         +var GET_ITEM_FIELDS_QUERY
         +var GET_REPO_LABELS_QUERY
         +var GET_IMPEDIMENT_ISSUES_QUERY
     }
 
-    class Mappers:::github {
+    class mappers.ts:::github {
         interface IssueDetailsInput
         +buildStoryFromRaw()
         +buildEnrichedStory()
@@ -136,27 +133,52 @@ classDiagram
         +buildBurndownStoryInput()
     }
 
-    class Pagination:::internal {
+    class burndown-calculator.ts:::internal {
+        class BurndownCalculator
+        %% Unused: BurndownCalculator
+    }
+
+    class pagination.ts:::internal {
         class PaginatedProjectItemFetcher
         +isBacklogItem()
     }
 
-    class Resolver:::internal {
+    class resolver.ts:::internal {
         +resolveSprint()
         +resolveStory()
     }
 
-    class Contents:::internal {
+    class field-value-mutator.ts:::internal {
+        class FieldValueMutator
+        %% Unused: FieldValueMutator
+    }
+
+    class user-milestone-resolver.ts:::internal {
+        class UserMilestoneResolver
+    }
+
+    class label-resolver.ts:::internal {
+        interface GitHubLabel
+        class LabelResolver
+        %% Unused: GitHubLabel
+    }
+
+    class vocabulary-manager.ts:::internal {
+        class VocabularyManager
+        %% Unused: VocabularyManager
+    }
+
+    class contents.ts:::internal {
         +fetchRepoFile()
     }
 
-    class Http_Client:::internal {
+    class http-client.ts:::internal {
         interface RestResponse
         +graphql()
         +rest()
     }
 
-    class Types:::github {
+    class types.ts:::github {
         interface GitHubBackendConfig
         interface GraphQLResponse
         type ItemContentType
@@ -171,19 +193,19 @@ classDiagram
         interface LinkedPr
     }
 
-    class Config_Loader:::github {
+    class config-loader.ts:::github {
         interface RuntimeConfig
         +loadConfig()
     }
 
-    class Backend:::github {
+    class backend.ts:::github {
         class GitHubProjectBackend
     }
 
-    class Index:::root {
+    class index.ts:::src {
     }
 
-    class Types:::domain {
+    class types.ts:::domain {
         interface StoryRef
         interface ImpedimentRef
         type SprintRef
@@ -199,162 +221,103 @@ classDiagram
         %% Unused: ImpedimentRef
     }
 
-    class Acceptance_Criteria:::rules {
+    class acceptance-criteria.ts:::rules {
         +parseAcceptanceCriteria()
     }
 
-    class Status:::rules {
+    class status.ts:::rules {
         +isTerminalStatus()
     }
 
-    class Readiness:::rules {
+    class readiness.ts:::rules {
         +computeReadinessSummary()
     }
 
-    class Labels:::rules {
+    class labels.ts:::rules {
         type StoryTypeLabel
         +classifyLabels()
     }
 
-    class Config:::domain {
+    class config.ts:::domain {
         interface ScrumConfig
     }
 
-    class Mutation_Validator:::services {
+    class mutation-validator.ts:::services {
         +isMutationQuery() boolean
     }
 
-    class Error_Enrichment:::services {
+    class error-enrichment.ts:::services {
         +enrichError()
     }
 
-    class Logger:::services {
+    class logger.ts:::services {
         +var log
     }
 
+    class ports.ts:::scrum {
+    }
 
-    Orient --> Ports : "imports"
-    Orient --> Config : "imports"
-    Get_Backlog --> Ports : "imports"
-    Get_Backlog --> Config : "imports"
-    Get_Backlog --> Types : "imports"
-    Get_Backlog --> Readiness : "imports"
-    Get_Backlog --> Status : "imports"
-    Get_Template --> Ports : "imports"
-    Get_Template --> Types : "imports"
-    Get_Template --> Config : "imports"
-    Sprint_Math --> Types : "imports"
-    Sprint_Math --> Ports : "imports"
-    Get_Backlog_Test --> Index : "imports"
-    Get_Backlog_Test --> Get_Backlog : "imports"
-    Get_Backlog_Test --> Ports : "imports"
-    Get_Backlog_Test --> Types : "imports"
-    Get_Backlog_Test --> Config : "imports"
-    Get_Story --> Ports : "imports"
-    Get_Story --> Types : "imports"
-    Get_Story --> Acceptance_Criteria : "imports"
-    Get_Burndown --> Ports : "imports"
-    Get_Burndown --> Types : "imports"
-    Get_Burndown --> Config : "imports"
-    Get_Burndown --> Sprint_Math : "imports"
-    Ports --> Types : "imports"
-    Get_History --> Ports : "imports"
-    Get_History --> Config : "imports"
-    Get_History --> Status : "imports"
-    Update_Impediment --> Ports : "imports"
-    Get_Sprint --> Ports : "imports"
-    Get_Sprint --> Types : "imports"
-    Get_Sprint --> Sprint_Math : "imports"
+
+    Orient --> Index : "imports"
+    Get_Backlog --> Index : "imports"
+    Get_Template --> Index : "imports"
+    Sprint_Math --> Index : "imports"
+    Get_Story --> Index : "imports"
+    Get_Burndown --> Index : "imports"
+    Ports --> Index : "imports"
+    Get_History --> Index : "imports"
+    Update_Impediment --> Index : "imports"
+    Get_Sprint --> Index : "imports"
     Scrum_Read --> Index : "imports"
-    Scrum_Read --> Ports : "imports"
-    Scrum_Read --> Config : "imports"
-    Scrum_Read --> Scrum : "imports"
-    Scrum_Read --> Error_Enrichment : "imports"
-    Scrum_Read --> Orient : "imports"
-    Scrum_Read --> Get_Template : "imports"
-    Scrum_Read --> Get_Story : "imports"
-    Scrum_Read --> Get_Sprint : "imports"
-    Scrum_Read --> Get_Backlog : "imports"
-    Scrum_Read --> Get_History : "imports"
-    Scrum_Read --> Get_Burndown : "imports"
     Scrum_Write --> Index : "imports"
-    Scrum_Write --> Ports : "imports"
-    Scrum_Write --> Types : "imports"
-    Scrum_Write --> Config : "imports"
-    Scrum_Write --> Scrum : "imports"
-    Scrum_Write --> Inputs : "imports"
-    Scrum_Write --> Mutation_Validator : "imports"
-    Scrum_Write --> Error_Enrichment : "imports"
-    Scrum_Write --> Http_Client : "imports"
     Scrum --> Index : "imports"
     Inputs --> Index : "imports"
     Queries --> Index : "imports"
-    Mappers --> Config_Loader : "imports"
-    Mappers --> Types : "imports"
-    Mappers --> Ports : "imports"
-    Mappers --> Labels : "imports"
-    Pagination --> Config_Loader : "imports"
-    Pagination --> Types : "imports"
-    Resolver --> Config_Loader : "imports"
-    Resolver --> Types : "imports"
-    Contents --> Errors : "imports"
-    Contents --> Http_Client : "imports"
-    Http_Client --> Types : "imports"
-    Http_Client --> Logger : "imports"
-    Http_Client --> Errors : "imports"
-    Types --> Github_Types : "imports"
+    Mappers --> Index : "imports"
+    Burndown_Calculator --> Index : "imports"
+    Pagination --> Index : "imports"
+    Resolver --> Index : "imports"
+    Field_Value_Mutator --> Index : "imports"
+    User_Milestone_Resolver --> Index : "imports"
+    Label_Resolver --> Index : "imports"
+    Vocabulary_Manager --> Index : "imports"
+    Contents --> Index : "imports"
+    Http_Client --> Index : "imports"
+    Types --> Index : "imports"
     Config_Loader --> Index : "imports"
-    Config_Loader --> Types : "imports"
-    Config_Loader --> Config : "imports"
-    Backend --> Errors : "imports"
-    Backend --> Http_Client : "imports"
-    Backend --> Contents : "imports"
-    Backend --> Config_Loader : "imports"
-    Backend --> Resolver : "imports"
-    Backend --> Pagination : "imports"
-    Backend --> Mappers : "imports"
-    Backend --> Queries : "imports"
-    Backend --> Ports : "imports"
-    Backend --> Types : "imports"
-    Index --> Scrum_Read : "imports"
-    Index --> Scrum_Write : "imports"
-    Index --> Config_Loader : "imports"
-    Index --> Backend : "imports"
-    Index --> Http_Client : "imports"
-    Index --> Logger : "imports"
-    Index --> Ports : "imports"
-    Index --> Types : "imports"
-    Index --> Config : "imports"
-    Status --> Config : "imports"
-    Config --> Types : "imports"
-    Error_Enrichment --> Errors : "imports"
+    Backend --> Index : "imports"
+    Status --> Index : "imports"
+    Config --> Index : "imports"
+    Error_Enrichment --> Index : "imports"
 
     classDef scrum fill:#f9f,stroke:#333,stroke-width:2px,color:#000;
     classDef tools fill:#ccf,stroke:#333,stroke-width:2px,color:#000;
     classDef schemas fill:#cfc,stroke:#333,stroke-width:2px,color:#000;
     classDef github fill:#ffc,stroke:#333,stroke-width:2px,color:#000;
     classDef internal fill:#fcc,stroke:#333,stroke-width:2px,color:#000;
-    classDef root fill:#cff,stroke:#333,stroke-width:2px,color:#000;
+    classDef src fill:#cff,stroke:#333,stroke-width:2px,color:#000;
     classDef domain fill:#fcf,stroke:#333,stroke-width:2px,color:#000;
     classDef rules fill:#0ff,stroke:#333,stroke-width:2px,color:#000;
     classDef services fill:#f0f,stroke:#333,stroke-width:2px,color:#000;
 ```
 
-
 ## Unused Exports
 
 The following exports are never imported by any other module in the codebase:
 
-| Module | Export | Kind |
-|--------|--------|------|
-| [`scrum/sprint-math.ts`](../src/scrum/sprint-math.ts) | `groupStoriesByStatus` | `function` |
-| [`scrum/sprint-math.ts`](../src/scrum/sprint-math.ts) | `computeSprintTotals` | `function` |
-| [`scrum/ports.ts`](../src/scrum/ports.ts) | `SprintTotalsActive` | `interface` |
-| [`scrum/ports.ts`](../src/scrum/ports.ts) | `SprintTotalsHistory` | `interface` |
-| [`scrum/ports.ts`](../src/scrum/ports.ts) | `ProjectWriter` | `interface` |
-| [`scrum/update-impediment.ts`](../src/scrum/update-impediment.ts) | `updateImpedimentUseCase` | `function` |
-| [`domain/types.ts`](../src/domain/types.ts) | `ImpedimentRef` | `interface` |
-
+| Module                                                                                                            | Export                    | Kind        |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------- | ----------- |
+| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                                                       | `groupStoriesByStatus`    | `function`  |
+| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                                                       | `computeSprintTotals`     | `function`  |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                                   | `SprintTotalsActive`      | `interface` |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                                   | `SprintTotalsHistory`     | `interface` |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                                   | `ProjectWriter`           | `interface` |
+| [`./src/scrum/update-impediment.ts`](../src/scrum/update-impediment.ts)                                           | `updateImpedimentUseCase` | `function`  |
+| [`./src/adapters/github/internal/burndown-calculator.ts`](../src/adapters/github/internal/burndown-calculator.ts) | `BurndownCalculator`      | `class`     |
+| [`./src/adapters/github/internal/field-value-mutator.ts`](../src/adapters/github/internal/field-value-mutator.ts) | `FieldValueMutator`       | `class`     |
+| [`./src/adapters/github/internal/label-resolver.ts`](../src/adapters/github/internal/label-resolver.ts)           | `GitHubLabel`             | `interface` |
+| [`./src/adapters/github/internal/vocabulary-manager.ts`](../src/adapters/github/internal/vocabulary-manager.ts)   | `VocabularyManager`       | `class`     |
+| [`./src/domain/types.ts`](../src/domain/types.ts)                                                                 | `ImpedimentRef`           | `interface` |
 
 ## Notes
 
@@ -367,4 +330,4 @@ The following exports are never imported by any other module in the codebase:
 
 ---
 
-*Auto-generated — do not edit manually*
+_Auto-generated — do not edit manually_

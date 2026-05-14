@@ -1,28 +1,5 @@
-// =============================================================================
-// scripts/diagram/ExportParser.ts — Extract exports with type info via TS Compiler API
-// =============================================================================
-
 import * as ts from "typescript";
-
-// ── Types ──────────────────────────────────────────────────────────────────────
-
-export interface ExportInfo {
-  name: string;
-  kind: ExportKind;
-  type?: string;
-  returnType?: string;
-}
-
-export type ExportKind =
-  | "class"
-  | "function"
-  | "interface"
-  | "type"
-  | "enum"
-  | "const"
-  | "let"
-  | "var"
-  | "module";
+import { ExportInfo, ExportKind, ImportInfo } from "./types.ts";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -79,72 +56,155 @@ const getVariableKind = (
 /**
  * Uses TypeScript Compiler API to extract exports with full type information.
  */
-export class ExportParser {
-  parse(content: string, filePath: string): ExportInfo[] {
-    const sourceFile = ts.createSourceFile(
-      filePath,
-      content,
+export class ParsedModule {
+  // includes parsing external imports or not
+  private includeExternal: boolean;
+
+  private imports: ImportInfo[] = [];
+  private exports: ExportInfo[] = [];
+
+  private moduleSourceFile: ts.SourceFile;
+
+  constructor(
+    public filePathName: string,
+    public moduleBody: string,
+    includeExternal: boolean = false,
+  ) {
+    this.filePathName = filePathName;
+    this.moduleBody = moduleBody;
+    this.includeExternal = includeExternal;
+    const modSource = ts.createSourceFile(
+      filePathName,
+      moduleBody,
       ts.ScriptTarget.Latest,
       true,
     );
 
-    const exports: ExportInfo[] = [];
+    this.moduleSourceFile = modSource;
 
-    const visit = (node: ts.Node): void => {
-      const exportInfo = this.extractExportInfo(node, exports);
-      if (exportInfo) {
-        exports.push(exportInfo);
-      }
-      ts.forEachChild(node, visit);
-    };
-
-    visit(sourceFile);
-    return exports;
+    // todo: add parse Import setter and parse Exp
+    ts.forEachChild(modSource, this.parseImports);
+    ts.forEachChild(modSource, this.parseExports);
   }
 
-  private extractExportInfo(
+  public getModuleSource() {
+    return this.moduleSourceFile;
+  }
+
+  public getExports() {
+    return this.exports;
+  }
+
+  public getImports() {
+    return this.imports;
+  }
+
+  // Find all import declarations in the file
+  private parseImports = (node: ts.Node): void => {
+    if (!ts.isImportDeclaration(node)) return;
+    const specifier = node.moduleSpecifier;
+    // Check if this import declaration matches our target path
+    if (specifier && ts.isStringLiteral(specifier)) {
+      // Handle different types of import clauses
+
+      const modulePath = specifier.text;
+      // Named imports (e.g., { Foo, Bar })
+
+      // Escape if it's not an internal module and the object doesn't include externals
+      const isInternal = modulePath.startsWith(".") || modulePath.startsWith("/");
+      if (!isInternal && !this.includeExternal) return;
+
+      if (
+        node.importClause?.namedBindings && ts.isNamedImports(node.importClause.namedBindings)
+      ) {
+        const namedImports = node.importClause.namedBindings;
+
+        for (const binding of namedImports.elements) {
+          if (ts.isImportSpecifier(binding)) {
+            const name = binding.name.text;
+
+            // Handle "as" aliases (e.g., { Foo as Bar })
+            const alias = binding.propertyName?.text;
+
+            // For simplicity, we'll treat all named imports as "named"
+            // and let the caller handle type distinction if needed
+            this.imports.push({
+              name,
+              kind: "named",
+              alias,
+              path: modulePath,
+            });
+          }
+        }
+      }
+
+      // Default import (e.g., Foo)
+      if (node.importClause?.name) {
+        this.imports.push({
+          name: node.importClause.name.text,
+          kind: "default",
+          path: modulePath,
+        });
+      }
+
+      // Namespace import (e.g., * as Foo)
+      if (
+        node.importClause?.namedBindings &&
+        ts.isNamespaceImport(node.importClause.namedBindings)
+      ) {
+        const namespaceImport = node.importClause.namedBindings;
+        this.imports.push({
+          name: namespaceImport.name.text,
+          kind: "namespace",
+          path: modulePath,
+        });
+      }
+    }
+  };
+
+  private parseExports = (
     node: ts.Node,
-    exports: ExportInfo[],
-  ): ExportInfo | null {
-    if (!hasExportKeyword(node)) return null;
+  ): void => {
+    if (!hasExportKeyword(node)) return;
 
     if (ts.isClassDeclaration(node)) {
-      return {
+      this.exports.push({
         name: node.name?.text ?? "anonymous",
         kind: "class",
-      };
+      });
     }
 
     if (ts.isFunctionDeclaration(node)) {
       const returnType = this.getReturnTypeText(node);
-      return {
+      this.exports.push({
         name: node.name?.text ?? "anonymous",
+        // todo: also get the function parameters
         kind: "function",
         returnType,
-      };
+      });
     }
 
     if (ts.isInterfaceDeclaration(node)) {
-      return {
+      this.exports.push({
         name: node.name.text,
         kind: "interface",
-      };
+      });
     }
 
     if (ts.isTypeAliasDeclaration(node)) {
       const type = node.type.getText().trim();
-      return {
+      this.exports.push({
         name: node.name.text,
         kind: "type",
         type,
-      };
+      });
     }
 
     if (ts.isEnumDeclaration(node)) {
-      return {
+      this.exports.push({
         name: node.name.text,
         kind: "enum",
-      };
+      });
     }
 
     if (ts.isVariableStatement(node)) {
@@ -157,20 +217,19 @@ export class ExportParser {
         let finalKind = kind;
         if (decl.initializer) {
           if (isFunctionExpression(decl.initializer)) {
+            // todo: also get the function parameters
             finalKind = "function";
           }
         }
 
-        exports.push({
+        this.exports.push({
           name: decl.name.getText().trim(),
           kind: finalKind,
           type,
         });
       }
     }
-
-    return null;
-  }
+  };
 
   private getReturnTypeText(
     node: ts.FunctionDeclaration,

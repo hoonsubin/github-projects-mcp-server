@@ -6,24 +6,17 @@
 // =============================================================================
 
 // ── Imports: diagram utilities ─────────────────────────────────────────────────
-import { type ExportInfo, ExportParser } from "./diagram/ExportParser.ts";
-import { DependencyGraph, type UnusedExport } from "./diagram/DependencyGraph.ts";
+import * as path from "@std/path";
+import type { UnusedExport } from "./diagram/types.ts";
 import {
   ClassDiagramGenerator,
   type ClassDiagramOptions,
 } from "./diagram/ClassDiagramGenerator.ts";
-
-// ── Types ──────────────────────────────────────────────────────────────────────
-export interface ParsedModule {
-  path: string; // Relative to src/, e.g., "tools/scrum-read.ts"
-  imports: string[]; // Raw import paths (relative only)
-  exports: ExportInfo[]; // Extracted exports with type info
-  content?: string; // Raw content for import extraction
-}
-
+import * as helper from "./diagram/helpers.ts";
+import { ParsedModule } from "./diagram/ParsedModule.ts";
 // ── Defaults ───────────────────────────────────────────────────────────────────
-const DEFAULT_EXCLUSIONS = ["generated/**", "graphql/**", "**/*_test.ts"];
 
+const DEFAULT_EXCLUSIONS = ["generated/**", "graphql/**", "**/*test.ts"];
 // ── CLI ────────────────────────────────────────────────────────────────────────
 const printHelp = (): void => {
   console.log(`
@@ -94,8 +87,6 @@ const scanModules = async (
   includeExternal: boolean,
 ): Promise<ParsedModule[]> => {
   const modules: ParsedModule[] = [];
-  const exportParser = new ExportParser();
-
   const walk = async (dir: string, rel: string): Promise<void> => {
     try {
       for await (const entry of Deno.readDir(dir)) {
@@ -109,14 +100,13 @@ const scanModules = async (
         } else if (entry.isFile && entry.name.endsWith(".ts")) {
           if (!isExcluded(relPath, DEFAULT_EXCLUSIONS)) {
             const content = await Deno.readTextFile(full);
-            const imports = parseImportPaths(content).filter(
-              (p) =>
-                p.startsWith("./") ||
-                p.startsWith("../") ||
-                includeExternal,
-            );
-            const exports = exportParser.parse(content, full);
-            modules.push({ path: relPath, imports, exports, content });
+            const currentMod = new ParsedModule(full, content, includeExternal);
+            console.log({
+              name: currentMod.filePathName,
+              imported: currentMod.getImports(),
+              exporting: currentMod.getExports(),
+            });
+            modules.push(currentMod);
           }
         }
       }
@@ -130,15 +120,6 @@ const scanModules = async (
   return modules;
 };
 
-const parseImportPaths = (content: string): string[] => {
-  const paths: string[] = [];
-  const re = /from\s+['"]([^'"]+)['"]/g;
-  let m;
-  while ((m = re.exec(content)) !== null) paths.push(m[1]);
-  return paths;
-};
-
-// ── Diagram Generator ──────────────────────────────────────────────────────────
 const generateDiagram = (
   modules: ParsedModule[],
   unusedExports: UnusedExport[],
@@ -160,6 +141,7 @@ const generateDiagram = (
 const generateMarkdown = (
   modules: ParsedModule[],
   unusedExports: UnusedExport[],
+  outputDir: string,
 ): string => {
   const diagram = generateDiagram(modules, unusedExports);
 
@@ -167,8 +149,10 @@ const generateMarkdown = (
   if (unusedExports.length > 0) {
     const unusedRows = unusedExports
       .map(
-        (e) =>
-          `| [\`${e.modulePath}\`](../src/${e.modulePath}) | \`${e.exportName}\` | \`${e.exportKind}\` |`,
+        (i) =>
+          `| [\`${i.modulePath}\`](${
+            path.relative(path.dirname(outputDir), i.modulePath)
+          }) | \`${i.name}\` | \`${i.kind}\` |`,
       )
       .join("\n");
 
@@ -228,12 +212,11 @@ const main = async (): Promise<void> => {
   console.log(`Found ${modules.length} modules`);
 
   console.log("Building dependency graph...");
-  const depGraph = new DependencyGraph(modules);
-  const unusedExports = depGraph.findUnusedExports();
+  const unusedExports = helper.findUnusedExports(modules);
   console.log(`Found ${unusedExports.length} unused exports`);
 
   console.log("Generating diagram...");
-  const markdown = generateMarkdown(modules, unusedExports);
+  const markdown = generateMarkdown(modules, unusedExports, args.output);
 
   const outputDir = args.output.split("/").slice(0, -1).join("/");
   try {

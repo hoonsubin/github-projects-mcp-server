@@ -259,19 +259,19 @@ Simple regex for GraphQL mutation detection is prone to edge cases.
 
 ## Recommended Actions (Sized)
 
-| #   | Action                                                                                   | Effort    | Priority |
-| --- | ---------------------------------------------------------------------------------------- | --------- | -------- |
-| 1   | Extract `GitHubProjectBackend` into focused services (Label, Milestone, User, Field)     | ~3–5 days | P0       |
-| 2   | Move `resolveSprint` to `scrum/` layer; remove `RuntimeConfig` import from `resolver.ts` | ~1 day    | P0       |
-| 3   | Move `PaginatedProjectItemFetcher` into `adapters/github/` (it's GitHub-specific)        | ~1–2 days | P0       |
-| 4   | Introduce `BackendFactory` interface to support OCP for new backends                     | ~1 day    | P0       |
-| 5   | Move `classifyIterations` from `config-loader.ts` to `scrum/`                            | ~0.5 days | P1       |
-| 6   | Split `RuntimeConfig` into `DomainConfig` + `RuntimeConfig`                              | ~2 days   | P1       |
-| 7   | Defer `queries.ts` file I/O to factory function                                          | ~0.5 days | P1       |
-| 8   | Fix hardcoded "done" comparison in `get-history.ts`                                      | ~0.5 days | P1       |
-| 9   | **Introduce an `Impediment` domain entity in `src/domain/types.ts`**                     | ~2 days   | P0       |
-| 10  | **Extract impediment status rules into `src/domain/rules/impediments.ts`**               | ~1 day    | P1       |
-| 11  | **Refactor sprint association to use structured field checks instead of regex**          | ~2 days   | P1       |
+| #  | Action                                                                                   | Effort    | Priority |
+| -- | ---------------------------------------------------------------------------------------- | --------- | -------- |
+| 1  | Extract `GitHubProjectBackend` into focused services (Label, Milestone, User, Field)     | ~3–5 days | P0       |
+| 2  | Move `resolveSprint` to `scrum/` layer; remove `RuntimeConfig` import from `resolver.ts` | ~1 day    | P0       |
+| 3  | Move `PaginatedProjectItemFetcher` into `adapters/github/` (it's GitHub-specific)        | ~1–2 days | P0       |
+| 4  | Introduce `BackendFactory` interface to support OCP for new backends                     | ~1 day    | P0       |
+| 5  | Move `classifyIterations` from `config-loader.ts` to `scrum/`                            | ~0.5 days | P1       |
+| 6  | Split `RuntimeConfig` into `DomainConfig` + `RuntimeConfig`                              | ~2 days   | P1       |
+| 7  | Defer `queries.ts` file I/O to factory function                                          | ~0.5 days | P1       |
+| 8  | Fix hardcoded "done" comparison in `get-history.ts`                                      | ~0.5 days | P1       |
+| 9  | **Introduce an `Impediment` domain entity in `src/domain/types.ts`**                     | ~2 days   | P0       |
+| 10 | **Extract impediment status rules into `src/domain/rules/impediments.ts`**               | ~1 day    | P1       |
+| 11 | **Refactor sprint association to use structured field checks instead of regex**          | ~2 days   | P1       |
 
 ---
 
