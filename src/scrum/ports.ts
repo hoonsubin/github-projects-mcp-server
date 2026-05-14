@@ -249,7 +249,7 @@ export interface BurndownPort {
 export interface ImpedimentPort {
   getSprintImpediments(sprint: SprintRef): Promise<ImpedimentListing[]>;
   updateImpediment(
-    ref: StoryRef,
+    ref: Ref,
     status: "open" | "in_progress" | "resolved",
     resolutionNotes?: string,
   ): Promise<ImpedimentListing>;

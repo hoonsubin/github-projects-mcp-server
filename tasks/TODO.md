@@ -1,363 +1,560 @@
-# Architecture Modernization — Task List
+# Task List
 
-Atomic, sequential tasks derived from the architecture audit. Each task is independently executable and defines its expected deliverable.
+Atomic, sequential tasks derived from the [REFACTORING.md](./REFACTORING.md) or [AUDIT.md](./AUDIT.md) documents.
 
-**Audit basis:** [`tasks/REFACTORING.md`](tasks/REFACTORING.md) + live codebase analysis (2026-05-13)
+Keep this document up to date, and replace it with tasks that are relevant.
 
 ---
 
-## Phase A — Agent Stability (Fix Silent Session Failures) FINISHED
+## Phase D — Runtime Bug Fixes (Silent Functional Failures) FINISHED
 
-### Task A.1: Fix `scrum_orient` response shape
+These bugs return wrong data or break cross-tool workflows without raising errors.
+Fix these before any agent-facing testing.
 
-- **File:** [`src/scrum/orient.ts`](src/scrum/orient.ts)
-- **Type:** Refactoring (response shape correction)
-- **Description:** The `OrientResult` interface and `orientUseCase` return shape use legacy field names that don't match what agent session-start rules expect. Apply the following renames and additions:
-  1. Rename top-level `declared_vocabulary` → `vocabulary`
-  2. Rename `vocabulary.definition_of_ready` → `vocabulary.dor`
-  3. Rename `vocabulary.definition_of_done` → `vocabulary.dod`
-  4. Add `vocabulary.autonomy: { level: string } | null` sourced from `scrumConfig.project.agent.autonomy` (note: `scrumConfig.project.agent` may be `undefined`, so guard with optional chaining)
-  5. Add a new top-level convenience field `platform_state.missing_options: string[]` by concatenating `fields.status.missing_options` and `fields.priority.missing_options`. This is additive — keep both per-field `missing_options` arrays unchanged in the return shape.
-- **Deliverable:** Return shape matches:
+---
+
+### Task D.1: Fix PVTI regex — orphan impediment detection never matches
+
+- **File:** [`src/adapters/github/backend.ts:493`](src/adapters/github/backend.ts)
+- **Type:** Bug fix
+- **Description:** GitHub Projects v2 item IDs are alphanumeric (e.g., `PVTI_kwDOBZCr-c8AAA`). The current pattern only matches numeric suffixes, so `getOrphanImpediments()` silently treats every impediment issue as linked and returns an empty array for every project.
+
+  Change line 493:
+
   ```typescript
-  interface OrientResult {
-    platform_state: {
-      fields: {
-        status: { exists: boolean; options: string[]; missing_options: string[] };
-        sprint: { exists: boolean };
-        story_points: { exists: boolean };
-        priority: { exists: boolean; options: string[]; missing_options: string[] };
-      };
-      missing_options: string[];  // convenience field: concat of status + priority missing_options
-      labels: { existing: string[]; expected: string[]; missing: string[] };
-      iterations: { ... };
-    };
-    vocabulary: {
-      status: Record<string, string> | null;
-      priority: Record<string, string> | null;
-      story_points: { scale: string | null; values: number[] | null };
-      sprint: { duration_days: number | null; velocity_window: number; length_weeks: number | null };
-      team: unknown;
-      dor: unknown;       // was definition_of_ready
-      dod: unknown;       // was definition_of_done
-      autonomy: { level: string } | null;  // new
-      templates: { ... };
-    };
-  }
+  // WRONG — \d+ never matches real GitHub project item IDs
+  const PVTI_PATTERN = /PVTI_\d+/;
+
+  // CORRECT — alphanumeric + hyphens
+  const PVTI_PATTERN = /PVTI_[\w-]+/;
   ```
+
+- **Deliverable:** `getOrphanImpediments()` correctly identifies orphan issues (those with no `PVTI_[\w-]+` reference in their comments) and returns them in `scrum_get_backlog.orphan_impediments`.
 - **Dependencies:** None
-- **Verification:** Run `deno task lint` and `deno task check`; confirm no type errors. Verify the handler in `src/tools/scrum-read.ts` destructures the correct field paths.
-
-### Task A.3: Add `comment` field to `scrum_update_story`
-
-> **Note: Execute before A.2** — A.2 rule corrections reference this new capability.
-
-- **Files:** [`src/schemas/scrum.ts`](src/schemas/scrum.ts), [`src/tools/scrum-write.ts`](src/tools/scrum-write.ts)
-- **Note:** `src/scrum/ports.ts` does **not** need to change — `addComment()` already exists on `ProjectBackend`.
-- **Type:** Schema + handler extension
-- **Description:** Three changes:
-  1. Add optional `comment: string` to `UpdateStorySchema` in [`src/schemas/scrum.ts:217`](src/schemas/scrum.ts:217). Place it after the `epic` field, before `.strict()`.
-  2. In [`src/tools/scrum-write.ts`](src/tools/scrum-write.ts), after the `await backend.updateStory(params.ref, updates as StoryUpdates)` call (currently line 168), check if `params.comment` is defined. If so, call `await backend.addComment(params.ref, params.comment)`.
-  3. Update the tool `description` string (currently line 143) to document the new `comment` parameter.
-- **Deliverable:** `scrum_update_story` with only `{ ref, comment }` posts a comment and leaves all other fields unchanged. `UpdateStorySchema` remains `.strict()`. The `comment` field can be combined with content fields (title, body, etc.) in one call.
-- **Dependencies:** None
-- **Verification:** Manual test: call `scrum_update_story` with `{ ref, comment }` only — verify comment is posted and story content is unchanged. Call with both `comment` and `body` — verify both are applied.
-
-### Task A.2: Fix wrong tool references in agent ceremony rules
-
-- **Files:** `.roo/rules-scrum-master/4_transitions.xml`, `3_sm_stance.xml`, `1_workflow.xml`, `2_conduct.xml`
-- **Type:** Documentation/Rule correction
-- **Description:** Four places reference incorrect tools. Apply these specific fixes:
-  1. **`4_transitions.xml`** — In `board_catchup` Phase 2 and `stale_recovery` Phase 4: Replace "Mark as Done via `scrum_update_story`" → "Mark as Done via `scrum_set_field` with `field: 'status'` and `value: 'Done'`".
-  2. **`3_sm_stance.xml`** — In `dod_lowered_for_deadline` dysfunction: Replace "Create a tech-debt story via `scrum_update_story`" → "Create a tech-debt story via `scrum_create_story` with `type: 'tech_debt'`".
-  3. **`1_workflow.xml`** — In `sprint_planning` Step 5: Remove "capacity" from `scrum_plan_sprint` call description. Update to state that `goal` is passed as an optional parameter (this aligns with Task B.6).
-  4. **`2_conduct.xml`** — In `prefer_comments_over_body_edits`: Confirm the mechanism works. Add a note that `scrum_update_story` now accepts a `comment` field (see Task A.3).
-- **Deliverable:** No rule references `scrum_update_story` for status changes or story creation. Sprint planning Step 5 mentions `goal` as parameter, not `capacity`.
-- **Dependencies:** Task A.3 (rule corrections reference the comment field addition)
-- **Verification:** Grep for `scrum_update_story` in rules files — only content edits (title, body, labels, assignees, epic) should remain.
+- **Verification:** Create an impediment issue in the repo with no comments; call `scrum_get_backlog` — verify it appears in `orphan_impediments`. Add a comment containing a `PVTI_` token — verify it disappears from the list.
 
 ---
 
-## Phase B — Feature Completeness (Implement Missing Functionality) FINISHED
+### Task D.2: Fix `updateImpediment` — `resolveStory()` called with wrong ID type
 
-### Task B.1: Implement `getOrphanImpediments()` backend query
+- **Files:** [`src/adapters/github/backend.ts:617–628`](src/adapters/github/backend.ts), [`src/schemas/scrum.ts`](src/schemas/scrum.ts)
+- **Type:** Bug fix (broken cross-tool workflow)
+- **Description:** `getOrphanImpediments()` (line 512) and `getSprintImpediments()` (line 605) both store the GitHub Issue node ID (`I_kwD…`) in `ref.id`. But `updateImpediment` at line 623 passes this `ref` to `resolveStory()`, which expects a project item ID (`PVTI_…`). The result is that every `scrum_update_impediment` call against a listed impediment fails with a resolution error.
 
-- **File:** [`src/adapters/github/backend.ts`](src/adapters/github/backend.ts:447)
-- **Type:** Feature implementation
-- **Description:** Replace the TODO stub (line 447–450) with a real implementation:
-  1. Query issues labeled `"impediment"` across all `tracked_repos` (use the same pattern as `getBacklogStories` for repo iteration).
-  2. For each issue, fetch its comments and check if any comment body contains a `PVTI_` project item ID (regex: `/PVTI_\d+/`).
-  3. Filter out issues that have at least one `PVTI_` reference — those are already linked to a story or sprint.
-  4. Project each remaining issue to `ImpedimentListing`:
+  Fix: remove the `resolveStory()` call from `updateImpediment`. The issue node ID stored in `ref.id` can be used directly as the GraphQL subject ID for the label mutation and comment. The `resolveStory()` indirection is only needed when going from a project item to an issue — that step is not needed here.
+  1. **In `updateImpediment` (backend.ts:622–628):** Replace the `resolveStory` call with a direct assignment:
+
      ```typescript
-     {
-       ref: { id: /* project item ID */ },
-       description: /* issue body */,
-       status: /* "open" | "in_progress" | "resolved" based on issue state */,
-       raised_by: /* issue creator login */,
-       raised_at: /* created_at ISO timestamp */,
-       resolved_at: /* closed_at ISO timestamp or null */,
+     // REMOVE this block:
+     const resolved = await resolveStory(ref, { graphql: this.gh.graphql });
+     if (!resolved.issueId) {
+       throw new Error(`Impediment "${ref.id}" is a Draft Issue…`);
+     }
+     // Use resolved.issueId throughout → replace with ref.id
+     ```
+
+     Then replace every `resolved.issueId` reference in the method body with `ref.id`.
+
+  2. **Update schema description in `UpdateImpedimentSchema`:** Change the `id` field description from "Impediment project item ID" to "Impediment issue node ID as returned by `scrum_get_backlog.orphan_impediments` or `scrum_get_sprint.impediments` `ref.id` field."
+
+- **Deliverable:** `scrum_update_impediment` succeeds when given an `id` from `scrum_get_backlog.orphan_impediments` or `scrum_get_sprint.impediments`. The `resolveStory` import can be removed from `updateImpediment` (but is still needed elsewhere in backend.ts).
+- **Dependencies:** None (but D.1 should precede so that impediment IDs are actually populated before testing this fix)
+- **Verification:** Call `scrum_get_backlog` — take an `id` from `orphan_impediments[0].ref.id`; call `scrum_update_impediment` with that id and `status: "in_progress"` — verify it succeeds.
+
+---
+
+### Task D.3: Fix `updateImpediment` — old status labels persist after update
+
+- **File:** [`src/adapters/github/backend.ts:676–683`](src/adapters/github/backend.ts)
+- **Type:** Bug fix
+- **Description:** The mutation at line 678 uses `addLabelsToLabelable`, which only appends labels without removing any. Despite the code at lines 663–673 computing the correct full replacement set (`updatedLabelIds`), the wrong mutation means the old `status_open` label stays alongside the new `status_resolved`. The issue ends up with both labels.
+
+  Change the mutation name and input field from `addLabelsToLabelable / subjectId` to `replaceLabelsOnLabelable / labelableId`:
+
+  ```typescript
+  // WRONG:
+  await this.gh.graphql(
+    `mutation UpdateIssueLabels($issueId: ID!, $labelIds: [ID!]!) {
+      addLabelsToLabelable(input: { subjectId: $issueId, labelIds: $labelIds }) {
+        issue { number }
+      }
+    }`,
+    { issueId: ref.id, labelIds: updatedLabelIds },
+  );
+
+  // CORRECT:
+  await this.gh.graphql(
+    `mutation ReplaceIssueLabels($issueId: ID!, $labelIds: [ID!]!) {
+      replaceLabelsOnLabelable(input: { labelableId: $issueId, labelIds: $labelIds }) {
+        labelable { ... on Issue { number } }
+      }
+    }`,
+    { issueId: ref.id, labelIds: updatedLabelIds },
+  );
+  ```
+
+  The `updatedLabelIds` computation at lines 663–673 is correct — only the mutation call needs to change.
+
+- **Deliverable:** After `scrum_update_impediment`, the issue has exactly one `status_*` label matching the new status. No old status labels remain.
+- **Dependencies:** D.2 (must be able to reach the mutation line without failing on `resolveStory`)
+- **Verification:** Create an issue with `status_open` label; call `scrum_update_impediment` with `status: "resolved"` — verify the issue has `status_resolved` only, and `status_open` is gone.
+
+---
+
+### Task D.4: Fix `updateImpediment` — returns empty `description` and `raised_at`
+
+- **File:** [`src/adapters/github/backend.ts:640–711`](src/adapters/github/backend.ts)
+- **Type:** Bug fix
+- **Description:** The return value at lines 704–711 has `description: ""` and `raised_at: ""` because the fields are commented with "Would require fetching". Both values are available in the existing `GetIssue` query — they just aren't currently selected.
+  1. **Extend the GraphQL query** at lines 641–652. Add `body` and `createdAt` to the `... on Issue` selection:
+
+     ```graphql
+     ... on Issue {
+       number
+       body
+       createdAt
+       labels(first: 20) { nodes { name id } }
+       closed
+       closedAt
      }
      ```
-  5. Only return unresolved impediments (status "open" or "in_progress").
-- **Deliverable:** `getOrphanImpediments()` returns actual orphan impediments. `scrum_get_backlog.orphan_impediments` field is populated.
-- **Dependencies:** None
-- **Verification:** Create an impediment issue without linking it to a story; call `scrum_get_backlog` — verify it appears in `orphan_impediments`. Create an impediment linked to a story — verify it does NOT appear.
 
-### Task B.2: Enrich `SprintSnapshot.impediments`
+  2. **Extend the TypeScript type** at lines 632–640. Add the new fields:
 
-- **Files:** [`src/scrum/ports.ts`](src/scrum/ports.ts:260), [`src/scrum/get-sprint.ts`](src/scrum/get-sprint.ts), [`src/scrum/get-history.ts`](src/scrum/get-history.ts), [`src/adapters/github/backend.ts`](src/adapters/github/backend.ts)
-- **Type:** Feature implementation
-- **Description:** Four changes:
-  1. Add `getSprintImpediments(sprint: SprintRef): Promise<ImpedimentListing[]>` to `ProjectBackend` interface in [`ports.ts`](src/scrum/ports.ts:260).
-  2. Implement in `GitHubProjectBackend`: query issues labeled `"impediment"` whose bodies or comments reference the sprint's iteration name (e.g., "Sprint 5"). Use the same `ImpedimentListing` projection pattern as Task B.1.
-  3. In [`get-sprint.ts`](src/scrum/get-sprint.ts): call `backend.getSprintImpediments(sprint)` and assign the result to `impediments` in the snapshot (replace hardcoded `[]`).
-  4. In [`get-history.ts`](src/scrum/get-history.ts:87): call `backend.getSprintImpediments(sprintName)` and assign to `impediments` (replace hardcoded `[]`).
-- **Deliverable:** `SprintSnapshot.impediments` contains all impediments associated with the sprint. Empty array when no impediments exist.
-- **Dependencies:** None (but B.1 is recommended first for shared patterns)
-- **Verification:** Create an impediment linked to a sprint; call `scrum_get_sprint` — verify impediment appears in the snapshot.
-
-### Task B.3: Replace hardcoded terminal status detection
-
-- **Files:** [`src/scrum/get-backlog.ts`](src/scrum/get-backlog.ts), [`src/scrum/get-history.ts`](src/scrum/get-history.ts)
-- **Type:** Refactoring (config-driven behavior)
-- **Description:** Two changes:
-  1. **In [`get-history.ts`](src/scrum/get-history.ts:57):** Replace the hardcoded `.toLowerCase() === "done"` in `computeTotals()` with a config-driven lookup. Create a helper function `isTerminalStatus(status: string | null, config: ScrumConfig): boolean` that:
-     - Iterates `config.scrum.status` entries
-     - Finds the key where `terminal: true`
-     - Looks up the corresponding `status_display` value from `scrumConfig.backends.github.status_display`
-     - Compares the input status (case-insensitive) against that display value
-  2. **In [`get-history.ts`](src/scrum/get-history.ts:95):** Rename `_scrumConfig` → `scrumConfig` (it's already passed but unused). Pass it to `entryToSnapshot()` and `computeTotals()`.
-  3. **In [`get-backlog.ts`](src/scrum/get-backlog.ts):** Apply the same `isTerminalStatus()` helper for the active-item filter (replace `.toLowerCase() === "done"`).
-- **Deliverable:** Active-item filter uses the config-declared terminal status, not a hardcoded string. Renaming the done status in `config.yml` correctly affects filtering without code changes.
-- **Dependencies:** None
-- **Verification:** Change the terminal status name in a test `config.yml`; verify backlog filtering respects the new name.
-
-### Task B.4: Fix `scrum_log_impediment` — optional `affects` and config-driven priority
-
-- **Files:** [`src/schemas/scrum.ts`](src/schemas/scrum.ts), [`src/tools/scrum-write.ts`](src/tools/scrum-write.ts:383)
-- **Type:** Schema + handler refactoring
-- **Description:** Three changes:
-  1. **Schema change** in [`src/schemas/scrum.ts:297`](src/schemas/scrum.ts:297): Make `affects` optional and union-based:
      ```typescript
-     affects: z
-       .union([
-         z.object({ story: StoryRefSchema }),
-         z.object({ sprint: SprintRefSchema }),
-       ])
-       .optional()
-       .describe(
-         "The story or sprint this impediment affects. Omit to log a project-level orphan.",
-       ),
-     ```
-     Use `z.discriminatedUnion` if Zod version supports it, otherwise use `.union()` with `.refine()` to enforce at most one sub-field.
-  2. **Handler change** in [`src/tools/scrum-write.ts:383`](src/tools/scrum-write.ts:383): Update the return shape to include `affects` in the response. When `affects` is omitted, return `affects: null`. Update the comment-logging logic with explicit conditional branching:
-     - When `affects` is **absent**: skip both cross-linking comment calls (current Step 3 and Step 4 in the handler) — create the impediment issue only.
-     - When `affects.story` is present: existing behavior — post a warning comment on the affected story and a back-link comment on the impediment issue.
-     - When `affects.sprint` is present: skip the comment on the "affected story" (GitHub sprints are iteration fields, not issues) — post a single cross-reference comment on the impediment issue noting the sprint name (e.g., `":link: This impediment affects sprint: Sprint 5"`). Return `affects: { sprint: params.affects.sprint }` in the response.
-  3. **Priority fix** in [`src/tools/scrum-write.ts:48`](src/tools/scrum-write.ts:48): Rename `_scrumConfig` → `scrumConfig`. At line 390, derive the p0 display label from `scrumConfig.scrum.priority[0].key` mapped through `scrumConfig.backends.github.priority_display` (replace hardcoded `"Must"`).
-- **Deliverable:** `scrum_log_impediment` succeeds with no `affects` field; return includes `affects: null`. Default priority resolves to the p0 label from `config.yml`.
-- **Dependencies:** None
-- **Verification:** Call `scrum_log_impediment` without `affects` — verify it succeeds and returns `affects: null`. Call with `{ affects: { sprint: "current" } }` — verify it works.
-
-### Task B.5: Add `scrum_update_impediment` write tool
-
-- **Files:** New: `src/scrum/update-impediment.ts`; Existing: `src/schemas/scrum.ts`, `src/scrum/ports.ts`, `src/adapters/github/backend.ts`, `src/tools/scrum-write.ts`
-- **Type:** New feature
-- **Description:** Five changes:
-  1. **Schema** in [`src/schemas/scrum.ts`](src/schemas/scrum.ts): Add `UpdateImpedimentSchema`:
-     ```typescript
-     export const UpdateImpedimentSchema = z
-       .object({
-         ref: z.object({
-           id: z
-             .string()
-             .describe(
-               "Impediment project item ID from scrum_get_backlog or scrum_get_sprint.",
-             ),
-         }),
-         status: z
-           .enum(["open", "in_progress", "resolved"])
-           .describe("New impediment status."),
-         resolution_notes: z
-           .string()
-           .optional()
-           .describe("Notes explaining why this impediment was resolved."),
-       })
-       .strict();
-     ```
-  2. **Use case** — Create `src/scrum/update-impediment.ts`:
-     ```typescript
-     export const updateImpedimentUseCase = async (
-       backend: ProjectBackend,
-       ref: { id: string },
-       status: "open" | "in_progress" | "resolved",
-       resolutionNotes?: string,
-     ): Promise<ImpedimentListing> => {
-       return backend.updateImpediment(ref, status, resolutionNotes);
+     node: {
+       __typename: "Issue";
+       number: number;
+       body: string | null;      // add
+       createdAt: string;        // add
+       labels?: { nodes: Array<{ name: string; id: string }> };
+       closed: boolean;
+       closedAt: string | null;
      };
      ```
-  3. **Port** — Add `updateImpediment(ref, status, notes?): Promise<ImpedimentListing>` to `ProjectBackend` in [`ports.ts`](src/scrum/ports.ts).
-  4. **Backend implementation** in `GitHubProjectBackend`: Update the issue label (e.g., `status_open` → `status_resolved`) and append `resolution_notes` as a comment when status is "resolved".
-  5. **Registration** in [`src/tools/scrum-write.ts`](src/tools/scrum-write.ts): Register the tool with appropriate description and input schema.
-- **Deliverable:** `scrum_update_impediment` with `status: "resolved"` updates the label and posts `resolution_notes` as a comment. Returns `ImpedimentListing` with updated status. Tool appears in `scrum_orient`'s tool surface listing.
-- **Dependencies:** None
-- **Verification:** Create an impediment; call `scrum_update_impediment` with `status: "resolved"` — verify label and comment are updated.
 
-### Task B.6: Add `goal` field to `scrum_plan_sprint`
-
-- **Files:** [`src/schemas/scrum.ts`](src/schemas/scrum.ts), [`src/tools/scrum-write.ts`](src/tools/scrum-write.ts:294)
-- **Type:** Schema + handler extension
-- **Description:** Two changes:
-  1. **Schema** in [`src/schemas/scrum.ts:273`](src/schemas/scrum.ts:273): Add optional `goal: string` to `PlanSprintSchema`:
+  3. **Populate the return value** at lines 704–711:
      ```typescript
-     goal: z.string().optional().describe(
-       "Sprint goal — a short statement of what the team aims to achieve this sprint.",
-     ),
+     return {
+       ref: { id: ref.id },
+       description: issue.body ?? "", // was: ""
+       status: impedimentStatus,
+       raised_by: null,
+       raised_at: issue.createdAt, // was: ""
+       resolved_at: issue.closedAt,
+     };
      ```
-  2. **Handler** in [`src/tools/scrum-write.ts:313`](src/tools/scrum-write.ts:313): Include `goal` in the response object alongside `sprint`, `assigned`, `skipped`. When `goal` is omitted, exclude it from the response (or include as `null`). **Scope note:** `goal` is NOT persisted to GitHub in this task — it is echoed in the response only, for agent logging and ceremony artifact generation. Storing it to an iteration description field is out of scope here.
-- **Deliverable:** `scrum_plan_sprint` accepts an optional `goal` and echoes it in the response. Existing calls without `goal` remain valid (no breaking change).
-- **Dependencies:** None
-- **Verification:** Call `scrum_plan_sprint` with `goal` — verify it appears in the response. Call without `goal` — verify no regression.
+
+- **Deliverable:** `scrum_update_impediment` returns an `ImpedimentListing` with populated `description` and `raised_at`.
+- **Dependencies:** D.2 (changes to the method must be sequential — apply to the already-fixed body from D.2)
+- **Verification:** Call `scrum_update_impediment`; verify `description` equals the issue body text and `raised_at` is a valid ISO-8601 timestamp.
 
 ---
 
-## Phase C — Structural Cleanup (Reduce Cost of Future Change) FINISHED
+### Task D.5: Fix `buildAllSnapshots` — completed sprint entries always have empty impediments
 
-### Task C.1: Split `ProjectBackend` — Interface Segregation
+- **File:** [`src/scrum/get-sprint.ts:132–179`](src/scrum/get-sprint.ts)
+- **Type:** Bug fix
+- **Description:** `buildSingleSnapshot` correctly calls `backend.getSprintImpediments(sprintRef)` (line 88) and sets `impediments` from the result. But `buildAllSnapshots` at line 177 hardcodes `impediments: []` for every completed sprint entry, making `scrum_get_sprint` with `sprint: "all"` return no impediments for any historical sprint.
 
-- **File:** [`src/scrum/ports.ts`](src/scrum/ports.ts:196)
-- **Type:** Refactoring (interface decomposition)
-- **Description:** Decompose the 12-method `ProjectBackend` into focused interfaces. After Phase B additions, the interface has ~14 methods. Split as follows:
+  The fix uses the existing `getSprintImpediments` API and batches the calls with `Promise.all` to avoid sequential await inside the loop:
+  1. After resolving `historyEntries` at line 139, build the snapshots in two steps. First compute sprint snapshots, then fetch impediments in parallel:
+     ```typescript
+     const completedSnapshots = await Promise.all(
+       historyEntries.map(async (entry) => {
+         const items = entry.stories.map(historyStoryToListing);
+         const by_status: Record<string, number> = {};
+         for (const item of items) {
+           if (item.status)
+             by_status[item.status] = (by_status[item.status] ?? 0) + 1;
+         }
+         const committedPoints = entry.stories.reduce(
+           (s, st) => s + (st.points ?? 0),
+           0,
+         );
+         const completedPoints = entry.stories
+           .filter((st) => isTerminalStatus(st.status))
+           .reduce((s, st) => s + (st.points ?? 0), 0);
+         const impediments = await backend.getSprintImpediments(
+           entry.info.name,
+         );
+         return {
+           sprint: {
+             /* same as existing */
+           },
+           items,
+           total_count: items.length,
+           totals: {
+             by_status,
+             story_points: committedPoints,
+             committed_points: committedPoints,
+             completed_points: completedPoints,
+           },
+           impediments,
+         };
+       }),
+     );
+     ```
+     Replace the existing `for` loop that pushes snapshots with the result of this `Promise.all`.
 
-  | Interface        | Methods                                                                           | Use Cases That Depend On It                   |
-  | ---------------- | --------------------------------------------------------------------------------- | --------------------------------------------- |
-  | `BacklogPort`    | `getBacklogStories()`, `getOrphanImpediments()`                                   | `getBacklogUseCase`                           |
-  | `SprintPort`     | `getSprintStories()`                                                              | `getSprintUseCase`                            |
-  | `StoryPort`      | `getStoryDetail()`                                                                | `getStoryUseCase`                             |
-  | `HistoryPort`    | `getCompletedSprintHistory()`                                                     | `getHistoryUseCase`                           |
-  | `BurndownPort`   | `getBurndownInput()`, `resolveCompletionTimestamps()`                             | `getBurndownUseCase`                          |
-  | `TemplatePort`   | `fetchRepoFile()`                                                                 | `getTemplateUseCase`                          |
-  | `ImpedimentPort` | `getSprintImpediments()`, `updateImpediment()`                                    | `getSprintUseCase`, `updateImpedimentUseCase` |
-  | `ProjectReader`  | composition of all read ports above                                               | —                                             |
-  | `ProjectWriter`  | `createStory()`, `updateStory()`, `setField()`, `addComment()`, `addVocabulary()` | write tools                                   |
+  > **Note on `isTerminalStatus`:** This task requires a terminal-status check for completed points. Use the shared helper extracted in Task E.1 — sequence E.1 before or alongside this task.
 
-  Each use case imports only the port it needs. `GitHubProjectBackend` implements all interfaces.
+- **Deliverable:** `scrum_get_sprint` with `sprint: "all"` includes correct `impediments` arrays for completed sprint snapshots, consistent with `scrum_get_history` behavior.
+- **Dependencies:** E.1 (the `isTerminalStatus` helper is needed here), D.1 (impediments must be detectable)
+- **Verification:** Link an impediment issue to a sprint via comment; call `scrum_get_sprint` with `sprint: "all"` — verify the impediment appears in that sprint's snapshot.
 
-- **Deliverable:** Each use case imports only its required port interface. Test doubles are minimal (1-3 methods instead of 14). No signature change propagates to unrelated use cases.
-- **Dependencies:** Tasks B.1, B.2, B.5 (all new methods must be implemented before interface split)
-- **Verification:** Run `deno task lint` — no type errors. Each use case file imports only its specific port.
+---
 
-### Task C.2: Move `services/pagination.ts` and `services/resolver.ts` to adapter layer
+### Task D.6: Fix sprint name substring matching — "Sprint 1" matches inside "Sprint 10"
 
-- **Files:** `src/services/pagination.ts`, `src/services/resolver.ts` → `src/adapters/github/internal/pagination.ts`, `src/adapters/github/internal/resolver.ts`
-- **Type:** File migration (relocation)
-- **Description:** Both files are 100% GitHub-specific but live in `services/`. Move to `adapters/github/internal/`. Update all import paths:
-  - [`src/adapters/github/backend.ts:13`](src/adapters/github/backend.ts:13): `import { resolveSprint, resolveStory } from "../../services/resolver.ts"` → `"./internal/resolver.ts"` (file is co-located in `adapters/github/`)
-  - [`src/adapters/github/backend.ts:14`](src/adapters/github/backend.ts:14): `import { isBacklogItem, PaginatedProjectItemFetcher } from "../../services/pagination.ts"` → `"./internal/pagination.ts"`
-  - Any imports in `src/tools/scrum-read.ts` or elsewhere.
-- **Deliverable:** `services/` contains only generic utilities (logger, mutation-validator, error-enrichment). `pagination.ts` and `resolver.ts` live alongside other GitHub adapter internals.
+- **File:** [`src/adapters/github/backend.ts:583–596`](src/adapters/github/backend.ts)
+- **Type:** Bug fix
+- **Description:** `getSprintImpediments` identifies the sprint by checking whether `issue.body` or comments `.includes(sprintNameLower)`. For a sprint named "Sprint 1", this also matches "Sprint 10", "Sprint 11", etc. Sprint 1 impediments will incorrectly appear in Sprint 10's snapshot.
+
+  Replace the `.includes()` calls with a word-boundary regex:
+
+  ```typescript
+  // At line 583 — add after sprintNameLower:
+  const sprintNamePattern = new RegExp(
+    `\\b${sprintName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,
+    "i",
+  );
+
+  // Replace line 589:
+  // WRONG: issue.body?.toLowerCase().includes(sprintNameLower)
+  // CORRECT:
+  const bodyMatches = sprintNamePattern.test(issue.body ?? "");
+
+  // Replace lines 591–593:
+  // WRONG: c.body?.toLowerCase().includes(sprintNameLower)
+  // CORRECT:
+  const commentMatches = comments.some((c) =>
+    sprintNamePattern.test(c.body ?? ""),
+  );
+  ```
+
+  The `sprintNameLower` variable and the regex can coexist — just replace the two `.includes()` usages. Remove `sprintNameLower` if it is no longer referenced after this change.
+
+- **Deliverable:** `getSprintImpediments("Sprint 1")` does not return impediments that only mention "Sprint 10" or "Sprint 11".
 - **Dependencies:** None
-- **Verification:** `deno task lint` passes. No import errors. `grep -r "services/pagination"` and `grep -r "services/resolver"` return no results outside `adapters/github/`.
+- **Verification:** Create an issue mentioning "Sprint 10"; call `getSprintImpediments("Sprint 1")` — verify it is excluded. Create an issue mentioning "Sprint 1" — verify it is included.
 
-### Task C.3: Split `GitHubProjectBackend` — Single Responsibility
+---
 
-- **File:** [`src/adapters/github/backend.ts`](src/adapters/github/backend.ts:64) (1043 lines)
+## Phase E — Code Quality FINISHED
+
+These are correctness issues and DRY violations that will cause confusion or incorrect diagnostics, but don't break the primary data path.
+
+---
+
+### Task E.1: Extract duplicated `isTerminalStatus` to shared domain rule
+
+- **Files:** [`src/scrum/get-backlog.ts:46–56`](src/scrum/get-backlog.ts), [`src/scrum/get-history.ts`](src/scrum/get-history.ts), new: `src/domain/rules/status.ts`
+- **Type:** Refactoring (DRY)
+- **Description:** An identical 10-line `isTerminalStatus(status, config)` function is defined in both `get-backlog.ts` and `get-history.ts`. Pure domain rules belong in `src/domain/rules/`.
+  1. **Create `src/domain/rules/status.ts`**:
+
+     ```typescript
+     import type { ScrumConfig } from "../config.ts";
+
+     /**
+      * Returns true when `status` matches the terminal (done) status declared in config.
+      * Resolves via scrum.status[terminal=true] → backends.github.status_display.
+      * Falls back to "Done" if no terminal key is found.
+      */
+     export const isTerminalStatus = (
+       status: string | null,
+       config: ScrumConfig,
+     ): boolean => {
+       const scrumStatus = config.scrum.status ?? {};
+       const terminalKey = Object.entries(scrumStatus).find(
+         ([, meta]) => meta.terminal,
+       )?.[0];
+       if (!terminalKey) return (status?.toLowerCase() ?? "") === "done";
+
+       const ghConfig = config.backends.github as Record<string, unknown>;
+       const statusDisplay =
+         (ghConfig.status_display as Record<string, string>) ?? {};
+       const displayValue = statusDisplay[terminalKey] ?? "Done";
+
+       return (status?.toLowerCase() ?? "") === displayValue.toLowerCase();
+     };
+     ```
+
+  2. **In `get-backlog.ts`:** Remove the local `isTerminalStatus` definition; add `import { isTerminalStatus } from "../domain/rules/status.ts";`.
+
+  3. **In `get-history.ts`:** Same removal and import.
+
+- **Deliverable:** `isTerminalStatus` is defined once. `get-backlog.ts` and `get-history.ts` import it from `src/domain/rules/status.ts`. `grep -r "isTerminalStatus" src/scrum/` returns no function definitions, only imports and call sites.
+- **Dependencies:** None — but sequence before D.5 since that task uses this helper.
+- **Verification:** `deno lint` passes. `grep -r "const isTerminalStatus" src/` returns exactly one result (in `src/domain/rules/status.ts`).
+
+---
+
+### Task E.2: Fix wrong `operation` tag in `scrum_plan_sprint` error handler
+
+- **File:** [`src/tools/scrum-write.ts:364`](src/tools/scrum-write.ts)
+- **Type:** Bug fix (error telemetry)
+- **Description:** The outer `catch` block of the `scrum_plan_sprint` handler at line 364 uses `operation: "create_story"` — copy-paste residue from `scrum_create_story`. Error telemetry and logs will misattribute plan-sprint failures as story-creation failures.
+
+  Change line 364:
+
+  ```typescript
+  // WRONG:
+  content: [{ type: "text", text: enrichError(err, { operation: "create_story" }) }],
+
+  // CORRECT:
+  content: [{ type: "text", text: enrichError(err, { operation: "plan_sprint" }) }],
+  ```
+
+- **Deliverable:** Plan-sprint errors are logged with `operation: "plan_sprint"`.
+- **Dependencies:** None
+- **Verification:** `grep -n "plan_sprint" src/tools/scrum-write.ts` — confirms the outer catch block uses the correct tag.
+
+---
+
+### Task E.3: Fix `scrum_log_impediment` — returns full `Story` instead of `ImpedimentListing`
+
+- **File:** [`src/tools/scrum-write.ts:439–443`](src/tools/scrum-write.ts)
+- **Type:** Bug fix (tool return shape)
+- **Description:** The `scrum_log_impediment` handler currently returns `detail.story` (the full `Story` object). `REFACTORING.md §6b` specifies the return shape as:
+
+  ```typescript
+  { impediment: ImpedimentListing; affects: { story?: StoryRef; sprint?: SprintRef } | null }
+  ```
+
+  An agent expecting `result.impediment` to log or display the created impediment receives nothing useful.
+
+  Replace the current return block:
+
+  ```typescript
+  // REMOVE:
+  const detail = await backend.getStoryDetail(storyRef);
+  return {
+    content: [{ type: "text", text: JSON.stringify(detail.story, null, 2) }],
+  };
+
+  // REPLACE WITH:
+  const impediment: ImpedimentListing = {
+    ref: storyRef,
+    description: params.description,
+    status: "open",
+    raised_by: null, // not known at creation time without a re-fetch
+    raised_at: new Date().toISOString(),
+    resolved_at: null,
+  };
+  return {
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify(
+          { impediment, affects: params.affects ?? null },
+          null,
+          2,
+        ),
+      },
+    ],
+  };
+  ```
+
+  This avoids an extra `getStoryDetail` round-trip (latency) and returns the shape the agent expects. `raised_by` is omitted intentionally — it would require a re-fetch, and the caller already knows who raised it.
+
+- **Deliverable:** `scrum_log_impediment` returns `{ impediment: ImpedimentListing, affects: ... }`. The `getStoryDetail` import can be removed from this code path if it is no longer needed elsewhere in the handler.
+- **Dependencies:** None
+- **Verification:** Call `scrum_log_impediment`; verify the response body has `impediment.ref`, `impediment.description`, `impediment.status === "open"`, and `affects` matching what was passed (or `null` if omitted).
+
+---
+
+### Task E.4: Move inline GraphQL queries to `queries.ts`
+
+- **Files:** [`src/adapters/github/backend.ts`](src/adapters/github/backend.ts), [`src/adapters/github/queries.ts`](src/adapters/github/queries.ts)
+- **Type:** Code style / consistency
+- **Description:** `getOrphanImpediments()` (line ~449) and `getSprintImpediments()` (line ~539) each define multi-line GraphQL query strings inline. Every other query in the project is a named constant in `queries.ts`. The two queries are also nearly identical — same field set, same label filter — differing only in which issues are included.
+  1. In `queries.ts`, add two named exports:
+
+     ```typescript
+     export const GET_IMPEDIMENT_ISSUES_QUERY = `
+       query GetImpediments($owner: String!, $repo: String!, $states: [IssueState!]) {
+         repository(owner: $owner, name: $repo) {
+           issues(first: 100, labels: ["impediment"], states: $states) {
+             nodes {
+               id
+               title
+               body
+               state
+               createdAt
+               closedAt
+               author { login }
+               comments(first: 100) {
+                 nodes { body }
+               }
+             }
+           }
+         }
+       }
+     `;
+     ```
+
+     A single query parameterized by `$states` covers both use cases: `[OPEN]` for orphans and `[OPEN, CLOSED]` for sprint impediments.
+
+  2. In `getOrphanImpediments()` and `getSprintImpediments()` in `backend.ts`: remove the inline query strings and replace with the imported constant.
+
+  3. Update the import line at the top of `backend.ts` to include the new constant from `queries.ts`.
+
+- **Deliverable:** No inline multi-line GraphQL strings remain in `backend.ts`. Both impediment methods use the shared `GET_IMPEDIMENT_ISSUES_QUERY` constant.
+- **Dependencies:** None (but recommended after D.1–D.6 to avoid conflating bug fixes with structural changes)
+- **Verification:** `grep -n "query Get" src/adapters/github/backend.ts` returns no results. Both methods import from `queries.ts`.
+
+---
+
+### Task E.5: Fix `ImpedimentPort.updateImpediment` — uses `StoryRef` for an impediment reference
+
+- **File:** [`src/scrum/ports.ts`](src/scrum/ports.ts)
+- **Type:** Type correctness / semantic clarity
+- **Description:** `ImpedimentPort.updateImpediment` is declared as:
+
+  ```typescript
+  updateImpediment(ref: StoryRef, ...): Promise<ImpedimentListing>
+  ```
+
+  `StoryRef` is semantically wrong — impediments are not stories. Using a story ref type here causes confusion and may mislead future callers into passing story IDs where impediment IDs are expected.
+
+  Change the parameter type to the inline structural type already used elsewhere for opaque IDs:
+
+  ```typescript
+  // In ImpedimentPort:
+  updateImpediment(
+    ref: { id: string },
+    status: "open" | "in_progress" | "resolved",
+    resolutionNotes?: string,
+  ): Promise<ImpedimentListing>;
+  ```
+
+  Update the implementation signature in `backend.ts` accordingly (line 618: `ref: StoryRef` → `ref: { id: string }`).
+
+- **Deliverable:** `ImpedimentPort.updateImpediment` accepts `{ id: string }`, not `StoryRef`. The change is non-breaking since `StoryRef` is structurally compatible with `{ id: string }`.
+- **Dependencies:** D.2 (D.2 already removes the `resolveStory` call that used `StoryRef`-specific behavior)
+- **Verification:** `deno check` passes. `grep "StoryRef" src/scrum/ports.ts` does not appear in the `ImpedimentPort` definition.
+
+---
+
+### Task E.6: Remove contradictory export comment in `contents.ts`
+
+- **File:** [`src/adapters/github/internal/contents.ts`](src/adapters/github/internal/contents.ts)
+- **Type:** Code clarity
+- **Description:** `decodeRepoFileContent` has two contradictory comments: one says "Exported for unit testing" and a `todo` says "this function is only used inside unit tests. Doesn't have to be exported." Decide and apply:
+  - If the function is used only in tests: unexport it (`const decodeRepoFileContent` instead of `export const decodeRepoFileContent`) and remove both comments.
+  - If it should stay exported: remove the `todo` comment.
+
+  Check whether any non-test file imports `decodeRepoFileContent`:
+
+  ```sh
+  grep -r "decodeRepoFileContent" src/
+  ```
+
+  If the only imports are in test files, unexport it and delete both conflicting comments.
+
+- **Deliverable:** `decodeRepoFileContent` has a single, accurate visibility decision. No contradictory comments remain.
+- **Dependencies:** None
+- **Verification:** `deno lint` passes. If unexported: `grep -r "export.*decodeRepoFileContent" src/` returns no results.
+
+---
+
+## Phase F — Incomplete Architecture
+
+Work planned in the original refactoring effort that was not completed during Phases A–C.
+
+---
+
+### Task F.1: Split `GitHubProjectBackend` — Single Responsibility Principle
+
+- **File:** [`src/adapters/github/backend.ts`](src/adapters/github/backend.ts) (1,303 lines)
 - **Type:** Refactoring (class decomposition)
-- **Description:** Split into 6 cohesive services in `adapters/github/internal/`. `GitHubProjectBackend` becomes a ~200-line coordinator that delegates to injected services (DIP):
+- **Description:** `GitHubProjectBackend` has grown to more than 1,000 lines across Phases A–C. The planned split from `REFACTORING.md §6a` is unblocked. Extract 6 cohesive services into `adapters/github/internal/`. `GitHubProjectBackend` becomes a ~200-line coordinator that delegates via constructor injection (DIP):
 
-  | Service                 | Responsibility                        | Lines Extracted | Key Methods                                                                                                 |
-  | ----------------------- | ------------------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------- |
-  | `LabelResolver`         | Label CRUD + milestone resolution     | ~130            | `resolveLabelNodeIds`, `resolveOrCreateLabel`, `addLabel`, `hashToColor`, `fetchRepoNodeId`                 |
-  | `FieldValueMutator`     | Board field mutations                 | ~80             | `clearField`, `setFieldStatus`, `setFieldSprint`, `setFieldStoryPoints`, `setFieldPriority`                 |
-  | `BurndownCalculator`    | Burndown data + completion timestamps | ~170            | `getBurndownInput`, `resolveCompletionTimestamps`, `fetchAuditLogCompletions`, `fetchIssueCloseCompletions` |
-  | `SprintHistoryService`  | Completed sprint data                 | ~50             | `getCompletedSprintHistory`                                                                                 |
-  | `VocabularyManager`     | Vocabulary option management          | ~75             | `addVocabulary`, `addStatusOption`, `addPriorityOption`, `addSingleSelectOption`                            |
-  | `UserMilestoneResolver` | User + milestone resolution           | ~85             | `resolveUserNodeId`, `resolveUserNodeIds`, `resolveOrCreateMilestoneNodeId`                                 |
+  | New file                              | Responsibility                        | Key methods to move                                                                                         |
+  | ------------------------------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+  | `internal/label-resolver.ts`          | Label CRUD + milestone lookup         | `resolveLabelNodeIds`, `resolveOrCreateLabel`, `addLabel`, `hashToColor`, `fetchRepoNodeId`                 |
+  | `internal/field-value-mutator.ts`     | Board field mutations                 | `clearField`, `setFieldStatus`, `setFieldSprint`, `setFieldStoryPoints`, `setFieldPriority`                 |
+  | `internal/burndown-calculator.ts`     | Burndown data + completion timestamps | `getBurndownInput`, `resolveCompletionTimestamps`, `fetchAuditLogCompletions`, `fetchIssueCloseCompletions` |
+  | `internal/sprint-history-service.ts`  | Completed sprint data                 | `getCompletedSprintHistory`                                                                                 |
+  | `internal/vocabulary-manager.ts`      | Vocabulary option management          | `addVocabulary`, `addStatusOption`, `addPriorityOption`, `addSingleSelectOption`                            |
+  | `internal/user-milestone-resolver.ts` | User + milestone resolution           | `resolveUserNodeId`, `resolveUserNodeIds`, `resolveOrCreateMilestoneNodeId`                                 |
 
-  Remaining `GitHubProjectBackend` methods (~200 lines): `getPlatformState`, `getSprintStories`, `getBacklogStories`, `getStoryDetail`, `createStory`, `updateStory`, `setField`, `addComment`, `getOrphanImpediments`, `getSprintImpediments`, `updateImpediment`, `fetchRepoFile`.
+  Methods remaining on `GitHubProjectBackend` after extraction (~200 lines):
+  `getPlatformState`, `getSprintStories`, `getBacklogStories`, `getStoryDetail`, `createStory`, `updateStory`, `setField`, `addComment`, `getOrphanImpediments`, `getSprintImpediments`, `updateImpediment`, `fetchRepoFile`.
 
-- **Deliverable:** `backend.ts` is ~200 lines. All extracted services are in `adapters/github/internal/`. `GitHubProjectBackend` implements `ProjectBackend` via composition. No behavioral change.
-- **Dependencies:** Tasks C.1 (interface split should precede or accompany this), C.2 (file relocation)
-- **Verification:** `deno task lint` passes. All existing integration tests pass. Line count of `backend.ts` < 250.
+  Each internal service receives only the dependencies it needs (graphql client, config, owner, repo) via constructor — no access to `GitHubProjectBackend` internals.
 
-### Task C.4: Split `services/github.ts` — Remaining extractions
+- **Deliverable:** `backend.ts` is ≤ 250 lines. All extracted services live in `adapters/github/internal/`. `GitHubProjectBackend` implements `ProjectBackend` via composition. Zero behavioral change.
+- **Dependencies:** None — Phase C.1 (interface split) and C.2 (file migration) are already complete.
+- **Verification:** `deno lint` passes. `wc -l src/adapters/github/backend.ts` outputs ≤ 250.
 
-- **File:** [`src/services/github.ts`](src/services/github.ts) → `adapters/github/http-client.ts`, `adapters/github/contents.ts`
-- **Type:** File migration + refactoring
-- **Description:** Three changes:
-  1. Extract `graphql()`, `rest()` — HTTP transport → `adapters/github/http-client.ts`
-  2. Extract `fetchRepoFile()`, `decodeRepoFileContent()` — Contents API → `adapters/github/contents.ts`
-  3. Remove `graphql` import from [`src/tools/scrum-write.ts:32`](src/tools/scrum-write.ts:32) — only used by deprecated `github_graphql` tool. The deprecated tool can import directly from `http-client.ts` or keep its own reference.
-- **Deliverable:** No file outside `adapters/github/` imports from `services/github.ts`. `services/github.ts` can be deleted without breaking any import.
-- **Dependencies:** None
-- **Verification:** `grep -r "services/github.ts"` — only `adapters/github/` and `src/index.ts` should import from it. After split, zero imports from `services/github.ts`.
+---
 
-### Task C.5: Remove `fetchRepoFile()` from `ProjectBackend` port
+### Task F.2: Remove `fetchRepoFile()` from `ProjectBackend` / `TemplatePort`
 
-- **File:** [`src/scrum/ports.ts`](src/scrum/ports.ts:246)
-- **Type:** Interface cleanup
-- **Description:** `fetchRepoFile(path: string)` is a GitHub Contents API method on a platform-agnostic interface. Remove it from `ProjectBackend`. Handle it directly in tool handlers (they already have access to the backend config via `scrumConfig.backends.github`).
-  1. Remove `fetchRepoFile(path: string): Promise<string>` from `ProjectBackend` in [`ports.ts`](src/scrum/ports.ts:246).
-  2. In `getTemplateUseCase` (or wherever `fetchRepoFile` is called), access the Contents API directly through the backend config or a dedicated HTTP client.
-  3. Generalize `VocabularyKind` or move `addVocabulary` to an extended `ProjectWriter` interface (not the base `ProjectBackend`).
-- **Deliverable:** `ProjectBackend` is truly platform-agnostic. A Jira/Azure DevOps backend would not need to implement `fetchRepoFile()` or understand GitHub label terminology.
-- **Dependencies:** Task C.1 (interface split), Task C.4 (http-client split must complete first so handlers have direct access to HTTP client)
-- **Verification:** `grep -r "fetchRepoFile" src/scrum/` returns no results. Tool handlers access contents API directly.
+- **Files:** [`src/scrum/ports.ts`](src/scrum/ports.ts), [`src/scrum/get-template.ts`](src/scrum/get-template.ts), [`src/tools/scrum-read.ts`](src/tools/scrum-read.ts)
+- **Type:** Interface cleanup (platform-agnostic contract)
+- **Description:** `TemplatePort` (and via composition `ProjectReader` / `ProjectBackend`) exposes `fetchRepoFile(path: string): Promise<string>`. This is a GitHub Contents API method on a platform-agnostic interface. A Jira or Linear backend would have no equivalent.
+  1. Remove `TemplatePort` from `src/scrum/ports.ts` entirely (or keep the interface but remove it from `ProjectReader`'s `extends` list).
+  2. In `get-template.ts`: instead of calling `backend.fetchRepoFile(path)`, import `fetchRepoFile` directly from `src/adapters/github/internal/contents.ts`. This is acceptable in a use-case function only if the tool layer passes the GitHub-specific fetcher as an injected dependency. Preferred approach: move the `fetchRepoFile` call into the tool handler in `scrum-read.ts` and remove `getTemplateUseCase` entirely if it has no remaining platform-agnostic logic.
+  3. Remove `fetchRepoFile()` from `GitHubProjectBackend` once the interface no longer requires it (the implementation in `internal/contents.ts` still exists and is used directly).
 
-### Task C.6: Verify tombstoned files are fully removed
-
-- **Files:** `src/types.ts`, `src/adapters/github/raw-types.ts`
-- **Type:** Verification
-- **Description:** Both tombstoned files (`src/types.ts` and `src/adapters/github/raw-types.ts`) should already have been physically deleted from the repository. This task confirms the cleanup is complete and no stale references remain:
-  1. Confirm neither file exists: `ls src/types.ts src/adapters/github/raw-types.ts` — both should return "No such file".
-  2. Confirm no import references remain: `grep -r "from.*src/types" src/` — should return no results.
-  3. Confirm no raw-types references remain: `grep -r "raw-types" src/` — should return no results.
-  4. Run `deno task lint` — must pass with no import errors.
-- **Deliverable:** Lint passes. Grep returns zero results for both deleted files.
-- **Dependencies:** None (can be verified at any point; best done last to catch any stale references introduced during C.1–C.5)
-- **Verification:** `deno task lint` passes cleanly.
+- **Deliverable:** `ProjectBackend`, `ProjectReader`, and their focused sub-interfaces contain no GitHub-specific methods. `grep -r "fetchRepoFile" src/scrum/` returns zero results.
+- **Dependencies:** F.1 (class decomposition; `fetchRepoFile` delegating to `internal/contents.ts` is cleaner after the split), C.4 already complete (`contents.ts` exists).
+- **Verification:** `deno lint` passes. `scrum_get_template` still works end-to-end. `grep -r "fetchRepoFile" src/scrum/` returns no results.
 
 ---
 
 ## Execution Order Summary
 
 ```
-Phase A (Agent Stability)      → A.1 → A.3 → A.2    (fixes silent session failures)
-Phase B (Feature Completeness) → B.1 → B.2 → B.3 → B.4 → B.5 → B.6  (implements missing functionality)
-Phase C (Structural Cleanup)   → C.1 → C.2 → C.3 → C.4 → C.5 → C.6  (reduces cost of future change)
+Phase D (Runtime Bugs)   → E.1 → D.1 → D.2 → D.3 → D.4 → D.5 → D.6
+Phase E (Code Quality)   → E.1 → E.2 → E.3 → E.4 → E.5 → E.6
+Phase F (Architecture)   → F.1 → F.2
 ```
 
 **Dependency graph:**
 
 ```mermaid
 graph TD
-  A1[A.1: Fix orient shape]
-  A3[A.3: Add comment field] --> A2[A.2: Fix rules]
+  E1[E.1: Extract isTerminalStatus]
 
-  B1[B.1: Orphan impediments] -.-> B2[B.2: Sprint impediments]
-  B1 --> B3[B.3: Terminal status]
-  B4[B.4: Log impediment fix]
-  B5[B.5: Update impediment]
-  B6[B.6: Sprint goal]
+  D1[D.1: Fix PVTI regex]
+  D2[D.2: Fix resolveStory ID mismatch]
+  D3[D.3: Fix addLabels → replaceLabels]
+  D4[D.4: Fix empty updateImpediment return]
+  D5[D.5: Fix buildAllSnapshots impediments]
+  D6[D.6: Fix sprint name substring match]
 
-  B2 --> C1[C.1: Split ProjectBackend]
-  B5 --> C1
-  C2[C.2: Move pagination/resolver] -.-> C3[C.3: Split Backend]
-  C1 --> C3
-  C1 --> C5[C.5: Remove fetchRepoFile]
-  C4[C.4: Split github.ts] --> C5
-  C4 -.-> C3
-  C3 --> C6[C.6: Verify tombstoned deletions]
-  C5 --> C6
+  E2[E.2: Fix plan_sprint operation tag]
+  E3[E.3: Fix log_impediment return shape]
+  E4[E.4: Move inline queries to queries.ts]
+  E5[E.5: StoryRef → id type in ImpedimentPort]
+  E6[E.6: Fix contradictory comment]
+
+  F1[F.1: Split GitHubProjectBackend]
+  F2[F.2: Remove fetchRepoFile from port]
+
+  E1 --> D5
+
+  D1 --> D2
+  D2 --> D3
+  D3 --> D4
+  D2 --> E5
+
+  D1 -.-> D5
+  E1 --> D5
+
+  F1 --> F2
 ```
 
 **Key execution notes:**
 
-- A.1 and A.3 are fully independent — they can be done in parallel. Only A.3 must precede A.2 (rule corrections reference the new `comment` field).
-- B.1 should precede B.2 (shared impediment detection patterns — dashed arrow in graph). All other Phase B tasks are mutually independent.
-- B.2 and B.5 must precede C.1 — they add new interface methods (`getSprintImpediments`, `updateImpediment`) to `ProjectBackend` that the interface segregation in C.1 depends on.
-- C.1 should precede C.3 (interface split guides class decomposition).
-- C.2 and C.4 are independent and can be done in parallel with other tasks.
-- C.5 depends on both C.1 and C.4.
-- C.6 is a verification task best done last; both tombstoned files may already be deleted.
+- **E.1 first** — the `isTerminalStatus` shared helper is needed by both the existing use cases and D.5. Do it before any other task.
+- **D.1 → D.2 → D.3 → D.4 are sequential** — each fix builds on the previous one in the same `updateImpediment` / `getOrphanImpediments` code path.
+- **D.5 depends on E.1** — the `buildAllSnapshots` refactor calls `isTerminalStatus` from the shared module.
+- **D.6 and E.2 / E.3 / E.4 / E.6 are fully independent** — they can be done in any order alongside Phase D.
+- **E.5 follows D.2** — the type change in `ImpedimentPort` aligns with D.2's removal of `resolveStory`, making both changes consistent.
+- **F.1 before F.2** — `fetchRepoFile` removal is cleaner once `backend.ts` is decomposed and `contents.ts` is the canonical location.

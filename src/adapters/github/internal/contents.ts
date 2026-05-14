@@ -6,7 +6,7 @@
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
-import { rest, type RestResponse } from "./http-client.ts";
+import { rest } from "./http-client.ts";
 
 // ── GitHub Contents API types ──────────────────────────────────────────────────
 
@@ -34,11 +34,8 @@ interface RepoFileResponse {
  *
  * GitHub's API includes newline characters in the base64 string for readability.
  * These must be stripped before decoding — atob() rejects strings with whitespace.
- *
- * Exported for unit testing.
- * todo: this function is only used inside unit tests. Doesn't have to be exported
  */
-export const decodeRepoFileContent = (encoded: string): string => atob(encoded.replace(/\s/g, ""));
+const decodeRepoFileContent = (encoded: string): string => atob(encoded.replace(/\s/g, ""));
 
 /**
  * Fetch the content of a single file from the repo via the GitHub Contents API.

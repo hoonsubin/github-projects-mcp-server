@@ -353,7 +353,7 @@ export const UpdateImpedimentSchema = z
         id: z
           .string()
           .describe(
-            "Impediment project item ID from scrum_get_backlog or scrum_get_sprint.",
+            "Impediment ID as returned by scrum_get_backlog.orphan_impediments or scrum_get_sprint.impediments ref.id field.",
           ),
       })
       .describe("Reference to the impediment to update."),

@@ -9,6 +9,7 @@ import type { BacklogPort, ImpedimentListing, StoryListing } from "./ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 import type { Story } from "../domain/types.ts";
 import { computeReadinessSummary } from "../domain/rules/readiness.ts";
+import { isTerminalStatus } from "../domain/rules/status.ts";
 
 interface GetBacklogParams {
   search?: string;
@@ -35,25 +36,6 @@ const storyToListing = (story: Story): StoryListing => ({
   sprint: story.sprint,
   writable: true, // Active backlog items are writable; see Step 7c.2 for future enhancement
 });
-
-/**
- * Check if a status string matches the terminal (done) status declared in config.
- *
- * Looks up the canonical key where `terminal: true` in `scrumConfig.scrum.status`,
- * then resolves its display name via `scrumConfig.backends.github.status_display`.
- * Falls back to `"Done"` if no terminal key is found.
- */
-const isTerminalStatus = (status: string | null, config: ScrumConfig): boolean => {
-  const scrumStatus = config.scrum.status ?? {};
-  const terminalKey = Object.entries(scrumStatus).find(([, meta]) => meta.terminal)?.[0];
-  if (!terminalKey) return (status?.toLowerCase() ?? "") === "done";
-
-  const ghConfig = config.backends.github as Record<string, unknown>;
-  const statusDisplay = (ghConfig.status_display as Record<string, string>) ?? {};
-  const displayValue = statusDisplay[terminalKey] ?? "Done";
-
-  return (status?.toLowerCase() ?? "") === displayValue.toLowerCase();
-};
 
 /**
  * Active-item definition: exclude items where status is terminal (done)

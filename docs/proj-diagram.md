@@ -62,8 +62,17 @@ classDiagram
         interface SprintTotalsActive
         interface SprintTotalsHistory
         interface SprintSnapshot
+        interface BacklogPort
+        interface SprintPort
+        interface StoryPort
+        interface HistoryPort
+        interface BurndownPort
+        interface ImpedimentPort
+        interface TemplatePort
+        interface ProjectReader
+        interface ProjectWriter
         interface ProjectBackend
-        %% Unused: Ref, SprintTotalsActive, SprintTotalsHistory
+        %% Unused: SprintTotalsActive, SprintTotalsHistory, ProjectWriter
     }
 
     class Get_History:::scrum {
@@ -107,9 +116,6 @@ classDiagram
         +var GraphQLQuerySchema
     }
 
-    class Types:::root {
-    }
-
     class Errors:::github {
         class GitHubApiError
     }
@@ -118,6 +124,7 @@ classDiagram
         +var GET_ISSUE_DETAILS_QUERY
         +var GET_ITEM_FIELDS_QUERY
         +var GET_REPO_LABELS_QUERY
+        +var GET_IMPEDIMENT_ISSUES_QUERY
     }
 
     class Mappers:::github {
@@ -127,6 +134,26 @@ classDiagram
         +buildCommentList()
         +buildLinkedPrList()
         +buildBurndownStoryInput()
+    }
+
+    class Pagination:::internal {
+        class PaginatedProjectItemFetcher
+        +isBacklogItem()
+    }
+
+    class Resolver:::internal {
+        +resolveSprint()
+        +resolveStory()
+    }
+
+    class Contents:::internal {
+        +fetchRepoFile()
+    }
+
+    class Http_Client:::internal {
+        interface RestResponse
+        +graphql()
+        +rest()
     }
 
     class Types:::github {
@@ -176,6 +203,10 @@ classDiagram
         +parseAcceptanceCriteria()
     }
 
+    class Status:::rules {
+        +isTerminalStatus()
+    }
+
     class Readiness:::rules {
         +computeReadinessSummary()
     }
@@ -187,25 +218,6 @@ classDiagram
 
     class Config:::domain {
         interface ScrumConfig
-    }
-
-    class Github:::services {
-        interface RestResponse
-        +graphql()
-        +rest()
-        +decodeRepoFileContent()
-        +fetchRepoFile()
-        %% Unused: decodeRepoFileContent
-    }
-
-    class Pagination:::services {
-        class PaginatedProjectItemFetcher
-        +isBacklogItem()
-    }
-
-    class Resolver:::services {
-        +resolveSprint()
-        +resolveStory()
     }
 
     class Mutation_Validator:::services {
@@ -227,6 +239,7 @@ classDiagram
     Get_Backlog --> Config : "imports"
     Get_Backlog --> Types : "imports"
     Get_Backlog --> Readiness : "imports"
+    Get_Backlog --> Status : "imports"
     Get_Template --> Ports : "imports"
     Get_Template --> Types : "imports"
     Get_Template --> Config : "imports"
@@ -247,6 +260,7 @@ classDiagram
     Ports --> Types : "imports"
     Get_History --> Ports : "imports"
     Get_History --> Config : "imports"
+    Get_History --> Status : "imports"
     Update_Impediment --> Ports : "imports"
     Get_Sprint --> Ports : "imports"
     Get_Sprint --> Types : "imports"
@@ -271,7 +285,7 @@ classDiagram
     Scrum_Write --> Inputs : "imports"
     Scrum_Write --> Mutation_Validator : "imports"
     Scrum_Write --> Error_Enrichment : "imports"
-    Scrum_Write --> Github : "imports"
+    Scrum_Write --> Http_Client : "imports"
     Scrum --> Index : "imports"
     Inputs --> Index : "imports"
     Queries --> Index : "imports"
@@ -279,12 +293,22 @@ classDiagram
     Mappers --> Types : "imports"
     Mappers --> Ports : "imports"
     Mappers --> Labels : "imports"
+    Pagination --> Config_Loader : "imports"
+    Pagination --> Types : "imports"
+    Resolver --> Config_Loader : "imports"
+    Resolver --> Types : "imports"
+    Contents --> Errors : "imports"
+    Contents --> Http_Client : "imports"
+    Http_Client --> Types : "imports"
+    Http_Client --> Logger : "imports"
+    Http_Client --> Errors : "imports"
     Types --> Github_Types : "imports"
     Config_Loader --> Index : "imports"
     Config_Loader --> Types : "imports"
     Config_Loader --> Config : "imports"
-    Backend --> Github : "imports"
     Backend --> Errors : "imports"
+    Backend --> Http_Client : "imports"
+    Backend --> Contents : "imports"
     Backend --> Config_Loader : "imports"
     Backend --> Resolver : "imports"
     Backend --> Pagination : "imports"
@@ -296,29 +320,24 @@ classDiagram
     Index --> Scrum_Write : "imports"
     Index --> Config_Loader : "imports"
     Index --> Backend : "imports"
-    Index --> Github : "imports"
+    Index --> Http_Client : "imports"
     Index --> Logger : "imports"
     Index --> Ports : "imports"
     Index --> Types : "imports"
     Index --> Config : "imports"
+    Status --> Config : "imports"
     Config --> Types : "imports"
-    Github --> Types : "imports"
-    Github --> Logger : "imports"
-    Github --> Errors : "imports"
-    Pagination --> Config_Loader : "imports"
-    Pagination --> Types : "imports"
-    Resolver --> Config_Loader : "imports"
-    Resolver --> Types : "imports"
     Error_Enrichment --> Errors : "imports"
 
     classDef scrum fill:#f9f,stroke:#333,stroke-width:2px,color:#000;
     classDef tools fill:#ccf,stroke:#333,stroke-width:2px,color:#000;
     classDef schemas fill:#cfc,stroke:#333,stroke-width:2px,color:#000;
-    classDef root fill:#ffc,stroke:#333,stroke-width:2px,color:#000;
-    classDef github fill:#fcc,stroke:#333,stroke-width:2px,color:#000;
-    classDef domain fill:#cff,stroke:#333,stroke-width:2px,color:#000;
-    classDef rules fill:#fcf,stroke:#333,stroke-width:2px,color:#000;
-    classDef services fill:#0ff,stroke:#333,stroke-width:2px,color:#000;
+    classDef github fill:#ffc,stroke:#333,stroke-width:2px,color:#000;
+    classDef internal fill:#fcc,stroke:#333,stroke-width:2px,color:#000;
+    classDef root fill:#cff,stroke:#333,stroke-width:2px,color:#000;
+    classDef domain fill:#fcf,stroke:#333,stroke-width:2px,color:#000;
+    classDef rules fill:#0ff,stroke:#333,stroke-width:2px,color:#000;
+    classDef services fill:#f0f,stroke:#333,stroke-width:2px,color:#000;
 ```
 
 
@@ -330,12 +349,11 @@ The following exports are never imported by any other module in the codebase:
 |--------|--------|------|
 | [`scrum/sprint-math.ts`](../src/scrum/sprint-math.ts) | `groupStoriesByStatus` | `function` |
 | [`scrum/sprint-math.ts`](../src/scrum/sprint-math.ts) | `computeSprintTotals` | `function` |
-| [`scrum/ports.ts`](../src/scrum/ports.ts) | `Ref` | `interface` |
 | [`scrum/ports.ts`](../src/scrum/ports.ts) | `SprintTotalsActive` | `interface` |
 | [`scrum/ports.ts`](../src/scrum/ports.ts) | `SprintTotalsHistory` | `interface` |
+| [`scrum/ports.ts`](../src/scrum/ports.ts) | `ProjectWriter` | `interface` |
 | [`scrum/update-impediment.ts`](../src/scrum/update-impediment.ts) | `updateImpedimentUseCase` | `function` |
 | [`domain/types.ts`](../src/domain/types.ts) | `ImpedimentRef` | `interface` |
-| [`services/github.ts`](../src/services/github.ts) | `decodeRepoFileContent` | `function` |
 
 
 ## Notes

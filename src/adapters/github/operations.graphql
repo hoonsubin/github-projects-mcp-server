@@ -578,3 +578,27 @@ mutation UnarchiveProjectItem($input: UnarchiveProjectV2ItemInput!) {
     item { id isArchived }
   }
 }
+
+# ── Impediment queries ─────────────────────────────────────────────────────────
+# Query for issues with the "impediment" label.
+# $states parameter allows callers to filter: [OPEN] for orphans, [OPEN, CLOSED] for sprint impediments.
+
+query GetImpedimentIssues($owner: String!, $repo: String!, $states: [IssueState!]) {
+  repository(owner: $owner, name: $repo) {
+    issues(first: 100, labels: ["impediment"], states: $states) {
+      nodes {
+        id
+        number
+        title
+        body
+        state
+        createdAt
+        closedAt
+        author { login }
+        comments(first: 100) {
+          nodes { body }
+        }
+      }
+    }
+  }
+}

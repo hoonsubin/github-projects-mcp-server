@@ -11,7 +11,6 @@
 // =============================================================================
 
 import type {
-  BurndownPort,
   BurndownStoryInput,
   HistoryPort,
   ImpedimentPort,
@@ -147,37 +146,44 @@ const buildAllSnapshots = async (
 
   // Remaining slots for completed sprints (limit is total cap, not additional)
   const remainingSlots = Math.max(0, limit - snapshots.length);
-  for (const entry of historyEntries.slice(0, remainingSlots)) {
-    const items: StoryListing[] = entry.stories.map(storyListingFromHistory);
+  const completedSnapshots = await Promise.all(
+    historyEntries.slice(0, remainingSlots).map(async (entry) => {
+      const items: StoryListing[] = entry.stories.map(storyListingFromHistory);
 
-    // Set sprint name after projection (history items don't carry it)
-    for (const item of items) {
-      item.sprint = entry.info.name;
-    }
+      // Set sprint name after projection (history items don't carry it)
+      for (const item of items) {
+        item.sprint = entry.info.name;
+      }
 
-    const by_status: Record<string, number> = {};
-    for (const item of items) {
-      const st = item.status ?? "(none)";
-      by_status[st] = (by_status[st] ?? 0) + 1;
-    }
+      const by_status: Record<string, number> = {};
+      for (const item of items) {
+        const st = item.status ?? "(none)";
+        by_status[st] = (by_status[st] ?? 0) + 1;
+      }
 
-    snapshots.push({
-      sprint: {
-        name: entry.info.name,
-        start_date: entry.info.startDate,
-        end_date: entry.info.endDate,
-        duration_days: entry.info.durationDays,
-        days_remaining: 0, // completed sprint — 0 days remaining (not null)
-      },
-      items,
-      total_count: items.length,
-      totals: {
-        by_status,
-        story_points: items.reduce((s, i) => s + (i.story_points ?? 0), 0),
-      },
-      impediments: [],
-    });
-  }
+      // Fetch impediments associated with this completed sprint
+      const impediments = await backend.getSprintImpediments(entry.info.name);
+
+      return {
+        sprint: {
+          name: entry.info.name,
+          start_date: entry.info.startDate,
+          end_date: entry.info.endDate,
+          duration_days: entry.info.durationDays,
+          days_remaining: 0, // completed sprint — 0 days remaining (not null)
+        },
+        items,
+        total_count: items.length,
+        totals: {
+          by_status,
+          story_points: items.reduce((s, i) => s + (i.story_points ?? 0), 0),
+        },
+        impediments,
+      };
+    }),
+  );
+
+  snapshots.push(...completedSnapshots);
 
   return { sprints: snapshots, total_count: snapshots.length };
 };

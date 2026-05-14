@@ -18,6 +18,7 @@ Guidance for coding agents working in this repository. Concise by design — see
 - **Read:** Max 500 lines/op; use offset/limit for large files. Max 2 ref files active at once.
 - **Tasks:** On high context noise, break into tasks → `tasks/TODO.md`. Remove outdated entries when done.
 - **Skills:** Check `.roo/skills/` first; load skill file before any large doc.
+- **Search:** `searxng_*` tool to search the web. `mempalance_*` tool or command to perform a semantic search of the project. Never assume. Think, search, confirm, before response.
 
 ## Architecture
 
@@ -44,6 +45,21 @@ GitHub Adapter  src/services/github.ts  ←  GraphQL + REST
 - Errors: Throw `GitHubApiError`; handlers return structured text via format helper.
 - Zod: Always `.strict()`.
 
-## CI — Run Before Every Commit
+## Commonly Used Commands
 
-`.github/workflows/pr-check.yml`
+```bash
+# semantic search the project codebase
+mempalace search "your search string"
+
+# lint check
+deno lint
+
+# unit test
+deno test
+
+# code format check
+deno fmt --check
+
+# generate module dependency report
+deno tast diagram-gen
+```

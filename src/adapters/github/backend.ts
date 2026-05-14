@@ -21,6 +21,7 @@ import {
   type IssueDetailsInput,
 } from "./mappers.ts";
 import {
+  GET_IMPEDIMENT_ISSUES_QUERY,
   GET_ISSUE_DETAILS_QUERY,
   GET_ITEM_FIELDS_QUERY,
   GET_REPO_LABELS_QUERY,
@@ -33,6 +34,7 @@ import type {
   ImpedimentListing,
   PlatformState,
   ProjectBackend,
+  Ref,
   SprintHistoryEntry,
   SprintInfo,
   StoryDetail,
@@ -445,29 +447,7 @@ export class GitHubProjectBackend implements ProjectBackend {
   }
 
   async getOrphanImpediments(): Promise<ImpedimentListing[]> {
-    // Query for issues with label "impediment" in the tracked repo
-    const query = `
-      query GetImpediments($owner: String!, $repo: String!) {
-        repository(owner: $owner, name: $repo) {
-          issues(first: 100, labels: ["impediment"], states: [OPEN]) {
-            nodes {
-              id
-              number
-              title
-              body
-              state
-              createdAt
-              closedAt
-              author { login }
-              comments(first: 100) {
-                nodes { body }
-              }
-            }
-          }
-        }
-      }
-    `;
-
+    // Query for open issues with label "impediment" in the tracked repo
     const result = await this.gh.graphql<{
       repository?: {
         issues?: {
@@ -484,13 +464,14 @@ export class GitHubProjectBackend implements ProjectBackend {
           }>;
         };
       };
-    }>(query, {
+    }>(GET_IMPEDIMENT_ISSUES_QUERY, {
       owner: this.owner,
       repo: this.repo,
+      states: ["OPEN"],
     });
 
     const issues = result?.repository?.issues?.nodes ?? [];
-    const PVTI_PATTERN = /PVTI_\d+/;
+    const PVTI_PATTERN = /PVTI_[\w-]+/;
 
     const orphanImpediments: ImpedimentListing[] = [];
 
@@ -535,29 +516,7 @@ export class GitHubProjectBackend implements ProjectBackend {
 
     const sprintName = iterEntry.title;
 
-    // Query for issues with label "impediment" that reference the sprint name
-    const query = `
-      query GetImpedimentsForSprint($owner: String!, $repo: String!) {
-        repository(owner: $owner, name: $repo) {
-          issues(first: 100, labels: ["impediment"], states: [OPEN, CLOSED]) {
-            nodes {
-              id
-              number
-              title
-              body
-              state
-              createdAt
-              closedAt
-              author { login }
-              comments(first: 100) {
-                nodes { body }
-              }
-            }
-          }
-        }
-      }
-    `;
-
+    // Query for all impediment issues (open + closed) — shared query covers both use cases
     const result = await this.gh.graphql<{
       repository?: {
         issues?: {
@@ -574,23 +533,34 @@ export class GitHubProjectBackend implements ProjectBackend {
           }>;
         };
       };
-    }>(query, {
+    }>(GET_IMPEDIMENT_ISSUES_QUERY, {
       owner: this.owner,
       repo: this.repo,
+      states: ["OPEN", "CLOSED"],
     });
 
     const issues = result?.repository?.issues?.nodes ?? [];
-    const sprintNameLower = sprintName.toLowerCase();
+
+    // TODO: Refactor to use PVTI_ project item resolution + iteration field check
+    // instead of string matching. Currently, GitHub Issues lack a native sprint field,
+    // so we match by sprint name in issue body/comments. A more robust approach would
+    // resolve PVTI_ references in comments to project items and check their iterationId
+    // field directly (see getSprintStories for the pattern).
+    // See tasks/TODO.md Phase F for architectural cleanup planning.
+
+    // Use word-boundary regex to avoid substring matches (e.g. "Sprint 1" matching "Sprint 10")
+    const sprintNamePattern = new RegExp(
+      `\\b${sprintName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,
+      "i",
+    );
 
     const sprintImpediments: ImpedimentListing[] = [];
 
     for (const issue of issues) {
       // Check if body or any comment references the sprint name
-      const bodyMatches = issue.body?.toLowerCase().includes(sprintNameLower) ?? false;
+      const bodyMatches = sprintNamePattern.test(issue.body ?? "");
       const comments = issue.comments?.nodes ?? [];
-      const commentMatches = comments.some((c) =>
-        c.body?.toLowerCase().includes(sprintNameLower) ?? false
-      );
+      const commentMatches = comments.some((c) => sprintNamePattern.test(c.body ?? ""));
 
       if (!bodyMatches && !commentMatches) {
         continue; // Not associated with this sprint
@@ -615,24 +585,17 @@ export class GitHubProjectBackend implements ProjectBackend {
   }
 
   async updateImpediment(
-    ref: StoryRef,
+    ref: Ref,
     status: "open" | "in_progress" | "resolved",
     resolutionNotes?: string,
   ): Promise<ImpedimentListing> {
-    // Resolve the project item to get the underlying issue ID
-    const resolved = await resolveStory(ref, { graphql: this.gh.graphql });
-    if (!resolved.issueId) {
-      throw new Error(
-        `Impediment "${ref.id}" is a Draft Issue — status updates are not supported. ` +
-          "Convert it to a real issue to update its status.",
-      );
-    }
-
-    // Fetch the current issue to get its number and labels
+    // Fetch the current issue to get its number, labels, body, and createdAt
     const issueResult = await this.gh.graphql<{
       node: {
         __typename: "Issue";
         number: number;
+        body: string | null;
+        createdAt: string;
         labels?: { nodes: Array<{ name: string; id: string }> };
         closed: boolean;
         closedAt: string | null;
@@ -643,6 +606,8 @@ export class GitHubProjectBackend implements ProjectBackend {
         node(id: $issueId) {
           ... on Issue {
             number
+            body
+            createdAt
             labels(first: 20) { nodes { name id } }
             closed
             closedAt
@@ -650,7 +615,7 @@ export class GitHubProjectBackend implements ProjectBackend {
         }
       }
     `,
-      { issueId: resolved.issueId },
+      { issueId: ref.id },
     );
 
     const issue = issueResult?.node;
@@ -672,14 +637,14 @@ export class GitHubProjectBackend implements ProjectBackend {
       .filter((id) => !oldStatusLabels.find((l) => l.id === id))
       .concat(newLabelId ?? []);
 
-    // Use the GraphQL mutation to update issue labels
+    // Use the GraphQL mutation to replace issue labels (not just add)
     await this.gh.graphql(
-      `mutation UpdateIssueLabels($issueId: ID!, $labelIds: [ID!]!) {
-        addLabelsToLabelable(input: { subjectId: $issueId, labelIds: $labelIds }) {
-          issue { number }
+      `mutation ReplaceIssueLabels($issueId: ID!, $labelIds: [ID!]!) {
+        replaceLabelsOnLabelable(input: { labelableId: $issueId, labelIds: $labelIds }) {
+          labelable { ... on Issue { number } }
         }
       }`,
-      { issueId: resolved.issueId, labelIds: updatedLabelIds },
+      { issueId: ref.id, labelIds: updatedLabelIds },
     );
 
     // If status is resolved and resolution notes are provided, post a comment
@@ -690,7 +655,7 @@ export class GitHubProjectBackend implements ProjectBackend {
             comment { id }
           }
         }`,
-        { subjectId: resolved.issueId, body: resolutionNotes },
+        { subjectId: ref.id, body: resolutionNotes },
       );
     }
 
@@ -703,10 +668,10 @@ export class GitHubProjectBackend implements ProjectBackend {
 
     return {
       ref: { id: ref.id },
-      description: "", // We don't have the body here; the caller already knows it
+      description: issue.body ?? "",
       status: impedimentStatus,
-      raised_by: null, // Would require fetching the issue author
-      raised_at: "", // Would require fetching created_at
+      raised_by: null,
+      raised_at: issue.createdAt,
       resolved_at: issue.closedAt,
     };
   }

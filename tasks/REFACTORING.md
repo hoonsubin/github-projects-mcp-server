@@ -100,20 +100,22 @@ flowchart TD
 
 ## 4. Current Implementation State
 
-All backend abstraction (Phase 5), tool extraction (Phase 2), write tools (Phase 3), and dead-code cleanup (Phase 4) are complete. The server is fully on the `scrum_*` surface. `index.ts` wires `registerScrumReadTools` and `registerScrumWriteTools` against `GitHubProjectBackend`.
+All backend abstraction (Phase 5), tool extraction (Phase 2), write tools (Phase 3), dead-code cleanup (Phase 4), type restructure (Phases A/B/C), and bug fixes (Phase D) are complete. The server is fully on the `scrum_*` surface. `index.ts` wires `registerScrumReadTools` and `registerScrumWriteTools` against `GitHubProjectBackend`.
 
-**Type restructure complete (Phases A / B / C):** Types now live at their correct architectural layer: `src/domain/types.ts` (domain entities), `src/domain/config.ts` (`ScrumConfig`), `src/adapters/github/types.ts`. `raw-types.ts` has been deleted. `src/types.ts` is a tombstone comment file awaiting `rm`.
+**Phase E (Code Quality) complete:** `isTerminalStatus` is extracted to `src/domain/rules/status.ts`. `get-backlog.ts` and `get-history.ts` both import it. All Phase E bug fixes (E.1–E.6) are done.
 
-**Sprint listing redesign complete:** `SprintSnapshot`, `StoryListing`, and `ImpedimentListing` are defined in `src/scrum/ports.ts`. `scrum_get_sprint` (including `"all"` support) and `scrum_get_history` return the aligned shape. `scrum_get_backlog` returns `StoryListing[]` with active-item filtering and an `orphan_impediments` field; `getOrphanImpediments()` is declared on `ProjectBackend` but the backend implementation is a stub returning `[]`. `SprintSnapshot.impediments` is hardcoded to `[]` in all listing tools pending Phase 7 enrichment.
+**Phase F (Architecture) in progress — Task F.1 partially complete:** Six internal service files have been created in `src/adapters/github/internal/`. However, `backend.ts` has NOT been updated to delegate to them. The private method bodies remain in `backend.ts` unchanged — the split was additive, not a replacement. `backend.ts` is now longer than before the split started. `BurndownCalculator` and `SprintHistoryService` have structural defects. See §5 and §6d for details.
 
-Remaining open work lives in §5 (architectural debt) and §6 (pending feature work).
-
-| File                             | State      | Notes                                                                                    |
-| -------------------------------- | ---------- | ---------------------------------------------------------------------------------------- |
-| `src/scrum/get-backlog.ts`       | 🟡 Partial | Use case done; `getOrphanImpediments()` backend query is a stub — see §6b                |
-| `src/tools/scrum-write.ts`       | 🟡 Pending | `scrum_log_impediment` signature + priority fix; add `scrum_update_impediment` — see §6b |
-| `src/adapters/github/backend.ts` | 🟡 Debt    | 1042 lines; `getOrphanImpediments()` is a TODO stub — see §6a, §6d                       |
-| `src/types.ts`                   | 🔴 Delete  | Tombstoned. Run `rm src/types.ts`.                                                       |
+| File                                              | State       | Notes                                                                                                    |
+| ------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------- |
+| `src/adapters/github/backend.ts`                  | 🔴 Broken   | ~1,224 lines; internal services created but not wired; duplicate private methods remain — see §5, §6d    |
+| `src/adapters/github/internal/burndown-calculator.ts` | 🔴 Broken   | Calls non-existent `this.fetchAllItems()` / `this.resolveSprint()`; uses `any` throughout — see §6d |
+| `src/adapters/github/internal/field-value-mutator.ts` | 🟡 Partial  | Functional but uses string interpolation in GraphQL mutations — see §6d                             |
+| `src/adapters/github/internal/label-resolver.ts`  | ✅ Complete  | Functional                                                                                               |
+| `src/adapters/github/internal/user-milestone-resolver.ts` | 🟡 Partial | Duplicates `fetchRepoNodeId` already on `LabelResolver` — see §6d                               |
+| `src/adapters/github/internal/vocabulary-manager.ts` | ✅ Complete | Functional; delegates label ops to `LabelResolver`                                                   |
+| `src/adapters/github/internal/sprint-history-service.ts` | 🔴 Missing | Not created yet — see §6d                                                                         |
+| `src/tools/scrum-write.ts`                        | ✅ Complete  | `scrum_log_impediment`, `scrum_update_impediment` implemented                                            |
 
 ---
 
@@ -136,28 +138,18 @@ The Interface Segregation Principle states that clients must not depend on metho
 
 ---
 
-### P1 — `services/pagination.ts` and `services/resolver.ts` are misplaced
+### P1 — `GitHubProjectBackend` violates Single Responsibility (split in progress)
 
-Both files are tightly coupled to GitHub's internals:
+`GitHubProjectBackend` has grown to ~1,224 lines because the F.1 split was executed additively: six service files were created in `adapters/github/internal/` but the original private method bodies in `backend.ts` were never removed. The class now has duplicate implementations — both the new service and the old private method exist simultaneously. This is worse than the unsplit state because it creates two sources of truth.
 
-- `pagination.ts` constructs GitHub-specific GraphQL queries parameterized by `owner`, `ownerType`, and `projectNumber`, and its `PaginatedProjectItemFetcher` consumes raw GitHub project item node shapes.
-- `resolver.ts` operates on `PVTI_` project item node IDs and maps GitHub's internal item model to `ResolvedStory`.
+**Current broken state:**
+- `LabelResolver`, `VocabularyManager`, and `UserMilestoneResolver` are complete, but `backend.ts` still has its own copies of `resolveOrCreateLabel`, `resolveLabelNodeIds`, `addLabel`, `hashToColor`, `resolveUserNodeId`, `resolveUserNodeIds`, `resolveOrCreateMilestoneNodeId`, `addStatusOption`, `addPriorityOption`, `addSingleSelectOption`.
+- `FieldValueMutator` exists but `backend.ts` still has `setFieldStatus`, `setFieldSprint`, `setFieldStoryPoints`, `setFieldPriority`, `setFieldAssignee`.
+- `BurndownCalculator` was created but cannot compile without major correction (see §6d).
+- `SprintHistoryService` was never created.
+- `GitHubProjectBackend`'s constructor has not been updated to accept injected services.
 
-Both belong in `adapters/github/` alongside `backend.ts`, `mappers.ts`, `config-loader.ts`, `queries.ts`, and `raw-types.ts` — the cohesive unit of all GitHub-specific adapter code.
-
-The `services/` folder is currently a mixed bag: the HTTP client (`github.ts`), a pure cross-cutting utility (`logger.ts`), a pure validator (`mutation-validator.ts`), and these two GitHub-specific adapter helpers. Lumping adapter internals with infrastructure services obscures the layer boundaries that the architecture diagram correctly describes.
-
----
-
-### P1 — `GitHubProjectBackend` violates Single Responsibility
-
-`GitHubProjectBackend` is 1042 lines and handles sprint resolution, paginated item fetching, field ID resolution, story mapping, label creation, milestone management, config state inspection, burndown completion fetching, and both GraphQL and REST execution. Each of these is a distinct reason for the class to change.
-
-The Single Responsibility Principle defines responsibility as "a reason to change" — the class should have only one. Under the current design, a change to how burndown completion timestamps are fetched, a change to how labels are resolved, and a change to how sprint iterations are enumerated all require editing the same class. This makes changes harder to isolate, test, and review.
-
-The class's own inline comment acknowledges this: `//todo: this class is way too massive. It should be broken down even further and separate reusable logic outside of the class`.
-
-**Target:** Split into 6 cohesive services (§6d below). Target backend size: ~200 lines.
+**Target:** F.1 completion reduces `backend.ts` to ≤ 250 lines. All private method bodies are removed; every internal operation is a one-line delegation to an injected service. See §6d for the complete plan.
 
 ---
 
@@ -173,17 +165,17 @@ The remaining concern is HTTP transport and the GitHub Contents API still bundle
 
 ### 6a. Backend Code Quality — `src/adapters/github/backend.ts`
 
-**Why:** `backend.ts` has grown to 1042 lines with accumulated smells that increase the cost of the §6d split and ongoing feature work. Address these before or alongside the split.
+**Why:** `backend.ts` has grown to ~1,224 lines due to the additive (not replacement) nature of the F.1 split. The remaining quality issues below are all resolved when F.1 is properly completed.
 
-1. **Label creation duplicated** — `resolveLabelNodeIds`, `resolveOrCreateLabel`, `addLabel`, and `resolveOrCreateMilestoneNodeId` all implement the same fetch-or-create pattern against the repo labels API (`resolveOrCreateLabel` is called 6 times). Extract a single canonical `resolveOrCreateLabel(name): Promise<string>` collaborator.
+1. **Label creation duplicated** — ✅ Resolved by extracting to `LabelResolver`. The duplicate private methods in `backend.ts` will be removed when F.1 wires the injected service.
 
-2. **String interpolation in GraphQL mutations** — `setFieldStatus`, `setFieldSprint`, `setFieldStoryPoints`, `setFieldPriority`, and `clearField` use template literals (`${itemId}`, `${fieldId}`, `${optionId}`) directly in mutation strings. Replace with parameterized GraphQL variables to eliminate injection risk.
+2. **String interpolation in GraphQL mutations** — 🔴 `FieldValueMutator.setFieldStatus/Sprint/StoryPoints/Priority` still embed `"${itemId}"`, `"${fieldId}"`, `"${optionId}"` directly in mutation strings. Replace all five with fully parameterized variables before completing F.1. See §6d for the required pattern.
 
-3. **`createStory` is 119 lines** — handles six distinct concerns (draft creation, label resolution, milestone resolution, field assignment, comment posting, result projection). Extract helpers or delegate to §6d services.
+3. **`createStory` is ~119 lines** — handles six distinct concerns. After F.1, `createStory` in the Facade should delegate label and user resolution to `LabelResolver` and `UserMilestoneResolver`, reducing it to the GraphQL mutation calls and orchestration logic only.
 
-4. **`getOrphanImpediments()` is a TODO stub** — declared on `ProjectBackend` and called by the `get-backlog` use case but the implementation returns nothing. Needs a real query: fetch issues labeled `"impediment"` from `tracked_repos` and filter to those whose comment bodies contain no `PVTI_` project item ID (i.e., not linked to any story or sprint). Project to `ImpedimentListing`.
+4. **`getOrphanImpediments()` and `getSprintImpediments()`** — ✅ Implemented (Phase D complete).
 
-5. **`fetchAllItems` duplicates `PaginatedProjectItemFetcher`** — two independent pagination implementations cover the same query. Remove one.
+5. **`fetchAllItems` duplication** — `backend.ts` has one copy using `PaginatedProjectItemFetcher`. `BurndownCalculator` incorrectly reimplements its own version using a wrong query (`repository.items` does not exist on GitHub Projects v2; items live on the project node). After F.1, `BurndownCalculator` must use `PaginatedProjectItemFetcher` from `internal/pagination.ts`.
 
 ### 6b. Tool Surface Improvements
 
@@ -215,23 +207,6 @@ The remaining concern is HTTP transport and the GitHub Contents API still bundle
 
 - `SprintSnapshot.impediments` contains all impediments associated with the sprint
 - An empty array is returned when no impediments exist for the sprint
-
----
-
-#### Hardcoded terminal status detection
-
-**Why:** `get-backlog.ts` and `get-history.ts` both use `.toLowerCase() === "done"` to identify terminal items. This silently breaks for any team that renames their done column. The canonical terminal status is already declared in `config.yml` (`scrum.status.<key>.terminal: true`). The `_scrumConfig` parameter in `get-history.ts` is passed but unused; `get-backlog.ts` receives `scrumConfig` but does not use it for this check.
-
-**Changes:** In both files, replace the hardcoded `"done"` comparison with a lookup: find the status key where `terminal: true` in `scrumConfig.scrum.status`, then compare against its `status_display` value from the backend config. Activate `_scrumConfig` → `scrumConfig` in `get-history.ts`.
-
-**Files:** `src/scrum/get-backlog.ts`, `src/scrum/get-history.ts`
-
-**Acceptance criteria:**
-
-- Active-item filter uses the config-declared terminal status, not a hardcoded string
-- Renaming the done status in `config.yml` correctly affects filtering without code changes
-
----
 
 #### `scrum_log_impediment` — optional `affects` and priority fix
 
@@ -342,22 +317,162 @@ One test file exists (`src/scrum/get-backlog.test.ts`) but coverage is minimal. 
 
 ---
 
-### 6d. Backend Split — `GitHubProjectBackend` → 6 Cohesive Services
+### 6d. Backend Split — `GitHubProjectBackend` as Facade (Task F.1)
 
-**Problem:** The class has 1042 lines and 10+ responsibilities. Each `setField*` method duplicates the same GraphQL mutation pattern. Label resolution fetches the same `GET_REPO_LABELS_QUERY` independently multiple times. `createStory()` is 119 lines handling 6 distinct concerns.
+**Architectural pattern: Facade + Constructor Injection (DIP)**
 
-**Split plan:**
+`GitHubProjectBackend` implements `ProjectBackend` and acts as a **Facade**: a thin coordinator that receives six focused internal services via constructor and delegates every operation to the appropriate service. The Facade itself contains no business logic and no GraphQL queries — only dispatch. This satisfies the Single Responsibility Principle (one reason to change: the delegation wiring), the Open/Closed Principle (add a service without modifying the Facade), and the Dependency Inversion Principle (Facade depends on service instances, not on their concrete logic).
 
-| Service                 | Extracted From                                                                                              | Lines Removed |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------- | ------------- |
-| `LabelResolver`         | `resolveLabelNodeIds`, `resolveOrCreateLabel`, `addLabel`, `hashToColor`, `fetchRepoNodeId`                 | ~130          |
-| `FieldValueMutator`     | `clearField`, `setFieldStatus`, `setFieldSprint`, `setFieldStoryPoints`, `setFieldPriority`                 | ~80           |
-| `BurndownCalculator`    | `getBurndownInput`, `resolveCompletionTimestamps`, `fetchAuditLogCompletions`, `fetchIssueCloseCompletions` | ~170          |
-| `SprintHistoryService`  | `getCompletedSprintHistory`                                                                                 | ~50           |
-| `VocabularyManager`     | `addVocabulary`, `addStatusOption`, `addPriorityOption`, `addSingleSelectOption`                            | ~75           |
-| `UserMilestoneResolver` | `resolveUserNodeId`, `resolveUserNodeIds`, `resolveOrCreateMilestoneNodeId`                                 | ~85           |
+**Current state (as of 2026-05-14):** Services were created additively — `backend.ts` was not updated to wire them. See §5 and §4 for the status of each service file.
 
-**Result:** `GitHubProjectBackend` becomes a ~200-line coordinator that delegates to injected services (DIP). All services live in `adapters/github/internal/`.
+---
+
+#### TypeScript design requirements
+
+**1. `GitHubClient` typed interface — replace `typeof graphql` anti-pattern**
+
+Every internal service currently holds `gh: { graphql: typeof graphql; rest: typeof rest }`, binding them to the concrete function reference. Replace with a named interface injected into every service that needs it:
+
+```typescript
+// src/adapters/github/internal/http-client.ts — add this export
+export interface GitHubClient {
+  graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T>;
+  rest<T>(path: string, options?: RequestInit & { params?: Record<string, string> }): Promise<RestResponse<T>>;
+}
+```
+
+Each internal service that currently declares `gh: { graphql: typeof graphql }` or `gh: typeof graphql` should be updated to `gh: GitHubClient`. This decouples the services from the specific HTTP implementation, enables mock injection in tests, and removes the `typeof` indirection.
+
+**2. Parameterized GraphQL mutations — required in `FieldValueMutator`**
+
+`FieldValueMutator` embeds item IDs, field IDs, and option IDs directly in mutation strings via template literals. This is an injection risk and prevents proper type-safety. All five mutation methods must use named GraphQL variables:
+
+```typescript
+// WRONG — string interpolation, no type safety:
+await this.gh(`mutation { updateProjectV2ItemFieldValue(input: { itemId: "${itemId}" ... }) }`);
+
+// CORRECT — parameterized variables, typed response:
+await this.gh.graphql<{ updateProjectV2ItemFieldValue: { item: { id: string } } }>(
+  `mutation SetFieldStatus($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+     updateProjectV2ItemFieldValue(input: {
+       projectId: $projectId, itemId: $itemId, fieldId: $fieldId,
+       value: { singleSelectOptionId: $optionId }
+     }) { item { id } }
+  }`,
+  { projectId: this.config.projectId, itemId, fieldId, optionId },
+);
+```
+
+Apply this pattern to `setFieldStatus`, `setFieldSprint`, `setFieldStoryPoints`, `setFieldPriority`, `setFieldAssignee`, and `clearField`.
+
+**3. `BurndownCalculator` must be rewritten from scratch**
+
+The current `burndown-calculator.ts` cannot compile and contains several fundamental defects:
+
+- Calls `this.resolveSprint()` — `resolveSprint` is a standalone function from `resolver.ts`, not a class method
+- Calls `this.fetchAllItems()` and `this.buildBurndownStoryInput()` — neither exists on `BurndownCalculator`; the former is a re-implementation of `PaginatedProjectItemFetcher`, the latter is already `buildBurndownStoryInput` in `mappers.ts`
+- The GraphQL query in the private `fetchAllItems` queries `repository.items` which does not exist — GitHub Projects v2 items are on the project node, not the repository node
+- Uses `item: any`, `v: any` throughout — loses all type safety at the critical mapping boundary
+
+**Correct implementation approach:** `BurndownCalculator` should accept a `PaginatedProjectItemFetcher` instance (or factory) via constructor, and call `buildBurndownStoryInput` imported from `mappers.ts`. No re-implementation of pagination:
+
+```typescript
+import { PaginatedProjectItemFetcher } from "./pagination.ts";
+import { buildBurndownStoryInput } from "../mappers.ts";
+import { resolveSprint } from "./resolver.ts";       // standalone function, not a method
+
+export class BurndownCalculator {
+  constructor(
+    private readonly config: RuntimeConfig,
+    private readonly gh: GitHubClient,
+    private readonly owner: string,
+    private readonly repo: string,
+  ) {}
+
+  async getBurndownInput(sprint: SprintRef): Promise<BurndownInput> {
+    const iterationId = resolveSprint(sprint, this.config);   // call the function
+    // ... use PaginatedProjectItemFetcher + buildBurndownStoryInput from mappers.ts
+  }
+}
+```
+
+**4. `SprintHistoryService` — new file required**
+
+`src/adapters/github/internal/sprint-history-service.ts` does not exist. It should extract `getCompletedSprintHistory` from `backend.ts`. Like `BurndownCalculator`, it uses `PaginatedProjectItemFetcher` internally and `buildBurndownStoryInput` from `mappers.ts`.
+
+**5. `fetchRepoNodeId` duplication — consolidate in `LabelResolver`**
+
+Both `LabelResolver` and `UserMilestoneResolver` independently implement `fetchRepoNodeId`. `UserMilestoneResolver.resolveOrCreateMilestoneNodeId` calls `this.fetchRepoNodeId()`, which is private to `UserMilestoneResolver`. Accept `LabelResolver` as a constructor dependency of `UserMilestoneResolver` and call `labelResolver.fetchRepoNodeId()` instead:
+
+```typescript
+export class UserMilestoneResolver {
+  constructor(
+    private readonly gh: GitHubClient,
+    private readonly owner: string,
+    private readonly repo: string,
+    private readonly labelResolver: LabelResolver,  // inject for fetchRepoNodeId
+  ) {}
+}
+```
+
+This removes the duplicate and establishes `LabelResolver` as the canonical source of the repository node ID.
+
+---
+
+#### Facade constructor and delegation pattern
+
+```typescript
+export class GitHubProjectBackend implements ProjectBackend {
+  private readonly labelResolver: LabelResolver;
+  private readonly userMilestoneResolver: UserMilestoneResolver;
+  private readonly fieldValueMutator: FieldValueMutator;
+  private readonly burndownCalculator: BurndownCalculator;
+  private readonly sprintHistoryService: SprintHistoryService;
+  private readonly vocabularyManager: VocabularyManager;
+
+  constructor(
+    private readonly config: RuntimeConfig,
+    private readonly gh: GitHubClient,
+    private readonly owner: string,
+    private readonly ownerType: "user" | "org",
+    private readonly repo: string,
+  ) {
+    this.labelResolver = new LabelResolver(config, gh, owner, repo);
+    this.userMilestoneResolver = new UserMilestoneResolver(gh, owner, repo, this.labelResolver);
+    this.fieldValueMutator = new FieldValueMutator(config, gh, this.userMilestoneResolver);
+    this.burndownCalculator = new BurndownCalculator(config, gh, owner, repo);
+    this.sprintHistoryService = new SprintHistoryService(config, gh);
+    this.vocabularyManager = new VocabularyManager(config, gh, this.labelResolver, owner, repo);
+  }
+
+  // Every public method is a one-line delegation — no logic in the Facade itself
+  getBurndownInput(sprint: SprintRef): Promise<BurndownInput> {
+    return this.burndownCalculator.getBurndownInput(sprint);
+  }
+
+  addVocabulary(kind: VocabularyKind, value: string): Promise<{ created: boolean }> {
+    return this.vocabularyManager.addVocabulary(kind, value);
+  }
+  // ... etc.
+}
+```
+
+The Facade retains only: constructor wiring, `fetchAllItems` (used by several methods that stay on the Facade — `getSprintStories`, `getBacklogStories`, `getBurndownInput` delegation), and the `toSprintInfo` / `resolveTerminalStatusDisplayName` helpers that are pure config-to-type converters with no external calls.
+
+---
+
+#### Service status after F.1
+
+| Service                  | File                              | Action Required                                                                 |
+| ------------------------ | --------------------------------- | ------------------------------------------------------------------------------- |
+| `LabelResolver`          | `internal/label-resolver.ts`      | ✅ Functional — wire into Facade constructor; remove duplicate in `backend.ts`  |
+| `FieldValueMutator`      | `internal/field-value-mutator.ts` | 🔴 Fix all string-interpolated mutations → parameterized variables              |
+| `BurndownCalculator`     | `internal/burndown-calculator.ts` | 🔴 Rewrite from scratch — use `PaginatedProjectItemFetcher` + `mappers.ts`      |
+| `SprintHistoryService`   | `internal/sprint-history-service.ts` | 🔴 Create — extract `getCompletedSprintHistory` from `backend.ts`            |
+| `VocabularyManager`      | `internal/vocabulary-manager.ts`  | ✅ Functional — wire into Facade constructor; remove duplicate in `backend.ts`  |
+| `UserMilestoneResolver`  | `internal/user-milestone-resolver.ts` | 🟡 Accept `LabelResolver` dependency; remove private `fetchRepoNodeId`     |
+
+**Deliverable:** `backend.ts` ≤ 250 lines. Zero duplicate private methods. `BurndownCalculator` and `SprintHistoryService` compile and pass `deno check`. All `FieldValueMutator` mutations use GraphQL variables. All services accept `GitHubClient` by interface.
 
 ### 6e. `github.ts` Split — Remaining Extractions
 
@@ -389,13 +504,6 @@ Remove the `graphql` import from `scrum-write.ts` when the deprecated `github_gr
 
 **Fix:** Remove `fetchRepoFile()` from `ProjectBackend` (handle in tool handlers directly). Generalize `VocabularyKind` or move `addVocabulary` to an extended `ProjectWriter` interface. Keep `setField()` field names — they are domain-neutral scrum concepts.
 
-### 6g. `services/pagination.ts` and `services/resolver.ts` Misplacement
-
-**Problem:** Both files are 100% GitHub-specific but live in `services/` alongside generic infrastructure. `pagination.ts` constructs GitHub GraphQL queries and consumes raw GitHub project item node shapes. `resolver.ts` operates on `PVTI_` project item node IDs.
-
-**Fix:** Move both to `adapters/github/internal/`. The `services/` folder should contain only truly generic utilities (logger, mutation validator).
-
----
 
 ### 6h. Agent Layer Fixes
 

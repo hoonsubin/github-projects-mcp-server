@@ -37,7 +37,8 @@
 		"mempalace": {
 			"command": "mempalace-mcp",
 			"args": [],
-			"disabled": false
+			"disabled": false,
+			"alwaysAllow": []
 		},
 		"sequentialthinking": {
 			"command": "npx",
