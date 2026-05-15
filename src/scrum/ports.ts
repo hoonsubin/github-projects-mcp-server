@@ -270,13 +270,7 @@ export interface TemplatePort {
  * Used by: orientUseCase (via getPlatformState), scrum-read tools
  */
 export interface ProjectReader
-  extends
-    BacklogPort,
-    SprintPort,
-    StoryPort,
-    HistoryPort,
-    BurndownPort,
-    ImpedimentPort {
+  extends BacklogPort, SprintPort, StoryPort, HistoryPort, BurndownPort, ImpedimentPort {
   getPlatformState(declaredVocabulary: {
     statusValues: string[];
     priorityValues: string[];

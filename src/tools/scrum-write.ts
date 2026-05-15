@@ -91,7 +91,7 @@ export function registerScrumWriteTools(
         };
       } catch (err) {
         return {
-          content: [{ type: "text", text: enrichError(err, { operation: "add_vocabulary" }) }],
+          content: [{ type: "text", text: enrichError(err) }],
           isError: true,
         };
       }
@@ -137,7 +137,7 @@ export function registerScrumWriteTools(
         };
       } catch (err) {
         return {
-          content: [{ type: "text", text: enrichError(err, { operation: "set_field" }) }],
+          content: [{ type: "text", text: enrichError(err) }],
           isError: true,
         };
       }
@@ -195,7 +195,7 @@ export function registerScrumWriteTools(
         };
       } catch (err) {
         return {
-          content: [{ type: "text", text: enrichError(err, { operation: "update_story" }) }],
+          content: [{ type: "text", text: enrichError(err) }],
           isError: true,
         };
       }
@@ -244,7 +244,7 @@ export function registerScrumWriteTools(
           } catch (err) {
             failedFields.push({
               field: "sprint",
-              reason: enrichError(err, { operation: "create_story" }),
+              reason: enrichError(err),
             });
           }
         }
@@ -255,7 +255,7 @@ export function registerScrumWriteTools(
           } catch (err) {
             failedFields.push({
               field: "story_points",
-              reason: enrichError(err, { operation: "create_story" }),
+              reason: enrichError(err),
             });
           }
         }
@@ -266,7 +266,7 @@ export function registerScrumWriteTools(
           } catch (err) {
             failedFields.push({
               field: "priority",
-              reason: enrichError(err, { operation: "create_story" }),
+              reason: enrichError(err),
             });
           }
         }
@@ -281,7 +281,7 @@ export function registerScrumWriteTools(
           // Story was created successfully — return partial success with issue ref
           failedFields.push({
             field: "read",
-            reason: enrichError(readErr, { operation: "create_story" }),
+            reason: enrichError(readErr),
           });
           storyDetail = { id: storyRef.id }; // minimal shape — full Story unavailable
         }
@@ -304,7 +304,7 @@ export function registerScrumWriteTools(
         };
       } catch (err) {
         return {
-          content: [{ type: "text", text: enrichError(err, { operation: "create_story" }) }],
+          content: [{ type: "text", text: enrichError(err) }],
           isError: true,
         };
       }
@@ -349,7 +349,7 @@ export function registerScrumWriteTools(
             } catch (err) {
               skipped.push({
                 ref: story.ref,
-                reason: enrichError(err, { operation: "plan_sprint" }),
+                reason: enrichError(err),
               });
             }
           }
@@ -361,7 +361,7 @@ export function registerScrumWriteTools(
             await backend.setField(ref, "sprint", params.sprint);
             assigned.push(ref);
           } catch (err) {
-            skipped.push({ ref, reason: enrichError(err, { operation: "plan_sprint" }) });
+            skipped.push({ ref, reason: enrichError(err) });
           }
         }
 
@@ -380,7 +380,7 @@ export function registerScrumWriteTools(
         };
       } catch (err) {
         return {
-          content: [{ type: "text", text: enrichError(err, { operation: "plan_sprint" }) }],
+          content: [{ type: "text", text: enrichError(err) }],
           isError: true,
         };
       }
@@ -479,7 +479,7 @@ export function registerScrumWriteTools(
         };
       } catch (err) {
         return {
-          content: [{ type: "text", text: enrichError(err, { operation: "log_impediment" }) }],
+          content: [{ type: "text", text: enrichError(err) }],
           isError: true,
         };
       }
@@ -515,7 +515,7 @@ export function registerScrumWriteTools(
         };
       } catch (err) {
         return {
-          content: [{ type: "text", text: enrichError(err, { operation: "update_impediment" }) }],
+          content: [{ type: "text", text: enrichError(err) }],
           isError: true,
         };
       }
@@ -563,7 +563,7 @@ export function registerScrumWriteTools(
         };
       } catch (err) {
         return {
-          content: [{ type: "text", text: enrichError(err, { operation: "github_graphql" }) }],
+          content: [{ type: "text", text: enrichError(err) }],
           isError: true,
         };
       }

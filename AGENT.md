@@ -5,13 +5,7 @@ Guidance for coding agents working in this repository. Concise by design — see
 ## Reference Documents
 
 - `README.md`: Project vision, domain model, tool surface design, interaction patterns.
-- `docs/proj-diagram.md`: Module dependency diagram and unused export tracking.
 - `skill/scrum-master-agent/SKILL.md`: Agentic Scrum prompts and ceremony playbooks.
-
-## Tech Stack
-
-- `Deno.js`: Use `deno task <task name>`. Available tasks: `deno.json`.
-- `express.js` + `stdio` MCP: Called by agents, not a web application.
 
 ## Context & Tool Rules
 
@@ -24,18 +18,36 @@ Guidance for coding agents working in this repository. Concise by design — see
 
 Three layers. Inner layers never import outer.
 
-```text
-Tool Handlers   src/tools/
-     ▼
-Services        src/services/   (config, resolver, pagination, formatters, readiness)
-     ▼
-GitHub Adapter  src/services/github.ts  ←  GraphQL + REST
+```mermaid
+flowchart TD
+
+  subgraph Framework["FRAMEWORK LAYER src/tools/ + src/schemas/"]
+    direction TB
+    FW["MCP tool registration thin handlers Zod param parsing"]
+  end
+
+  subgraph UseCase["USE-CASE LAYER src/scrum/ + src/domain/ + src/services/"]
+    direction TB
+    UC["Scrum orchestration domain rules pure computation"]
+    PB["interface ProjectBackend (src/scrum/ports.ts)"]
+  end
+
+  subgraph Adapter["ADAPTER LAYER src/adapters/ + src/generated/"]
+    direction TB
+    AD["GitHubProjectBackend implements ProjectBackend"]
+    SVC["internal/ services (LabelResolver, FieldValueMutator, etc.)"]
+    AD -->|delegates to| SVC
+  end
+
+  FW -->|calls use-case functions| UC
+  UC -->|depends on focused port| PB
+  AD -.->|implements Dependency Inversion| PB
 ```
 
 - **Entry:** `src/index.ts` — bootstraps McpServer, registers tools, selects transport
-- **Types:** `src/types.ts` — all Scrum and GraphQL response types
-- **Schemas:** `src/schemas/scrum.ts` — Zod input validation, all `.strict()`
 - **Refactor plan:** `tasks/REFACTORING.md`
+- **Active tasks:** `tasks/TODO.md`
+- **Current proj modules:** `docs/proj-diagram.md`
 
 ## Code Style
 
@@ -44,6 +56,8 @@ GitHub Adapter  src/services/github.ts  ←  GraphQL + REST
 - Functions: Arrow only — `const fn = (arg: Type): Return => {}`.
 - Errors: Throw `GitHubApiError`; handlers return structured text via format helper.
 - Zod: Always `.strict()`.
+- Types: Avoid using concrete types (ex: `{ name: "name", val: 5 }`).
+- Lint: Always ensure the linting test passes.
 
 ## Commonly Used Commands
 

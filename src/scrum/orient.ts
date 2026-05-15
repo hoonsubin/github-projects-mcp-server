@@ -121,7 +121,7 @@ export const orientUseCase = async (
       team: scrumConfig.project.team ?? null,
       dor: scrumConfig.definition_of_ready ?? null,
       dod: scrumConfig.definition_of_done ?? null,
-      autonomy: scrumConfig.project.agent?.autonomy != null
+      autonomy: scrumConfig.project.agent?.autonomy
         ? {
           require_confirmation_above_n_items:
             scrumConfig.project.agent.autonomy.require_confirmation_above_n_items ?? null,

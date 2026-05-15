@@ -14,8 +14,8 @@ import {
   buildEnrichedStory,
   buildLinkedPrList,
   buildStoryFromRaw,
-  toSprintInfo,
   type IssueDetailsInput,
+  toSprintInfo,
 } from "../mappers.ts";
 import { GET_ISSUE_DETAILS_QUERY, GET_ITEM_FIELDS_QUERY } from "../queries.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
@@ -119,9 +119,14 @@ export class StoryQueryService {
     const resolved = await resolveStory(ref, this.gh);
     if (!resolved.issueId) {
       throw new GitHubApiError(
-        `Story "${ref.id}" is a Draft Issue — detailed view is not available. ` +
-          "Convert it to a real issue to access comments and linked PRs.",
-        422,
+        `Story "${ref.id}" is a Draft Issue — detailed view is not available.`,
+        {
+          code: "DRAFT_ISSUE_CONSTRAINT",
+          statusCode: 422,
+          recovery:
+            "Convert the Draft Issue to a real Issue in GitHub to access comments and linked PRs.",
+          context: { itemId: ref.id },
+        },
       );
     }
     const [issueData, itemData] = await Promise.all([
@@ -134,7 +139,13 @@ export class StoryQueryService {
     if (!issue || issue.number === null) {
       throw new GitHubApiError(
         `Issue ${resolved.issueId} could not be fetched.`,
-        404,
+        {
+          code: "NOT_FOUND",
+          statusCode: 404,
+          recovery: "The issue may have been deleted from the repository. " +
+            "Refresh your story list with scrum_get_sprint or scrum_get_backlog.",
+          context: { issueId: resolved.issueId, itemId: resolved.itemId },
+        },
       );
     }
     const story = buildEnrichedStory(

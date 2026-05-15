@@ -66,7 +66,13 @@ export class LabelResolver {
     if (!nodeId) {
       throw new GitHubApiError(
         `Could not fetch repository node ID for ${this.owner}/${this.repo}.`,
-        404,
+        {
+          code: "NOT_FOUND",
+          statusCode: 404,
+          recovery: "Check that owner and repo in your configuration are spelled correctly, " +
+            "the repository exists, and your token has Metadata (read) access to it.",
+          context: { owner: this.owner, repo: this.repo },
+        },
       );
     }
     return nodeId;

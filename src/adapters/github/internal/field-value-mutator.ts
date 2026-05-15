@@ -53,12 +53,25 @@ export class FieldValueMutator {
     const optionId = this.config.statusOptions[value];
     if (!optionId) {
       throw new GitHubApiError(
-        `Status option "${value}" not found in vocabulary. Run scrum_add_vocabulary to add it first.`,
-        400,
+        `Status option "${value}" is not in the project vocabulary.`,
+        {
+          code: "OPTION_NOT_FOUND",
+          statusCode: 400,
+          recovery:
+            `Run scrum_add_vocabulary with type "status" and value "${value}" to add it, then retry.`,
+          context: { field: "status", value, knownOptions: Object.keys(this.config.statusOptions) },
+        },
       );
     }
     const fieldId = this.config.fields.statusFieldId;
-    if (!fieldId) throw new GitHubApiError("Status field ID is not configured.", 400);
+    if (!fieldId) {
+      throw new GitHubApiError("Status field is not configured in this project.", {
+        code: "FIELD_NOT_CONFIGURED",
+        statusCode: 400,
+        recovery: 'Add a single-select field named "Status" to your GitHub Project, ' +
+          "then re-run the server so config-loader can pick it up.",
+      });
+    }
     await this.gh.graphql<{ updateProjectV2ItemFieldValue: { item: { id: string } } }>(
       `mutation SetFieldStatus($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
         updateProjectV2ItemFieldValue(input: {
@@ -74,7 +87,14 @@ export class FieldValueMutator {
   async setFieldSprint(itemId: string, value: SprintRef): Promise<void> {
     const iterationId = value === null ? null : resolveSprint(value, this.config);
     const fieldId = this.config.fields.sprintFieldId;
-    if (!fieldId) throw new GitHubApiError("Sprint field ID is not configured.", 400);
+    if (!fieldId) {
+      throw new GitHubApiError("Sprint (Iteration) field is not configured in this project.", {
+        code: "FIELD_NOT_CONFIGURED",
+        statusCode: 400,
+        recovery: 'Add an Iteration field named "Sprint" to your GitHub Project, ' +
+          "then re-run the server so config-loader can pick it up.",
+      });
+    }
     if (iterationId === null) {
       await this.clearField(itemId, fieldId);
     } else {
@@ -93,7 +113,14 @@ export class FieldValueMutator {
   /** Update the story points of a project item */
   async setFieldStoryPoints(itemId: string, value: number | null): Promise<void> {
     const fieldId = this.config.fields.storyPointsFieldId;
-    if (!fieldId) throw new GitHubApiError("Story points field ID is not configured.", 400);
+    if (!fieldId) {
+      throw new GitHubApiError("Story points field is not configured in this project.", {
+        code: "FIELD_NOT_CONFIGURED",
+        statusCode: 400,
+        recovery: 'Add a number field named "Story Points" to your GitHub Project, ' +
+          "then re-run the server so config-loader can pick it up.",
+      });
+    }
     if (value === null) {
       await this.clearField(itemId, fieldId);
     } else {
@@ -112,15 +139,32 @@ export class FieldValueMutator {
   /** Update the priority of a project item */
   async setFieldPriority(itemId: string, value: string | null): Promise<void> {
     const fieldId = this.config.fields.priorityFieldId;
-    if (!fieldId) throw new GitHubApiError("Priority field ID is not configured.", 400);
+    if (!fieldId) {
+      throw new GitHubApiError("Priority field is not configured in this project.", {
+        code: "FIELD_NOT_CONFIGURED",
+        statusCode: 400,
+        recovery: 'Add a single-select field named "Priority" to your GitHub Project, ' +
+          "then re-run the server so config-loader can pick it up.",
+      });
+    }
     if (value === null) {
       await this.clearField(itemId, fieldId);
     } else {
       const optionId = this.config.priorityOptions[value];
       if (!optionId) {
         throw new GitHubApiError(
-          `Priority option "${value}" not found. Run scrum_add_vocabulary to add it first.`,
-          400,
+          `Priority option "${value}" is not in the project vocabulary.`,
+          {
+            code: "OPTION_NOT_FOUND",
+            statusCode: 400,
+            recovery:
+              `Run scrum_add_vocabulary with type "priority" and value "${value}" to add it, then retry.`,
+            context: {
+              field: "priority",
+              value,
+              knownOptions: Object.keys(this.config.priorityOptions),
+            },
+          },
         );
       }
       await this.gh.graphql<{ updateProjectV2ItemFieldValue: { item: { id: string } } }>(

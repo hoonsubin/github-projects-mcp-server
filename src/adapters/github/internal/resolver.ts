@@ -151,17 +151,28 @@ export const resolveStory = async (
   const node = data.node;
   if (!node) {
     throw new GitHubApiError(
-      `Project item "${ref.id}" not found. The ID may be stale or the item was deleted. ` +
-        "Use scrum_get_sprint or scrum_get_backlog to get a fresh Story.ref.id.",
-      404,
+      `Project item "${ref.id}" not found.`,
+      {
+        code: "NOT_FOUND",
+        statusCode: 404,
+        recovery: "The ID may be stale or the item was deleted. " +
+          "Use scrum_get_sprint or scrum_get_backlog to get a fresh Story.ref.id.",
+        context: { itemId: ref.id },
+      },
     );
   }
 
   const content = node.content;
   if (!content) {
     throw new GitHubApiError(
-      `Project item "${ref.id}" has no content. It may have been deleted from the underlying repository.`,
-      404,
+      `Project item "${ref.id}" has no content.`,
+      {
+        code: "NOT_FOUND",
+        statusCode: 404,
+        recovery: "The item may have been deleted from the underlying repository. " +
+          "Archive or remove it from the project board, then retry.",
+        context: { itemId: ref.id },
+      },
     );
   }
 
@@ -175,9 +186,14 @@ export const resolveStory = async (
 
   if (content.__typename === "PullRequest") {
     throw new GitHubApiError(
-      `Project item "${ref.id}" is a Pull Request, not a Story. ` +
-        "Only Issues and Draft Issues are supported as Stories.",
-      400,
+      `Project item "${ref.id}" is a Pull Request, not a Story.`,
+      {
+        code: "WRONG_CONTENT_TYPE",
+        statusCode: 400,
+        recovery: "Only Issues and Draft Issues are supported as Stories. " +
+          "Use a Story ref from scrum_get_sprint or scrum_get_backlog.",
+        context: { itemId: ref.id, contentType: "PullRequest" },
+      },
     );
   }
 

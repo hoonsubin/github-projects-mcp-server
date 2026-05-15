@@ -63,10 +63,14 @@ export const fetchRepoFile = async (
   } catch (err) {
     if (err instanceof GitHubApiError && err.statusCode === 404) {
       throw new GitHubApiError(
-        `Template file "${path}" is declared in config.yml but was not found ` +
-          `in the repository. Either add the file or set the template path to null ` +
-          `in config.yml under the templates section.`,
-        404,
+        `Template file "${path}" not found in ${owner}/${repo}.`,
+        {
+          code: "NOT_FOUND",
+          statusCode: 404,
+          recovery: `Either add the file at "${path}" to the repository, ` +
+            "or set the template path to null in config.yml under the templates section.",
+          context: { owner, repo, path },
+        },
       );
     }
     throw err;
@@ -74,8 +78,12 @@ export const fetchRepoFile = async (
 
   if (Array.isArray(response)) {
     throw new GitHubApiError(
-      `Template path "${path}" resolves to a directory, not a file. ` +
-        `Provide the path to a specific file in config.yml.`,
+      `Template path "${path}" resolves to a directory, not a file.`,
+      {
+        code: "NOT_FOUND",
+        recovery: `Provide the path to a specific file in config.yml under the templates section.`,
+        context: { owner, repo, path },
+      },
     );
   }
 

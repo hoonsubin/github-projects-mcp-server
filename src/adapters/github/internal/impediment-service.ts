@@ -156,8 +156,14 @@ export class ImpedimentService {
     const issue = issueResult?.node;
     if (!issue || issue.__typename !== "Issue") {
       throw new GitHubApiError(
-        `Could not resolve impediment "${ref.id}" to an issue.`,
-        404,
+        `Could not resolve impediment "${ref.id}" to an Issue.`,
+        {
+          code: "NOT_FOUND",
+          statusCode: 404,
+          recovery: "The impediment ID may be stale or the issue was deleted. " +
+            "Use scrum_get_impediments to refresh the list.",
+          context: { impedimentId: ref.id },
+        },
       );
     }
 

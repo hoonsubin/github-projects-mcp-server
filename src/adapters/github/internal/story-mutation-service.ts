@@ -69,7 +69,12 @@ export class StoryMutationService {
 
     const issue = result.createIssue?.issue;
     if (!issue) {
-      throw new GitHubApiError("Failed to create issue: no issue returned from mutation");
+      throw new GitHubApiError("createIssue mutation returned no issue.", {
+        code: "MUTATION_FAILED",
+        recovery:
+          "Check that your token has Issues (read/write) and Contents (read) permissions, " +
+          "then retry. If the error persists, verify the repository is not archived.",
+      });
     }
 
     const addItemResult = await this.gh.graphql<{
@@ -85,7 +90,13 @@ export class StoryMutationService {
 
     const itemId = addItemResult.addProjectV2ItemById?.item?.id;
     if (!itemId) {
-      throw new GitHubApiError("Failed to add issue to project — no item ID returned.");
+      throw new GitHubApiError("addProjectV2ItemById mutation returned no item ID.", {
+        code: "MUTATION_FAILED",
+        recovery:
+          "Check that your token has Projects (read/write) permission and that the project " +
+          "number in your configuration is correct, then retry.",
+        context: { issueId: issue.id },
+      });
     }
 
     const storyRef: StoryRef = { id: itemId };
@@ -99,9 +110,13 @@ export class StoryMutationService {
     const resolved = await resolveStory(ref, this.gh);
     if (!resolved.issueId) {
       throw new GitHubApiError(
-        `Story "${ref.id}" is a Draft Issue — title, body, labels, assignees, and epic cannot be ` +
-          "edited via the GitHub Issues API. Convert it to a real issue first.",
-        422,
+        `Story "${ref.id}" is a Draft Issue — title, body, labels, assignees, and epic cannot be edited.`,
+        {
+          code: "DRAFT_ISSUE_CONSTRAINT",
+          statusCode: 422,
+          recovery: "Convert the Draft Issue to a real Issue in GitHub, then retry the update.",
+          context: { itemId: ref.id },
+        },
       );
     }
     const issueId = resolved.issueId;
@@ -167,9 +182,13 @@ export class StoryMutationService {
       case "assignee":
         if (!resolved.issueId) {
           throw new GitHubApiError(
-            `Story "${ref.id}" is a Draft Issue — assignee cannot be set via the GitHub Issues API. ` +
-              "Convert it to a real issue first.",
-            422,
+            `Story "${ref.id}" is a Draft Issue — assignee cannot be set.`,
+            {
+              code: "DRAFT_ISSUE_CONSTRAINT",
+              statusCode: 422,
+              recovery: "Convert the Draft Issue to a real Issue in GitHub, then retry.",
+              context: { itemId: ref.id, field: "assignee" },
+            },
           );
         }
         return this.fieldValueMutator.setFieldAssignee(resolved.issueId, value as string | null);
@@ -182,9 +201,13 @@ export class StoryMutationService {
     const resolved = await resolveStory(ref, this.gh);
     if (resolved.issueNumber === null) {
       throw new GitHubApiError(
-        `Story "${ref.id}" is a Draft Issue — comments can only be added to real Issues. ` +
-          "Convert it to a real issue first.",
-        422,
+        `Story "${ref.id}" is a Draft Issue — comments can only be added to real Issues.`,
+        {
+          code: "DRAFT_ISSUE_CONSTRAINT",
+          statusCode: 422,
+          recovery: "Convert the Draft Issue to a real Issue in GitHub, then retry.",
+          context: { itemId: ref.id },
+        },
       );
     }
     await this.gh.rest(

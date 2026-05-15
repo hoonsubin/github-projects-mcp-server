@@ -64,7 +64,7 @@ export const registerScrumReadTools = (
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
         return {
-          content: [{ type: "text", text: enrichError(err, { operation: "orient" }) }],
+          content: [{ type: "text", text: enrichError(err) }],
           isError: true,
         };
       }
@@ -119,7 +119,7 @@ export const registerScrumReadTools = (
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
         return {
-          content: [{ type: "text", text: enrichError(err, { operation: "get_history" }) }],
+          content: [{ type: "text", text: enrichError(err) }],
           isError: true,
         };
       }
@@ -166,7 +166,7 @@ export const registerScrumReadTools = (
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
         return {
-          content: [{ type: "text", text: enrichError(err, { operation: "get_backlog" }) }],
+          content: [{ type: "text", text: enrichError(err) }],
           isError: true,
         };
       }
@@ -208,7 +208,7 @@ export const registerScrumReadTools = (
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
         return {
-          content: [{ type: "text", text: enrichError(err, { operation: "get_sprint" }) }],
+          content: [{ type: "text", text: enrichError(err) }],
           isError: true,
         };
       }
@@ -245,7 +245,7 @@ export const registerScrumReadTools = (
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
         return {
-          content: [{ type: "text", text: enrichError(err, { operation: "get_story" }) }],
+          content: [{ type: "text", text: enrichError(err) }],
           isError: true,
         };
       }
@@ -282,7 +282,7 @@ export const registerScrumReadTools = (
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
         return {
-          content: [{ type: "text", text: enrichError(err, { operation: "get_burndown" }) }],
+          content: [{ type: "text", text: enrichError(err) }],
           isError: true,
         };
       }
@@ -323,7 +323,7 @@ export const registerScrumReadTools = (
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
         return {
-          content: [{ type: "text", text: enrichError(err, { operation: "get_template" }) }],
+          content: [{ type: "text", text: enrichError(err) }],
           isError: true,
         };
       }

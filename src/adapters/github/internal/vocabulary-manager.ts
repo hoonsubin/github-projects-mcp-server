@@ -72,8 +72,13 @@ export class VocabularyManager {
     const fieldId = this.config.fields.statusFieldId;
     if (!fieldId) {
       throw new GitHubApiError(
-        "Status field does not exist on the project. Create the field manually in GitHub Projects UI before adding options.",
-        400,
+        "Status field is not configured in this project.",
+        {
+          code: "FIELD_NOT_CONFIGURED",
+          statusCode: 400,
+          recovery: 'Add a single-select field named "Status" to your GitHub Project, ' +
+            "then re-run the server before adding vocabulary options.",
+        },
       );
     }
     return await this.addSingleSelectOption(fieldId, value);
@@ -83,8 +88,13 @@ export class VocabularyManager {
     const fieldId = this.config.fields.priorityFieldId;
     if (!fieldId) {
       throw new GitHubApiError(
-        "Priority field does not exist on the project. Create the field manually in GitHub Projects UI before adding options.",
-        400,
+        "Priority field is not configured in this project.",
+        {
+          code: "FIELD_NOT_CONFIGURED",
+          statusCode: 400,
+          recovery: 'Add a single-select field named "Priority" to your GitHub Project, ' +
+            "then re-run the server before adding vocabulary options.",
+        },
       );
     }
     return await this.addSingleSelectOption(fieldId, value);

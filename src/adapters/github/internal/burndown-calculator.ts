@@ -99,7 +99,7 @@ export class BurndownCalculator {
         if (lastClosedAt) {
           completions.set(story.number, new Date(lastClosedAt).toISOString());
         }
-      } catch (err) {
+      } catch (_err) {
         // Individual timeline fetch errors should not abort the whole burndown.
         // We log at debug level to avoid cluttering error logs for non-critical failures.
         continue;

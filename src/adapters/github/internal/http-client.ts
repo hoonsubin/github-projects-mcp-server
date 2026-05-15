@@ -48,9 +48,13 @@ const getToken = (): string => {
   const token = Deno.env.get("GITHUB_TOKEN");
   if (!token) {
     throw new GitHubApiError(
-      "GITHUB_TOKEN environment variable is not set. " +
-        "Generate a token at https://github.com/settings/tokens with scopes: " +
-        "read:project, project (for write), repo (for issue/PR access).",
+      "GITHUB_TOKEN environment variable is not set.",
+      {
+        code: "AUTH_FAILED",
+        recovery: "Set GITHUB_TOKEN to a fine-grained personal access token generated at " +
+          "https://github.com/settings/tokens with at minimum: " +
+          "Projects (read/write), Issues (read/write), Metadata (read-only).",
+      },
     );
   }
   return token;
@@ -104,11 +108,19 @@ export const graphql = async <T>(
     const ms = Math.round(performance.now() - t0);
     if (err instanceof Error && err.name === "AbortError") {
       log.debug(`✗ graphql:${op} timed out after ${ms}ms`);
-      throw new GitHubApiError("Request timed out after 30s");
+      throw new GitHubApiError("GraphQL request timed out after 30s.", {
+        code: "NETWORK_ERROR",
+        recovery:
+          "Check your network connection and retry. If timeouts persist, GitHub may be experiencing an outage.",
+      });
     }
     log.debug(`✗ graphql:${op} network error (${ms}ms)`, err);
     throw new GitHubApiError(
-      `Network error: ${err instanceof Error ? err.message : String(err)}`,
+      `GraphQL network error: ${err instanceof Error ? err.message : String(err)}`,
+      {
+        code: "NETWORK_ERROR",
+        recovery: "Check your network connection and retry.",
+      },
     );
   } finally {
     clearTimeout(timeout);
@@ -119,26 +131,51 @@ export const graphql = async <T>(
   if (response.status === 401) {
     log.debug(`✗ graphql:${op} 401 Unauthorized (${ms}ms)`);
     throw new GitHubApiError(
-      "Authentication failed. Check that GITHUB_TOKEN is valid and has the required scopes.",
-      401,
+      "GraphQL authentication failed (HTTP 401).",
+      {
+        code: "AUTH_FAILED",
+        statusCode: 401,
+        recovery: "Your GITHUB_TOKEN is invalid or expired. Generate a new fine-grained token at " +
+          "https://github.com/settings/tokens with: Projects (read/write), " +
+          "Issues (read/write), Metadata (read-only). Then restart the server.",
+      },
     );
   }
   if (response.status === 403) {
     const rateLimitReset = response.headers.get("x-ratelimit-reset");
-    const resetTime = rateLimitReset
-      ? new Date(Number(rateLimitReset) * 1000).toISOString()
-      : "unknown";
-    log.debug(`✗ graphql:${op} 403 rate-limited (${ms}ms), resets ${resetTime}`);
+    if (rateLimitReset) {
+      const resetTime = new Date(Number(rateLimitReset) * 1000).toISOString();
+      log.debug(`✗ graphql:${op} 403 rate-limited (${ms}ms), resets ${resetTime}`);
+      throw new GitHubApiError(
+        `GraphQL rate limit exceeded. Resets at ${resetTime}.`,
+        {
+          code: "RATE_LIMITED",
+          statusCode: 403,
+          recovery: `Wait until ${resetTime}, then retry the same request.`,
+          context: { resetAt: resetTime },
+        },
+      );
+    }
+    log.debug(`✗ graphql:${op} 403 permission denied (${ms}ms)`);
     throw new GitHubApiError(
-      `Rate limit or permission denied. Rate limit resets at ${resetTime}.`,
-      403,
+      "GraphQL request forbidden (HTTP 403).",
+      {
+        code: "PERMISSION_DENIED",
+        statusCode: 403,
+        recovery: "Your token lacks a required permission. Update your fine-grained token at " +
+          "https://github.com/settings/tokens and restart the server.",
+      },
     );
   }
   if (!response.ok) {
     log.debug(`✗ graphql:${op} HTTP ${response.status} (${ms}ms)`);
     throw new GitHubApiError(
-      `GitHub API error: HTTP ${response.status} ${response.statusText}`,
-      response.status,
+      `GitHub GraphQL API returned HTTP ${response.status} ${response.statusText}.`,
+      {
+        code: "HTTP_ERROR",
+        statusCode: response.status,
+        recovery: "Retry the request. If the error persists, check https://githubstatus.com.",
+      },
     );
   }
 
@@ -152,14 +189,25 @@ export const graphql = async <T>(
     log.debug(`✗ graphql:${op} GraphQL errors (${ms}ms)`, messages);
     throw new GitHubApiError(
       `GraphQL errors: ${messages.join("; ")}`,
-      undefined,
-      messages,
+      {
+        code: "GRAPHQL_ERROR",
+        recovery: "Check the error messages above. Common causes: missing token permission " +
+          "(add the required scope at https://github.com/settings/tokens), " +
+          "invalid field or argument in the query, or a stale node ID.",
+        graphqlErrors: messages,
+      },
     );
   }
 
   if (json.data === undefined) {
     log.debug(`✗ graphql:${op} no data returned (${ms}ms)`);
-    throw new GitHubApiError("GitHub API returned no data and no errors.");
+    throw new GitHubApiError(
+      "GitHub GraphQL API returned no data and no errors.",
+      {
+        code: "HTTP_ERROR",
+        recovery: "This is an unexpected GitHub API response. Retry the request.",
+      },
+    );
   }
 
   log.debug(`← graphql:${op} OK (${ms}ms)`);
@@ -234,11 +282,19 @@ export const rest = async <T>(
     const ms = Math.round(performance.now() - t0);
     if (err instanceof Error && err.name === "AbortError") {
       log.debug(`✗ rest:${method} ${path} timed out after ${ms}ms`);
-      throw new GitHubApiError("Request timed out after 30s");
+      throw new GitHubApiError("REST request timed out after 30s.", {
+        code: "NETWORK_ERROR",
+        recovery:
+          "Check your network connection and retry. If timeouts persist, GitHub may be experiencing an outage.",
+      });
     }
     log.debug(`✗ rest:${method} ${path} network error (${ms}ms)`, err);
     throw new GitHubApiError(
-      `Network error: ${err instanceof Error ? err.message : String(err)}`,
+      `REST network error: ${err instanceof Error ? err.message : String(err)}`,
+      {
+        code: "NETWORK_ERROR",
+        recovery: "Check your network connection and retry.",
+      },
     );
   } finally {
     clearTimeout(timeout);
@@ -249,26 +305,51 @@ export const rest = async <T>(
   if (response.status === 401) {
     log.debug(`✗ rest:${method} ${path} 401 Unauthorized (${ms}ms)`);
     throw new GitHubApiError(
-      "Authentication failed. Check that GITHUB_TOKEN is valid and has the required scopes.",
-      401,
+      "REST authentication failed (HTTP 401).",
+      {
+        code: "AUTH_FAILED",
+        statusCode: 401,
+        recovery: "Your GITHUB_TOKEN is invalid or expired. Generate a new fine-grained token at " +
+          "https://github.com/settings/tokens with: Projects (read/write), " +
+          "Issues (read/write), Metadata (read-only). Then restart the server.",
+      },
     );
   }
   if (response.status === 403) {
     const rateLimitReset = response.headers.get("x-ratelimit-reset");
-    const resetTime = rateLimitReset
-      ? new Date(Number(rateLimitReset) * 1000).toISOString()
-      : "unknown";
-    log.debug(`✗ rest:${method} ${path} 403 rate-limited (${ms}ms), resets ${resetTime}`);
+    if (rateLimitReset) {
+      const resetTime = new Date(Number(rateLimitReset) * 1000).toISOString();
+      log.debug(`✗ rest:${method} ${path} 403 rate-limited (${ms}ms), resets ${resetTime}`);
+      throw new GitHubApiError(
+        `REST rate limit exceeded. Resets at ${resetTime}.`,
+        {
+          code: "RATE_LIMITED",
+          statusCode: 403,
+          recovery: `Wait until ${resetTime}, then retry the same request.`,
+          context: { resetAt: resetTime },
+        },
+      );
+    }
+    log.debug(`✗ rest:${method} ${path} 403 permission denied (${ms}ms)`);
     throw new GitHubApiError(
-      `Rate limit or permission denied. Rate limit resets at ${resetTime}.`,
-      403,
+      "REST request forbidden (HTTP 403).",
+      {
+        code: "PERMISSION_DENIED",
+        statusCode: 403,
+        recovery: "Your token lacks a required permission. Update your fine-grained token at " +
+          "https://github.com/settings/tokens and restart the server.",
+      },
     );
   }
   if (!response.ok) {
     log.debug(`✗ rest:${method} ${path} HTTP ${response.status} (${ms}ms)`);
     throw new GitHubApiError(
-      `GitHub API error: HTTP ${response.status} ${response.statusText}`,
-      response.status,
+      `GitHub REST API returned HTTP ${response.status} ${response.statusText}.`,
+      {
+        code: "HTTP_ERROR",
+        statusCode: response.status,
+        recovery: "Retry the request. If the error persists, check https://githubstatus.com.",
+      },
     );
   }
 

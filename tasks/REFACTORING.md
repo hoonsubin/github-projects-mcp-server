@@ -115,17 +115,17 @@ All backend abstraction (Phase 5), tool extraction (Phase 2), write tools (Phase
 
 **Group A (Agent layer) — complete.** `stale_recovery` Phase 4 disambiguated to use `scrum_set_field` for status changes; `prefer_comments_over_body_edits` note cleaned up; `config.autonomy` path corrected to `vocabulary.autonomy.require_confirmation_above_n_items`; impediment de-duplication check added to session-start health check; ceremony delivery steps added to all five ceremony sequences; tool-grounded coaching section added to SKILL.md.
 
-| File                                                      | State       | Notes                                                                                                                                                   |
-| --------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/adapters/github/backend.ts`                          | ✅ Complete | ~380 lines; thin facade; delegates to 6 injected services; all string-interpolated mutations removed; dead private methods eliminated                   |
-| `src/adapters/github/internal/burndown-calculator.ts`     | ✅ Complete | Uses `PaginatedProjectItemFetcher`; imports `resolveSprint` and `buildBurndownStoryInput`; REST response shape correct; no `any` types                   |
-| `src/adapters/github/internal/field-value-mutator.ts`     | ✅ Complete | All mutations parameterized with named variables and typed generics; `gh` typed as `GitHubClient`                                                       |
-| `src/adapters/github/internal/label-resolver.ts`          | ✅ Complete | `fetchAllLabels` private; `hashToColor` private; `GET_REPO_LABELS_QUERY` appears once; `RepoNodeIdProvider` interface defined here                      |
-| `src/adapters/github/internal/user-milestone-resolver.ts` | ✅ Complete | Accepts `RepoNodeIdProvider`; no duplicated `fetchRepoNodeId`; `gh` typed as `GitHubClient`                                                             |
-| `src/adapters/github/internal/vocabulary-manager.ts`      | ✅ Complete | Delegates label ops to `LabelResolver`; `gh` typed as `GitHubClient`                                                                                   |
-| `src/adapters/github/internal/sprint-history-service.ts`  | ✅ Complete | Extracted from `backend.ts`; no dead code; `gh` typed as `GitHubClient`; dead-variable accumulations (`committedPoints` etc.) removed                  |
-| `src/adapters/github/internal/http-client.ts`             | ✅ Complete | Exports `GitHubClient` interface, `graphql`, `rest` functions, and `RestResponse`                                                                       |
-| `src/tools/scrum-write.ts`                                | ✅ Complete | `scrum_log_impediment`, `scrum_update_impediment` implemented                                                                                           |
+| File                                                      | State       | Notes                                                                                                                                  |
+| --------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/adapters/github/backend.ts`                          | ✅ Complete | ~380 lines; thin facade; delegates to 6 injected services; all string-interpolated mutations removed; dead private methods eliminated  |
+| `src/adapters/github/internal/burndown-calculator.ts`     | ✅ Complete | Uses `PaginatedProjectItemFetcher`; imports `resolveSprint` and `buildBurndownStoryInput`; REST response shape correct; no `any` types |
+| `src/adapters/github/internal/field-value-mutator.ts`     | ✅ Complete | All mutations parameterized with named variables and typed generics; `gh` typed as `GitHubClient`                                      |
+| `src/adapters/github/internal/label-resolver.ts`          | ✅ Complete | `fetchAllLabels` private; `hashToColor` private; `GET_REPO_LABELS_QUERY` appears once; `RepoNodeIdProvider` interface defined here     |
+| `src/adapters/github/internal/user-milestone-resolver.ts` | ✅ Complete | Accepts `RepoNodeIdProvider`; no duplicated `fetchRepoNodeId`; `gh` typed as `GitHubClient`                                            |
+| `src/adapters/github/internal/vocabulary-manager.ts`      | ✅ Complete | Delegates label ops to `LabelResolver`; `gh` typed as `GitHubClient`                                                                   |
+| `src/adapters/github/internal/sprint-history-service.ts`  | ✅ Complete | Extracted from `backend.ts`; no dead code; `gh` typed as `GitHubClient`; dead-variable accumulations (`committedPoints` etc.) removed  |
+| `src/adapters/github/internal/http-client.ts`             | ✅ Complete | Exports `GitHubClient` interface, `graphql`, `rest` functions, and `RestResponse`                                                      |
+| `src/tools/scrum-write.ts`                                | ✅ Complete | `scrum_log_impediment`, `scrum_update_impediment` implemented                                                                          |
 
 ---
 
@@ -133,30 +133,30 @@ All backend abstraction (Phase 5), tool extraction (Phase 2), write tools (Phase
 
 Tasks are ordered by dependency. Tasks within the same group that share no dependency may be executed in parallel.
 
-| ID      | Title                                                              | Depends on  | Status         |
-| ------- | ------------------------------------------------------------------ | ----------- | -------------- |
-| **F.0** | **Export `GitHubClient` interface**                                | —           | ✅ Complete    |
-| F.1.1   | Fix `LabelResolver` — DRY + visibility                             | F.0         | ✅ Complete    |
-| F.1.2   | Fix `UserMilestoneResolver` — `RepoNodeIdProvider`                 | F.0, F.1.1  | ✅ Complete    |
-| F.1.3   | Fix `FieldValueMutator` — `GitHubClient` + parameterized mutations | F.0         | ✅ Complete    |
-| F.1.4   | Rewrite `BurndownCalculator`                                       | F.0         | ✅ Complete    |
-| F.1.5   | Create `SprintHistoryService`                                      | F.0         | ✅ Complete    |
-| F.2.1   | Wire Facade — update `backend.ts` constructor                      | F.1.1–F.1.5 | ✅ Complete    |
-| F.2.2   | Move service construction to `index.ts`                            | F.2.1       | ✅ Complete    |
-| **P.1** | **Remove `TemplatePort` from `ProjectReader`**                     | —           | ✅ Complete    |
-| P.2     | Adopt focused ports in use cases                                   | P.1         | ✅ Complete    |
-| P.3     | Extract remaining `github.ts` concerns                             | F.2.2       | ✅ Complete    |
-| **T.1** | **`scrum_orient` — response shape correctness**                    | —           | ✅ Complete    |
-| T.2     | `scrum_update_story` — add `comment` field                         | —           | ✅ Complete    |
-| T.3     | `scrum_plan_sprint` — add `goal` field                             | —           | ✅ Complete    |
-| T.4     | `scrum_log_impediment` — optional `affects` + priority fix         | —           | ✅ Complete    |
-| T.5     | `getOrphanImpediments()` — implement in backend                    | F.2.1       | ✅ Complete    |
-| T.6     | `SprintSnapshot.impediments` — sprint-level enrichment             | F.2.1       | ✅ Complete    |
-| **A.1** | **Wrong tool references in ceremony rules**                        | T.2, T.3    | ✅ Complete    |
-| A.2     | `scrum_orient` field paths in `1_workflow.xml`                     | T.1         | ✅ Complete    |
-| A.3     | Impediment de-duplication guidance                                 | —           | ✅ Complete    |
-| A.4     | Ceremony template delivery path                                    | —           | ✅ Complete    |
-| A.5     | SKILL.md — tool-grounded coaching pattern                          | —           | ✅ Complete    |
+| ID      | Title                                                              | Depends on  | Status      |
+| ------- | ------------------------------------------------------------------ | ----------- | ----------- |
+| **F.0** | **Export `GitHubClient` interface**                                | —           | ✅ Complete |
+| F.1.1   | Fix `LabelResolver` — DRY + visibility                             | F.0         | ✅ Complete |
+| F.1.2   | Fix `UserMilestoneResolver` — `RepoNodeIdProvider`                 | F.0, F.1.1  | ✅ Complete |
+| F.1.3   | Fix `FieldValueMutator` — `GitHubClient` + parameterized mutations | F.0         | ✅ Complete |
+| F.1.4   | Rewrite `BurndownCalculator`                                       | F.0         | ✅ Complete |
+| F.1.5   | Create `SprintHistoryService`                                      | F.0         | ✅ Complete |
+| F.2.1   | Wire Facade — update `backend.ts` constructor                      | F.1.1–F.1.5 | ✅ Complete |
+| F.2.2   | Move service construction to `index.ts`                            | F.2.1       | ✅ Complete |
+| **P.1** | **Remove `TemplatePort` from `ProjectReader`**                     | —           | ✅ Complete |
+| P.2     | Adopt focused ports in use cases                                   | P.1         | ✅ Complete |
+| P.3     | Extract remaining `github.ts` concerns                             | F.2.2       | ✅ Complete |
+| **T.1** | **`scrum_orient` — response shape correctness**                    | —           | ✅ Complete |
+| T.2     | `scrum_update_story` — add `comment` field                         | —           | ✅ Complete |
+| T.3     | `scrum_plan_sprint` — add `goal` field                             | —           | ✅ Complete |
+| T.4     | `scrum_log_impediment` — optional `affects` + priority fix         | —           | ✅ Complete |
+| T.5     | `getOrphanImpediments()` — implement in backend                    | F.2.1       | ✅ Complete |
+| T.6     | `SprintSnapshot.impediments` — sprint-level enrichment             | F.2.1       | ✅ Complete |
+| **A.1** | **Wrong tool references in ceremony rules**                        | T.2, T.3    | ✅ Complete |
+| A.2     | `scrum_orient` field paths in `1_workflow.xml`                     | T.1         | ✅ Complete |
+| A.3     | Impediment de-duplication guidance                                 | —           | ✅ Complete |
+| A.4     | Ceremony template delivery path                                    | —           | ✅ Complete |
+| A.5     | SKILL.md — tool-grounded coaching pattern                          | —           | ✅ Complete |
 
 ---
 

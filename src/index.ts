@@ -114,11 +114,22 @@ const createBackend = async (): Promise<{ backend: ProjectBackend; scrumConfig: 
 
   // Build services in dependency order (DIP: composition root owns construction)
   const labelResolver = new LabelResolver(config, ghClient, gh.owner, primaryRepo);
-  const userMilestoneResolver = new UserMilestoneResolver(ghClient, gh.owner, primaryRepo, labelResolver);
+  const userMilestoneResolver = new UserMilestoneResolver(
+    ghClient,
+    gh.owner,
+    primaryRepo,
+    labelResolver,
+  );
   const fieldValueMutator = new FieldValueMutator(config, ghClient, userMilestoneResolver);
   const burndownCalculator = new BurndownCalculator(config, ghClient, gh.owner, primaryRepo);
   const sprintHistoryService = new SprintHistoryService(config, ghClient, gh.owner, primaryRepo);
-  const vocabularyManager = new VocabularyManager(config, ghClient, labelResolver, gh.owner, primaryRepo);
+  const vocabularyManager = new VocabularyManager(
+    config,
+    ghClient,
+    labelResolver,
+    gh.owner,
+    primaryRepo,
+  );
   const storyQueryService = new StoryQueryService(config, ghClient, gh.owner, primaryRepo);
   const storyMutationService = new StoryMutationService(
     config,

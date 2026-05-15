@@ -315,7 +315,17 @@ export class PaginatedProjectItemFetcher {
     if (!project) {
       throw new GitHubApiError(
         `Project #${this.projectNumber} not found for ${this.ownerType} '${this.login}'.`,
-        404,
+        {
+          code: "NOT_FOUND",
+          statusCode: 404,
+          recovery: "Check that the project number and owner in your configuration are correct, " +
+            "and that your token has Projects (read) access for that owner.",
+          context: {
+            projectNumber: this.projectNumber,
+            ownerType: this.ownerType,
+            login: this.login,
+          },
+        },
       );
     }
 

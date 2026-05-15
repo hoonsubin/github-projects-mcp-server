@@ -41,7 +41,13 @@ export class UserMilestoneResolver {
     );
     const nodeId = result?.user?.id;
     if (!nodeId) {
-      throw new GitHubApiError(`User "${login}" not found.`, 404);
+      throw new GitHubApiError(`User "${login}" not found.`, {
+        code: "NOT_FOUND",
+        statusCode: 404,
+        recovery:
+          `Check that the GitHub username "${login}" is spelled correctly and the account exists.`,
+        context: { login },
+      });
     }
     return nodeId;
   }
