@@ -275,6 +275,13 @@ export interface ProjectReader
     statusValues: string[];
     priorityValues: string[];
   }): Promise<PlatformState>;
+
+  /**
+   * Re-sync with the platform: re-fetch live field metadata (iterations, field
+   * option IDs) so subsequent calls reflect changes made on the board since
+   * the server started. Called automatically by orientUseCase.
+   */
+  reload(): Promise<void>;
 }
 
 /**

@@ -29,6 +29,7 @@ import { VocabularyManager } from "./adapters/github/internal/vocabulary-manager
 import { StoryQueryService } from "./adapters/github/internal/story-query-service.ts";
 import { StoryMutationService } from "./adapters/github/internal/story-mutation-service.ts";
 import { ImpedimentService } from "./adapters/github/internal/impediment-service.ts";
+import { ConfigReloader } from "./adapters/github/internal/config-reloader.ts";
 import { log } from "./services/logger.ts";
 import type { Socket } from "node:net";
 import type { ProjectBackend } from "./scrum/ports.ts";
@@ -149,6 +150,8 @@ const createBackend = async (): Promise<{ backend: ProjectBackend; scrumConfig: 
     fieldValueMutator,
   );
 
+  const configReloader = new ConfigReloader(config, ghClient);
+
   const backend = new GitHubProjectBackend(
     labelResolver,
     userMilestoneResolver,
@@ -162,6 +165,7 @@ const createBackend = async (): Promise<{ backend: ProjectBackend; scrumConfig: 
     config,
     gh.owner,
     primaryRepo,
+    configReloader,
   );
   return { backend, scrumConfig: config.scrumConfig };
 };
