@@ -5,6 +5,7 @@
 // ── resolveStory:  resolve StoryRef  → GitHub node IDs needed for mutations ──
 // =============================================================================
 
+import { GitHubApiError } from "../errors.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { SprintRef, StoryRef } from "../../../domain/types.ts";
 
@@ -149,16 +150,18 @@ export const resolveStory = async (
 
   const node = data.node;
   if (!node) {
-    throw new Error(
+    throw new GitHubApiError(
       `Project item "${ref.id}" not found. The ID may be stale or the item was deleted. ` +
         "Use scrum_get_sprint or scrum_get_backlog to get a fresh Story.ref.id.",
+      404,
     );
   }
 
   const content = node.content;
   if (!content) {
-    throw new Error(
+    throw new GitHubApiError(
       `Project item "${ref.id}" has no content. It may have been deleted from the underlying repository.`,
+      404,
     );
   }
 
@@ -171,9 +174,10 @@ export const resolveStory = async (
   }
 
   if (content.__typename === "PullRequest") {
-    throw new Error(
+    throw new GitHubApiError(
       `Project item "${ref.id}" is a Pull Request, not a Story. ` +
         "Only Issues and Draft Issues are supported as Stories.",
+      400,
     );
   }
 

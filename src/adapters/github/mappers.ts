@@ -5,8 +5,8 @@
 // =============================================================================
 
 import type { RuntimeConfig } from "./config-loader.ts";
-import type { Story } from "../../domain/types.ts";
-import type { BurndownStoryInput } from "../../scrum/ports.ts";
+import type { IterationEntry, Story } from "../../domain/types.ts";
+import type { BurndownStoryInput, SprintInfo } from "../../scrum/ports.ts";
 import { classifyLabels, type StoryTypeLabel } from "../../domain/rules/labels.ts";
 import type { BoardFields, Comment, FieldValueNode, LinkedPr, ProjectItem } from "./types.ts";
 
@@ -217,6 +217,25 @@ export const buildLinkedPrList = (nodes: TimelineItemInput[]): LinkedPr[] =>
       is_draft: source.isDraft ?? false,
     }];
   });
+
+// ── Sprint info projection ─────────────────────────────────────────────────────
+
+/**
+ * Map an IterationEntry to the platform-agnostic SprintInfo shape.
+ * Returns null when iter is null (no active/next sprint configured).
+ * Used by StoryQueryService and backend.ts getPlatformState.
+ */
+export const toSprintInfo = (iter: IterationEntry | null): SprintInfo | null => {
+  if (!iter) return null;
+  const endDate = new Date(iter.startDate);
+  endDate.setDate(endDate.getDate() + iter.duration);
+  return {
+    name: iter.title,
+    startDate: iter.startDate,
+    durationDays: iter.duration,
+    endDate: endDate.toISOString().slice(0, 10),
+  };
+};
 
 // ── Burndown projection ────────────────────────────────────────────────────────
 

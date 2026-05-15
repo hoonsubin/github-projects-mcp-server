@@ -27,6 +27,23 @@ export interface RestResponse<T> {
   linkHeader: string | null;
 }
 
+/**
+ * Unified client interface for GitHub HTTP transport.
+ * Enables dependency inversion and easy mocking in tests.
+ */
+export interface GitHubClient {
+  graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T>;
+  rest<T>(
+    path: string,
+    options?: {
+      method?: "GET" | "POST" | "PATCH" | "DELETE";
+      params?: Record<string, string>;
+      body?: unknown;
+      accept?: string;
+    },
+  ): Promise<RestResponse<T>>;
+}
+
 const getToken = (): string => {
   const token = Deno.env.get("GITHUB_TOKEN");
   if (!token) {

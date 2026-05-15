@@ -5,7 +5,8 @@
 // and hash-to-color utility for auto-generated label colors.
 // =============================================================================
 
-import { graphql } from "./http-client.ts";
+import { GitHubApiError } from "../errors.ts";
+import { GitHubClient } from "./http-client.ts";
 import { GET_REPO_LABELS_QUERY } from "../queries.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 
@@ -16,6 +17,11 @@ export interface GitHubLabel {
   name: string;
   color: string;
   description: string;
+}
+
+/** Interface for providing repository node IDs. Satisfied by LabelResolver. */
+export interface RepoNodeIdProvider {
+  fetchRepoNodeId(): Promise<string>;
 }
 
 interface RepoLabelsResponse {
@@ -34,13 +40,13 @@ interface RepoLabelsResponse {
  */
 export class LabelResolver {
   private readonly config: RuntimeConfig;
-  private readonly gh: { graphql: typeof graphql };
+  private readonly gh: GitHubClient;
   private readonly owner: string;
   private readonly repo: string;
 
   constructor(
     config: RuntimeConfig,
-    gh: { graphql: typeof graphql },
+    gh: GitHubClient,
     owner: string,
     repo: string,
   ) {
@@ -58,19 +64,37 @@ export class LabelResolver {
     );
     const nodeId = result?.repository?.id;
     if (!nodeId) {
-      // todo: use enriched error wrapper
-      throw new Error(`Could not fetch repository node ID for ${this.owner}/${this.repo}`);
+      throw new GitHubApiError(
+        `Could not fetch repository node ID for ${this.owner}/${this.repo}.`,
+        404,
+      );
     }
     return nodeId;
   }
 
-  /** Resolve label names to node IDs, creating missing labels with auto-generated colors */
-  async resolveLabelNodeIds(names: string[]): Promise<string[]> {
+  /** Fetch all existing labels for the repository */
+  private async fetchAllLabels(): Promise<GitHubLabel[]> {
     const result = await this.gh.graphql<RepoLabelsResponse>(GET_REPO_LABELS_QUERY, {
       owner: this.owner,
       repo: this.repo,
     });
-    const existingLabels: GitHubLabel[] = result?.repository?.labels?.nodes ?? [];
+    return result?.repository?.labels?.nodes ?? [];
+  }
+
+  /**
+   * Audit type labels: compare existing repo labels against the expected set.
+   * Used by getPlatformState to surface missing label gaps to the agent.
+   */
+  async auditTypeLabels(): Promise<{ existing: string[]; expected: string[] }> {
+    const labels = await this.fetchAllLabels();
+    const existing = labels.map((l) => l.name);
+    const expected = ["feature", "bug", "tech_debt", "spike", "impediment"];
+    return { existing, expected };
+  }
+
+  /** Resolve label names to node IDs, creating missing labels with auto-generated colors */
+  async resolveLabelNodeIds(names: string[]): Promise<string[]> {
+    const existingLabels = await this.fetchAllLabels();
     const nodeIds: string[] = [];
     const missing: string[] = [];
 
@@ -104,11 +128,7 @@ export class LabelResolver {
 
   /** Resolve a single label by name, creating it if it doesn't exist. Returns node ID or null. */
   async resolveOrCreateLabel(name: string): Promise<string | null> {
-    const result = await this.gh.graphql<RepoLabelsResponse>(GET_REPO_LABELS_QUERY, {
-      owner: this.owner,
-      repo: this.repo,
-    });
-    const existingLabels: GitHubLabel[] = result?.repository?.labels?.nodes ?? [];
+    const existingLabels = await this.fetchAllLabels();
     const existing = existingLabels.find((l) => l.name === name);
     if (existing) {
       return existing.id;
@@ -129,12 +149,9 @@ export class LabelResolver {
 
   /** Add a label to the repo (used by vocabulary management) */
   async addLabel(value: string): Promise<{ created: boolean }> {
-    const result = await this.gh.graphql<RepoLabelsResponse>(GET_REPO_LABELS_QUERY, {
-      owner: this.owner,
-      repo: this.repo,
-    });
-    const existingLabels: string[] = (result?.repository?.labels?.nodes ?? []).map((l) => l.name);
-    if (existingLabels.includes(value)) {
+    const existingLabels = await this.fetchAllLabels();
+    const existingNames: string[] = existingLabels.map((l) => l.name);
+    if (existingNames.includes(value)) {
       return { created: false };
     }
     const color = this.hashToColor(value);
@@ -151,7 +168,7 @@ export class LabelResolver {
   }
 
   /** Generate a deterministic pastel color from a string name */
-  hashToColor(name: string): string {
+  private hashToColor(name: string): string {
     const palette = [
       "f9d0c4",
       "d8f3dc",

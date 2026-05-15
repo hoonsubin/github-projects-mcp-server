@@ -20,6 +20,15 @@ import { registerScrumWriteTools } from "./tools/scrum-write.ts";
 import { loadConfig } from "./adapters/github/config-loader.ts";
 import { GitHubProjectBackend } from "./adapters/github/backend.ts";
 import { graphql, rest } from "./adapters/github/internal/http-client.ts";
+import { LabelResolver } from "./adapters/github/internal/label-resolver.ts";
+import { UserMilestoneResolver } from "./adapters/github/internal/user-milestone-resolver.ts";
+import { FieldValueMutator } from "./adapters/github/internal/field-value-mutator.ts";
+import { BurndownCalculator } from "./adapters/github/internal/burndown-calculator.ts";
+import { SprintHistoryService } from "./adapters/github/internal/sprint-history-service.ts";
+import { VocabularyManager } from "./adapters/github/internal/vocabulary-manager.ts";
+import { StoryQueryService } from "./adapters/github/internal/story-query-service.ts";
+import { StoryMutationService } from "./adapters/github/internal/story-mutation-service.ts";
+import { ImpedimentService } from "./adapters/github/internal/impediment-service.ts";
 import { log } from "./services/logger.ts";
 import type { Socket } from "node:net";
 import type { ProjectBackend } from "./scrum/ports.ts";
@@ -100,12 +109,47 @@ const wrapTransportLogging = (transport: Transport, label: string): void => {
 const createBackend = async (): Promise<{ backend: ProjectBackend; scrumConfig: ScrumConfig }> => {
   const config = await loadConfig({ github: { graphql } });
   const gh = config.scrumConfig.backends.github as GitHubBackendConfig;
-  const backend = new GitHubProjectBackend(
+  const ghClient = { graphql, rest };
+  const primaryRepo = gh.tracked_repos[0]; // multi-repo support is future work
+
+  // Build services in dependency order (DIP: composition root owns construction)
+  const labelResolver = new LabelResolver(config, ghClient, gh.owner, primaryRepo);
+  const userMilestoneResolver = new UserMilestoneResolver(ghClient, gh.owner, primaryRepo, labelResolver);
+  const fieldValueMutator = new FieldValueMutator(config, ghClient, userMilestoneResolver);
+  const burndownCalculator = new BurndownCalculator(config, ghClient, gh.owner, primaryRepo);
+  const sprintHistoryService = new SprintHistoryService(config, ghClient, gh.owner, primaryRepo);
+  const vocabularyManager = new VocabularyManager(config, ghClient, labelResolver, gh.owner, primaryRepo);
+  const storyQueryService = new StoryQueryService(config, ghClient, gh.owner, primaryRepo);
+  const storyMutationService = new StoryMutationService(
     config,
-    { graphql, rest },
+    ghClient,
     gh.owner,
-    gh.owner_type,
-    gh.tracked_repos[0], // primary repo for issue operations; multi-repo support is future work
+    primaryRepo,
+    labelResolver,
+    userMilestoneResolver,
+    fieldValueMutator,
+  );
+  const impedimentService = new ImpedimentService(
+    config,
+    ghClient,
+    gh.owner,
+    primaryRepo,
+    labelResolver,
+  );
+
+  const backend = new GitHubProjectBackend(
+    labelResolver,
+    userMilestoneResolver,
+    fieldValueMutator,
+    burndownCalculator,
+    sprintHistoryService,
+    vocabularyManager,
+    storyQueryService,
+    storyMutationService,
+    impedimentService,
+    config,
+    gh.owner,
+    primaryRepo,
   );
   return { backend, scrumConfig: config.scrumConfig };
 };

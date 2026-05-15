@@ -276,8 +276,7 @@ export interface ProjectReader
     StoryPort,
     HistoryPort,
     BurndownPort,
-    ImpedimentPort,
-    TemplatePort {
+    ImpedimentPort {
   getPlatformState(declaredVocabulary: {
     statusValues: string[];
     priorityValues: string[];
@@ -309,4 +308,6 @@ export interface ProjectWriter {
  * ProjectBackend — the full interface combining all ports.
  * Kept for backward compatibility; new code should import specific ports.
  */
-export interface ProjectBackend extends ProjectReader, ProjectWriter {}
+// TemplatePort is GitHub-specific — non-GitHub backends may omit this;
+// tool handler accepts TemplatePort directly
+export interface ProjectBackend extends ProjectReader, ProjectWriter, TemplatePort {}

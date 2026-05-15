@@ -6,7 +6,8 @@
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
-import { graphql } from "./http-client.ts";
+import { GitHubClient } from "./http-client.ts";
+import { RepoNodeIdProvider } from "./label-resolver.ts";
 
 // ── UserMilestoneResolver class ───────────────────────────────────────────────
 
@@ -15,18 +16,21 @@ import { graphql } from "./http-client.ts";
  * Injected into GitHubProjectBackend via constructor (DIP).
  */
 export class UserMilestoneResolver {
-  private readonly gh: { graphql: typeof graphql };
+  private readonly gh: GitHubClient;
   private readonly owner: string;
   private readonly repo: string;
+  private readonly repoNodeIdProvider: RepoNodeIdProvider;
 
   constructor(
-    gh: { graphql: typeof graphql },
+    gh: GitHubClient,
     owner: string,
     repo: string,
+    repoNodeIdProvider: RepoNodeIdProvider,
   ) {
     this.gh = gh;
     this.owner = owner;
     this.repo = repo;
+    this.repoNodeIdProvider = repoNodeIdProvider;
   }
 
   /** Resolve a single user login to their GitHub node ID */
@@ -74,7 +78,7 @@ export class UserMilestoneResolver {
 
     // Create milestone if not found.
     // GitHub's createMilestone only accepts: repositoryId, title, description, dueOn.
-    const repositoryId = await this.fetchRepoNodeId();
+    const repositoryId = await this.repoNodeIdProvider.fetchRepoNodeId();
     const createResult = await this.gh.graphql<{
       createMilestone: { milestone: { id: string } };
     }>(
@@ -86,18 +90,5 @@ export class UserMilestoneResolver {
       { repositoryId, title },
     );
     return createResult.createMilestone.milestone.id;
-  }
-
-  /** Private helper to fetch the repository node ID for milestone creation */
-  private async fetchRepoNodeId(): Promise<string> {
-    const result = await this.gh.graphql<{ repository?: { id: string } }>(
-      `query GetRepo($owner: String!, $repo: String!) { repository(owner: $owner, name: $repo) { id } }`,
-      { owner: this.owner, repo: this.repo },
-    );
-    const nodeId = result?.repository?.id;
-    if (!nodeId) {
-      throw new Error(`Could not fetch repository node ID for ${this.owner}/${this.repo}`);
-    }
-    return nodeId;
   }
 }

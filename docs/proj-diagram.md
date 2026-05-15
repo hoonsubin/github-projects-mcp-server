@@ -161,6 +161,9 @@ classDiagram
                 +buildLinkedPrList()
                 +buildBurndownStoryInput()
             }
+            class burndown-calculator.ts:::internal {
+                class BurndownCalculator
+            }
             class pagination.ts:::internal {
                 class PaginatedProjectItemFetcher
                 +isBacklogItem()
@@ -171,27 +174,31 @@ classDiagram
             }
             class field-value-mutator.ts:::internal {
                 class FieldValueMutator
-                %% Unused: FieldValueMutator
             }
             class user-milestone-resolver.ts:::internal {
                 class UserMilestoneResolver
             }
             class label-resolver.ts:::internal {
                 interface GitHubLabel
+                interface RepoNodeIdProvider
                 class LabelResolver
                 %% Unused: GitHubLabel
             }
+            class sprint-history-service.ts:::internal {
+                class SprintHistoryService
+            }
             class vocabulary-manager.ts:::internal {
                 class VocabularyManager
-                %% Unused: VocabularyManager
             }
             class contents.ts:::internal {
                 +fetchRepoFile()
             }
             class http-client.ts:::internal {
                 interface RestResponse
+                interface GitHubClient
                 +graphql()
                 +rest()
+                %% Unused: RestResponse
             }
             class types.ts:::github {
                 interface GitHubBackendConfig
@@ -274,6 +281,13 @@ classDiagram
     mappers.ts --> types.ts : "imports"
     mappers.ts --> ports.ts : "imports"
     mappers.ts --> labels.ts : "imports"
+    burndown-calculator.ts --> http-client.ts : "imports"
+    burndown-calculator.ts --> pagination.ts : "imports"
+    burndown-calculator.ts --> mappers.ts : "imports"
+    burndown-calculator.ts --> resolver.ts : "imports"
+    burndown-calculator.ts --> config-loader.ts : "imports"
+    burndown-calculator.ts --> ports.ts : "imports"
+    burndown-calculator.ts --> types.ts : "imports"
     pagination.ts --> config-loader.ts : "imports"
     pagination.ts --> types.ts : "imports"
     resolver.ts --> config-loader.ts : "imports"
@@ -286,9 +300,15 @@ classDiagram
     field-value-mutator.ts --> types.ts : "imports"
     user-milestone-resolver.ts --> errors.ts : "imports"
     user-milestone-resolver.ts --> http-client.ts : "imports"
+    user-milestone-resolver.ts --> label-resolver.ts : "imports"
     label-resolver.ts --> http-client.ts : "imports"
     label-resolver.ts --> queries.ts : "imports"
     label-resolver.ts --> config-loader.ts : "imports"
+    sprint-history-service.ts --> http-client.ts : "imports"
+    sprint-history-service.ts --> pagination.ts : "imports"
+    sprint-history-service.ts --> config-loader.ts : "imports"
+    sprint-history-service.ts --> ports.ts : "imports"
+    sprint-history-service.ts --> types.ts : "imports"
     vocabulary-manager.ts --> errors.ts : "imports"
     vocabulary-manager.ts --> http-client.ts : "imports"
     vocabulary-manager.ts --> label-resolver.ts : "imports"
@@ -307,6 +327,12 @@ classDiagram
     backend.ts --> config-loader.ts : "imports"
     backend.ts --> resolver.ts : "imports"
     backend.ts --> pagination.ts : "imports"
+    backend.ts --> label-resolver.ts : "imports"
+    backend.ts --> user-milestone-resolver.ts : "imports"
+    backend.ts --> field-value-mutator.ts : "imports"
+    backend.ts --> burndown-calculator.ts : "imports"
+    backend.ts --> sprint-history-service.ts : "imports"
+    backend.ts --> vocabulary-manager.ts : "imports"
     backend.ts --> mappers.ts : "imports"
     backend.ts --> queries.ts : "imports"
     backend.ts --> ports.ts : "imports"
@@ -316,6 +342,12 @@ classDiagram
     index.ts --> config-loader.ts : "imports"
     index.ts --> backend.ts : "imports"
     index.ts --> http-client.ts : "imports"
+    index.ts --> label-resolver.ts : "imports"
+    index.ts --> user-milestone-resolver.ts : "imports"
+    index.ts --> field-value-mutator.ts : "imports"
+    index.ts --> burndown-calculator.ts : "imports"
+    index.ts --> sprint-history-service.ts : "imports"
+    index.ts --> vocabulary-manager.ts : "imports"
     index.ts --> logger.ts : "imports"
     index.ts --> ports.ts : "imports"
     index.ts --> types.ts : "imports"
@@ -332,22 +364,23 @@ classDiagram
     classDef services fill:#f0f,stroke:#333,stroke-width:2px,color:#000;
 ```
 
+
 ## Unused Exports
 
 The following exports are never imported by any other module in the codebase:
 
-| Module                                                                                                            | Export                    | Kind        |
-| ----------------------------------------------------------------------------------------------------------------- | ------------------------- | ----------- |
-| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                                                       | `groupStoriesByStatus`    | `function`  |
-| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                                                       | `computeSprintTotals`     | `function`  |
-| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                                   | `SprintTotalsActive`      | `interface` |
-| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                                   | `SprintTotalsHistory`     | `interface` |
-| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                                   | `ProjectWriter`           | `interface` |
-| [`./src/scrum/update-impediment.ts`](../src/scrum/update-impediment.ts)                                           | `updateImpedimentUseCase` | `function`  |
-| [`./src/adapters/github/internal/field-value-mutator.ts`](../src/adapters/github/internal/field-value-mutator.ts) | `FieldValueMutator`       | `class`     |
-| [`./src/adapters/github/internal/label-resolver.ts`](../src/adapters/github/internal/label-resolver.ts)           | `GitHubLabel`             | `interface` |
-| [`./src/adapters/github/internal/vocabulary-manager.ts`](../src/adapters/github/internal/vocabulary-manager.ts)   | `VocabularyManager`       | `class`     |
-| [`./src/domain/types.ts`](../src/domain/types.ts)                                                                 | `ImpedimentRef`           | `interface` |
+| Module | Export | Kind |
+|--------|--------|------|
+| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts) | `groupStoriesByStatus` | `function` |
+| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts) | `computeSprintTotals` | `function` |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts) | `SprintTotalsActive` | `interface` |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts) | `SprintTotalsHistory` | `interface` |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts) | `ProjectWriter` | `interface` |
+| [`./src/scrum/update-impediment.ts`](../src/scrum/update-impediment.ts) | `updateImpedimentUseCase` | `function` |
+| [`./src/adapters/github/internal/label-resolver.ts`](../src/adapters/github/internal/label-resolver.ts) | `GitHubLabel` | `interface` |
+| [`./src/adapters/github/internal/http-client.ts`](../src/adapters/github/internal/http-client.ts) | `RestResponse` | `interface` |
+| [`./src/domain/types.ts`](../src/domain/types.ts) | `ImpedimentRef` | `interface` |
+
 
 ## Notes
 
@@ -356,8 +389,8 @@ The following exports are never imported by any other module in the codebase:
 - Relationships show which modules import which
 - Test files are excluded by default
 - Generated code and GraphQL operations are excluded
-- External imports (npm:, jsr:, @std/\*) are filtered out
+- External imports (npm:, jsr:, @std/*) are filtered out
 
 ---
 
-_Auto-generated — do not edit manually_
+*Auto-generated — do not edit manually*

@@ -32,7 +32,7 @@ interface OrientResult {
     team: unknown;
     dor: unknown; // was definition_of_ready
     dod: unknown; // was definition_of_done
-    autonomy: { level: string } | null;
+    autonomy: { require_confirmation_above_n_items: number | null } | null;
     templates: {
       sprint_review: string | null;
       retrospective: string | null;
@@ -121,7 +121,12 @@ export const orientUseCase = async (
       team: scrumConfig.project.team ?? null,
       dor: scrumConfig.definition_of_ready ?? null,
       dod: scrumConfig.definition_of_done ?? null,
-      autonomy: scrumConfig.project.agent?.autonomy ?? null,
+      autonomy: scrumConfig.project.agent?.autonomy != null
+        ? {
+          require_confirmation_above_n_items:
+            scrumConfig.project.agent.autonomy.require_confirmation_above_n_items ?? null,
+        }
+        : null,
       templates: {
         sprint_review: scrumConfig.templates?.sprint_review ?? null,
         retrospective: scrumConfig.templates?.retrospective ?? null,

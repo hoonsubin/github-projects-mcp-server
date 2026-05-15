@@ -12,6 +12,7 @@
 //   - Future tools — any tool needing project item access
 // =============================================================================
 
+import { GitHubApiError } from "../errors.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type {
   GitHubBackendConfig,
@@ -312,8 +313,9 @@ export class PaginatedProjectItemFetcher {
       : result.organization?.projectV2;
 
     if (!project) {
-      throw new Error(
+      throw new GitHubApiError(
         `Project #${this.projectNumber} not found for ${this.ownerType} '${this.login}'.`,
+        404,
       );
     }
 

@@ -107,19 +107,25 @@ flowchart TD
 
 All backend abstraction (Phase 5), tool extraction (Phase 2), write tools (Phase 3), dead-code cleanup (Phase 4), type restructure (Phases A/B/C), bug fixes (Phase D), and domain rule extraction (Phase E) are complete. The server is fully on the `scrum_*` surface.
 
-**Phase F (Adapter refactor) — in progress.** Six internal service files were created in `src/adapters/github/internal/` but `backend.ts` was NOT updated to wire them. The split was additive. `backend.ts` remains at ~1,224 lines with duplicate private method bodies alongside the service files.
+**Phase F (Adapter refactor) — complete.** All six internal service files are complete and type-correct. `backend.ts` is now a thin facade (~380 lines) that delegates to those services. `index.ts` (`createBackend()`) is the composition root that constructs all services in dependency order before instantiating `GitHubProjectBackend`.
 
-| File                                                      | State       | Notes                                                                                                                        |
-| --------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `src/adapters/github/backend.ts`                          | 🔴 Bloated  | ~1,224 lines; services created but not wired; duplicate private methods remain                                               |
-| `src/adapters/github/internal/burndown-calculator.ts`     | 🔴 Broken   | Calls non-existent `this.resolveSprint()` / `this.fetchAllItems()`; wrong REST response shape; uses `any` throughout         |
-| `src/adapters/github/internal/field-value-mutator.ts`     | 🔴 Broken   | String interpolation in all GraphQL mutations; `gh` typed as bare `typeof graphql` inconsistent with all other services      |
-| `src/adapters/github/internal/label-resolver.ts`          | 🟡 Partial  | Functional; DRY violation (fetches labels independently in 3 methods); `hashToColor` incorrectly public                      |
-| `src/adapters/github/internal/user-milestone-resolver.ts` | 🟡 Partial  | Functional; duplicates `fetchRepoNodeId` already on `LabelResolver`                                                          |
-| `src/adapters/github/internal/vocabulary-manager.ts`      | ✅ Complete | Functional; delegates label ops to `LabelResolver`; `gh` type is object-wrapper                                              |
-| `src/adapters/github/internal/sprint-history-service.ts`  | 🔴 Missing  | File does not exist                                                                                                          |
-| `src/adapters/github/internal/http-client.ts`             | 🟡 Partial  | Exports `graphql` and `rest` functions + `RestResponse`; missing the `GitHubClient` interface that unifies service injection |
-| `src/tools/scrum-write.ts`                                | ✅ Complete | `scrum_log_impediment`, `scrum_update_impediment` implemented                                                                |
+**Group P (Port cleanup) — complete.** `TemplatePort` removed from `ProjectReader`; all use-case functions already used focused port types; `services/github.ts` already deleted.
+
+**Group T (Tool surface) — complete.** `vocabulary.autonomy` shape corrected in `orient.ts`; `comment` and `goal` fields already in schemas; `affects` already optional in `log_impediment`; priority derived from config; `getOrphanImpediments` and `getSprintImpediments` fully implemented and wired.
+
+**Group A (Agent layer) — complete.** `stale_recovery` Phase 4 disambiguated to use `scrum_set_field` for status changes; `prefer_comments_over_body_edits` note cleaned up; `config.autonomy` path corrected to `vocabulary.autonomy.require_confirmation_above_n_items`; impediment de-duplication check added to session-start health check; ceremony delivery steps added to all five ceremony sequences; tool-grounded coaching section added to SKILL.md.
+
+| File                                                      | State       | Notes                                                                                                                                                   |
+| --------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/adapters/github/backend.ts`                          | ✅ Complete | ~380 lines; thin facade; delegates to 6 injected services; all string-interpolated mutations removed; dead private methods eliminated                   |
+| `src/adapters/github/internal/burndown-calculator.ts`     | ✅ Complete | Uses `PaginatedProjectItemFetcher`; imports `resolveSprint` and `buildBurndownStoryInput`; REST response shape correct; no `any` types                   |
+| `src/adapters/github/internal/field-value-mutator.ts`     | ✅ Complete | All mutations parameterized with named variables and typed generics; `gh` typed as `GitHubClient`                                                       |
+| `src/adapters/github/internal/label-resolver.ts`          | ✅ Complete | `fetchAllLabels` private; `hashToColor` private; `GET_REPO_LABELS_QUERY` appears once; `RepoNodeIdProvider` interface defined here                      |
+| `src/adapters/github/internal/user-milestone-resolver.ts` | ✅ Complete | Accepts `RepoNodeIdProvider`; no duplicated `fetchRepoNodeId`; `gh` typed as `GitHubClient`                                                             |
+| `src/adapters/github/internal/vocabulary-manager.ts`      | ✅ Complete | Delegates label ops to `LabelResolver`; `gh` typed as `GitHubClient`                                                                                   |
+| `src/adapters/github/internal/sprint-history-service.ts`  | ✅ Complete | Extracted from `backend.ts`; no dead code; `gh` typed as `GitHubClient`; dead-variable accumulations (`committedPoints` etc.) removed                  |
+| `src/adapters/github/internal/http-client.ts`             | ✅ Complete | Exports `GitHubClient` interface, `graphql`, `rest` functions, and `RestResponse`                                                                       |
+| `src/tools/scrum-write.ts`                                | ✅ Complete | `scrum_log_impediment`, `scrum_update_impediment` implemented                                                                                           |
 
 ---
 
@@ -129,28 +135,28 @@ Tasks are ordered by dependency. Tasks within the same group that share no depen
 
 | ID      | Title                                                              | Depends on  | Status         |
 | ------- | ------------------------------------------------------------------ | ----------- | -------------- |
-| **F.0** | **Export `GitHubClient` interface**                                | —           | 🔴 Not started |
-| F.1.1   | Fix `LabelResolver` — DRY + visibility                             | F.0         | 🔴 Not started |
-| F.1.2   | Fix `UserMilestoneResolver` — `RepoNodeIdProvider`                 | F.0, F.1.1  | 🔴 Not started |
-| F.1.3   | Fix `FieldValueMutator` — `GitHubClient` + parameterized mutations | F.0         | 🔴 Not started |
-| F.1.4   | Rewrite `BurndownCalculator`                                       | F.0         | 🔴 Not started |
-| F.1.5   | Create `SprintHistoryService`                                      | F.0         | 🔴 Not started |
-| F.2.1   | Wire Facade — update `backend.ts` constructor                      | F.1.1–F.1.5 | 🔴 Not started |
-| F.2.2   | Move service construction to `index.ts`                            | F.2.1       | 🔴 Not started |
-| **P.1** | **Remove `TemplatePort` from `ProjectReader`**                     | —           | 🔴 Not started |
-| P.2     | Adopt focused ports in use cases                                   | P.1         | 🔴 Not started |
-| P.3     | Extract remaining `github.ts` concerns                             | F.2.2       | 🔴 Not started |
-| **T.1** | **`scrum_orient` — response shape correctness**                    | —           | 🔴 Not started |
-| T.2     | `scrum_update_story` — add `comment` field                         | —           | 🔴 Not started |
-| T.3     | `scrum_plan_sprint` — add `goal` field                             | —           | 🔴 Not started |
-| T.4     | `scrum_log_impediment` — optional `affects` + priority fix         | —           | 🔴 Not started |
-| T.5     | `getOrphanImpediments()` — implement in backend                    | F.2.1       | 🔴 Not started |
-| T.6     | `SprintSnapshot.impediments` — sprint-level enrichment             | F.2.1       | 🔴 Not started |
-| **A.1** | **Wrong tool references in ceremony rules**                        | T.2, T.3    | 🔴 Not started |
-| A.2     | `scrum_orient` field paths in `1_workflow.xml`                     | T.1         | 🔴 Not started |
-| A.3     | Impediment de-duplication guidance                                 | —           | 🔴 Not started |
-| A.4     | Ceremony template delivery path                                    | —           | 🔴 Not started |
-| A.5     | SKILL.md — tool-grounded coaching pattern                          | —           | 🔴 Not started |
+| **F.0** | **Export `GitHubClient` interface**                                | —           | ✅ Complete    |
+| F.1.1   | Fix `LabelResolver` — DRY + visibility                             | F.0         | ✅ Complete    |
+| F.1.2   | Fix `UserMilestoneResolver` — `RepoNodeIdProvider`                 | F.0, F.1.1  | ✅ Complete    |
+| F.1.3   | Fix `FieldValueMutator` — `GitHubClient` + parameterized mutations | F.0         | ✅ Complete    |
+| F.1.4   | Rewrite `BurndownCalculator`                                       | F.0         | ✅ Complete    |
+| F.1.5   | Create `SprintHistoryService`                                      | F.0         | ✅ Complete    |
+| F.2.1   | Wire Facade — update `backend.ts` constructor                      | F.1.1–F.1.5 | ✅ Complete    |
+| F.2.2   | Move service construction to `index.ts`                            | F.2.1       | ✅ Complete    |
+| **P.1** | **Remove `TemplatePort` from `ProjectReader`**                     | —           | ✅ Complete    |
+| P.2     | Adopt focused ports in use cases                                   | P.1         | ✅ Complete    |
+| P.3     | Extract remaining `github.ts` concerns                             | F.2.2       | ✅ Complete    |
+| **T.1** | **`scrum_orient` — response shape correctness**                    | —           | ✅ Complete    |
+| T.2     | `scrum_update_story` — add `comment` field                         | —           | ✅ Complete    |
+| T.3     | `scrum_plan_sprint` — add `goal` field                             | —           | ✅ Complete    |
+| T.4     | `scrum_log_impediment` — optional `affects` + priority fix         | —           | ✅ Complete    |
+| T.5     | `getOrphanImpediments()` — implement in backend                    | F.2.1       | ✅ Complete    |
+| T.6     | `SprintSnapshot.impediments` — sprint-level enrichment             | F.2.1       | ✅ Complete    |
+| **A.1** | **Wrong tool references in ceremony rules**                        | T.2, T.3    | ✅ Complete    |
+| A.2     | `scrum_orient` field paths in `1_workflow.xml`                     | T.1         | ✅ Complete    |
+| A.3     | Impediment de-duplication guidance                                 | —           | ✅ Complete    |
+| A.4     | Ceremony template delivery path                                    | —           | ✅ Complete    |
+| A.5     | SKILL.md — tool-grounded coaching pattern                          | —           | ✅ Complete    |
 
 ---
 
@@ -158,7 +164,7 @@ Tasks are ordered by dependency. Tasks within the same group that share no depen
 
 ### F.0 — Export `GitHubClient` Interface
 
-**Status:** 🔴 Not started **Depends on:** nothing **Unblocks:** F.1.1, F.1.2, F.1.3, F.1.4, F.1.5
+**Status:** ✅ Complete **Depends on:** nothing **Unblocks:** F.1.1, F.1.2, F.1.3, F.1.4, F.1.5
 
 #### Problem
 
@@ -227,7 +233,7 @@ The object `{ graphql, rest }` passed from `index.ts` already satisfies this int
 
 ### F.1.1 — Fix `LabelResolver` — DRY Violation and `hashToColor` Visibility
 
-**Status:** 🔴 Not started **Depends on:** F.0 **Unblocks:** F.1.2 (which depends on `LabelResolver`)
+**Status:** ✅ Complete **Depends on:** F.0 **Unblocks:** F.1.2 (which depends on `LabelResolver`)
 
 #### Problem
 
@@ -287,7 +293,7 @@ Adopting `GitHubClient` for `gh` makes the service mockable (see F.0 rationale).
 
 ### F.1.2 — Fix `UserMilestoneResolver` — Adopt `RepoNodeIdProvider`
 
-**Status:** 🔴 Not started **Depends on:** F.0, F.1.1 **Unblocks:** F.2.1
+**Status:** ✅ Complete **Depends on:** F.0, F.1.1 **Unblocks:** F.2.1
 
 #### Problem
 
@@ -350,7 +356,7 @@ constructor(gh: GitHubClient, owner: string, repo: string, labelResolver: RepoNo
 
 ### F.1.3 — Fix `FieldValueMutator` — `GitHubClient` Adoption and Parameterized Mutations
 
-**Status:** 🔴 Not started **Depends on:** F.0 **Unblocks:** F.2.1
+**Status:** ✅ Complete **Depends on:** F.0 **Unblocks:** F.2.1
 
 #### Problem
 
@@ -453,7 +459,7 @@ The `clearField` method already uses parameterized variables correctly — apply
 
 ### F.1.4 — Rewrite `BurndownCalculator` from Scratch
 
-**Status:** 🔴 Not started **Depends on:** F.0 **Unblocks:** F.2.1
+**Status:** ✅ Complete **Depends on:** F.0 **Unblocks:** F.2.1
 
 #### Problem
 
@@ -557,7 +563,7 @@ export class BurndownCalculator {
 
 ### F.1.5 — Create `SprintHistoryService`
 
-**Status:** 🔴 Not started **Depends on:** F.0 **Unblocks:** F.2.1
+**Status:** ✅ Complete **Depends on:** F.0 **Unblocks:** F.2.1
 
 #### Problem
 
@@ -619,7 +625,7 @@ export class SprintHistoryService {
 
 ### F.2.1 — Wire the Facade — Update `backend.ts` Constructor
 
-**Status:** 🔴 Not started **Depends on:** F.1.1, F.1.2, F.1.3, F.1.4, F.1.5 **Unblocks:** F.2.2
+**Status:** ✅ Complete **Depends on:** F.1.1, F.1.2, F.1.3, F.1.4, F.1.5 **Unblocks:** F.2.2
 
 #### Problem
 
@@ -702,7 +708,7 @@ For each of the following, verify the corresponding service exists and is wired,
 
 ### F.2.2 — Move Service Construction to `index.ts`
 
-**Status:** 🔴 Not started **Depends on:** F.2.1 **Unblocks:** P.3
+**Status:** ✅ Complete **Depends on:** F.2.1 **Unblocks:** P.3
 
 #### Problem
 
@@ -752,7 +758,7 @@ In Clean Architecture the Main component constructs all concretions and injects 
 
 ### P.1 — Remove `TemplatePort` from `ProjectReader`
 
-**Status:** 🔴 Not started **Depends on:** nothing **Unblocks:** P.2
+**Status:** ✅ Complete **Depends on:** nothing **Unblocks:** P.2
 
 #### Problem
 
@@ -803,7 +809,7 @@ A use case that reads sprint stories should not be forced to implement or provid
 
 ### P.2 — Adopt Focused Ports in Use Cases
 
-**Status:** 🔴 Not started **Depends on:** P.1 **Unblocks:** nothing (independent improvement)
+**Status:** ✅ Complete **Depends on:** P.1 **Unblocks:** nothing (independent improvement)
 
 #### Problem
 
@@ -839,7 +845,7 @@ For each use case file, update the `backend` parameter type to the narrowest por
 
 ### P.3 — Extract Remaining `services/github.ts` Concerns
 
-**Status:** 🔴 Not started **Depends on:** F.2.2 **Unblocks:** nothing (cleanup)
+**Status:** ✅ Complete **Depends on:** F.2.2 **Unblocks:** nothing (cleanup)
 
 #### Problem
 
@@ -863,7 +869,7 @@ For each use case file, update the `backend` parameter type to the narrowest por
 
 ### T.1 — `scrum_orient` — Response Shape Correctness
 
-**Status:** 🔴 Not started **Depends on:** nothing **Unblocks:** A.2
+**Status:** ✅ Complete **Depends on:** nothing **Unblocks:** A.2
 
 #### Problem
 
@@ -910,7 +916,7 @@ Every agent session silently uses wrong field paths, causing vocabulary-dependen
 
 ### T.2 — `scrum_update_story` — Add `comment` Field
 
-**Status:** 🔴 Not started **Depends on:** nothing **Unblocks:** A.1
+**Status:** ✅ Complete **Depends on:** nothing **Unblocks:** A.1
 
 #### Problem
 
@@ -939,7 +945,7 @@ The agent conduct rule `prefer_comments_over_body_edits` instructs the agent to 
 
 ### T.3 — `scrum_plan_sprint` — Add `goal` Field
 
-**Status:** 🔴 Not started **Depends on:** nothing **Unblocks:** A.1
+**Status:** ✅ Complete **Depends on:** nothing **Unblocks:** A.1
 
 #### Problem
 
@@ -965,7 +971,7 @@ The server echoes the goal in its response; the agent records it in the sprint p
 
 ### T.4 — `scrum_log_impediment` — Optional `affects` and Priority Fix
 
-**Status:** 🔴 Not started **Depends on:** nothing
+**Status:** ✅ Complete **Depends on:** nothing
 
 #### Problem
 
@@ -1005,7 +1011,7 @@ Two issues with `scrum_log_impediment`:
 
 ### T.5 — `getOrphanImpediments()` — Implement in Backend
 
-**Status:** 🔴 Not started **Depends on:** F.2.1
+**Status:** ✅ Complete **Depends on:** F.2.1
 
 #### Problem
 
@@ -1031,7 +1037,7 @@ Two issues with `scrum_log_impediment`:
 
 ### T.6 — `SprintSnapshot.impediments` — Sprint-Level Enrichment
 
-**Status:** 🔴 Not started **Depends on:** F.2.1
+**Status:** ✅ Complete **Depends on:** F.2.1
 
 #### Problem
 
@@ -1063,7 +1069,7 @@ All changes in this group are to `.roo/rules-scrum-master/*.xml` and `.roo/skill
 
 ### A.1 — Wrong Tool References in Ceremony Rules
 
-**Status:** 🔴 Not started **Depends on:** T.2 (comment field), T.3 (goal field)
+**Status:** ✅ Complete **Depends on:** T.2 (comment field), T.3 (goal field)
 
 #### Problem
 
@@ -1100,7 +1106,7 @@ Four places in the XML rules reference tools for operations those tools do not s
 
 ### A.2 — `scrum_orient` Field Paths in `1_workflow.xml`
 
-**Status:** 🔴 Not started **Depends on:** T.1
+**Status:** ✅ Complete **Depends on:** T.1
 
 #### Problem
 
@@ -1124,7 +1130,7 @@ After T.1 renames the response fields, Step 1's extraction list in `1_workflow.x
 
 ### A.3 — Impediment De-duplication Guidance
 
-**Status:** 🔴 Not started **Depends on:** nothing
+**Status:** ✅ Complete **Depends on:** nothing
 
 #### Problem
 
@@ -1144,7 +1150,7 @@ The session-start health check in `1_workflow.xml` Step 3 tells the agent to cal
 
 ### A.4 — Ceremony Template Delivery Path
 
-**Status:** 🔴 Not started **Depends on:** nothing
+**Status:** ✅ Complete **Depends on:** nothing
 
 #### Problem
 
@@ -1165,7 +1171,7 @@ Every ceremony playbook ends with "Call `scrum_get_template` when a ceremony rec
 
 ### A.5 — SKILL.md — Tool-Grounded Coaching Pattern
 
-**Status:** 🔴 Not started **Depends on:** nothing
+**Status:** ✅ Complete **Depends on:** nothing
 
 #### Problem
 

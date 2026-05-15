@@ -1,0 +1,195 @@
+// =============================================================================
+// src/adapters/github/internal/story-mutation-service.ts — Story Write Operations
+//
+// Single responsibility: write-side story mutations extracted from the backend facade.
+// Handles createStory, updateStory, setField, and addComment.
+// =============================================================================
+
+import { GitHubApiError } from "../errors.ts";
+import type { GitHubClient } from "./http-client.ts";
+import { resolveStory } from "./resolver.ts";
+import { LabelResolver } from "./label-resolver.ts";
+import { UserMilestoneResolver } from "./user-milestone-resolver.ts";
+import { FieldValueMutator } from "./field-value-mutator.ts";
+import type { RuntimeConfig } from "../config-loader.ts";
+import type { CreateStoryInput, StoryUpdates } from "../../../scrum/ports.ts";
+import type { SprintRef, StoryRef } from "../../../domain/types.ts";
+
+// ── StoryMutationService class ─────────────────────────────────────────────────
+
+/**
+ * Write-side story operations: create, update, set fields, and add comments.
+ * Injected into GitHubProjectBackend via constructor (DIP).
+ */
+export class StoryMutationService {
+  constructor(
+    private readonly config: RuntimeConfig,
+    private readonly gh: GitHubClient,
+    private readonly owner: string,
+    private readonly repo: string,
+    private readonly labelResolver: LabelResolver,
+    private readonly userMilestoneResolver: UserMilestoneResolver,
+    private readonly fieldValueMutator: FieldValueMutator,
+  ) {}
+
+  async createStory(input: CreateStoryInput): Promise<StoryRef> {
+    // Batch all label names into a single resolution call
+    const labelNames: string[] = [`type_${input.type}`];
+    if (input.priority) labelNames.push(`priority_${input.priority.toLowerCase()}`);
+    if (input.labels) labelNames.push(...input.labels);
+
+    const [labelIds, assigneeIds, repositoryId] = await Promise.all([
+      this.labelResolver.resolveLabelNodeIds(labelNames),
+      input.assignees
+        ? this.userMilestoneResolver.resolveUserNodeIds(input.assignees)
+        : Promise.resolve([] as string[]),
+      this.labelResolver.fetchRepoNodeId(),
+    ]);
+
+    const result = await this.gh.graphql<{
+      createIssue?: { issue?: { id: string; number: number } };
+    }>(
+      `mutation CreateIssue(
+        $repositoryId: ID!, $title: String!, $body: String,
+        $labelIds: [ID!], $assigneeIds: [ID!]
+      ) {
+        createIssue(input: {
+          repositoryId: $repositoryId, title: $title, body: $body,
+          labelIds: $labelIds, assigneeIds: $assigneeIds
+        }) { issue { id number } }
+      }`,
+      {
+        repositoryId,
+        title: input.title,
+        body: input.body,
+        ...(labelIds.length > 0 ? { labelIds } : {}),
+        ...(assigneeIds.length > 0 ? { assigneeIds } : {}),
+      },
+    );
+
+    const issue = result.createIssue?.issue;
+    if (!issue) {
+      throw new GitHubApiError("Failed to create issue: no issue returned from mutation");
+    }
+
+    const addItemResult = await this.gh.graphql<{
+      addProjectV2ItemById: { item: { id: string } };
+    }>(
+      `mutation AddItem($projectId: ID!, $contentId: ID!) {
+        addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
+          item { id }
+        }
+      }`,
+      { projectId: this.config.projectId, contentId: issue.id },
+    );
+
+    const itemId = addItemResult.addProjectV2ItemById?.item?.id;
+    if (!itemId) {
+      throw new GitHubApiError("Failed to add issue to project — no item ID returned.");
+    }
+
+    const storyRef: StoryRef = { id: itemId };
+    if (input.priority) {
+      await this.setField(storyRef, "priority", input.priority);
+    }
+    return storyRef;
+  }
+
+  async updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void> {
+    const resolved = await resolveStory(ref, this.gh);
+    if (!resolved.issueId) {
+      throw new GitHubApiError(
+        `Story "${ref.id}" is a Draft Issue — title, body, labels, assignees, and epic cannot be ` +
+          "edited via the GitHub Issues API. Convert it to a real issue first.",
+        422,
+      );
+    }
+    const issueId = resolved.issueId;
+
+    const parts: string[] = [];
+    const variables: Record<string, unknown> = { issueId };
+
+    if (updates.title !== undefined) {
+      parts.push("title: $title");
+      variables.title = updates.title;
+    }
+    if (updates.body !== undefined) {
+      parts.push("body: $body");
+      variables.body = updates.body;
+    }
+    if (updates.labels !== undefined && updates.labels.length > 0) {
+      parts.push("labelIds: $labelIds");
+      variables.labelIds = await this.labelResolver.resolveLabelNodeIds(updates.labels);
+    }
+    if (updates.assignees !== undefined && updates.assignees.length > 0) {
+      parts.push("assigneeIds: $assigneeIds");
+      variables.assigneeIds = await this.userMilestoneResolver.resolveUserNodeIds(
+        updates.assignees,
+      );
+    }
+    if (updates.epic !== undefined) {
+      parts.push("milestoneId: $milestoneId");
+      variables.milestoneId = updates.epic === null
+        ? null
+        : await this.userMilestoneResolver.resolveOrCreateMilestoneNodeId(updates.epic);
+    }
+
+    if (parts.length === 0) return;
+
+    const mutation = `
+      mutation UpdateIssue(
+        $issueId: ID!, $title: String, $body: String,
+        $labelIds: [ID!], $assigneeIds: [ID!], $milestoneId: ID
+      ) {
+        updateIssue(input: { issueId: $issueId, ${parts.join(", ")} }) { issue { id } }
+      }
+    `;
+    await this.gh.graphql(mutation, variables);
+  }
+
+  async setField(
+    ref: StoryRef,
+    field: "status" | "sprint" | "story_points" | "priority" | "assignee",
+    value: string | number | SprintRef | null,
+  ): Promise<void> {
+    const resolved = await resolveStory(ref, this.gh);
+    const itemId = resolved.itemId;
+
+    switch (field) {
+      case "status":
+        return this.fieldValueMutator.setFieldStatus(itemId, value as string);
+      case "sprint":
+        return this.fieldValueMutator.setFieldSprint(itemId, value as SprintRef);
+      case "story_points":
+        return this.fieldValueMutator.setFieldStoryPoints(itemId, value as number | null);
+      case "priority":
+        return this.fieldValueMutator.setFieldPriority(itemId, value as string | null);
+      case "assignee":
+        if (!resolved.issueId) {
+          throw new GitHubApiError(
+            `Story "${ref.id}" is a Draft Issue — assignee cannot be set via the GitHub Issues API. ` +
+              "Convert it to a real issue first.",
+            422,
+          );
+        }
+        return this.fieldValueMutator.setFieldAssignee(resolved.issueId, value as string | null);
+      default:
+        throw new Error(`Unknown field: ${field}`);
+    }
+  }
+
+  async addComment(ref: StoryRef, body: string): Promise<void> {
+    const resolved = await resolveStory(ref, this.gh);
+    if (resolved.issueNumber === null) {
+      throw new GitHubApiError(
+        `Story "${ref.id}" is a Draft Issue — comments can only be added to real Issues. ` +
+          "Convert it to a real issue first.",
+        422,
+      );
+    }
+    await this.gh.rest(
+      `repos/${this.owner}/${this.repo}/issues/${resolved.issueNumber}/comments`,
+      { method: "POST", body: { body } },
+    );
+  }
+}

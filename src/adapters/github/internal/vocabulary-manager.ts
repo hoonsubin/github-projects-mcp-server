@@ -7,7 +7,7 @@
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
-import { graphql, rest } from "./http-client.ts";
+import { type GitHubClient } from "./http-client.ts";
 import { LabelResolver } from "./label-resolver.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { VocabularyKind } from "../../../scrum/ports.ts";
@@ -35,14 +35,14 @@ interface GetFieldOptionsResponse {
  */
 export class VocabularyManager {
   private readonly config: RuntimeConfig;
-  private readonly gh: { graphql: typeof graphql; rest: typeof rest };
+  private readonly gh: GitHubClient;
   private readonly labelResolver: LabelResolver;
   private readonly owner: string;
   private readonly repo: string;
 
   constructor(
     config: RuntimeConfig,
-    gh: { graphql: typeof graphql; rest: typeof rest },
+    gh: GitHubClient,
     labelResolver: LabelResolver,
     owner: string,
     repo: string,
