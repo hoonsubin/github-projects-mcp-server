@@ -33,76 +33,127 @@ export class StoryMutationService {
   ) {}
 
   async createStory(input: CreateStoryInput): Promise<StoryRef> {
-    // Batch all label names into a single resolution call
-    const labelNames: string[] = [`type_${input.type}`];
-    if (input.priority) labelNames.push(`priority_${input.priority.toLowerCase()}`);
-    if (input.labels) labelNames.push(...input.labels);
+    // Determine whether a full Issue is required after draft creation.
+    // Draft Issues support: title, body, assignees (on the project board).
+    // Full Issues additionally support: labels, milestones (epic).
+    const hasLabels = (input.labels?.length ?? 0) > 0;
+    const hasEpic = input.epic !== undefined;
+    const needsFullIssue = hasLabels || hasEpic;
 
-    const [labelIds, assigneeIds, repositoryId] = await Promise.all([
-      this.labelResolver.resolveLabelNodeIds(labelNames),
-      input.assignees
-        ? this.userMilestoneResolver.resolveUserNodeIds(input.assignees)
-        : Promise.resolve([] as string[]),
-      this.labelResolver.fetchRepoNodeId(),
-    ]);
+    // Resolve assignee IDs upfront — both paths use them.
+    const assigneeIds = input.assignees
+      ? await this.userMilestoneResolver.resolveUserNodeIds(input.assignees)
+      : [];
 
-    const result = await this.gh.graphql<{
-      createIssue?: { issue?: { id: string; number: number } };
+    // ── Step 1: Create a draft issue on the project board (always) ────────────
+    // addProjectV2DraftIssue creates the item and adds it to the project in one
+    // call — no separate addProjectV2ItemById needed.
+    const draftResult = await this.gh.graphql<{
+      addProjectV2DraftIssue?: { projectItem?: { id: string } };
     }>(
-      `mutation CreateIssue(
-        $repositoryId: ID!, $title: String!, $body: String,
-        $labelIds: [ID!], $assigneeIds: [ID!]
+      `mutation AddDraftIssue(
+        $projectId: ID!, $title: String!, $body: String, $assigneeIds: [ID!]
       ) {
-        createIssue(input: {
-          repositoryId: $repositoryId, title: $title, body: $body,
-          labelIds: $labelIds, assigneeIds: $assigneeIds
-        }) { issue { id number } }
+        addProjectV2DraftIssue(input: {
+          projectId: $projectId, title: $title, body: $body,
+          assigneeIds: $assigneeIds
+        }) { projectItem { id } }
       }`,
       {
-        repositoryId,
+        projectId: this.config.projectId,
         title: input.title,
         body: input.body,
-        ...(labelIds.length > 0 ? { labelIds } : {}),
         ...(assigneeIds.length > 0 ? { assigneeIds } : {}),
       },
     );
 
-    const issue = result.createIssue?.issue;
-    if (!issue) {
-      throw new GitHubApiError("createIssue mutation returned no issue.", {
-        code: "MUTATION_FAILED",
-        recovery:
-          "Check that your token has Issues (read/write) and Contents (read) permissions, " +
-          "then retry. If the error persists, verify the repository is not archived.",
-      });
-    }
-
-    const addItemResult = await this.gh.graphql<{
-      addProjectV2ItemById: { item: { id: string } };
-    }>(
-      `mutation AddItem($projectId: ID!, $contentId: ID!) {
-        addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
-          item { id }
-        }
-      }`,
-      { projectId: this.config.projectId, contentId: issue.id },
-    );
-
-    const itemId = addItemResult.addProjectV2ItemById?.item?.id;
+    const itemId = draftResult.addProjectV2DraftIssue?.projectItem?.id;
     if (!itemId) {
-      throw new GitHubApiError("addProjectV2ItemById mutation returned no item ID.", {
+      throw new GitHubApiError("addProjectV2DraftIssue returned no project item.", {
         code: "MUTATION_FAILED",
         recovery:
           "Check that your token has Projects (read/write) permission and that the project " +
           "number in your configuration is correct, then retry.",
-        context: { issueId: issue.id },
       });
     }
 
     const storyRef: StoryRef = { id: itemId };
-    if (input.priority) {
-      await this.setField(storyRef, "priority", input.priority);
+
+    // ── Step 2: Set Type via project board field (works on draft issues) ──────
+    // Only applied when both the Type field is configured AND the canonical key is known
+    // in typeOptions. Silently skipped on mismatch so partial configs don't break creation.
+    if (this.config.fields.typeFieldId && this.config.typeOptions[input.type]) {
+      await this.fieldValueMutator.setFieldType(itemId, input.type);
     }
+
+    // ── Step 3: Set Priority via project board field (works on draft issues) ──
+    // Same reasoning: call mutator directly using itemId already in scope.
+    if (input.priority) {
+      await this.fieldValueMutator.setFieldPriority(itemId, input.priority);
+    }
+
+    // ── Step 4: Convert to full Issue when labels or epic require it ──────────
+    // convertProjectV2DraftIssueItemToIssue keeps the same itemId (project item
+    // stays on the board) but promotes the underlying content to a real Issue,
+    // enabling label and milestone mutations via updateIssue.
+    if (needsFullIssue) {
+      const repositoryId = await this.labelResolver.fetchRepoNodeId();
+
+      const convertResult = await this.gh.graphql<{
+        convertProjectV2DraftIssueItemToIssue?: {
+          item?: { content?: { __typename: string; id: string } };
+        };
+      }>(
+        `mutation ConvertDraftIssue($projectId: ID!, $itemId: ID!, $repositoryId: ID!) {
+          convertProjectV2DraftIssueItemToIssue(input: {
+            projectId: $projectId, itemId: $itemId, repositoryId: $repositoryId
+          }) { item { content { __typename ... on Issue { id } } } }
+        }`,
+        { projectId: this.config.projectId, itemId, repositoryId },
+      );
+
+      const content = convertResult.convertProjectV2DraftIssueItemToIssue?.item?.content;
+      if (!content || content.__typename !== "Issue") {
+        throw new GitHubApiError(
+          "convertProjectV2DraftIssueItemToIssue did not return an Issue.",
+          {
+            code: "MUTATION_FAILED",
+            recovery:
+              "Check that your token has Issues (read/write) and Projects (read/write) permissions, " +
+              "then retry. If the error persists, verify the repository is not archived.",
+            context: { itemId },
+          },
+        );
+      }
+      const issueId = content.id;
+
+      // Apply labels via updateIssue (replaces entire label set).
+      if (hasLabels) {
+        const labelIds = await this.labelResolver.resolveLabelNodeIds(input.labels!);
+        if (labelIds.length > 0) {
+          await this.gh.graphql(
+            `mutation SetLabels($issueId: ID!, $labelIds: [ID!]!) {
+              updateIssue(input: { issueId: $issueId, labelIds: $labelIds }) { issue { id } }
+            }`,
+            { issueId, labelIds },
+          );
+        }
+      }
+
+      // Apply epic (milestone) via updateIssue.
+      if (hasEpic) {
+        const milestoneId = await this.userMilestoneResolver.resolveOrCreateMilestoneNodeId(
+          input.epic!,
+        );
+        await this.gh.graphql(
+          `mutation SetMilestone($issueId: ID!, $milestoneId: ID!) {
+            updateIssue(input: { issueId: $issueId, milestoneId: $milestoneId }) { issue { id } }
+          }`,
+          { issueId, milestoneId },
+        );
+      }
+    }
+
     return storyRef;
   }
 
@@ -164,7 +215,7 @@ export class StoryMutationService {
 
   async setField(
     ref: StoryRef,
-    field: "status" | "sprint" | "story_points" | "priority" | "assignee",
+    field: "status" | "sprint" | "story_points" | "priority" | "assignee" | "type",
     value: string | number | SprintRef | null,
   ): Promise<void> {
     const resolved = await resolveStory(ref, this.gh);
@@ -179,10 +230,14 @@ export class StoryMutationService {
         return this.fieldValueMutator.setFieldStoryPoints(itemId, value as number | null);
       case "priority":
         return this.fieldValueMutator.setFieldPriority(itemId, value as string | null);
+      case "type":
+        // Type is a project board field — works on both draft and full issues.
+        return this.fieldValueMutator.setFieldType(itemId, value as string | null);
       case "assignee":
         if (!resolved.issueId) {
           throw new GitHubApiError(
-            `Story "${ref.id}" is a Draft Issue — assignee cannot be set.`,
+            `Story "${ref.id}" is a Draft Issue — assignee cannot be set via scrum_set_field. ` +
+              "Assignees are set at creation time via scrum_create_story.",
             {
               code: "DRAFT_ISSUE_CONSTRAINT",
               statusCode: 422,

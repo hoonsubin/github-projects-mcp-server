@@ -112,12 +112,9 @@ definition_of_ready:
   - Completable within one sprint
 
 definition_of_done:
-  - Code reviewed and approved
+  - Code or output reviewed and approved by the team
   - All acceptance criteria met and verified
-  - Tests written and passing in CI
-  - No new linting or type errors introduced
-  - Documentation updated if public behaviour changed
-  - Deployed to staging and smoke-tested
+  - Documentation updated for the shared knowledge space
 
 # ── CEREMONY ARTIFACTS ────────────────────────────────────────────────────────
 #
@@ -177,9 +174,16 @@ backends:
     field_mapping:
       sprint: "Sprint" # REQUIRED — ITERATION type field
       status: "Status" # REQUIRED — SINGLE_SELECT type field
+      type: "Type" # REQUIRED — SINGLE_SELECT type field
       story_points: "Story Points" # optional — NUMBER type field
       priority: "Priority" # optional — SINGLE_SELECT type field
 
+    type_display:
+      user_story: "User Story"
+      bug: "Bug"
+      tech_debt: "Tech Debt"
+      spike: "Spike"
+      impediment: "Impediment"
     # Maps canonical status keys → exact GitHub single-select option names.
     # Every key in scrum.status must appear here.
     status_display:

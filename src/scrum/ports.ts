@@ -96,7 +96,7 @@ export interface CompletionMap {
 export interface CreateStoryInput {
   title: string;
   body: string;
-  type: "feature" | "bug" | "tech_debt" | "spike";
+  type: string; // canonical key declared in config.yml type_display (e.g. "feature", "impediment")
   priority?: string;
   storyPoints?: number;
   labels?: string[];
@@ -283,10 +283,13 @@ export interface ProjectReader
  */
 export interface ProjectWriter {
   createStory(input: CreateStoryInput): Promise<StoryRef>;
+  createImpediment(
+    input: CreateStoryInput,
+  ): Promise<{ listing: ImpedimentListing; itemRef: StoryRef }>;
   updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void>;
   setField(
     ref: StoryRef,
-    field: "status" | "sprint" | "story_points" | "priority" | "assignee",
+    field: "status" | "sprint" | "story_points" | "priority" | "assignee" | "type",
     value: string | number | SprintRef | null,
   ): Promise<void>;
   addComment(ref: StoryRef, body: string): Promise<void>;

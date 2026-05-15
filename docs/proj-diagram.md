@@ -101,8 +101,6 @@ classDiagram
                 +computeReadinessSummary()
             }
             class labels.ts:::rules {
-                type StoryTypeLabel
-                +classifyLabels()
             }
             class config.ts:::domain {
                 interface ScrumConfig
@@ -145,11 +143,16 @@ classDiagram
     }
     namespace Adapter {
             class errors.ts:::github {
+                type GitHubErrorCode
+                +assertNever()
+                interface GitHubApiErrorParams
                 class GitHubApiError
+                %% Unused: GitHubErrorCode, assertNever, GitHubApiErrorParams
             }
             class queries.ts:::github {
                 +var GET_ISSUE_DETAILS_QUERY
                 +var GET_ITEM_FIELDS_QUERY
+                +var GET_DRAFT_ISSUE_DETAILS_QUERY
                 +var GET_REPO_LABELS_QUERY
                 +var GET_IMPEDIMENT_ISSUES_QUERY
             }
@@ -159,6 +162,7 @@ classDiagram
                 +buildEnrichedStory()
                 +buildCommentList()
                 +buildLinkedPrList()
+                +toSprintInfo()
                 +buildBurndownStoryInput()
             }
             class burndown-calculator.ts:::internal {
@@ -190,8 +194,14 @@ classDiagram
             class vocabulary-manager.ts:::internal {
                 class VocabularyManager
             }
+            class story-mutation-service.ts:::internal {
+                class StoryMutationService
+            }
             class contents.ts:::internal {
                 +fetchRepoFile()
+            }
+            class story-query-service.ts:::internal {
+                class StoryQueryService
             }
             class http-client.ts:::internal {
                 interface RestResponse
@@ -199,6 +209,9 @@ classDiagram
                 +graphql()
                 +rest()
                 %% Unused: RestResponse
+            }
+            class impediment-service.ts:::internal {
+                class ImpedimentService
             }
             class types.ts:::github {
                 interface GitHubBackendConfig
@@ -280,7 +293,6 @@ classDiagram
     mappers.ts --> config-loader.ts : "imports"
     mappers.ts --> types.ts : "imports"
     mappers.ts --> ports.ts : "imports"
-    mappers.ts --> labels.ts : "imports"
     burndown-calculator.ts --> http-client.ts : "imports"
     burndown-calculator.ts --> pagination.ts : "imports"
     burndown-calculator.ts --> mappers.ts : "imports"
@@ -288,8 +300,10 @@ classDiagram
     burndown-calculator.ts --> config-loader.ts : "imports"
     burndown-calculator.ts --> ports.ts : "imports"
     burndown-calculator.ts --> types.ts : "imports"
+    pagination.ts --> errors.ts : "imports"
     pagination.ts --> config-loader.ts : "imports"
     pagination.ts --> types.ts : "imports"
+    resolver.ts --> errors.ts : "imports"
     resolver.ts --> config-loader.ts : "imports"
     resolver.ts --> types.ts : "imports"
     field-value-mutator.ts --> errors.ts : "imports"
@@ -301,6 +315,7 @@ classDiagram
     user-milestone-resolver.ts --> errors.ts : "imports"
     user-milestone-resolver.ts --> http-client.ts : "imports"
     user-milestone-resolver.ts --> label-resolver.ts : "imports"
+    label-resolver.ts --> errors.ts : "imports"
     label-resolver.ts --> http-client.ts : "imports"
     label-resolver.ts --> queries.ts : "imports"
     label-resolver.ts --> config-loader.ts : "imports"
@@ -314,27 +329,52 @@ classDiagram
     vocabulary-manager.ts --> label-resolver.ts : "imports"
     vocabulary-manager.ts --> config-loader.ts : "imports"
     vocabulary-manager.ts --> ports.ts : "imports"
+    story-mutation-service.ts --> errors.ts : "imports"
+    story-mutation-service.ts --> http-client.ts : "imports"
+    story-mutation-service.ts --> resolver.ts : "imports"
+    story-mutation-service.ts --> label-resolver.ts : "imports"
+    story-mutation-service.ts --> user-milestone-resolver.ts : "imports"
+    story-mutation-service.ts --> field-value-mutator.ts : "imports"
+    story-mutation-service.ts --> config-loader.ts : "imports"
+    story-mutation-service.ts --> ports.ts : "imports"
+    story-mutation-service.ts --> types.ts : "imports"
     contents.ts --> errors.ts : "imports"
     contents.ts --> http-client.ts : "imports"
+    story-query-service.ts --> errors.ts : "imports"
+    story-query-service.ts --> http-client.ts : "imports"
+    story-query-service.ts --> pagination.ts : "imports"
+    story-query-service.ts --> resolver.ts : "imports"
+    story-query-service.ts --> mappers.ts : "imports"
+    story-query-service.ts --> queries.ts : "imports"
+    story-query-service.ts --> config-loader.ts : "imports"
+    story-query-service.ts --> ports.ts : "imports"
+    story-query-service.ts --> types.ts : "imports"
     http-client.ts --> types.ts : "imports"
     http-client.ts --> logger.ts : "imports"
     http-client.ts --> errors.ts : "imports"
+    impediment-service.ts --> errors.ts : "imports"
+    impediment-service.ts --> http-client.ts : "imports"
+    impediment-service.ts --> resolver.ts : "imports"
+    impediment-service.ts --> label-resolver.ts : "imports"
+    impediment-service.ts --> field-value-mutator.ts : "imports"
+    impediment-service.ts --> queries.ts : "imports"
+    impediment-service.ts --> config-loader.ts : "imports"
+    impediment-service.ts --> ports.ts : "imports"
+    impediment-service.ts --> types.ts : "imports"
     config-loader.ts --> types.ts : "imports"
     config-loader.ts --> config.ts : "imports"
-    backend.ts --> errors.ts : "imports"
-    backend.ts --> http-client.ts : "imports"
     backend.ts --> contents.ts : "imports"
     backend.ts --> config-loader.ts : "imports"
-    backend.ts --> resolver.ts : "imports"
-    backend.ts --> pagination.ts : "imports"
     backend.ts --> label-resolver.ts : "imports"
     backend.ts --> user-milestone-resolver.ts : "imports"
     backend.ts --> field-value-mutator.ts : "imports"
     backend.ts --> burndown-calculator.ts : "imports"
     backend.ts --> sprint-history-service.ts : "imports"
     backend.ts --> vocabulary-manager.ts : "imports"
+    backend.ts --> story-query-service.ts : "imports"
+    backend.ts --> story-mutation-service.ts : "imports"
+    backend.ts --> impediment-service.ts : "imports"
     backend.ts --> mappers.ts : "imports"
-    backend.ts --> queries.ts : "imports"
     backend.ts --> ports.ts : "imports"
     backend.ts --> types.ts : "imports"
     index.ts --> scrum-read.ts : "imports"
@@ -348,6 +388,9 @@ classDiagram
     index.ts --> burndown-calculator.ts : "imports"
     index.ts --> sprint-history-service.ts : "imports"
     index.ts --> vocabulary-manager.ts : "imports"
+    index.ts --> story-query-service.ts : "imports"
+    index.ts --> story-mutation-service.ts : "imports"
+    index.ts --> impediment-service.ts : "imports"
     index.ts --> logger.ts : "imports"
     index.ts --> ports.ts : "imports"
     index.ts --> types.ts : "imports"
@@ -376,6 +419,9 @@ The following exports are never imported by any other module in the codebase:
 | [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `SprintTotalsHistory`     | `interface` |
 | [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `ProjectWriter`           | `interface` |
 | [`./src/scrum/update-impediment.ts`](../src/scrum/update-impediment.ts)                                 | `updateImpedimentUseCase` | `function`  |
+| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `GitHubErrorCode`         | `type`      |
+| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `assertNever`             | `function`  |
+| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `GitHubApiErrorParams`    | `interface` |
 | [`./src/adapters/github/internal/label-resolver.ts`](../src/adapters/github/internal/label-resolver.ts) | `GitHubLabel`             | `interface` |
 | [`./src/adapters/github/internal/http-client.ts`](../src/adapters/github/internal/http-client.ts)       | `RestResponse`            | `interface` |
 | [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `ImpedimentRef`           | `interface` |

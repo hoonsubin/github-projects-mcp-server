@@ -44,12 +44,19 @@ export interface GitHubBackendConfig {
     status: string; // REQUIRED — SINGLE_SELECT type field
     story_points?: string; // optional — NUMBER type field
     priority?: string; // optional — SINGLE_SELECT type field
+    item_type?: string; // optional — SINGLE_SELECT type field for story type
     [key: string]: string | undefined;
   };
   /** Maps canonical status keys → exact GitHub single-select option names. */
   status_display: Record<string, string>;
   /** Maps canonical priority keys → exact GitHub single-select option names. */
   priority_display: Record<string, string>;
+  /**
+   * Maps canonical story type keys → exact GitHub single-select option names
+   * for the item_type field. Only required when field_mapping.item_type is set.
+   * Example: { feature: "Feature", bug: "Bug", tech_debt: "Tech Debt", spike: "Spike" }
+   */
+  type_display?: Record<string, string>;
 }
 
 // ── GraphQL response envelope (moved from src/types.ts) ─────────────────────
@@ -182,6 +189,7 @@ export interface BoardFields {
   sprint: string | null;
   story_points: number | null;
   priority: string | null;
+  type: string | null; // canonical key from typeOptions; null when Type field absent or unset
 }
 
 // ── Issue detail output types (absorbed from raw-types.ts) ───────────────────

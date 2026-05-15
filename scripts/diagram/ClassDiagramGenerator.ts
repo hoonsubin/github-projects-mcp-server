@@ -96,17 +96,6 @@ export class ClassDiagramGenerator {
   private generateClasses(): string[] {
     const lines: string[] = [];
 
-    const test = this.styler.getNamespaceDefs().map((i) => {
-      return {
-        name: i.name,
-        modules: i.children.map((j) => {
-          return j.getMermaidClassName();
-        }),
-      };
-    });
-
-    console.log(test);
-
     for (const namespaceDef of this.styler.getNamespaceDefs()) {
       lines.push(`    namespace ${namespaceDef.name} {`);
 

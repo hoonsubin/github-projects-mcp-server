@@ -17,7 +17,11 @@ import {
   type IssueDetailsInput,
   toSprintInfo,
 } from "../mappers.ts";
-import { GET_ISSUE_DETAILS_QUERY, GET_ITEM_FIELDS_QUERY } from "../queries.ts";
+import {
+  GET_DRAFT_ISSUE_DETAILS_QUERY,
+  GET_ISSUE_DETAILS_QUERY,
+  GET_ITEM_FIELDS_QUERY,
+} from "../queries.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { SprintInfo, StoryDetail } from "../../../scrum/ports.ts";
 import type { ItemFieldValue, ProjectItem } from "../types.ts";
@@ -104,7 +108,7 @@ export class StoryQueryService {
       sprintFieldIds: [this.config.fields.sprintFieldId],
       includeIssueContent: true,
       includePRContent: false,
-      includeDraftIssueContent: false,
+      includeDraftIssueContent: true,
       pageSize: 100,
     });
     const backlogItems = await fetcher.collect((item) =>
@@ -117,18 +121,12 @@ export class StoryQueryService {
 
   async getStoryDetail(ref: StoryRef): Promise<StoryDetail> {
     const resolved = await resolveStory(ref, this.gh);
+
+    // Draft Issues have no GitHub Issue node — fetch project item directly
     if (!resolved.issueId) {
-      throw new GitHubApiError(
-        `Story "${ref.id}" is a Draft Issue — detailed view is not available.`,
-        {
-          code: "DRAFT_ISSUE_CONSTRAINT",
-          statusCode: 422,
-          recovery:
-            "Convert the Draft Issue to a real Issue in GitHub to access comments and linked PRs.",
-          context: { itemId: ref.id },
-        },
-      );
+      return this._getDraftIssueDetail(resolved.itemId);
     }
+
     const [issueData, itemData] = await Promise.all([
       this.gh.graphql<GetIssueDetailsResponse>(GET_ISSUE_DETAILS_QUERY, {
         issueId: resolved.issueId,
@@ -157,6 +155,62 @@ export class StoryQueryService {
     const comments = buildCommentList(issue.comments?.nodes ?? []);
     const linkedPrs = buildLinkedPrList(issue.timelineItems?.nodes ?? []);
     return { story, comments, linkedPrs };
+  }
+
+  private async _getDraftIssueDetail(itemId: string): Promise<StoryDetail> {
+    interface GetDraftIssueDetailsResponse {
+      node?: {
+        id?: string;
+        type?: string;
+        createdAt?: string;
+        updatedAt?: string;
+        isArchived?: boolean;
+        content?: unknown;
+        fieldValues?: { nodes: ItemFieldValue[] };
+      } | null;
+    }
+
+    const data = await this.gh.graphql<GetDraftIssueDetailsResponse>(
+      GET_DRAFT_ISSUE_DETAILS_QUERY,
+      { itemId },
+    );
+
+    const node = data.node;
+    if (!node) {
+      throw new GitHubApiError(`Project item ${itemId} could not be fetched.`, {
+        code: "NOT_FOUND",
+        statusCode: 404,
+        recovery: "The item may have been deleted from the project. " +
+          "Refresh your story list with scrum_get_sprint or scrum_get_backlog.",
+        context: { itemId },
+      });
+    }
+
+    const item: ProjectItem = {
+      id: itemId,
+      type: (node.type ?? "DRAFT_ISSUE") as ProjectItem["type"],
+      createdAt: node.createdAt ?? "",
+      updatedAt: node.updatedAt ?? "",
+      isArchived: node.isArchived ?? false,
+      content: node.content as ProjectItem["content"],
+      fieldValues: { nodes: node.fieldValues?.nodes ?? [] },
+    };
+
+    const story = buildStoryFromRaw(item, this.config);
+    if (!story) {
+      throw new GitHubApiError(
+        `Draft Issue ${itemId} is missing required content fields.`,
+        {
+          code: "NOT_FOUND",
+          statusCode: 404,
+          recovery: "The item may have been deleted or corrupted in the project.",
+          context: { itemId },
+        },
+      );
+    }
+
+    // Draft Issues have no GitHub Issue node — no comments or linked PRs available
+    return { story, comments: [], linkedPrs: [] };
   }
 
   /** Fetch all project items (including issues, PRs, and draft issues). */

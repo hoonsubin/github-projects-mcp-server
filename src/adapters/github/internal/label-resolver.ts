@@ -94,7 +94,9 @@ export class LabelResolver {
   async auditTypeLabels(): Promise<{ existing: string[]; expected: string[] }> {
     const labels = await this.fetchAllLabels();
     const existing = labels.map((l) => l.name);
-    const expected = ["feature", "bug", "tech_debt", "spike", "impediment"];
+    // Type vocabulary is now managed via the Type project board field (type_display in config.yml).
+    // No labels are expected by the system — all label management is user-driven.
+    const expected: string[] = [];
     return { existing, expected };
   }
 

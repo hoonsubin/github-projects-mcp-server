@@ -146,6 +146,7 @@ const createBackend = async (): Promise<{ backend: ProjectBackend; scrumConfig: 
     gh.owner,
     primaryRepo,
     labelResolver,
+    fieldValueMutator,
   );
 
   const backend = new GitHubProjectBackend(

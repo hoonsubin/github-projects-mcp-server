@@ -329,6 +329,21 @@ query GetItemFields($itemId: ID!) {
 # QUERIES — Issue / PR detail
 # ══════════════════════════════════════════════════════════════════════════════
 
+# ── GetDraftIssueDetails ───────────────────────────────────────────────────────
+# Fetch content and board field values for a project item by item ID.
+# Used by getStoryDetail for Draft Issues, which have no GitHub Issue node.
+# Returns full field values (status, sprint, points, priority) alongside content.
+
+query GetDraftIssueDetails($itemId: ID!) {
+  node(id: $itemId) {
+    ... on ProjectV2Item {
+      id type createdAt updatedAt isArchived
+      ...ItemContent
+      ...ItemFieldValues
+    }
+  }
+}
+
 # ── GetIssueDetails ────────────────────────────────────────────────────────────
 # Fetch full issue details by node ID, including comments and linked PRs.
 # Used by getStoryDetail to enrich a story with discussion context.

@@ -27,6 +27,8 @@ interface OrientResult {
   vocabulary: {
     status: Record<string, string> | null;
     priority: Record<string, string> | null;
+    /** Maps canonical type keys → display names declared in type_display. null when not configured. */
+    type: Record<string, string> | null;
     story_points: { scale: string | null; values: number[] | null };
     sprint: { duration_days: number | null; velocity_window: number; length_weeks: number | null };
     team: unknown;
@@ -57,10 +59,12 @@ export const orientUseCase = async (
   type GhDisplay = {
     status_display?: Record<string, string>;
     priority_display?: Record<string, string>;
+    type_display?: Record<string, string>;
   };
   const ghDisplay = scrumConfig.backends.github as GhDisplay | undefined;
   const statusVocab = ghDisplay?.status_display ?? null;
   const priorityVocab = ghDisplay?.priority_display ?? null;
+  const typeVocab = ghDisplay?.type_display ?? null;
 
   const state = await backend.getPlatformState({
     statusValues: statusVocab ? Object.values(statusVocab) : [],
@@ -109,6 +113,7 @@ export const orientUseCase = async (
     vocabulary: {
       status: statusVocab,
       priority: priorityVocab,
+      type: typeVocab,
       story_points: {
         scale: scrumConfig.scrum.sprint?.story_point_scale ?? null,
         values: scrumConfig.scrum.sprint?.story_point_values ?? null,

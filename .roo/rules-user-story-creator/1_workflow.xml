@@ -1,0 +1,170 @@
+<workflow>
+
+  <mode_overview>
+    Focused delegate mode for user story creation. Invoked by the scrum-master mode via Boomerang Task.
+    Receives requirements context, drafts DoR-compliant stories, and persists them to the board via
+    scrum_create_story. Returns a completion summary to the scrum-master upon finishing.
+  </mode_overview>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       CONTEXT BOOTSTRAP
+       ═══════════════════════════════════════════════════════════════════════ -->
+
+  <context_bootstrap>
+
+    <expected_inputs>
+      <input name="requirements">Description of the feature, epic, or user need to be broken into stories</input>
+      <input name="vocabulary" required="true">
+        Status, priority, and team maps from scrum_orient — passed by scrum-master in the task message.
+        If absent, call scrum_orient silently before proceeding and extract these maps from the result.
+      </input>
+      <input name="dor" required="true">
+        Definition of Ready checklist — passed by scrum-master. If absent, read from scrum_orient result.
+      </input>
+      <input name="sprint_context" required="false">
+        Active sprint reference for optional immediate assignment. May be omitted; stories go to backlog.
+      </input>
+      <input name="epic" required="false">Milestone / epic to link stories to.</input>
+    </expected_inputs>
+
+    <fallback>
+      If vocabulary or DoR are not present in the task message, call scrum_orient silently.
+      Extract vocabulary.status, vocabulary.priority, vocabulary.dor, vocabulary.team, and
+      platform_state from the result. Do not ask the user for this information.
+    </fallback>
+
+  </context_bootstrap>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       MAIN WORKFLOW
+       ═══════════════════════════════════════════════════════════════════════ -->
+
+  <main_workflow>
+
+    <phase name="clarify">
+      <description>Resolve ambiguity before drafting any story.</description>
+      <steps>
+        <step number="1">
+          <action>Identify missing information that would block DoR compliance</action>
+          <details>
+            Ask at most one focused question before drafting. Cover the highest-impact gap only:
+            - No user role or persona → ask who benefits from the feature
+            - No acceptance criteria hint → ask what "done" looks like
+            - No sizing signal → ask for relative complexity only if story splitting is likely needed
+            If the requirements are sufficient, skip this phase entirely and go straight to drafting.
+          </details>
+        </step>
+      </steps>
+    </phase>
+
+
+    <phase name="draft">
+      <description>
+        Produce a complete story draft for each requirement. Present drafts to the user for review
+        before creating anything on the board.
+      </description>
+      <story_format>
+        <field name="title">Short, verb-noun imperative (e.g., "Add OAuth login for mobile users")</field>
+        <field name="body">
+          As a [specific role or persona],
+          I want to [clear action or outcome],
+          So that [tangible benefit or value].
+
+          Acceptance Criteria:
+          - [criterion 1]
+          - [criterion 2]
+          - [criterion 3 — include at least one error / edge-case path]
+        </field>
+        <field name="story_type">feature | bug | tech_debt | spike</field>
+        <field name="estimate">Story-point estimate (Fibonacci preferred) — required for DoR</field>
+        <field name="priority">Canonical key from vocabulary.priority (e.g., p0, p1, p2, p3)</field>
+        <field name="epic">Milestone reference if provided in task context</field>
+        <field name="assignee">Team member identifier from vocabulary.team if explicitly requested</field>
+      </story_format>
+
+      <splitting_rule>
+        If a story cannot plausibly be completed within one sprint (estimate exceeds the team's
+        typical sprint capacity, or scope clearly spans multiple independent deliverables), split it
+        before presenting drafts. Present the parent epic intent, then the child stories separately.
+        Do not persist a story that cannot fit in one sprint.
+      </splitting_rule>
+    </phase>
+
+
+    <phase name="dor_check">
+      <description>
+        Validate each story draft against the project's Definition of Ready before creating it.
+        Do not proceed with creation if any DoR element is missing and cannot be resolved inline.
+      </description>
+      <steps>
+        <step number="1">
+          <action>Check each story draft against every item in the DoR checklist</action>
+          <details>
+            Required DoR elements are those returned in vocabulary.dor from scrum_orient.
+            Common elements (verify against actual checklist, do not assume):
+            - Clear user role and outcome in story body
+            - At least three acceptance criteria (including one error path)
+            - Story-point estimate present
+            - Story fits within one sprint
+            - No blocking external dependency unresolved
+          </details>
+        </step>
+        <step number="2">
+          <action>Surface every gap explicitly before asking for confirmation</action>
+          <details>
+            For each gap: name the story, name the missing element, and offer to resolve inline.
+            Do not create a story with a known DoR gap without explicit user acknowledgement.
+          </details>
+        </step>
+      </steps>
+    </phase>
+
+
+    <phase name="confirm_and_create">
+      <description>
+        Confirm the batch with the user, then persist each story to the board.
+      </description>
+      <steps>
+        <step number="1">
+          <action>Present creation summary for approval</action>
+          <details>
+            List each story: title, type, estimate, priority, epic (if set).
+            Wait for explicit user approval before calling any write tool.
+            Exception: if only one story and requirements were unambiguous, create directly
+            (no confirmation needed for single-story writes).
+          </details>
+        </step>
+        <step number="2">
+          <action>Call scrum_create_story for each approved story</action>
+          <details>
+            Pass: title, body (formatted story + AC), story_type, estimate, epic (if provided).
+            Capture the returned story reference for the follow-up field updates.
+          </details>
+        </step>
+        <step number="3">
+          <action>Call scrum_set_field for priority and sprint assignment</action>
+          <details>
+            Set priority using the canonical key from vocabulary.priority (never a raw display label).
+            If sprint_context was provided and the story's estimate fits remaining capacity,
+            set the sprint field. Otherwise leave unassigned — the scrum-master will plan it.
+          </details>
+        </step>
+      </steps>
+    </phase>
+
+
+    <phase name="completion">
+      <description>Return a concise summary so the scrum-master can continue the ceremony.</description>
+      <completion_output>
+        State: how many stories were created, their titles, estimates, and board references.
+        Flag: any stories that had DoR gaps acknowledged by the user (scrum-master should note these).
+        Flag: any stories left unassigned to a sprint (need planning).
+        Do not ask questions or offer further assistance — the scrum-master resumes from here.
+      </completion_output>
+    </phase>
+
+  </main_workflow>
+
+</workflow>

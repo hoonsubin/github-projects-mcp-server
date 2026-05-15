@@ -140,13 +140,19 @@ export class GitHubProjectBackend implements ProjectBackend {
     return this.storyMutationService.createStory(input);
   }
 
+  createImpediment(
+    input: CreateStoryInput,
+  ): Promise<{ listing: ImpedimentListing; itemRef: StoryRef }> {
+    return this.impedimentService.createImpediment(input);
+  }
+
   updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void> {
     return this.storyMutationService.updateStory(ref, updates);
   }
 
   setField(
     ref: StoryRef,
-    field: "status" | "sprint" | "story_points" | "priority" | "assignee",
+    field: "status" | "sprint" | "story_points" | "priority" | "assignee" | "type",
     value: string | number | SprintRef | null,
   ): Promise<void> {
     return this.storyMutationService.setField(ref, field, value);

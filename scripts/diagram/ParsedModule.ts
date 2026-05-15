@@ -83,7 +83,6 @@ export class ParsedModule {
 
     this.moduleSourceFile = modSource;
 
-    // todo: add parse Import setter and parse Exp
     ts.forEachChild(modSource, this.parseImports);
     ts.forEachChild(modSource, this.parseExports);
   }

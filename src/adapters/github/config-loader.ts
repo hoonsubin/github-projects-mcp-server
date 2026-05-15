@@ -468,6 +468,15 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
         if (optionId) priorityOptions[displayName] = optionId; // displayName → optionId
       }
     }
+
+    if (typeFieldName && patchedGhConfig.type_display && node.name === typeFieldName) {
+      const displayToId = new Map(ssNode.options.map((o) => [o.name, o.id]));
+      // typeOptions maps canonical key → optionId (e.g. "feature" → "<id>")
+      for (const [canonicalKey, displayName] of Object.entries(patchedGhConfig.type_display)) {
+        const optionId = displayToId.get(displayName);
+        if (optionId) typeOptions[canonicalKey] = optionId;
+      }
+    }
   }
 
   // ── Step 8: Classify iterations ─────────────────────────────────────────────
