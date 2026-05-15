@@ -101,8 +101,6 @@ classDiagram
                 +computeReadinessSummary()
             }
             class labels.ts:::rules {
-                type StoryTypeLabel
-                +classifyLabels()
             }
             class config.ts:::domain {
                 interface ScrumConfig
@@ -295,7 +293,6 @@ classDiagram
     mappers.ts --> config-loader.ts : "imports"
     mappers.ts --> types.ts : "imports"
     mappers.ts --> ports.ts : "imports"
-    mappers.ts --> labels.ts : "imports"
     burndown-calculator.ts --> http-client.ts : "imports"
     burndown-calculator.ts --> pagination.ts : "imports"
     burndown-calculator.ts --> mappers.ts : "imports"
@@ -359,6 +356,7 @@ classDiagram
     impediment-service.ts --> http-client.ts : "imports"
     impediment-service.ts --> resolver.ts : "imports"
     impediment-service.ts --> label-resolver.ts : "imports"
+    impediment-service.ts --> field-value-mutator.ts : "imports"
     impediment-service.ts --> queries.ts : "imports"
     impediment-service.ts --> config-loader.ts : "imports"
     impediment-service.ts --> ports.ts : "imports"
@@ -409,24 +407,26 @@ classDiagram
     classDef services fill:#f0f,stroke:#333,stroke-width:2px,color:#000;
 ```
 
+
 ## Unused Exports
 
 The following exports are never imported by any other module in the codebase:
 
-| Module                                                                                                  | Export                    | Kind        |
-| ------------------------------------------------------------------------------------------------------- | ------------------------- | ----------- |
-| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                                             | `groupStoriesByStatus`    | `function`  |
-| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                                             | `computeSprintTotals`     | `function`  |
-| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `SprintTotalsActive`      | `interface` |
-| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `SprintTotalsHistory`     | `interface` |
-| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `ProjectWriter`           | `interface` |
-| [`./src/scrum/update-impediment.ts`](../src/scrum/update-impediment.ts)                                 | `updateImpedimentUseCase` | `function`  |
-| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `GitHubErrorCode`         | `type`      |
-| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `assertNever`             | `function`  |
-| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `GitHubApiErrorParams`    | `interface` |
-| [`./src/adapters/github/internal/label-resolver.ts`](../src/adapters/github/internal/label-resolver.ts) | `GitHubLabel`             | `interface` |
-| [`./src/adapters/github/internal/http-client.ts`](../src/adapters/github/internal/http-client.ts)       | `RestResponse`            | `interface` |
-| [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `ImpedimentRef`           | `interface` |
+| Module | Export | Kind |
+|--------|--------|------|
+| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts) | `groupStoriesByStatus` | `function` |
+| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts) | `computeSprintTotals` | `function` |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts) | `SprintTotalsActive` | `interface` |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts) | `SprintTotalsHistory` | `interface` |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts) | `ProjectWriter` | `interface` |
+| [`./src/scrum/update-impediment.ts`](../src/scrum/update-impediment.ts) | `updateImpedimentUseCase` | `function` |
+| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts) | `GitHubErrorCode` | `type` |
+| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts) | `assertNever` | `function` |
+| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts) | `GitHubApiErrorParams` | `interface` |
+| [`./src/adapters/github/internal/label-resolver.ts`](../src/adapters/github/internal/label-resolver.ts) | `GitHubLabel` | `interface` |
+| [`./src/adapters/github/internal/http-client.ts`](../src/adapters/github/internal/http-client.ts) | `RestResponse` | `interface` |
+| [`./src/domain/types.ts`](../src/domain/types.ts) | `ImpedimentRef` | `interface` |
+
 
 ## Notes
 
@@ -439,4 +439,4 @@ The following exports are never imported by any other module in the codebase:
 
 ---
 
-_Auto-generated — do not edit manually_
+*Auto-generated — do not edit manually*

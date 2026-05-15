@@ -101,6 +101,18 @@ const createMockBackend = (
   addComment: () => Promise.resolve(),
   addVocabulary: () => Promise.resolve({ created: false }),
   getSprintImpediments: () => Promise.resolve([]),
+  createImpediment: () =>
+    Promise.resolve({
+      listing: {
+        ref: { id: "" },
+        description: "",
+        status: "open",
+        raised_by: null,
+        raised_at: "",
+        resolved_at: null,
+      },
+      itemRef: { id: "" },
+    }),
   updateImpediment: () =>
     Promise.resolve({
       ref: { id: "" },

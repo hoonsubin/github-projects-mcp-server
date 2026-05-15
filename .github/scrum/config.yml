@@ -112,12 +112,9 @@ definition_of_ready:
   - Completable within one sprint
 
 definition_of_done:
-  - Code reviewed and approved
+  - Code or output reviewed and approved by the team
   - All acceptance criteria met and verified
-  - Tests written and passing in CI
-  - No new linting or type errors introduced
-  - Documentation updated if public behaviour changed
-  - Deployed to staging and smoke-tested
+  - Documentation updated for the shared knowledge space
 
 # ── CEREMONY ARTIFACTS ────────────────────────────────────────────────────────
 #
