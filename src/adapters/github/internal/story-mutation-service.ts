@@ -33,9 +33,9 @@ export class StoryMutationService {
   ) {}
 
   async createStory(input: CreateStoryInput): Promise<StoryRef> {
-    // Batch all label names into a single resolution call
+    // Batch all label names into a single resolution call.
+    // Priority is managed exclusively via the project board Priority field — not as an issue label.
     const labelNames: string[] = [`type_${input.type}`];
-    if (input.priority) labelNames.push(`priority_${input.priority.toLowerCase()}`);
     if (input.labels) labelNames.push(...input.labels);
 
     const [labelIds, assigneeIds, repositoryId] = await Promise.all([

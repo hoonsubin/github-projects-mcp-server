@@ -422,8 +422,8 @@ export function registerScrumWriteTools(
           labels: ["impediment"],
         };
 
-        // Step 2: Create the impediment story
-        const storyRef = await backend.createStory(impedimentInput);
+        // Step 2: Create the impediment story; listing.ref.id is the GitHub Issue node ID (I_...)
+        const { listing: impediment, itemRef } = await backend.createImpediment(impedimentInput);
 
         // Step 3: Conditional branching based on affects presence
         if (params.affects) {
@@ -445,7 +445,7 @@ export function registerScrumWriteTools(
               `  - Story item ID: ${affectsRef}`,
             ].join("\n");
 
-            await backend.addComment(storyRef, impedimentComment);
+            await backend.addComment(itemRef, impedimentComment);
           } else if ("sprint" in params.affects) {
             // Sprint case: post single cross-reference comment on impediment
             const sprintName = params.affects.sprint;
@@ -454,19 +454,9 @@ export function registerScrumWriteTools(
               `  - Sprint: ${sprintName}`,
             ].join("\n");
 
-            await backend.addComment(storyRef, impedimentComment);
+            await backend.addComment(itemRef, impedimentComment);
           }
         }
-
-        // Step 4: Return the impediment listing (avoid extra getStoryDetail round-trip)
-        const impediment: ImpedimentListing = {
-          ref: storyRef,
-          description: params.description,
-          status: "open",
-          raised_by: null, // not known at creation time without a re-fetch
-          raised_at: new Date().toISOString(),
-          resolved_at: null,
-        };
         return {
           content: [{
             type: "text",

@@ -283,6 +283,9 @@ export interface ProjectReader
  */
 export interface ProjectWriter {
   createStory(input: CreateStoryInput): Promise<StoryRef>;
+  createImpediment(
+    input: CreateStoryInput,
+  ): Promise<{ listing: ImpedimentListing; itemRef: StoryRef }>;
   updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void>;
   setField(
     ref: StoryRef,

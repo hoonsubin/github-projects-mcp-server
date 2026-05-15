@@ -140,6 +140,12 @@ export class GitHubProjectBackend implements ProjectBackend {
     return this.storyMutationService.createStory(input);
   }
 
+  createImpediment(
+    input: CreateStoryInput,
+  ): Promise<{ listing: ImpedimentListing; itemRef: StoryRef }> {
+    return this.impedimentService.createImpediment(input);
+  }
+
   updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void> {
     return this.storyMutationService.updateStory(ref, updates);
   }

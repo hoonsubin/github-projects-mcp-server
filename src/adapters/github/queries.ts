@@ -106,5 +106,6 @@ function getQuery(name: string): string {
 getQuery("GetUserProjectItems"); // startup validation only; not imported elsewhere
 export const GET_ISSUE_DETAILS_QUERY = getQuery("GetIssueDetails");
 export const GET_ITEM_FIELDS_QUERY = getQuery("GetItemFields");
+export const GET_DRAFT_ISSUE_DETAILS_QUERY = getQuery("GetDraftIssueDetails");
 export const GET_REPO_LABELS_QUERY = getQuery("GetRepoLabels");
 export const GET_IMPEDIMENT_ISSUES_QUERY = getQuery("GetImpedimentIssues");

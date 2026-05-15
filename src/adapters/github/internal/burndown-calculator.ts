@@ -38,11 +38,13 @@ export class BurndownCalculator {
       throw new Error(`Iteration with ID ${iterationId} not found in configuration.`);
     }
 
+    // No sprintFieldIds — use the full field values query so extractBoardFields
+    // can resolve story_points, status, etc. Sprint filtering is done by the
+    // predicate below via iterationId, which the full query still returns.
     const fetcher = new PaginatedProjectItemFetcher(
       this.config,
       { graphql: this.gh.graphql },
       {
-        sprintFieldIds: [this.config.fields.sprintFieldId],
         includeIssueContent: true,
       },
     );

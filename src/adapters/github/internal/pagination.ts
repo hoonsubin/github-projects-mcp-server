@@ -171,9 +171,11 @@ const buildItemsQuery = (
   let fieldValuesFragment = "";
 
   if (sprintFieldIds && sprintFieldIds.length > 0) {
-    // Fetch only the sprint field (minimal payload for backlog filtering)
+    // Fetch all field values but only render sub-fields for iteration type.
+    // first: 1 was wrong — GitHub has no field-type filter on fieldValues, so
+    // fetching only 1 value misses the sprint field whenever it isn't first.
     fieldValuesFragment = `
-          fieldValues(first: 1) {
+          fieldValues(first: 20) {
             nodes {
               __typename
               ... on ProjectV2ItemFieldIterationValue {

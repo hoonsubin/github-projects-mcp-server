@@ -21,7 +21,8 @@ export interface StoryRef {
 
 /**
  * A reference to an impediment (spike story tagged 'impediment').
- * Backend-agnostic: the id is an opaque project-item handle.
+ * On GitHub: id is the GitHub Issue node ID (I_...), not the project item ID.
+ * Impediment operations (updateImpediment) operate on the GitHub Issue directly.
  */
 export interface ImpedimentRef {
   id: string;

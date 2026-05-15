@@ -110,6 +110,8 @@ export const buildStoryFromRaw = (
 
   // ── DraftIssue branch ───────────────────────────────────────────────────────
   if (content.__typename === "DraftIssue") {
+    // assignees is absent when includeDraftIssueContent: false — skip this item
+    if (!content.assignees) return null;
     return {
       ref: { id: item.id },
       key: null,
@@ -131,6 +133,8 @@ export const buildStoryFromRaw = (
 
   // ── Issue / PullRequest branch ──────────────────────────────────────────────
   // Both have number, title, url, body, assignees, labels
+  // labels/assignees are absent when includePRContent: false — skip this item
+  if (!content.labels || !content.assignees) return null;
   const { type, labels } = classifyLabels(
     content.labels.nodes.map((l) => l.name),
   );
