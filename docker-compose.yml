@@ -5,10 +5,12 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      - PORT=3030
     ports:
-      - "127.0.0.1:3456:3000" # bind to loopback; expose via reverse proxy
+      - "3030:3030" # host:container port mapping
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:3030/health"]
       interval: 30s
       timeout: 5s
       retries: 3
