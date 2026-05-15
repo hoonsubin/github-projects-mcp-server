@@ -7,7 +7,8 @@
 import type { RuntimeConfig } from "./config-loader.ts";
 import type { IterationEntry, Story } from "../../domain/types.ts";
 import type { BurndownStoryInput, SprintInfo } from "../../scrum/ports.ts";
-import { classifyLabels, type StoryTypeLabel } from "../../domain/rules/labels.ts";
+// classifyLabels / StoryTypeLabel removed — type is now read from the Type board field,
+// not from repo labels. See extractBoardFields → typeFieldId branch below.
 import type { BoardFields, Comment, FieldValueNode, LinkedPr, ProjectItem } from "./types.ts";
 
 // ── Local input shapes (private — only for function parameter types) ───────────
@@ -63,6 +64,7 @@ const extractBoardFields = (
   let sprint: string | null = null;
   let story_points: number | null = null;
   let priority: string | null = null;
+  let type: string | null = null;
 
   for (const fv of nodes) {
     const id = fv.field?.id;
@@ -83,10 +85,12 @@ const extractBoardFields = (
       fv.name
     ) {
       priority = fv.name;
+    } else if (fields.typeFieldId && id === fields.typeFieldId && fv.name) {
+      type = fv.name;
     }
   }
 
-  return { status, sprint, story_points, priority };
+  return { status, sprint, story_points, priority, type };
 };
 
 // ── Story builders ─────────────────────────────────────────────────────────────
@@ -117,7 +121,7 @@ export const buildStoryFromRaw = (
       key: null,
       title: content.title,
       body: content.body,
-      type: null,
+      type: boardFields.type,
       status: boardFields.status,
       sprint: boardFields.sprint,
       story_points: boardFields.story_points,
@@ -135,9 +139,9 @@ export const buildStoryFromRaw = (
   // Both have number, title, url, body, assignees, labels
   // labels/assignees are absent when includePRContent: false — skip this item
   if (!content.labels || !content.assignees) return null;
-  const { type, labels } = classifyLabels(
-    content.labels.nodes.map((l) => l.name),
-  );
+  // Type comes from the Type board field — not from labels.
+  // All repo labels are passed through unfiltered.
+  const labels = content.labels.nodes.map((l) => l.name);
   const epic = content.__typename === "Issue" ? content.milestone?.title ?? null : null;
 
   return {
@@ -145,7 +149,7 @@ export const buildStoryFromRaw = (
     key: content.number.toString(),
     title: content.title,
     body: content.body,
-    type,
+    type: boardFields.type,
     status: boardFields.status,
     sprint: boardFields.sprint,
     story_points: boardFields.story_points,
@@ -170,16 +174,16 @@ export const buildEnrichedStory = (
   config: RuntimeConfig,
 ): Story => {
   const boardFields = extractBoardFields(fieldValueNodes, config.fields);
-  const { type, labels } = classifyLabels(
-    issueNode.labels?.nodes.map((l) => l.name) ?? [],
-  );
+  // Type comes from the Type board field — not from labels.
+  // All repo labels are passed through unfiltered.
+  const labels = issueNode.labels?.nodes.map((l) => l.name) ?? [];
 
   return {
     ref: { id: itemId },
     key: issueNode.number.toString(),
     title: issueNode.title ?? "",
     body: issueNode.body ?? "",
-    type: type as StoryTypeLabel | null,
+    type: boardFields.type,
     status: boardFields.status,
     sprint: boardFields.sprint,
     story_points: boardFields.story_points,

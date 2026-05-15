@@ -187,7 +187,7 @@ export class FieldValueMutator {
         code: "FIELD_NOT_CONFIGURED",
         statusCode: 400,
         recovery:
-          'Add a single-select field and set its name under field_mapping.item_type in config.yml, ' +
+          "Add a single-select field and set its name under field_mapping.item_type in config.yml, " +
           "then re-run the server so config-loader can pick it up.",
       });
     }
@@ -202,8 +202,7 @@ export class FieldValueMutator {
         {
           code: "OPTION_NOT_FOUND",
           statusCode: 400,
-          recovery:
-            `The canonical type "${value}" has no matching option in the Type field. ` +
+          recovery: `The canonical type "${value}" has no matching option in the Type field. ` +
             "Check that type_display in config.yml maps this key to a valid GitHub option name.",
           context: { field: "type", value, knownOptions: Object.keys(this.config.typeOptions) },
         },

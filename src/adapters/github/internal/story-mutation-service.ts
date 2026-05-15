@@ -80,10 +80,9 @@ export class StoryMutationService {
     const storyRef: StoryRef = { id: itemId };
 
     // ── Step 2: Set Type via project board field (works on draft issues) ──────
-    // Only applied when the Type field is configured (item_type + type_display in config.yml).
-    // Falls back gracefully — no error if the field is absent.
-    // Call the mutator directly: we already know itemId, no need for a resolveStory round-trip.
-    if (this.config.fields.typeFieldId) {
+    // Only applied when both the Type field is configured AND the canonical key is known
+    // in typeOptions. Silently skipped on mismatch so partial configs don't break creation.
+    if (this.config.fields.typeFieldId && this.config.typeOptions[input.type]) {
       await this.fieldValueMutator.setFieldType(itemId, input.type);
     }
 

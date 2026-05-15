@@ -114,7 +114,7 @@ export function registerScrumWriteTools(
                    story_points  → number (e.g. 3, 5, 8)
                    priority      → string display name (e.g. "Must", "Should")
                    assignee      → GitHub login string (e.g. "hoonsubin")
-                   type          → canonical key: "feature" | "bug" | "tech_debt" | "spike"
+                   type          → canonical key (e.g. "feature", "bug" — see vocabulary.type in scrum_orient)
                  Pass null for any field to clear the value entirely.
 
         Returns: updated Story object.`,
@@ -215,8 +215,8 @@ export function registerScrumWriteTools(
         Args:
           title        string (required) — concise one-sentence title
           body         string (required) — full markdown body; use user-story format + AC checklist
-          type         "feature" | "bug" | "tech_debt" | "spike" — set via the Type board field
-                       NOTE: for impediments use scrum_log_impediment, not type:"impediment"
+          type         canonical key (e.g. "feature", "bug") — set via the Type board field
+                       Call scrum_orient for vocabulary.type to see valid keys for this project
           priority     string — vocabulary display name (e.g. "Must"); call scrum_orient for valid values
           story_points number — Fibonacci estimate (1, 2, 3, 5, 8, 13)
           labels       string[] — must already exist; check platform_state.labels.existing from scrum_orient
@@ -415,7 +415,7 @@ export function registerScrumWriteTools(
         const impedimentInput: CreateStoryInput = {
           title: `Impediment: ${params.description.slice(0, 80)}`,
           body: params.description,
-          type: "spike",
+          type: "impediment",
           priority: params.priority ?? p0PriorityDisplay,
           labels: ["impediment"],
         };

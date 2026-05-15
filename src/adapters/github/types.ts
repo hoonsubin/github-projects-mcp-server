@@ -189,6 +189,7 @@ export interface BoardFields {
   sprint: string | null;
   story_points: number | null;
   priority: string | null;
+  type: string | null; // canonical key from typeOptions; null when Type field absent or unset
 }
 
 // ── Issue detail output types (absorbed from raw-types.ts) ───────────────────

@@ -57,20 +57,21 @@ const ScrumFieldSchema = z
       '"story_points" = effort estimate (number, e.g. 5); ' +
       '"priority" = urgency tier (string display name, e.g. "Must"); ' +
       '"assignee" = GitHub login of the owner (string, e.g. "hoonsubin"); ' +
-      '"type" = story type canonical key ("feature" | "bug" | "tech_debt" | "spike"). ' +
+      '"type" = story type canonical key (e.g. "feature", "bug" — see vocabulary.type in scrum_orient). ' +
       "Call scrum_orient to see all valid vocabulary values.",
   );
 
-// Story type — drives the type label applied by the backend.
-// NOTE: "impediment" is NOT a StoryType. scrum_log_impediment uses type:"spike" + an "impediment" label.
+// Story type — the canonical key for the Type project board field.
+// The valid values are declared in type_display in config.yml (e.g. "feature", "bug").
+// Call scrum_orient to see vocabulary.type for the current project's valid values.
 const StoryTypeSchema = z
-  .enum(["feature", "bug", "tech_debt", "spike"])
+  .string()
+  .min(1)
   .describe(
-    '"feature" = new functionality, ' +
-      '"bug" = defect to fix, ' +
-      '"tech_debt" = refactor or cleanup work, ' +
-      '"spike" = research or exploration task. ' +
-      "NOTE: do NOT use 'impediment' here — use scrum_log_impediment instead.",
+    "Canonical type key declared in type_display in config.yml. " +
+      'Common examples: "feature", "bug", "tech_debt", "spike", "impediment", "user_story". ' +
+      "Call scrum_orient to read vocabulary.type for the exact keys valid in this project. " +
+      "NOTE: use scrum_log_impediment for impediment stories — it handles the full workflow.",
   );
 
 // ── Read tool schemas ─────────────────────────────────────────────────────────
@@ -274,7 +275,7 @@ export const SetFieldSchema = z
           "story_points → number (e.g. 3, 5, 8); " +
           'priority → string display name (e.g. "Must", "Should"); ' +
           'assignee → GitHub login string (e.g. "hoonsubin"); ' +
-          'type → canonical key string ("feature" | "bug" | "tech_debt" | "spike"). ' +
+          'type → canonical key string (e.g. "feature", "bug" — see vocabulary.type in scrum_orient). ' +
           "Pass null for any field to clear the value entirely.",
       ),
   })

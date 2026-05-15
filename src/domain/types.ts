@@ -47,13 +47,13 @@ export interface Story {
   key: string | null; // human-readable identifier ("42", "PRO-123"); null for draft issues
   title: string;
   body: string;
-  type: "feature" | "bug" | "tech_debt" | "spike" | null;
+  type: string | null; // canonical type key from config (e.g. "feature", "bug"); null when unset
   status: string | null; // team's vocabulary value, e.g. "In Progress"
   sprint: string | null; // sprint name, or null if in backlog
   story_points: number | null;
   priority: string | null; // team's vocabulary value, e.g. "Must"
   assignees: string[]; // GitHub logins
-  labels: string[]; // excludes type:* label (reflected in `type`)
+  labels: string[]; // repo labels; type is tracked via the Type board field, not labels
   epic: string | null; // GitHub Milestone title; null if unset
   created_at: string; // ISO-8601
   updated_at: string; // ISO-8601

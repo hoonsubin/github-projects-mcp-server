@@ -96,7 +96,7 @@ export interface CompletionMap {
 export interface CreateStoryInput {
   title: string;
   body: string;
-  type: "feature" | "bug" | "tech_debt" | "spike";
+  type: string; // canonical key declared in config.yml type_display (e.g. "feature", "impediment")
   priority?: string;
   storyPoints?: number;
   labels?: string[];
