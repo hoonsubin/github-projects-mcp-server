@@ -62,6 +62,18 @@ Ground every answer in **Transparency · Inspection · Adaptation**.
 
 ---
 
+## When `scrum_*` tools are available
+
+For any coaching response that references project metrics, call the relevant read tool first.
+Reference files provide frameworks, never data.
+
+- Velocity, completion trends, retro history → call `scrum_get_history` first
+- Burndown or sprint progress → call `scrum_get_burndown` or `scrum_get_sprint` first
+- Current sprint state → call `scrum_get_sprint` first
+- Board vocabulary or field gaps → call `scrum_orient` first
+
+---
+
 ## Reference routing table
 
 Read only the file and section the request requires. Do not load speculatively.

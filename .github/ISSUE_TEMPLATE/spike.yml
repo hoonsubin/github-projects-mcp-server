@@ -1,0 +1,118 @@
+name: 🔬 Spike
+description: Time-boxed research or investigation to reduce uncertainty before committing to a solution.
+title: "[Spike]: "
+labels: ["spike"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for **spikes** — short, time-boxed investigations whose output is
+        knowledge, not shippable code. A spike should answer a specific question so the team
+        can make a confident decision or estimate for a follow-on story.
+
+        > **Rule:** A spike *must* have a clear output definition. If you can't articulate what
+        > "done" looks like before you start, the spike isn't ready to be planned.
+
+  - type: checkboxes
+    id: duplicate-check
+    attributes:
+      label: Pre-submission check
+      options:
+        - label: I have searched existing issues and this investigation is not already tracked.
+          required: true
+
+  # ── Questions ─────────────────────────────────────────────────────────────────
+
+  - type: textarea
+    id: questions
+    attributes:
+      label: Question(s) to answer
+      description: |
+        List the specific questions this spike must resolve. Keep it tight — if there are more
+        than three questions, split into separate spikes.
+      placeholder: |
+        1. Can the GitHub Projects v2 GraphQL API return iteration field values in a single query, or does it require a second round-trip?
+        2. What is the rate-limit impact of fetching all project items with full field values on a 200-item board?
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation / context
+      description: Why is this uncertainty a blocker? Link the story or tech-debt item that depends on this answer.
+      placeholder: |
+        We can't accurately estimate `scrum_get_burndown` until we know the query structure.
+        Relates to #42 (burndown tool implementation).
+    validations:
+      required: true
+
+  # ── Boundaries ────────────────────────────────────────────────────────────────
+
+  - type: dropdown
+    id: time-box
+    attributes:
+      label: Time-box (story points)
+      description: |
+        Spikes are capped. Choose the maximum points the team is willing to spend.
+        If the question isn't answered within the time-box, stop and report what was learned.
+      options:
+        - "1"
+        - "2"
+        - "3"
+        - "5"
+    validations:
+      required: true
+
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: What are we explicitly NOT doing in this spike? Prevents scope creep.
+      placeholder: |
+        - No production-ready implementation — proof-of-concept code only.
+        - No changes to the public tool surface.
+    validations:
+      required: false
+
+  # ── Output definition ─────────────────────────────────────────────────────────
+
+  - type: textarea
+    id: deliverable
+    attributes:
+      label: Output / deliverable definition
+      description: |
+        What must exist at the end of the spike for it to be considered **done**?
+        This is not a Definition of Done for a story — it's the concrete artifact that
+        captures the answer (e.g. a decision comment, a benchmark result, a prototype branch, a short doc).
+      placeholder: |
+        - [ ] A comment on this issue summarising the query shape and round-trip count.
+        - [ ] A benchmark snippet (or link to branch) demonstrating the rate-limit behaviour.
+        - [ ] A follow-on story or tech-debt item created if implementation work is needed.
+    validations:
+      required: true
+
+  # ── Scope ─────────────────────────────────────────────────────────────────────
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected component / area
+      options:
+        - MCP tool surface (scrum_* tools)
+        - Use-case layer (src/scrum/)
+        - Domain layer (src/domain/)
+        - GitHub adapter (src/adapters/github/)
+        - Agent mode (.roo/)
+        - External API / platform behaviour
+        - Build / CI / tooling
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional context / related issues
+    validations:
+      required: false

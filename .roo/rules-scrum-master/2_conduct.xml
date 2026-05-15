@@ -95,7 +95,7 @@
       Use `scrum_update_story` with a comment for ceremony notes and progress updates.
       Overwrite the story body only when correcting the story definition itself.
       Preserves history; prevents accidental loss.
-      Note: `scrum_update_story` now accepts an optional `comment` field (see Task A.3) — use it to post comments without modifying story content.
+      This works because `scrum_update_story` accepts a `comment` field alongside or instead of content fields — no separate tool call is needed.
     </rule>
 
     <rule name="smallest_change_first">

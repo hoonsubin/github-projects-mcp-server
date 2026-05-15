@@ -1,0 +1,116 @@
+name: 📖 User Story
+description: A new feature or capability expressed as a Scrum user story.
+title: "[Story]: "
+labels: ["feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for any new **feature or capability** you want to add to the backlog.
+        Fill in the story card fully so it's ready for sprint planning without back-and-forth.
+
+  - type: checkboxes
+    id: duplicate-check
+    attributes:
+      label: Pre-submission check
+      options:
+        - label: I have searched existing issues and this story is not already tracked.
+          required: true
+
+  # ── Story card ────────────────────────────────────────────────────────────────
+
+  - type: input
+    id: persona
+    attributes:
+      label: As a…
+      description: Who benefits? (e.g. "Scrum Master using the agent", "developer integrating the MCP server")
+      placeholder: Scrum Master using the agent
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: I want…
+      description: What capability or action do they need?
+      placeholder: …to be able to log an impediment that is not linked to any specific story
+    validations:
+      required: true
+
+  - type: textarea
+    id: benefit
+    attributes:
+      label: So that…
+      description: What business or workflow value does this deliver?
+      placeholder: …the team can track project-level blockers without forcing a fake story link
+    validations:
+      required: true
+
+  # ── Acceptance criteria ───────────────────────────────────────────────────────
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: |
+        List each criterion as a testable "Given / When / Then" statement or a plain checkbox.
+        Every criterion here becomes part of the Definition of Done for this story.
+      placeholder: |
+        - [ ] Given … when … then …
+        - [ ] Given … when … then …
+    validations:
+      required: true
+
+  # ── Scrum metadata ────────────────────────────────────────────────────────────
+
+  - type: dropdown
+    id: story-points
+    attributes:
+      label: Story Point Estimate
+      description: Fibonacci scale. Leave at "?" if the team hasn't estimated yet.
+      options:
+        - "?"
+        - "1"
+        - "2"
+        - "3"
+        - "5"
+        - "8"
+        - "13"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected component
+      description: Which architectural layer does this primarily touch?
+      options:
+        - MCP tool surface (scrum_* tools)
+        - Use-case layer (src/scrum/)
+        - Domain layer (src/domain/)
+        - GitHub adapter (src/adapters/github/)
+        - Agent mode (.roo/)
+        - Config / bootstrap
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: sprint-target
+    attributes:
+      label: Target sprint (optional)
+      description: Sprint name or number if you already know where this belongs.
+      placeholder: Sprint 4
+    validations:
+      required: false
+
+  # ── Extra context ─────────────────────────────────────────────────────────────
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional context / notes
+      description: Links, mockups, related issues, or design constraints worth capturing now.
+    validations:
+      required: false
