@@ -66,6 +66,8 @@ export const orientUseCase = async (
   const priorityVocab = ghDisplay?.priority_display ?? null;
   const typeVocab = ghDisplay?.type_display ?? null;
 
+  await backend.reload();
+
   const state = await backend.getPlatformState({
     statusValues: statusVocab ? Object.values(statusVocab) : [],
     priorityValues: priorityVocab ? Object.values(priorityVocab) : [],

@@ -17,7 +17,7 @@ uv tool install mempalace
 mempalace init /workspace
 
 # --- MemPalace: index workspace, respecting .gitignore ---
-mempalace sync /workspace --gitignore-aware
+mempalace sync /workspace
 
 pi install npm:mempalace-pi
 

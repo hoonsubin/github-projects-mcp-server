@@ -85,6 +85,7 @@ const createMockBackend = (
       labels: { existing: [], expected: [], missing: [] },
       iterations: { active: null, next: null, completed: [], completedCount: 0 },
     }),
+  reload: () => Promise.resolve(),
   getSprintStories: () => Promise.resolve({ stories: [], sprintInfo: null }),
   getStoryDetail: () => Promise.resolve({ story: {} as Story, comments: [], linkedPrs: [] }),
   getCompletedSprintHistory: () => Promise.resolve([]),

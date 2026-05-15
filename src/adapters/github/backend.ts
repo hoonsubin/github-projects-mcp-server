@@ -17,6 +17,7 @@ import { VocabularyManager } from "./internal/vocabulary-manager.ts";
 import { StoryQueryService } from "./internal/story-query-service.ts";
 import { StoryMutationService } from "./internal/story-mutation-service.ts";
 import { ImpedimentService } from "./internal/impediment-service.ts";
+import { ConfigReloader } from "./internal/config-reloader.ts";
 import { toSprintInfo } from "./mappers.ts";
 import type {
   BurndownInput,
@@ -50,6 +51,7 @@ export class GitHubProjectBackend implements ProjectBackend {
     private readonly config: RuntimeConfig,
     private readonly owner: string,
     private readonly repo: string,
+    private readonly configReloader: ConfigReloader,
   ) {}
 
   // ── Vocabulary & history delegations ─────────────────────────────────────
@@ -116,6 +118,10 @@ export class GitHubProjectBackend implements ProjectBackend {
         completedCount: this.config.iterations.completed.length,
       },
     };
+  }
+
+  reload(): Promise<void> {
+    return this.configReloader.reload();
   }
 
   // ── Story read delegations ────────────────────────────────────────────────
