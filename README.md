@@ -306,6 +306,45 @@ It is designed to be used with the `skill/scrum-master-assistant/` agentic skill
 
 To test the functionality of the tools, [this project is managed using itself](https://github.com/users/hoonsubin/projects/5) as the tool.
 
+## Server Architecture
+
+The server is built in three layers separated by a `ProjectBackend` port interface. The tool surface and use cases are platform-agnostic; only the adapter changes when the backend changes.
+
+```mermaid
+flowchart TB
+    agent["🤖 LLM Agent\nscrum-agile-assistant skill"]
+
+    subgraph server["MCP Server  ·  Deno / TypeScript"]
+        direction TB
+
+        surface["Tool Surface\n14 scrum_* tools  ·  Zod-validated  ·  stateless per-call handlers"]
+
+        usecases["Use Cases\none per tool  ·  pure domain logic  ·  no I/O"]
+
+        port(["&lt;&lt;interface&gt;&gt;\nProjectBackend\n14 methods in Scrum vocabulary\nowned by the use-case layer"])
+
+        subgraph adapters["Adapters"]
+            direction LR
+            gh["GitHubProjectBackend\nGraphQL · REST\nfield mapping · ID resolution"]
+            future["Future backends\nTrello · Notion · Linear · …"]
+        end
+    end
+
+    ghapi["GitHub Projects v2\nGraphQL API  ·  REST API"]
+
+    agent      <-->|"MCP protocol  ·  stdio or Streamable HTTP"| surface
+    surface     --> usecases
+    usecases    --> port
+    port        --> gh
+    port       -.->|"add a new backend here\nwithout changing the\ntool surface or use cases"| future
+    gh          --> ghapi
+
+    style future stroke-dasharray: 5 5
+    style future fill:#f9f9f9
+```
+
+**Dependency rule:** source-code arrows point only inward — adapters depend on the `ProjectBackend` interface; the interface and use cases know nothing about GitHub. Adding a Trello or Notion backend means creating one new adapter directory and updating one import in `index.ts`.
+
 ## Tool Surface
 
 This section defines the public MCP interface — the tools an LLM agent can call. It is the stable contract of the project: backend implementations, data types, and storage details may change underneath, but every tool listed here retains the same name, semantic arguments, and return meaning.
@@ -321,27 +360,6 @@ The surface is governed by six rules. Any change that violates one is a breaking
 5. **The MCP is amoral.** It does not enforce Definition of Ready, Definition of Done, sprint-injection policy, or any other Scrum judgement. Those live in the agent skill. If the agent asks the MCP to assign an unrefined item to a sprint, the MCP complies. The skill is responsible for not asking.
 6. **Artifact reads, not insight derivation.** Read tools expose the state of Scrum artifacts. They do not pre-compute reports, metrics, or recommendations. Velocity, burndown, throughput, predictability, and all other derived insights are **agent capabilities** — the agent reasons over raw artifact data to produce them. The server returns observable facts; the agent interprets them.
 
-### System Layers
-
-```mermaid
-flowchart TD
-    subgraph FRAMEWORK["FRAMEWORK LAYER — src/tools/"]
-        F["MCP tool registration · thin handlers · Zod param parsing\nDepends on: use-case functions, ScrumConfigYml"]
-    end
-
-    subgraph USECASE["USE-CASE LAYER — src/scrum/ + src/domain/"]
-        U["Scrum orchestration · domain rules · pure computation\nDepends on: ProjectBackend interface, domain types"]
-        PORT["«interface» ProjectBackend  (src/scrum/ports.ts)\nThe only crossing point between use cases and backends"]
-    end
-
-    subgraph ADAPTER["ADAPTER LAYER — src/adapters/github/"]
-        A["GitHubProjectBackend implements ProjectBackend\nAll GraphQL queries · field-ID resolution · raw type mapping\nDepends on: ProjectBackend interface + domain types + services"]
-    end
-
-    FRAMEWORK -->|"calls use-case functions"| USECASE
-    USECASE -->|"implements ↑  (Dependency Inversion)"| ADAPTER
-```
-
 ### Tool surface layers
 
 The thirteen tools in this surface occupy three distinct conceptual layers. Understanding the layers is the fastest way to see why a proposed new tool does or does not belong here.
@@ -354,25 +372,90 @@ The thirteen tools in this surface occupy three distinct conceptual layers. Unde
 
 Ceremony records (standup logs, retro entries, review feedback) are **not** a layer of this surface. They are documents the agent produces and stores in the team's chosen ceremony backend — a file, a wiki page, a discussion thread — outside the MCP's scope. Attaching ceremony records to individual stories as comments is an anti-pattern: it pollutes the story audit trail and breaks when the backend changes.
 
+```mermaid
+flowchart LR
+    subgraph L1["Layer 1 · Artifact Readers"]
+        direction TB
+        orient["scrum_orient"]
+        get_sprint["scrum_get_sprint"]
+        get_backlog["scrum_get_backlog"]
+        get_story["scrum_get_story"]
+        get_template["scrum_get_template"]
+    end
+
+    subgraph L3["Layer 3 · History & Burndown"]
+        direction TB
+        get_history["scrum_get_history"]
+        get_burndown["scrum_get_burndown"]
+    end
+
+    subgraph L2["Layer 2 · Artifact Mutators"]
+        direction TB
+        create["scrum_create_story"]
+        update["scrum_update_story"]
+        set_field["scrum_set_field"]
+        plan["scrum_plan_sprint"]
+        log_imp["scrum_log_impediment"]
+        upd_imp["scrum_update_impediment"]
+        add_vocab["scrum_add_vocabulary"]
+    end
+```
+
 ### Common types
 
 These appear in arguments and return values across multiple tools.
 
-| Type         | Meaning                                                                                                                                                                                                                           |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `StoryRef`   | A reference to a single Story. Accepted forms: `{ "number": 42 }` (user-facing reference, e.g. issue number, card ID) or `{ "id": "<opaque>" }` (the backend-native handle returned by previous calls). Tools accept either form. |
-| `SprintRef`  | A reference to a sprint. Accepted forms: `"current"`, `"next"`, `null` (= no sprint, i.e. the backlog), or an explicit sprint name (e.g. `"Sprint 12"`).                                                                          |
-| `ScrumField` | One of `status`, `sprint`, `story_points`, `priority`, `assignee`. The set is fixed; new field types are out of scope for v1.                                                                                                     |
-| `StoryType`  | One of `feature`, `bug`, `tech_debt`, `spike`. Drives the type label or category the backend applies.                                                                                                                             |
-| `Story`      | The canonical entity. See full shape below.                                                                                                                                                                                       |
+| Type                | Meaning                                                                                                                                                                                                                             |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `StoryRef`          | A reference to a single Story. Shape: `{ "id": "<opaque>" }` where `id` is the project-item handle returned by any read tool in `Story.ref.id`. The agent obtains an `id` from a listing tool first, then passes it to write tools. |
+| `SprintRef`         | A reference to a sprint. Accepted forms: `"current"`, `"next"`, `null` (= no sprint, i.e. the backlog), or an explicit sprint name or sprint ID that the backend accepts (e.g. `"Sprint 12", "31"`).                                |
+| `ScrumField`        | One of `status`, `sprint`, `story_points`, `priority`, `assignee`. The set is fixed; new field types are out of scope for v1.                                                                                                       |
+| `StoryType`         | One of `feature`, `bug`, `tech_debt`, `spike`. Drives the type label or category the backend applies. Impediments are a separate first-class artifact — not a `StoryType`.                                                          |
+| `ImpedimentRef`     | A reference to a single Impediment. Shape: `{ "id": "<opaque>" }`. The opaque `id` is returned by `scrum_log_impediment` and appears in every `ImpedimentListing`. Pass it to `scrum_update_impediment`.                            |
+| `StoryListing`      | Lightweight listing entry returned by all listing tools. See shape below.                                                                                                                                                           |
+| `SprintSnapshot`    | Sprint metadata plus its `StoryListing[]` and `ImpedimentListing[]`. The common envelope for `scrum_get_sprint` and `scrum_get_history`. See shape below.                                                                           |
+| `Story`             | Full story detail — body, comments, AC, linked PRs, impediments. Returned **only** by `scrum_get_story` and write tools. See shape below.                                                                                           |
+| `ImpedimentListing` | Lightweight impediment entry. Full description always included (no separate detail fetch). See shape below.                                                                                                                         |
+
+#### StoryListing shape
+
+Returned by listing tools (`scrum_get_sprint`, `scrum_get_backlog`, `scrum_get_history`). Contains only the fields needed for board orientation. Call `scrum_get_story` when body, acceptance criteria, comments, or linked PRs are needed.
+
+| Field          | Meaning                                                                   |
+| -------------- | ------------------------------------------------------------------------- |
+| `ref`          | `{ number, id }` — both forms always present so the agent can use either. |
+| `title`        | The story title.                                                          |
+| `status`       | Current status display name (e.g. `"In Progress"`), or `null` if unset.   |
+| `story_points` | Numeric estimate, or `null` if unestimated.                               |
+| `priority`     | Priority display name (e.g. `"Must"`), or `null` if unset.                |
+| `sprint`       | Sprint name, or `null` if the story is in the backlog.                    |
+
+#### SprintSnapshot shape
+
+The common envelope for sprint data. Used by both `scrum_get_sprint` and `scrum_get_history` so the agent uses one mental model regardless of whether it is looking at active or historical sprints.
+
+| Field                   | Meaning                                                                                                                                                                                                                        |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `sprint.name`           | Sprint name.                                                                                                                                                                                                                   |
+| `sprint.start_date`     | ISO-8601 start date.                                                                                                                                                                                                           |
+| `sprint.end_date`       | ISO-8601 end date.                                                                                                                                                                                                             |
+| `sprint.duration_days`  | Sprint length in calendar days.                                                                                                                                                                                                |
+| `sprint.days_remaining` | Days until end, or `null` for completed or future sprints.                                                                                                                                                                     |
+| `items`                 | Array of `StoryListing` — the sprint's assigned items.                                                                                                                                                                         |
+| `total_count`           | Total matching items before `limit` is applied.                                                                                                                                                                                |
+| `totals.by_status`      | Map of status display name → item count (e.g. `{ "Done": 7, "In Progress": 2 }`).                                                                                                                                              |
+| `totals.story_points`   | Sum of `story_points` across all items in the snapshot (unestimated items contribute 0).                                                                                                                                       |
+| `impediments`           | Array of `ImpedimentListing` — impediments logged directly against this sprint. Does NOT include story-level impediments of stories within the sprint; fetch those via `scrum_get_story`. Both open and resolved are included. |
 
 #### Story shape
 
-Every read tool that returns Stories returns objects of this shape:
+Returned **only** by `scrum_get_story` and write tools (`scrum_create_story`, `scrum_update_story`, `scrum_set_field`). Listing tools return `StoryListing` instead.
+
+Every full Story has this shape:
 
 | Field                      | Meaning                                                                                                                                      |
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ref`                      | A `StoryRef` containing both `number` and `id` so the agent can use either in subsequent calls.                                              |
+| `ref`                      | `{ id: string }` — the opaque project-item handle. Pass `Story.ref.id` to any write tool that accepts a `StoryRef`.                          |
 | `title`                    | The story title.                                                                                                                             |
 | `body`                     | The story body, rendered as markdown. Includes user-story format, AC checklist, dependencies, and technical notes — whatever the team wrote. |
 | `type`                     | `StoryType` resolved from the type label or category.                                                                                        |
@@ -385,8 +468,20 @@ Every read tool that returns Stories returns objects of this shape:
 | `epic`                     | Parent epic name, or `null`. Readable and writable.                                                                                          |
 | `created_at`, `updated_at` | ISO-8601 timestamps.                                                                                                                         |
 | `url`                      | Canonical URL to view the story in the backend UI, when available.                                                                           |
+| `impediments`              | Array of `ImpedimentListing` — all impediments that reference this story, ordered newest first. Both open and resolved are included.         |
 
----
+#### ImpedimentListing shape
+
+Returned in listing contexts: inside a `Story` (via `scrum_get_story`), inside a `SprintSnapshot` (via `scrum_get_sprint` and `scrum_get_history`), and as `orphan_impediments` from `scrum_get_backlog`. Because impediment content is a single description field rather than a structured document, the full description is always returned — there is no separate "impediment detail" fetch.
+
+| Field         | Meaning                                                              |
+| ------------- | -------------------------------------------------------------------- |
+| `ref`         | `{ id: string }` — opaque handle. Pass to `scrum_update_impediment`. |
+| `description` | The full impediment description text.                                |
+| `status`      | One of `"open"`, `"in_progress"`, `"resolved"`.                      |
+| `raised_by`   | Login of the person who surfaced it, or `null`.                      |
+| `raised_at`   | ISO-8601 timestamp when the impediment was logged.                   |
+| `resolved_at` | ISO-8601 timestamp when resolved, or `null`.                         |
 
 ### Read tools
 
@@ -407,23 +502,23 @@ Returns the current platform state alongside the team's declared Scrum vocabular
 
 **Does not:** return live sprint story data (use `scrum_get_sprint`), historical sprint data (use `scrum_get_history`), or platform identifiers.
 
----
-
 #### `scrum_get_sprint`
 
-Returns the Sprint Backlog as a snapshot: the sprint metadata, its goal, its capacity, and every Story currently assigned to it grouped by status with points summed per group.
+Returns a snapshot of one sprint or all active sprints as a `SprintSnapshot`. Each snapshot contains lightweight `StoryListing` items — no story bodies.
 
 **Arguments:**
 
-- `sprint` (optional, `SprintRef`): defaults to `"current"`. Pass `"next"` to inspect the upcoming sprint, or an explicit sprint name to inspect a past sprint.
+- `sprint` (optional, `SprintRef | "all"`): defaults to `"current"`. Pass `"next"` to inspect the upcoming sprint, an explicit sprint name to inspect a specific sprint, or `"all"` to retrieve every non-completed iteration in one call.
+- `limit` (optional, integer, default 50): maximum number of items per `SprintSnapshot`. If omitted, the default limit of items are returned.
 
-**Returns:** an object with `sprint` (`{ name, goal, start_date, end_date, days_remaining, capacity_points }`), `groups` (array of `{ status, stories: Story[], points_sum }` in the order defined by `status_vocabulary`), `totals` (`{ committed_points, completed_points, in_flight_points, blocked_points }`).
+**Returns:**
 
-**Notes:** This is the agent's primary orient call for any in-sprint ceremony. The grouped structure means the agent doesn't have to bucket Stories itself — a compact model especially benefits from receiving pre-grouped data. The tool reads the Sprint Backlog artifact; it does not compute trends or projections (use `scrum_get_history` for those).
+- When `sprint` is a single ref: `{ sprint: SprintSnapshot }`.
+- When `sprint` is `"all"`: `{ sprints: SprintSnapshot[], total_count: number }` where `total_count` is the sum of items across all snapshots.
 
-**Does not:** include backlog items; surface burndown timeseries; resolve dependencies between stories.
+**Notes:** Pass `"all"` to get a full board overview in a single call — current sprint, next sprint, and any other scheduled future sprints. Items in terminal status that belong to completed sprints are silently excluded; those are visible only through `scrum_get_history`. The agent calls `scrum_get_story` on demand when it needs body, acceptance criteria, comments, or linked PRs for a specific item.
 
----
+**Does not:** include backlog items; surface burndown timeseries; resolve dependencies between stories; return full story bodies.
 
 #### `scrum_get_backlog`
 
@@ -437,13 +532,11 @@ Returns the Product Backlog: all Stories not assigned to any sprint, ordered by 
 - `epic` (optional, string): include only Stories under this epic.
 - `limit` (optional, integer, default 50): cap on items returned.
 
-**Returns:** an object with `stories` (array of `Story`), `total_count` (number matching the filter regardless of `limit`), and `readiness` (object summarising how many items are sprint-ready, in refinement, or future candidates — based on whether they have `story_points`, acceptance criteria in the body, and a priority).
+**Returns:** an object with `stories` (array of `StoryListing`), `total_count` (number matching the filter regardless of `limit`), `readiness` (object summarising how many items are sprint-ready, in refinement, or future candidates — based on whether they have `story_points`, acceptance criteria in the body, and a priority), and `orphan_impediments` (array of `ImpedimentListing` — unresolved impediments with no `affects` context that require Scrum Master triage).
 
-**Notes:** The readiness summary is a pure aggregation of observable facts, not a Scrum judgement. It reports what is present; it does not enforce DoR.
+**Notes:** The readiness summary is a pure aggregation of observable facts, not a Scrum judgement. It reports what is present; it does not enforce DoR. Archived items and items in terminal status with no sprint (orphaned completed stories that were never cleaned up) are silently excluded. `orphan_impediments` contains only unresolved impediments (status `"open"` or `"in_progress"`) with no story or sprint reference; resolved orphans are excluded. The agent calls `scrum_get_story` when it needs the full body, acceptance criteria, comments, or impediment detail for a specific item.
 
-**Does not:** modify ordering; create or estimate items; mark items as ready.
-
----
+**Does not:** modify ordering; create or estimate items; mark items as ready; return full story bodies.
 
 #### `scrum_get_story`
 
@@ -453,33 +546,31 @@ Returns the full detail of one Story, including comments, linked PRs, and parsed
 
 - `ref` (required, `StoryRef`).
 
-**Returns:** a `Story` object plus `comments` (array of `{ author, body, created_at, url }`), `linked_prs` (array of PR references with state), `sub_tasks` (array of `{ title, status }` if the backend exposes sub-tasks), `acceptance_criteria` (array of `{ text, checked }` parsed from the body).
+**Returns:** a `Story` object plus `comments` (array of `{ author, body, created_at, url }`), `linked_prs` (array of PR references with state), `sub_tasks` (array of `{ title, status }` if the backend exposes sub-tasks), `acceptance_criteria` (array of `{ text, checked }` parsed from the body), and `impediments` (array of `ImpedimentListing` — all impediments that reference this story, ordered newest first, both open and resolved).
 
-**Notes:** Use when the agent needs deep context on a single item — assessing DoR compliance, drafting a status update, or diagnosing a blocked item. Comments include impediment cross-links posted by `scrum_log_impediment`, making this the primary tool for tracing blockers.
+**Notes:** Use when the agent needs deep context on a single item — assessing DoR compliance, drafting a status update, or diagnosing a blocked item. The `impediments` field is the primary way the agent traces what is blocking a story and whether any active impediments need escalation.
 
 **Does not:** return diff content of linked PRs, render image attachments, or follow links to other stories transitively.
 
----
-
 #### `scrum_get_history`
 
-Returns raw data for the last N completed sprints so the agent can derive any time-based insight it needs.
+Returns `SprintSnapshot` data for the last N completed sprints — the same structure as `scrum_get_sprint("all")` — so the agent uses one mental model for sprint data regardless of whether it is looking at active or historical sprints.
 
 **Arguments:**
 
 - `window` (optional, integer 1–10, default 5): number of most-recent closed sprints to include.
+- `limit` (optional, integer, default 10): maximum number of items per `SprintSnapshot`. If omitted, the default limit of items are returned.
 
-**Returns:** an array of sprint objects, most-recent-first. Each sprint contains:
+**Returns:** `{ sprints: SprintSnapshot[], window: number, average_completed_points: number }`. Each `SprintSnapshot` is the standard shape with two history-specific additions inside `totals`:
 
-- `name`, `start_date`, `end_date`, `duration_days`, `goal` (or `null` if not stored by the backend)
-- `stories`: lightweight array of `{ ref, title, type, story_points, final_status, labels }` for every story that was in the sprint at close
-- `summary`: server-computed aggregation `{ committed_points, completed_points, story_count, completed_count }` for agent convenience
+- `totals.committed_points` — total story points entering the sprint.
+- `totals.completed_points` — total story points that reached terminal status by sprint close.
 
-**Notes:** This tool exposes facts. The agent derives insights from them: velocity (average `completed_points` over the window), throughput (average `completed_count`), predictability (fraction of sprints where goal was achieved), type breakdown, epic-level trends, and anything else the conversation demands. The MCP does not pre-select which metric matters — that is the agent's job. A backend only needs to support queryable completed-sprint item state to implement this tool.
+`average_completed_points` is the mean of `completed_points` across the returned window, provided as a convenience fact (not a derived insight — the agent still uses raw data for velocity trends, predictability, and other multi-sprint analyses).
 
-**Does not:** compute averages, project future velocity, surface per-member throughput, or return current-sprint data (use `scrum_get_sprint` for that).
+**Notes:** This tool exposes facts. The agent derives insights from them: velocity trends, throughput, predictability (fraction of sprints where goal was achieved), type breakdown, epic-level trends, and anything else the conversation demands. The MCP does not pre-select which metric matters — that is the agent's job. A backend only needs to support queryable completed-sprint item state to implement this tool.
 
----
+**Does not:** project future velocity, surface per-member throughput, return current-sprint data (use `scrum_get_sprint` for that), or return full story bodies.
 
 #### `scrum_get_burndown`
 
@@ -502,8 +593,6 @@ Returns a day-by-day burndown chart for one sprint: the actual remaining-points 
 
 **Does not:** compute velocity, project remaining work beyond the sprint end date, or return burndown for the backlog.
 
----
-
 #### `scrum_get_template`
 
 Fetches the raw content of a project-configured artifact template for a given ceremony type. If no custom template is declared in `config.yml` for the requested type, returns a signal instructing the agent to use its own skill-level default.
@@ -520,8 +609,6 @@ Fetches the raw content of a project-configured artifact template for a given ce
 **Notes:** The server never embeds default template content. Defaults are the agent's domain — they live in the scrum-agile-assistant skill (or equivalent system prompt) and may vary by deployment, ceremony format preference, or target output platform (a GitHub Discussion has a different structure from a Notion page or a Slack canvas). Custom templates are repo files fetched at invocation time from the path declared under `templates` in `config.yml`. The available paths are also returned by `scrum_orient` in `declared_vocabulary.templates` so the agent can inspect them without triggering a fetch.
 
 **Does not:** validate template syntax, interpolate variables, apply templates, or enforce any required template structure. Template content is opaque to the server — it is returned verbatim.
-
----
 
 ### Write tools
 
@@ -549,8 +636,6 @@ Creates a new Story and optionally places it on the board in a single call.
 
 **Does not:** validate DoR, check sprint capacity, notify anyone, or create sub-tasks.
 
----
-
 #### `scrum_update_story`
 
 Edits the content of an existing Story — title, body, labels, assignees, epic. Does not touch board fields (status, sprint, story points, priority); use `scrum_set_field` for those.
@@ -567,8 +652,6 @@ Edits the content of an existing Story — title, body, labels, assignees, epic.
 **Returns:** the updated `Story`.
 
 **Does not:** modify board state, change story type, archive or close the story.
-
----
 
 #### `scrum_set_field`
 
@@ -591,8 +674,6 @@ The single entry point for board-field mutations. No backend IDs required.
 
 **Does not:** validate that value transitions make Scrum sense. The skill enforces Scrum rules; this tool executes decisions.
 
----
-
 #### `scrum_plan_sprint`
 
 Bulk-assigns multiple Stories to a sprint in one call. Used at sprint planning to commit the agreed scope after the team has discussed each item.
@@ -609,26 +690,47 @@ Bulk-assigns multiple Stories to a sprint in one call. Used at sprint planning t
 
 **Does not:** check capacity, enforce DoR, or set the Sprint Goal.
 
----
-
 #### `scrum_log_impediment`
 
-Creates a new impediment Story, links it bidirectionally to the affected Story, and marks it Blocked.
+Creates a new impediment and optionally links it to an affected story or sprint.
 
 **Arguments:**
 
-- `description` (required, string, markdown): the impediment body.
-- `affects` (required, `StoryRef`): the Story being blocked.
+- `description` (required, string, markdown): the impediment description. Impediments have a single description field rather than a separate title and body.
+- `affects` (optional, object): which artifact this impediment is blocking. If omitted, the impediment is logged as a project-level orphan visible through `scrum_get_backlog`. Provide at most one of the two sub-fields.
+  - `affects.story` (optional, `StoryRef`): the specific story being blocked.
+  - `affects.sprint` (optional, `SprintRef`): the sprint goal or overall sprint being threatened.
 - `raised_by` (optional, string): login of the person who surfaced it; defaults to the configured Scrum Master.
 - `priority` (optional, string): a value from `priority_vocabulary`; defaults to the highest tier.
 
-**Returns:** the impediment as a `Story`, plus `linked_to` containing the affected story's `StoryRef`.
+**Returns:**
 
-**Notes:** Impediments are first-class Stories so they appear on the sprint board and in history data. The bidirectional link is created as a cross-reference on both the impediment and the affected story. The agent discovers these links through `scrum_get_story` — the `comments` field surfaces the cross-reference notes, and `linked_prs` surfaces any associated PR.
+```
+{
+  impediment: ImpedimentListing,
+  affects: { story: StoryRef } | { sprint: SprintRef } | null
+}
+```
 
-**Does not:** notify the impediment owner, escalate after N days (the agent's standup ceremony does this), or close the affected story.
+**Notes:** Impediments are first-class objects on the backend. On GitHub, they are stored as labeled issues. The bidirectional cross-reference between the impediment and the affected story or sprint item is created atomically in this call. The agent discovers impediments through `scrum_get_story` (story-level), `scrum_get_sprint` (sprint-level), and `scrum_get_backlog` (orphans). Use `scrum_update_impediment` to advance an impediment through its lifecycle.
 
----
+**Does not:** notify the impediment owner, escalate after N days (the agent skill's standup ceremony handles this), or close the affected story.
+
+#### `scrum_update_impediment`
+
+Advances an impediment through its lifecycle or records its resolution.
+
+**Arguments:**
+
+- `ref` (required, `ImpedimentRef`): the impediment to update.
+- `status` (required, enum): one of `"open"`, `"in_progress"`, `"resolved"`. `"in_progress"` signals that the Scrum Master is actively working to remove the blocker; `"resolved"` closes it.
+- `resolution_notes` (optional, string, markdown): context on how the impediment was resolved or what action is being taken. Recorded as a note on the impediment. Required when `status` is `"resolved"` by convention, though not enforced by the server.
+
+**Returns:** the updated `ImpedimentListing`.
+
+**Notes:** Impediment status is independent of the status of any affected story — a story may be unblocked while the impediment is still tracked as `"in_progress"` (the underlying cause is being addressed). The agent skill decides when to update the affected story's status separately via `scrum_set_field`.
+
+**Does not:** close the affected story, remove the bidirectional link, or notify anyone.
 
 #### `scrum_add_vocabulary`
 
@@ -639,7 +741,7 @@ Idempotent addition of a vocabulary entry to the platform schema. Called by the 
 - `kind` (required, enum): one of `status_option`, `priority_option`, or `label`.
   - `status_option` — adds a missing option to the project's Status single-select field.
   - `priority_option` — adds a missing option to the project's Priority single-select field.
-  - `label` — creates a missing repository label (used for story typing: `feature`, `bug`, `tech_debt`, `spike`, `impediment`).
+  - `label` — creates a missing repository label (used for story typing: `feature`, `bug`, `tech_debt`, `spike`, and for impediment tracking).
 - `value` (required, string): the display name to add (e.g. `"Blocked"`, `"Critical"`, `"tech_debt"`).
 
 **Returns:** `{ created: boolean, kind, value, message }`. If the option or label already exists, `created` is `false` and no change is made.
@@ -647,8 +749,6 @@ Idempotent addition of a vocabulary entry to the platform schema. Called by the 
 **Notes:** This tool handles vocabulary gaps — entries declared in `config.yml` that are not yet present in the platform. It cannot create new project fields (a structural gap requiring human action via the platform UI). If the target field does not exist, the tool returns a structured error that describes exactly what the human needs to create.
 
 **Does not:** rename or delete existing options, reorder options, change field types, create sprint iterations, or provision project fields.
-
----
 
 ### What this surface deliberately does NOT include
 
@@ -676,8 +776,6 @@ The full Scrum domain (see the ER diagram above) is much richer than these thirt
 
 If a future workflow requires something on this list, the right move is agent skill behaviour or a separate CLI task — not growing the MCP tool surface.
 
----
-
 ## How this MCP is used with the agent skill
 
 This MCP is the action layer for an LLM agent acting as a Scrum Master. The agent's reasoning, coaching, and ceremony facilitation come from the [`scrum-agile-assistant`](https://github.com/anthropics/skills/tree/main/scrum-agile-assistant) skill (or any equivalent system prompt). The MCP's job is to make that reasoning effective on a real platform.
@@ -699,6 +797,36 @@ Three rules follow from this split:
 ### The five-phase interaction pattern
 
 Every non-trivial workflow follows the same shape.
+
+```mermaid
+sequenceDiagram
+    actor H as Human
+    participant A as LLM Agent
+    participant M as MCP Server
+
+    Note over H,M: Phase 1 — Orient (silent)
+    A->>M: scrum_orient()
+    M-->>A: platform_state · declared_vocabulary
+    A->>M: scrum_get_sprint()
+    M-->>A: SprintSnapshot · StoryListing[] · totals
+
+    Note over H,A: Phase 2 — Coach
+    A->>H: surfaces DoR gaps · risks · missing context
+    H->>A: answers questions · clarifies intent
+
+    Note over H,A: Phase 3 — Confirm
+    A->>H: restates planned changes
+    H->>A: approves
+
+    Note over A,M: Phase 4 — Execute
+    A->>M: scrum_create_story(title, body, type, points, sprint)
+    M-->>A: Story · StoryRef { id }
+    A->>M: scrum_set_field(ref, "sprint", null)
+    M-->>A: updated Story
+
+    Note over H,A: Phase 5 — Report
+    A->>H: plain-language summary · links to changed stories
+```
 
 **Phase 1 — Orient.** The agent reads world state with `scrum_orient`, `scrum_get_sprint`, and (when context demands) `scrum_get_backlog` or `scrum_get_history`. These calls happen silently. The skill uses the results to ground the conversation in real numbers and to verify the platform is Scrum-ready before proceeding.
 

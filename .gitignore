@@ -32,3 +32,9 @@ coverage/
 lcov.info
 
 node_modules/
+
+.venv
+
+# MemPalace per-project files (issue #185)
+mempalace.yaml
+entities.json

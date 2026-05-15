@@ -1,0 +1,687 @@
+general:
+  debug: false
+  instance_name: "SearXNG - Dev Edition"
+  privacypolicy_url: false
+  donation_url: false
+  contact_url: false
+  enable_metrics: true
+  open_metrics: ""
+
+brand:
+  new_issue_url: https://github.com/searxng/searxng/issues/new
+  docs_url: https://docs.searxng.org/
+  public_instances: https://searx.space
+  wiki_url: https://github.com/searxng/searxng/wiki
+  issue_url: https://github.com/searxng/searxng/issues
+
+search:
+  safe_search: 0
+  autocomplete: "duckduckgo"
+  autocomplete_min: 2
+  favicon_resolver: "duckduckgo"
+  default_lang: "en"
+  max_page: 0
+  ban_time_on_fail: 5
+  max_ban_time_on_fail: 120
+  suspended_times:
+    SearxEngineAccessDenied: 86400
+    SearxEngineCaptcha: 86400
+    SearxEngineTooManyRequests: 3600
+    cf_SearxEngineCaptcha: 1296000
+    cf_SearxEngineAccessDenied: 86400
+    recaptcha_SearxEngineCaptcha: 604800
+  formats:
+    - html
+    - json
+    - rss
+
+server:
+  port: 8888
+  bind_address: "127.0.0.1"
+  base_url: false
+  limiter: false
+  public_instance: false
+  secret_key: "change-me"
+  image_proxy: false
+  http_protocol_version: "1.1"
+  method: "POST"
+  default_http_headers:
+    X-Content-Type-Options: nosniff
+    X-Download-Options: noopen
+    X-Robots-Tag: noindex, nofollow
+    Referrer-Policy: no-referrer
+
+valkey:
+  url: valkey://localhost:6379/0
+
+ui:
+  static_path: ""
+  templates_path: ""
+  query_in_title: false
+  infinite_scroll: true
+  default_theme: simple
+  center_alignment: false
+  default_locale: ""
+  theme_args:
+    simple_style: auto
+  search_on_category_select: true
+  hotkeys: default
+  url_formatting: pretty
+
+outgoing:
+  request_timeout: 5.0
+  max_request_timeout: 20.0
+  useragent_suffix: ""
+  pool_connections: 100
+  pool_maxsize: 20
+  enable_http2: true
+
+plugins:
+  searx.plugins.calculator.SXNGPlugin:
+    active: true
+  searx.plugins.hash_plugin.SXNGPlugin:
+    active: true
+  searx.plugins.self_info.SXNGPlugin:
+    active: true
+  searx.plugins.unit_converter.SXNGPlugin:
+    active: true
+  searx.plugins.tracker_url_remover.SXNGPlugin:
+    active: true
+  searx.plugins.hostnames.SXNGPlugin:
+    active: true
+  searx.plugins.time_zone.SXNGPlugin:
+    active: true
+  searx.plugins.oa_doi_rewrite.SXNGPlugin:
+    active: true
+  searx.plugins.tor_check.SXNGPlugin:
+    active: false
+
+checker:
+  off_when_debug: true
+
+additional_tests:
+  rosebud: &test_rosebud
+    matrix:
+      query: rosebud
+      lang: en
+    result_container:
+      - not_empty
+      - ["one_title_contains", "citizen kane"]
+    test:
+      - unique_results
+
+  android: &test_android
+    matrix:
+      query: ["android"]
+      lang: ["en", "de", "fr", "zh-CN"]
+    result_container:
+      - not_empty
+      - ["one_title_contains", "google"]
+    test:
+      - unique_results
+
+tests:
+  infobox: &tests_infobox
+    infobox:
+      matrix:
+        query: ["linux", "new york", "bbc"]
+      result_container:
+        - has_infobox
+
+categories_as_tabs:
+  general:
+  it:
+  science:
+  files:
+
+engines:
+  # ─── General Web (broad developer queries) ─────────────────────────────────
+  - name: google
+    engine: google
+    shortcut: go
+
+  - name: duckduckgo
+    engine: duckduckgo
+    shortcut: ddg
+
+  - name: brave
+    engine: brave
+    shortcut: br
+    time_range_support: true
+    paging: true
+    categories: [general, web]
+    brave_category: search
+
+  - name: startpage
+    engine: startpage
+    shortcut: sp
+    startpage_categ: web
+    categories: [general, web]
+
+  # ─── Code Search & Repositories ────────────────────────────────────────────
+
+  - name: github
+    engine: github
+    shortcut: gh
+
+  - name: github code
+    engine: github_code
+    shortcut: ghc
+    disabled: false
+    ghc_auth:
+      type: "none"
+      token: "token"
+    ghc_highlight_matching_lines: true
+    ghc_strip_new_lines: true
+    ghc_strip_whitespace: false
+    timeout: 10.0
+
+  - name: gitlab
+    engine: gitlab
+    base_url: https://gitlab.com
+    shortcut: gl
+    disabled: false
+    about:
+      website: https://gitlab.com/
+      wikidata_id: Q16639197
+
+  - name: codeberg
+    engine: gitea
+    base_url: https://codeberg.org
+    shortcut: cb
+    disabled: false
+
+  - name: gitea.com
+    engine: gitea
+    base_url: https://gitea.com
+    shortcut: gitea
+    disabled: false
+
+  - name: sourcehut
+    shortcut: srht
+    engine: sourcehut
+    disabled: false
+
+  - name: bitbucket
+    engine: xpath
+    paging: true
+    search_url: https://bitbucket.org/repo/all/{pageno}?name={query}
+    url_xpath: //article[@class="repo-summary"]//a[@class="repo-link"]/@href
+    title_xpath: //article[@class="repo-summary"]//a[@class="repo-link"]
+    content_xpath: //article[@class="repo-summary"]/p
+    categories: [it, repos]
+    timeout: 4.0
+    disabled: false
+    shortcut: bb
+    about:
+      website: https://bitbucket.org/
+      wikidata_id: Q2493781
+      official_api_documentation: https://developer.atlassian.com/bitbucket
+      use_official_api: false
+      require_api_key: false
+      results: HTML
+
+  - name: searchcode code
+    engine: searchcode_code
+    shortcut: scc
+    disabled: false
+
+  # ─── Q&A and Developer Communities ─────────────────────────────────────────
+
+  - name: stackoverflow
+    engine: stackexchange
+    shortcut: st
+    api_site: "stackoverflow"
+    categories: [it, q&a]
+
+  - name: askubuntu
+    engine: stackexchange
+    shortcut: ubuntu
+    api_site: "askubuntu"
+    categories: [it, q&a]
+
+  - name: superuser
+    engine: stackexchange
+    shortcut: su
+    api_site: "superuser"
+    categories: [it, q&a]
+
+  - name: serverfault
+    engine: stackexchange
+    shortcut: sf
+    api_site: "serverfault"
+    categories: [it, q&a]
+    disabled: false
+
+  - name: unix.stackexchange
+    engine: stackexchange
+    shortcut: unix
+    api_site: "unix"
+    categories: [it, q&a]
+    disabled: false
+
+  - name: dba.stackexchange
+    engine: stackexchange
+    shortcut: dba
+    api_site: "dba"
+    categories: [it, q&a]
+    disabled: false
+
+  - name: hackernews
+    engine: hackernews
+    shortcut: hn
+    disabled: false
+
+  - name: lobste.rs
+    engine: xpath
+    search_url: https://lobste.rs/search?q={query}&what=stories&order=relevance
+    results_xpath: //li[contains(@class, "story")]
+    url_xpath: .//a[@class="u-url"]/@href
+    title_xpath: .//a[@class="u-url"]
+    content_xpath: .//a[@class="domain"]
+    categories: it
+    shortcut: lo
+    timeout: 5.0
+    disabled: false
+    about:
+      website: https://lobste.rs/
+      wikidata_id: Q60762874
+      use_official_api: false
+      require_api_key: false
+      results: HTML
+
+  - name: habrahabr
+    engine: xpath
+    paging: true
+    search_url: https://habr.com/en/search/page{pageno}/?q={query}
+    results_xpath: //article[contains(@class, "tm-articles-list__item")]
+    url_xpath: .//a[@class="tm-title__link"]/@href
+    title_xpath: .//a[@class="tm-title__link"]
+    content_xpath: .//div[contains(@class, "article-formatted-body")]
+    categories: it
+    timeout: 4.0
+    disabled: false
+    shortcut: habr
+    about:
+      website: https://habr.com/
+      wikidata_id: Q4494434
+      use_official_api: false
+      require_api_key: false
+      results: HTML
+
+  - name: discuss.python
+    engine: discourse
+    shortcut: dpy
+    base_url: "https://discuss.python.org"
+    categories: [it, q&a]
+    disabled: false
+
+  - name: caddy.community
+    engine: discourse
+    shortcut: caddy
+    base_url: "https://caddy.community"
+    categories: [it, q&a]
+    disabled: false
+
+  # ─── Package Registries ─────────────────────────────────────────────────────
+
+  - name: npm
+    engine: npm
+    shortcut: npm
+    timeout: 5.0
+    disabled: false
+
+  - name: pypi
+    shortcut: pypi
+    engine: pypi
+
+  - name: docker hub
+    engine: docker_hub
+    shortcut: dh
+    categories: [it, packages]
+
+  - name: crates.io
+    engine: crates
+    shortcut: crates
+    disabled: false
+    timeout: 6.0
+
+  - name: lib.rs
+    shortcut: lrs
+    engine: lib_rs
+    disabled: false
+
+  - name: pkg.go.dev
+    engine: pkg_go_dev
+    shortcut: pgo
+    disabled: false
+
+  - name: rubygems
+    shortcut: rbg
+    engine: xpath
+    paging: true
+    search_url: https://rubygems.org/search?page={pageno}&query={query}
+    results_xpath: /html/body/main/div/a[@class="gems__gem"]
+    url_xpath: ./@href
+    title_xpath: ./span/h2
+    content_xpath: ./span/p
+    suggestion_xpath: /html/body/main/div/div[@class="search__suggestions"]/p/a
+    first_page_num: 1
+    categories: [it, packages]
+    disabled: false
+    about:
+      website: https://rubygems.org/
+      wikidata_id: Q1853420
+      official_api_documentation: https://guides.rubygems.org/rubygems-org-api/
+      use_official_api: false
+      require_api_key: false
+      results: HTML
+
+  - name: hex
+    engine: hex
+    shortcut: hex
+    disabled: false
+    sort_criteria: "recent_downloads"
+    page_size: 10
+
+  - name: packagist
+    engine: json_engine
+    paging: true
+    search_url: https://packagist.org/search.json?q={query}&page={pageno}
+    results_query: results
+    url_query: url
+    title_query: name
+    content_query: description
+    categories: [it, packages]
+    disabled: false
+    timeout: 5.0
+    shortcut: pack
+    about:
+      website: https://packagist.org
+      wikidata_id: Q108311377
+      official_api_documentation: https://packagist.org/apidoc
+      use_official_api: true
+      require_api_key: false
+      results: JSON
+
+  - name: pub.dev
+    engine: xpath
+    shortcut: pd
+    search_url: https://pub.dev/packages?q={query}&page={pageno}
+    paging: true
+    results_xpath: //div[contains(@class,"packages-item")]
+    url_xpath: ./div/h3/a/@href
+    title_xpath: ./div/h3/a
+    content_xpath: ./div/div/div[contains(@class,"packages-description")]/span
+    categories: [packages, it]
+    timeout: 3.0
+    disabled: false
+    first_page_num: 1
+    about:
+      website: https://pub.dev/
+      official_api_documentation: https://pub.dev/help/api
+      use_official_api: false
+      require_api_key: false
+      results: HTML
+
+  - name: anaconda
+    engine: xpath
+    paging: true
+    first_page_num: 0
+    search_url: https://anaconda.org/search?q={query}&page={pageno}
+    results_xpath: //tbody/tr
+    url_xpath: ./td/h5/a[last()]/@href
+    title_xpath: ./td/h5
+    content_xpath: ./td[h5]/text()
+    categories: it
+    timeout: 6.0
+    shortcut: conda
+    disabled: false
+
+  - name: hoogle
+    engine: xpath
+    search_url: https://hoogle.haskell.org/?hoogle={query}
+    results_xpath: '//div[@class="result"]'
+    title_xpath: './/div[@class="ans"]//a'
+    url_xpath: './/div[@class="ans"]//a/@href'
+    content_xpath: './/div[@class="from"]'
+    page_size: 20
+    categories: [it, packages]
+    shortcut: ho
+    about:
+      website: https://hoogle.haskell.org/
+      wikidata_id: Q34010
+      official_api_documentation: https://hackage.haskell.org/api
+      use_official_api: false
+      require_api_key: false
+      results: JSON
+
+  - name: repology
+    engine: repology
+    shortcut: rep
+    disabled: false
+
+  # ─── Documentation & References ─────────────────────────────────────────────
+
+  - name: mdn
+    shortcut: mdn
+    engine: json_engine
+    categories: [it]
+    paging: true
+    search_url: https://developer.mozilla.org/api/v1/search?q={query}&page={pageno}
+    results_query: documents
+    url_query: mdn_url
+    url_prefix: https://developer.mozilla.org
+    title_query: title
+    content_query: summary
+    about:
+      website: https://developer.mozilla.org
+      wikidata_id: Q3273508
+      official_api_documentation: null
+      use_official_api: false
+      require_api_key: false
+      results: JSON
+
+  - name: microsoft learn
+    engine: microsoft_learn
+    shortcut: msl
+    disabled: false
+
+  - name: arch linux wiki
+    engine: archlinux
+    shortcut: al
+
+  - name: nixos wiki
+    engine: mediawiki
+    shortcut: nixw
+    base_url: https://wiki.nixos.org/
+    search_type: text
+    disabled: false
+    categories: [it, software wikis]
+
+  - name: gentoo
+    engine: mediawiki
+    shortcut: ge
+    categories: ["it", "software wikis"]
+    base_url: "https://wiki.gentoo.org/"
+    api_path: "api.php"
+    search_type: text
+    timeout: 10
+
+  - name: free software directory
+    engine: mediawiki
+    shortcut: fsd
+    categories: [it, software wikis]
+    base_url: https://directory.fsf.org/
+    search_type: title
+    timeout: 5.0
+    disabled: false
+    about:
+      website: https://directory.fsf.org/
+      wikidata_id: Q2470288
+
+  - name: mankier
+    engine: json_engine
+    search_url: https://www.mankier.com/api/v2/mans/?q={query}
+    results_query: results
+    url_query: url
+    title_query: name
+    content_query: description
+    categories: it
+    shortcut: man
+    about:
+      website: https://www.mankier.com/
+      official_api_documentation: https://www.mankier.com/api
+      use_official_api: true
+      require_api_key: false
+      results: JSON
+
+  - name: voidlinux
+    engine: voidlinux
+    shortcut: void
+    disabled: false
+
+  - name: alpine linux packages
+    engine: alpinelinux
+    disabled: false
+    shortcut: alp
+
+  - name: devdocs
+    engine: xpath
+    shortcut: dd
+    categories: [it]
+    search_url: https://devdocs.io/#q={query}
+    url_xpath: //a[contains(@class,"result-link")]/@href
+    title_xpath: //a[contains(@class,"result-link")]
+    content_xpath: //p[contains(@class,"result-excerpt")]
+    disabled: true
+    about:
+      website: https://devdocs.io/
+      use_official_api: false
+      require_api_key: false
+      results: HTML
+
+  - name: readthedocs
+    engine: xpath
+    shortcut: rtd
+    categories: [it]
+    paging: false
+    search_url: https://readthedocs.org/search/?q={query}
+    results_xpath: //li[contains(@class,"module-item") or contains(@class,"search-result")]
+    url_xpath: .//a/@href
+    title_xpath: .//a
+    content_xpath: .//p[contains(@class,"description") or contains(@class,"content")]
+    timeout: 5.0
+    disabled: false
+    about:
+      website: https://readthedocs.org/
+      use_official_api: false
+      require_api_key: false
+      results: HTML
+
+  # ─── AI & Machine Learning ──────────────────────────────────────────────────
+
+  - name: huggingface
+    engine: huggingface
+    shortcut: hf
+    disabled: false
+
+  - name: huggingface datasets
+    huggingface_endpoint: datasets
+    engine: huggingface
+    shortcut: hfd
+    disabled: false
+
+  - name: huggingface spaces
+    huggingface_endpoint: spaces
+    engine: huggingface
+    shortcut: hfs
+    disabled: false
+
+  # ─── Academic / Technical Papers ────────────────────────────────────────────
+
+  - name: arxiv
+    engine: arxiv
+    shortcut: arx
+
+  - name: google scholar
+    engine: google_scholar
+    shortcut: gos
+
+  - name: semantic scholar
+    engine: semantic_scholar
+    shortcut: se
+
+  # ─── Knowledge Base / Reference ─────────────────────────────────────────────
+
+  - name: wikipedia
+    engine: wikipedia
+    shortcut: wp
+    display_type: ["infobox"]
+    categories: [general]
+
+  - name: wikidata
+    engine: wikidata
+    shortcut: wd
+    timeout: 3.0
+    weight: 2
+    display_type: ["infobox"]
+    tests: *tests_infobox
+    categories: [general]
+
+  - name: wolframalpha
+    shortcut: wa
+    engine: wolframalpha_noapi
+    timeout: 6.0
+    categories: [general, it]
+    disabled: false
+
+  - name: ddg definitions
+    engine: duckduckgo_definitions
+    shortcut: ddd
+    weight: 2
+    disabled: false
+    tests: *tests_infobox
+
+  # ─── Books & Technical Files ─────────────────────────────────────────────────
+
+  - name: library genesis
+    engine: xpath
+    search_url: https://libgen.rs/search.php?req={query}
+    url_xpath: //a[contains(@href,"book/index.php?md5")]/@href
+    title_xpath: //a[contains(@href,"book/")]/text()[1]
+    content_xpath: //td/a[1][contains(@href,"=author")]/text()
+    categories: files
+    timeout: 7.0
+    disabled: false
+    shortcut: lg
+    about:
+      website: https://libgen.fun/
+      wikidata_id: Q22017206
+      use_official_api: false
+      require_api_key: false
+      results: HTML
+
+  - name: annas archive
+    engine: annas_archive
+    disabled: false
+    shortcut: aa
+    timeout: 5
+
+  - name: mempalace local
+    engine: mempalace
+    shortcut: mp
+    categories: [it]
+    palace_path: "~/.mempalace/palace"
+    wing: null # set to "myapp" to scope to one project
+    disabled: false
+    timeout: 8.0
+
+doi_resolvers:
+  oadoi.org: "https://oadoi.org/"
+  doi.org: "https://doi.org/"
+  sci-hub.se: "https://sci-hub.se/"
+  sci-hub.st: "https://sci-hub.st/"
+  sci-hub.ru: "https://sci-hub.ru/"
+
+default_doi_resolver: "oadoi.org"

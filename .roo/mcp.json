@@ -1,30 +1,68 @@
 {
-  "mcpServers": {
-    "github-projects": {
-      "command": "deno",
-      "args": ["task", "start"],
-      "env": {
-        "MCP_TRANSPORT": "stdio"
-      },
-      "alwaysAllow": [
-        "github_get_project",
-        "github_get_project_fields",
-        "github_update_project",
-        "github_list_project_items",
-        "github_get_issue_node_id",
-        "github_get_user_node_id",
-        "github_get_repo_file",
-        "github_create_issue",
-        "github_update_issue",
-        "github_create_comment",
-        "github_write_repo_file",
-        "github_list_projects"
-      ],
-      "timeout": 300
-    },
-    "docker_mcp_gateway": {
-      "command": "docker",
-      "args": ["mcp", "gateway", "run"]
-    }
-  }
+	"mcpServers": {
+		"github-projects": {
+			"command": "deno",
+			"args": [
+				"task",
+				"start"
+			],
+			"env": {
+				"MCP_TRANSPORT": "stdio"
+			},
+			"alwaysAllow": [
+				"scrum_get_sprint",
+				"scrum_get_backlog",
+				"scrum_orient",
+				"scrum_get_history",
+				"scrum_get_story"
+			],
+			"timeout": 300
+		},
+		"memory": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@modelcontextprotocol/server-memory"
+			],
+			"alwaysAllow": [
+				"create_entities",
+				"create_relations",
+				"add_observations",
+				"read_graph",
+				"search_nodes",
+				"open_nodes"
+			],
+			"disabled": false
+		},
+		"mempalace": {
+			"command": "mempalace-mcp",
+			"args": [],
+			"disabled": false,
+			"alwaysAllow": []
+		},
+		"sequentialthinking": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@modelcontextprotocol/server-sequential-thinking"
+			],
+			"alwaysAllow": [
+				"sequentialthinking"
+			]
+		},
+		"searxng": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"mcp-searxng"
+			],
+			"env": {
+				"SEARXNG_URL": "http://searxng:8080"
+			},
+			"alwaysAllow": [
+				"searxng_web_search",
+				"web_url_read"
+			]
+		}
+	}
 }

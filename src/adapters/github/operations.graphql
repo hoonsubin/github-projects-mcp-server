@@ -1,0 +1,604 @@
+# =============================================================================
+# src/adapters/github/operations.graphql
+#
+# Single source of truth for all GitHub GraphQL operations used by this server.
+#
+# TWO AUDIENCES READ THIS FILE
+# ──────────────────────────────────────────────────────────────────────────────
+#   SERVER  — queries.ts parses this file at startup, bundles fragment
+#             dependencies per operation, and exports named constants.
+#             Do NOT duplicate strings in queries.ts — edit here instead.
+#
+#   AGENT   — reads this file via scrum_orient to understand the available
+#             query shapes before composing github_graphql calls.
+#             Guidance comments are written for the agent; the server ignores them.
+#
+# NAMING CONVENTIONS
+# ──────────────────────────────────────────────────────────────────────────────
+#   Fragments  — PascalCase noun describing the shape  (ProjectCore, ItemContent)
+#   Operations — Verb + Scope + Entity                 (ListUserProjects, GetIssueDetails)
+#
+# OWNER TYPE BRANCHING
+# ──────────────────────────────────────────────────────────────────────────────
+#   User-owned projects use user(login: $login).
+#   Org-owned projects use organization(login: $login).
+#   Queries come in pairs (GetUser* / GetOrg*) for each item operation.
+#
+# FIELD NAME RESOLUTION
+# ──────────────────────────────────────────────────────────────────────────────
+#   All field values include field { ... on ProjectV2FieldCommon { id name } }.
+#   Match field.name (case-insensitive) against config.yml field_mapping values
+#   to identify Scrum concepts (sprint, status, story_points, priority).
+#
+# MUTATIONS
+# ──────────────────────────────────────────────────────────────────────────────
+#   Mutations are handled exclusively by the structured write tools.
+#   The github_graphql tool accepts query operations only.
+# =============================================================================
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# FRAGMENTS
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── ProjectCore ───────────────────────────────────────────────────────────────
+# Full project metadata including all field definitions.
+# Use for: project list/detail responses, pre-write ID resolution.
+
+fragment ProjectCore on ProjectV2 {
+  id
+  number
+  title
+  shortDescription
+  url
+  public
+  closed
+  createdAt
+  updatedAt
+  readme
+  owner {
+    __typename
+    ... on User { login }
+    ... on Organization { login }
+  }
+  items { totalCount }
+  fields(first: 30) {
+    nodes {
+      ... on ProjectV2Field { id name dataType }
+      ... on ProjectV2SingleSelectField {
+        id name dataType
+        options { id name color description }
+      }
+      ... on ProjectV2IterationField {
+        id name dataType
+        configuration {
+          iterations { id title startDate duration }
+          completedIterations { id title startDate duration }
+        }
+      }
+    }
+  }
+}
+
+# ── ItemContent ───────────────────────────────────────────────────────────────
+# Content node for a project item — covers Issue, PullRequest, and DraftIssue.
+#
+# AGENT: DraftIssue has no number, url, state, or milestone.
+# Always check __typename before dereferencing those fields.
+
+fragment ItemContent on ProjectV2Item {
+  content {
+    __typename
+    ... on Issue {
+      id number title url state body
+      assignees(first: 5) { nodes { login } }
+      labels(first: 10)   { nodes { name color } }
+      milestone { title dueOn }
+      repository { name nameWithOwner }
+    }
+    ... on PullRequest {
+      id number title url state body isDraft
+      assignees(first: 5) { nodes { login } }
+      labels(first: 10)   { nodes { name color } }
+      repository { name nameWithOwner }
+    }
+    ... on DraftIssue {
+      id title body
+      assignees(first: 5) { nodes { login } }
+    }
+  }
+}
+
+# ── ItemFieldValues ───────────────────────────────────────────────────────────
+# All field values for a project item.
+#
+# AGENT: Match field.name against config.yml field_mapping values to identify
+# sprint, status, story_points, and priority assignments.
+# Use optionId (not name) as the value for single-select write operations.
+# Use iterationId for sprint assignment writes.
+
+fragment ItemFieldValues on ProjectV2Item {
+  fieldValues(first: 20) {
+    nodes {
+      __typename
+      ... on ProjectV2ItemFieldTextValue {
+        text
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldNumberValue {
+        number
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldDateValue {
+        date
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldSingleSelectValue {
+        name color optionId
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldIterationValue {
+        title startDate duration iterationId
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldUserValue {
+        users(first: 5) { nodes { login } }
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldLabelValue {
+        labels(first: 10) { nodes { name color } }
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldMilestoneValue {
+        milestone { title dueOn }
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldRepositoryValue {
+        repository { name nameWithOwner }
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+    }
+  }
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# QUERIES — Projects
+# ══════════════════════════════════════════════════════════════════════════════
+
+query ListUserProjects($login: String!, $first: Int!, $after: String) {
+  user(login: $login) {
+    projectsV2(first: $first, after: $after, orderBy: { field: UPDATED_AT, direction: DESC }) {
+      totalCount
+      pageInfo { hasNextPage endCursor }
+      nodes { ...ProjectCore }
+    }
+  }
+}
+
+query ListOrgProjects($login: String!, $first: Int!, $after: String) {
+  organization(login: $login) {
+    projectsV2(first: $first, after: $after, orderBy: { field: UPDATED_AT, direction: DESC }) {
+      totalCount
+      pageInfo { hasNextPage endCursor }
+      nodes { ...ProjectCore }
+    }
+  }
+}
+
+query GetUserProject($login: String!, $number: Int!) {
+  user(login: $login) {
+    projectV2(number: $number) { ...ProjectCore readme }
+  }
+}
+
+query GetOrgProject($login: String!, $number: Int!) {
+  organization(login: $login) {
+    projectV2(number: $number) { ...ProjectCore readme }
+  }
+}
+
+# ── GetUser/OrgProjectFields ───────────────────────────────────────────────────
+# AGENT: Run once per session (or before any write) to resolve:
+#   - Field node IDs (required by all updateProjectV2ItemFieldValue calls)
+#   - Single-select option IDs (required for status/priority writes)
+#   - Iteration IDs (required for sprint assignment writes)
+#   Active iteration: startDate ≤ today < startDate + duration days.
+
+query GetUserProjectFields($login: String!, $number: Int!) {
+  user(login: $login) {
+    projectV2(number: $number) {
+      title number
+      fields(first: 50) {
+        nodes {
+          ... on ProjectV2Field { id name dataType }
+          ... on ProjectV2SingleSelectField {
+            id name dataType
+            options { id name color description }
+          }
+          ... on ProjectV2IterationField {
+            id name dataType
+            configuration {
+              iterations { id title startDate duration }
+              completedIterations { id title startDate duration }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+query GetOrgProjectFields($login: String!, $number: Int!) {
+  organization(login: $login) {
+    projectV2(number: $number) {
+      title number
+      fields(first: 50) {
+        nodes {
+          ... on ProjectV2Field { id name dataType }
+          ... on ProjectV2SingleSelectField {
+            id name dataType
+            options { id name color description }
+          }
+          ... on ProjectV2IterationField {
+            id name dataType
+            configuration {
+              iterations { id title startDate duration }
+              completedIterations { id title startDate duration }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# QUERIES — Items
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── GetUser/OrgProjectItems ────────────────────────────────────────────────────
+# AGENT: Returns all non-archived board items with field values and content.
+# Filter by sprint iterationId (from GetUserProjectFields) to isolate sprint items.
+# Items with no iteration field value are in the backlog.
+# Paginate via pageInfo.hasNextPage / pageInfo.endCursor.
+
+query GetUserProjectItems($login: String!, $number: Int!, $first: Int!, $after: String) {
+  user(login: $login) {
+    projectV2(number: $number) {
+      items(first: $first, after: $after) {
+        totalCount
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          id type createdAt updatedAt isArchived
+          ...ItemContent
+          ...ItemFieldValues
+        }
+      }
+    }
+  }
+}
+
+query GetOrgProjectItems($login: String!, $number: Int!, $first: Int!, $after: String) {
+  organization(login: $login) {
+    projectV2(number: $number) {
+      items(first: $first, after: $after) {
+        totalCount
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          id type createdAt updatedAt isArchived
+          ...ItemContent
+          ...ItemFieldValues
+        }
+      }
+    }
+  }
+}
+
+# ── GetItemFields ──────────────────────────────────────────────────────────────
+# Fetch field values for a single project item by its node ID.
+# Used internally after resolving a StoryRef to read board field assignments.
+
+query GetItemFields($itemId: ID!) {
+  node(id: $itemId) {
+    ... on ProjectV2Item {
+      fieldValues(first: 20) {
+        nodes {
+          __typename
+          ... on ProjectV2ItemFieldSingleSelectValue {
+            name optionId
+            field { ... on ProjectV2FieldCommon { id name } }
+          }
+          ... on ProjectV2ItemFieldNumberValue {
+            number
+            field { ... on ProjectV2FieldCommon { id name } }
+          }
+          ... on ProjectV2ItemFieldIterationValue {
+            title iterationId
+            field { ... on ProjectV2FieldCommon { id name } }
+          }
+        }
+      }
+    }
+  }
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# QUERIES — Issue / PR detail
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── GetIssueDetails ────────────────────────────────────────────────────────────
+# Fetch full issue details by node ID, including comments and linked PRs.
+# Used by getStoryDetail to enrich a story with discussion context.
+
+query GetIssueDetails($issueId: ID!) {
+  node(id: $issueId) {
+    ... on Issue {
+      id number title body url createdAt updatedAt
+      assignees(first: 10) { nodes { login } }
+      labels(first: 20)    { nodes { name } }
+      milestone { title }
+      comments(first: 50) {
+        nodes {
+          id
+          author { login }
+          body
+          createdAt
+          url
+        }
+      }
+      timelineItems(first: 25, itemTypes: [CROSS_REFERENCED_EVENT]) {
+        nodes {
+          ... on CrossReferencedEvent {
+            source {
+              ... on PullRequest {
+                number title url state isDraft
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# ── GetIssue ──────────────────────────────────────────────────────────────────
+# AGENT: Fetch issue details by owner + repo + number (human-readable reference).
+# Use when investigating a specific item for DoR/DoD assessment or blocker context.
+
+query GetIssue($owner: String!, $repo: String!, $number: Int!) {
+  repository(owner: $owner, name: $repo) {
+    issue(number: $number) {
+      id number title body state url createdAt updatedAt
+      author { login }
+      assignees(first: 10) { nodes { login } }
+      labels(first: 10)    { nodes { name color } }
+      milestone            { title dueOn }
+      comments(last: 20) {
+        totalCount
+        nodes { author { login } body createdAt }
+      }
+    }
+  }
+}
+
+# ── GetPullRequest ────────────────────────────────────────────────────────────
+# AGENT: Check review approval and CI status before marking an item Done.
+# reviewDecision = APPROVED and statusCheckRollup.state = SUCCESS is the DoD gate.
+
+query GetPullRequest($owner: String!, $repo: String!, $number: Int!) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $number) {
+      id number title body state url isDraft createdAt updatedAt
+      reviewDecision
+      author    { login }
+      assignees(first: 10) { nodes { login } }
+      labels(first: 10)    { nodes { name  } }
+      reviews(last: 5) {
+        nodes {
+          author { login }
+          state
+          body
+          submittedAt
+        }
+      }
+      commits(last: 1) {
+        nodes {
+          commit {
+            statusCheckRollup { state }
+          }
+        }
+      }
+    }
+  }
+}
+
+# ── ListIssues ────────────────────────────────────────────────────────────────
+# AGENT: Browse repo issues before creating duplicates or to identify items
+# that should be added to the project board.
+
+query ListIssues(
+  $owner: String!
+  $repo: String!
+  $states: [IssueState!]
+  $labels: [String!]
+  $cursor: String
+) {
+  repository(owner: $owner, name: $repo) {
+    issues(
+      first: 50
+      after: $cursor
+      states: $states
+      labels: $labels
+      orderBy: { field: CREATED_AT, direction: DESC }
+    ) {
+      nodes {
+        id number title state url createdAt
+        assignees(first: 3) { nodes { login } }
+        labels(first: 5)    { nodes { name  } }
+      }
+      pageInfo { hasNextPage endCursor }
+      totalCount
+    }
+  }
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# QUERIES — Labels
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── GetRepoLabels ──────────────────────────────────────────────────────────────
+# Fetch all labels in a repository.
+# Used internally for label ID resolution before creating issues.
+
+query GetRepoLabels($owner: String!, $repo: String!) {
+  repository(owner: $owner, name: $repo) {
+    labels(first: 50) {
+      nodes { id name color description }
+    }
+  }
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# QUERIES — Discussions (ceremony records)
+# ══════════════════════════════════════════════════════════════════════════════
+
+# AGENT: Use when config.yml ceremony_records.backend = "github_discussions".
+
+query GetDiscussion($owner: String!, $repo: String!, $number: Int!) {
+  repository(owner: $owner, name: $repo) {
+    discussion(number: $number) {
+      id number title body createdAt
+      author { login }
+      comments(first: 50) {
+        totalCount
+        nodes { author { login } body createdAt }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  }
+}
+
+query ListDiscussions($owner: String!, $repo: String!, $categoryId: ID, $cursor: String) {
+  repository(owner: $owner, name: $repo) {
+    discussions(
+      first: 20
+      after: $cursor
+      categoryId: $categoryId
+      orderBy: { field: CREATED_AT, direction: DESC }
+    ) {
+      nodes { id number title createdAt author { login } }
+      pageInfo { hasNextPage endCursor }
+    }
+  }
+}
+
+query GetDiscussionCategories($owner: String!, $repo: String!) {
+  repository(owner: $owner, name: $repo) {
+    discussionCategories(first: 20) {
+      nodes { id name emoji }
+    }
+  }
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# QUERIES — Lookups
+# ══════════════════════════════════════════════════════════════════════════════
+
+query GetIssueNodeId($owner: String!, $repo: String!, $number: Int!) {
+  repository(owner: $owner, name: $repo) {
+    issue(number: $number) { id }
+  }
+}
+
+query GetPRNodeId($owner: String!, $repo: String!, $number: Int!) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $number) { id }
+  }
+}
+
+query GetUserNodeId($login: String!) {
+  user(login: $login) { id }
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MUTATIONS
+# ══════════════════════════════════════════════════════════════════════════════
+
+mutation UpdateProject($input: UpdateProjectV2Input!) {
+  updateProjectV2(input: $input) {
+    projectV2 { id title shortDescription public closed }
+  }
+}
+
+mutation AddProjectItem($projectId: ID!, $contentId: ID!) {
+  addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
+    item { id }
+  }
+}
+
+mutation AddDraftIssue($input: AddProjectV2DraftIssueInput!) {
+  addProjectV2DraftIssue(input: $input) {
+    projectItem { id }
+  }
+}
+
+mutation UpdateItemField($input: UpdateProjectV2ItemFieldValueInput!) {
+  updateProjectV2ItemFieldValue(input: $input) {
+    projectV2Item { id }
+  }
+}
+
+mutation ClearItemField($input: ClearProjectV2ItemFieldValueInput!) {
+  clearProjectV2ItemFieldValue(input: $input) {
+    projectV2Item { id }
+  }
+}
+
+mutation DeleteProjectItem($input: DeleteProjectV2ItemInput!) {
+  deleteProjectV2Item(input: $input) {
+    deletedItemId
+  }
+}
+
+mutation ArchiveProjectItem($input: ArchiveProjectV2ItemInput!) {
+  archiveProjectV2Item(input: $input) {
+    item { id isArchived }
+  }
+}
+
+mutation UnarchiveProjectItem($input: UnarchiveProjectV2ItemInput!) {
+  unarchiveProjectV2Item(input: $input) {
+    item { id isArchived }
+  }
+}
+
+# ── Impediment queries ─────────────────────────────────────────────────────────
+# Query for issues with the "impediment" label.
+# $states parameter allows callers to filter: [OPEN] for orphans, [OPEN, CLOSED] for sprint impediments.
+
+query GetImpedimentIssues($owner: String!, $repo: String!, $states: [IssueState!]) {
+  repository(owner: $owner, name: $repo) {
+    issues(first: 100, labels: ["impediment"], states: $states) {
+      nodes {
+        id
+        number
+        title
+        body
+        state
+        createdAt
+        closedAt
+        author { login }
+        comments(first: 100) {
+          nodes { body }
+        }
+      }
+    }
+  }
+}

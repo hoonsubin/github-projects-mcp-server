@@ -1,3 +1,10 @@
+// =============================================================================
+// src/index.ts — Entry point
+//
+// After Story B (Phase 5): constructs GitHubProjectBackend and wires it to
+// tool registration. The backend is the only concretion index.ts knows about.
+// =============================================================================
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -8,23 +15,33 @@ import type {
 } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage, MessageExtraInfo } from "@modelcontextprotocol/sdk/types.js";
 import express, { type Request, type Response } from "express";
-// todo: [Phase 4] Remove + replace with: import { registerScrumReadTools } from "./tools/scrum-read.ts"; ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
-import { registerProjectTools } from "./tools/projects.ts";
-// todo: [Phase 4] Remove + replace with: import { registerScrumWriteTools } from "./tools/scrum-write.ts"; ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
-import { registerItemTools } from "./tools/items.ts";
-// todo: [Phase 4] Gut registrations — keep file only if any internal helpers are still referenced. ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
-//   After Phase 4, repository.ts should register nothing (github_graphql moves to scrum-write.ts).
-import { registerRepositoryTools } from "./tools/repository.ts";
+import { registerScrumReadTools } from "./tools/scrum-read.ts";
+import { registerScrumWriteTools } from "./tools/scrum-write.ts";
+import { loadConfig } from "./adapters/github/config-loader.ts";
+import { GitHubProjectBackend } from "./adapters/github/backend.ts";
+import { graphql, rest } from "./adapters/github/internal/http-client.ts";
+import { LabelResolver } from "./adapters/github/internal/label-resolver.ts";
+import { UserMilestoneResolver } from "./adapters/github/internal/user-milestone-resolver.ts";
+import { FieldValueMutator } from "./adapters/github/internal/field-value-mutator.ts";
+import { BurndownCalculator } from "./adapters/github/internal/burndown-calculator.ts";
+import { SprintHistoryService } from "./adapters/github/internal/sprint-history-service.ts";
+import { VocabularyManager } from "./adapters/github/internal/vocabulary-manager.ts";
+import { StoryQueryService } from "./adapters/github/internal/story-query-service.ts";
+import { StoryMutationService } from "./adapters/github/internal/story-mutation-service.ts";
+import { ImpedimentService } from "./adapters/github/internal/impediment-service.ts";
 import { log } from "./services/logger.ts";
 import type { Socket } from "node:net";
+import type { ProjectBackend } from "./scrum/ports.ts";
+import type { GitHubBackendConfig } from "./adapters/github/types.ts";
+import type { ScrumConfig } from "./domain/config.ts";
 
-// ── Debug: tool-call interceptor ─────────────────────────────────────────────
+// ── Tool-call interceptor ────────────────────────────────────────────────────
 //
-// Patches server.registerTool before any tools are registered so every call
-// gets before/after/error logging with timing. Only active when DEBUG=1.
+// Three verbosity tiers:
 //
-// The cast through `unknown` is intentional: registerTool has many typed
-// overloads but at runtime they all resolve to (name, config, handler).
+//   always   — tool name, timing, and errors with input params (no env var needed)
+//   DEBUG=1  — GraphQL/REST operation names and params (API-level tracing)
+//   TRACE=1  — raw JSON-RPC wire messages (transport dump, very noisy)
 
 const patchToolLogging = (server: McpServer): void => {
   // deno-lint-ignore no-explicit-any
@@ -41,42 +58,36 @@ const patchToolLogging = (server: McpServer): void => {
     handler: (params: unknown, extra: unknown) => Promise<unknown>,
   ): unknown => {
     return original(name, config, async (params: unknown, extra: unknown) => {
-      log.debug(`→ tool:${name}`, params);
+      // Always: log which tool fired (no params — keeps the line short)
+      log.info(`→ ${name}`);
+      // DEBUG: also log the full input so you can see what the agent passed
+      log.debug(`  params`, params);
+
       const t0 = performance.now();
       try {
         const result = await handler(params, extra);
-        log.debug(
-          `← tool:${name} OK (${Math.round(performance.now() - t0)}ms)`,
-        );
+        log.info(`← ${name} OK (${Math.round(performance.now() - t0)}ms)`);
         return result;
       } catch (err: unknown) {
-        log.error(
-          `✗ tool:${name} threw (${Math.round(performance.now() - t0)}ms)`,
-          err,
-        );
+        const ms = Math.round(performance.now() - t0);
+        // Always: log the tool that failed, elapsed time, error message, AND
+        // the input params so you can reproduce or diagnose the call.
+        log.error(`✗ ${name} FAILED (${ms}ms)`, {
+          error: err instanceof Error ? err.message : String(err),
+          params,
+        });
         throw err;
       }
     });
   };
 };
 
-// ── Debug: transport-level request/response logger ───────────────────────────
+// ── Transport-level request/response logger (TRACE=1 only) ───────────────────
 //
-// Wraps transport.onmessage and transport.send AFTER server.connect() so we
-// see the raw JSON-RPC wire payload before the SDK touches it. This is the
-// only place where pre-validation failures (e.g. "params requires property X")
-// become visible, because the tool-call wrapper above fires *after* Zod passes.
-//
-// NOTE: DEBUG=1 must be in the environment of the MCP server *process*, not
-// just the terminal. For Claude Desktop / Claude Code, add it to the "env"
-// block in your MCP client config:
-//
-//   { "env": { "GITHUB_TOKEN": "...", "DEBUG": "1" } }
-//
-// All output goes to stderr, which MCP clients display in their server logs.
+// Logs every raw JSON-RPC message — useful for debugging MCP protocol issues
+// but extremely noisy during normal use. Enable with TRACE=1 (not DEBUG=1).
 
 const wrapTransportLogging = (transport: Transport, label: string): void => {
-  // ── Incoming (client → server) ───────────────────────────────────────────
   const origOnMessage = transport.onmessage?.bind(transport);
   transport.onmessage = <T extends JSONRPCMessage>(
     msg: T,
@@ -86,7 +97,6 @@ const wrapTransportLogging = (transport: Transport, label: string): void => {
     origOnMessage?.(msg, extra);
   };
 
-  // ── Outgoing (server → client) ───────────────────────────────────────────
   const origSend = transport.send.bind(transport);
   transport.send = (msg: JSONRPCMessage, options?: TransportSendOptions) => {
     log.debug(`[${label}] → send`, msg);
@@ -94,41 +104,95 @@ const wrapTransportLogging = (transport: Transport, label: string): void => {
   };
 };
 
+// ── Backend factory ──────────────────────────────────────────────────────────
+
+const createBackend = async (): Promise<{ backend: ProjectBackend; scrumConfig: ScrumConfig }> => {
+  const config = await loadConfig({ github: { graphql } });
+  const gh = config.scrumConfig.backends.github as GitHubBackendConfig;
+  const ghClient = { graphql, rest };
+  const primaryRepo = gh.tracked_repos[0]; // multi-repo support is future work
+
+  // Build services in dependency order (DIP: composition root owns construction)
+  const labelResolver = new LabelResolver(config, ghClient, gh.owner, primaryRepo);
+  const userMilestoneResolver = new UserMilestoneResolver(
+    ghClient,
+    gh.owner,
+    primaryRepo,
+    labelResolver,
+  );
+  const fieldValueMutator = new FieldValueMutator(config, ghClient, userMilestoneResolver);
+  const burndownCalculator = new BurndownCalculator(config, ghClient, gh.owner, primaryRepo);
+  const sprintHistoryService = new SprintHistoryService(config, ghClient, gh.owner, primaryRepo);
+  const vocabularyManager = new VocabularyManager(
+    config,
+    ghClient,
+    labelResolver,
+    gh.owner,
+    primaryRepo,
+  );
+  const storyQueryService = new StoryQueryService(config, ghClient, gh.owner, primaryRepo);
+  const storyMutationService = new StoryMutationService(
+    config,
+    ghClient,
+    gh.owner,
+    primaryRepo,
+    labelResolver,
+    userMilestoneResolver,
+    fieldValueMutator,
+  );
+  const impedimentService = new ImpedimentService(
+    config,
+    ghClient,
+    gh.owner,
+    primaryRepo,
+    labelResolver,
+  );
+
+  const backend = new GitHubProjectBackend(
+    labelResolver,
+    userMilestoneResolver,
+    fieldValueMutator,
+    burndownCalculator,
+    sprintHistoryService,
+    vocabularyManager,
+    storyQueryService,
+    storyMutationService,
+    impedimentService,
+    config,
+    gh.owner,
+    primaryRepo,
+  );
+  return { backend, scrumConfig: config.scrumConfig };
+};
+
 // ── Server factory ───────────────────────────────────────────────────────────
 
-const createMcpServer = (): McpServer => {
+const createMcpServer = async (): Promise<McpServer> => {
   const server = new McpServer({
     name: "github-projects-mcp-server",
     version: "1.0.0",
   });
 
-  if (log.isDebug()) {
-    patchToolLogging(server);
-    log.debug("tool-call logging enabled");
-  }
+  patchToolLogging(server);
 
-  // todo: [Phase 4] Remove — replaced by registerScrumReadTools(server, github) ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
-  registerProjectTools(server);
-  // todo: [Phase 4] Remove — replaced by registerScrumWriteTools(server, github) ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
-  registerItemTools(server);
-  // todo: [Phase 4] Gut — registerRepositoryTools will be empty after github_graphql moves to scrum-write.ts ([#19](https://github.com/hoonsubin/github-projects-mcp-server/issues/19))
-  registerRepositoryTools(server);
+  const { backend, scrumConfig } = await createBackend();
+  registerScrumReadTools(server, backend, scrumConfig);
+  registerScrumWriteTools(server, backend, scrumConfig);
 
   return server;
 };
 
-// ── Stdio transport (default — used by Claude Desktop, Claude Code, etc.) ────
+// ── Stdio transport ──────────────────────────────────────────────────────────
 
 const runStdio = async (): Promise<void> => {
-  const server = createMcpServer();
+  const server = await createMcpServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  // Wrap AFTER connect — the SDK sets transport.onmessage during connect.
-  if (log.isDebug()) wrapTransportLogging(transport, "stdio");
+  if (Deno.env.get("TRACE")) wrapTransportLogging(transport, "stdio");
   log.info("github-projects-mcp-server running on stdio");
 };
 
-// ── Streamable HTTP transport (for remote/multi-client scenarios) ─────────────
+// ── Streamable HTTP transport ────────────────────────────────────────────────
 
 const runHttp = () => {
   const app = express();
@@ -136,17 +200,12 @@ const runHttp = () => {
 
   app.get("/health", (_req: Request, res: Response) => {
     log.debug("health check", { method: _req.method, url: _req.url });
-    res.status(200).json({
-      jsonrpc: "2.0",
-      server: "github-projects-mcp-server",
-    });
+    res.status(200).json({ jsonrpc: "2.0", server: "github-projects-mcp-server" });
     return;
   });
 
-  // Session store
   const transports: Record<string, StreamableHTTPServerTransport> = {};
 
-  // POST /mcp — handle all client-to-server JSON-RPC messages
   app.post("/mcp", async (req: Request, res: Response) => {
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
     let transport: StreamableHTTPServerTransport;
@@ -158,9 +217,6 @@ const runHttp = () => {
         onsessioninitialized: (id: string) => {
           transports[id] = transport;
         },
-        // Enable when running locally to prevent DNS-rebinding attacks:
-        // enableDnsRebindingProtection: true,
-        // allowedHosts: ["127.0.0.1"],
       });
 
       transport.onclose = () => {
@@ -168,19 +224,13 @@ const runHttp = () => {
         log.info(`session closed: ${transport.sessionId}`);
       };
 
-      const server = createMcpServer();
+      const server = await createMcpServer();
       await server.connect(transport);
-      // Wrap AFTER connect — the SDK sets transport.onmessage during connect.
-      if (log.isDebug()) {
-        wrapTransportLogging(transport, `http:${transport.sessionId}`);
-      }
+      if (Deno.env.get("TRACE")) wrapTransportLogging(transport, `http:${transport.sessionId}`);
     } else {
       res.status(400).json({
         jsonrpc: "2.0",
-        error: {
-          code: -32000,
-          message: "Bad Request: No valid session ID provided",
-        },
+        error: { code: -32000, message: "Bad Request: No valid session ID provided" },
         id: null,
       });
       return;
@@ -189,7 +239,6 @@ const runHttp = () => {
     await transport.handleRequest(req, res, req.body);
   });
 
-  // GET /mcp - server-to-client SSE notifications
   app.get("/mcp", async (req: Request, res: Response) => {
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
     if (!sessionId || !transports[sessionId]) {
@@ -199,37 +248,28 @@ const runHttp = () => {
     await transports[sessionId].handleRequest(req, res);
   });
 
-  // DELETE /mcp - session termination
   app.delete("/mcp", async (req: Request, res: Response) => {
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
-
     if (!sessionId || !transports[sessionId]) {
       res.status(400).send("Invalid or missing session ID");
       return;
     }
-
     await transports[sessionId].handleRequest(req, res);
   });
 
   const port = parseInt(Deno.env.get("PORT") || "3000", 10);
   const httpServer = app.listen(port, () => {
-    log.info(
-      `github-projects-mcp-server listening → http://0.0.0.0:${port}/mcp`,
-    );
+    log.info(`github-projects-mcp-server listening → http://0.0.0.0:${port}/mcp`);
   });
 
-  // ── Graceful shutdown ──────────────────────────────────────────────────────
-
-  // Track all open sockets so idle keep-alive connections can be destroyed
   const sockets = new Set<Socket>();
-
   httpServer.on("connection", (socket: Socket) => {
     sockets.add(socket);
     socket.once("close", () => sockets.delete(socket));
   });
 };
 
-// ── Entry point ───────────────────────────────────────────────────────────────
+// ── Entry point ──────────────────────────────────────────────────────────────
 
 const transportType = Deno.env.get("MCP_TRANSPORT") ?? "stdio";
 

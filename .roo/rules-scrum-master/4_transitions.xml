@@ -1,0 +1,504 @@
+<transitions>
+
+  <overview>
+    Covers three scenario types where Scrum is not yet running, has lapsed, or the board
+    no longer reflects reality. These are not ceremonies — they are structured onboarding
+    and recovery workflows that precede ceremonies.
+
+    All three follow the same pattern:
+      Detect scenario → sequential elicitation (lumped Q&amp;A with conditional branching)
+      → board audit → story review → update config.yml → establish baseline → plan first/next sprint
+
+    The ceremony playbook in `1_workflow.xml` takes over once a sprint is established.
+    The story_review_protocol below applies within all three playbooks whenever individual
+    items are being assessed.
+  </overview>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       STORY REVIEW PROTOCOL
+       Cross-cutting. Apply whenever items are being assessed during any playbook.
+       ═══════════════════════════════════════════════════════════════════════ -->
+
+  <story_review_protocol>
+    <description>
+      For each item under review: run the three checks in sequence.
+      Offer reclassification or breakdown when signals are present — do not force.
+      Always confirm with the human before writing changes. Apply `scrum_update_story`
+      after each item is fully settled before moving to the next.
+    </description>
+
+    <check name="sufficiency" order="1">
+      <question>Is this item understood well enough to estimate and commit to?</question>
+      <signals>
+        <signal>Body is vague: "research X", "figure out Y", "look into Z", "investigate..."</signal>
+        <signal>Team cannot agree on an estimate because the approach is unknown</signal>
+        <signal>An untested assumption is embedded in the scope</signal>
+        <signal>The item depends on an answer that hasn't been found yet</signal>
+      </signals>
+      <if_insufficient>
+        Offer: "This looks like it needs investigation before we can commit to it.
+        Should we convert it to a time-boxed Spike? A Spike produces knowledge, not an increment.
+        Output would be: 'By end of sprint, we will know [specific question].'
+        It gets a time-box (e.g. 3 days), not a story-point estimate."
+        If confirmed: rewrite the item body with a clear research question, expected output,
+        and time-box. Set type label to Spike.
+      </if_insufficient>
+    </check>
+
+    <check name="size" order="2">
+      <question>Can this item realistically be completed within one sprint?</question>
+      <signals>
+        <signal>Estimate exceeds ~40% of sprint velocity</signal>
+        <signal>Item contains multiple independent deliverables that could ship separately</signal>
+        <signal>Item spans multiple user types, workflow steps, or data variations</signal>
+        <signal>Team cannot agree on scope without making large assumptions</signal>
+      </signals>
+      <if_too_large>
+        Offer two paths:
+        1. "Break it into smaller stories now." — run story splitting inline.
+           Offer splitting patterns: workflow step / user type / data variation / happy path first.
+           Reference `references/advanced-practices.md §Story splitting` for technique details.
+           Create child stories; keep the parent as an Epic label with a goal statement.
+        2. "Keep it as an Epic placeholder; refine only the first child story now."
+           — tag the current item as Epic; create one sprint-ready child story from the
+           most valuable slice. Defer remaining breakdown to backlog refinement.
+        Ask: "Which path fits better for right now?"
+      </if_too_large>
+    </check>
+
+    <check name="type" order="3">
+      <question>What kind of work is this?</question>
+      <types>
+        <type name="Feature">
+          New capability that users would notice.
+          Full DoR applies: user story format, AC defined, estimated, dependencies clear.
+        </type>
+        <type name="Bug">
+          Unintended behaviour breaking existing functionality.
+          DoR: repro steps, severity, affected area. AC = "repro no longer occurs."
+          Estimates optional for small bugs; required if &gt;2 SP.
+        </type>
+        <type name="Tech Debt">
+          Internal improvement with no direct user-visible change.
+          DoR: rationale, DoD impact if deferred, estimate.
+          No user story format required; outcome statement suffices.
+        </type>
+        <type name="Spike">
+          Time-boxed investigation. Output is knowledge, not an increment.
+          DoR: clear research question, expected output, time-box. No SP estimate.
+        </type>
+        <type name="Epic">
+          Container for a set of related stories too large for one sprint.
+          No estimate; no user story format at Epic level.
+          Must have a goal statement. Breakdown into child stories happens in refinement.
+        </type>
+      </types>
+      <if_ambiguous>
+        Ask: "Would a user notice this change, or is it purely internal work?"
+        User-visible → Feature or Bug. Internal → Tech Debt or Spike.
+        If the item is clearly a cluster of features → Epic.
+      </if_ambiguous>
+      <action>
+        Update item type label via `scrum_update_story` once confirmed.
+        Adjust DoR expectations per type before marking an item sprint-ready.
+      </action>
+    </check>
+
+    <validation_close>
+      After all three checks: "Does this item's scope feel right to you?
+      Is there anything that should be split off, or anything missing that belongs here?"
+      Apply `scrum_update_story` to record all agreed changes, then move to the next item.
+    </validation_close>
+  </story_review_protocol>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       PLAYBOOK: PROJECT BOOTSTRAP
+       Introducing Scrum to an ongoing project for the first time.
+       ═══════════════════════════════════════════════════════════════════════ -->
+
+  <playbook name="project_bootstrap">
+
+    <phase number="1" name="project_context">
+      <lump>Ask together — short answers, orient the session. No tool calls yet.</lump>
+      <questions>
+        <q>What is this project, and what is it ultimately trying to achieve?</q>
+        <q>Who is on the team, and what is each person's role?</q>
+        <q>Are there any hard external constraints — deadlines, milestones, or stakeholder commitments?</q>
+      </questions>
+      <actions>
+        <action>Write `project.name` and `project.team` entries to `.github/scrum/config.yml` from answers.</action>
+        <action>Note milestone dates for use in sprint planning later.</action>
+      </actions>
+    </phase>
+
+    <phase number="2" name="board_audit">
+      <lump>Agent-driven. Call tools first, present findings, then ask one focused question.</lump>
+      <actions>
+        <action>Call `scrum_orient` and read `.github/scrum/config.yml` to assess configuration completeness.</action>
+        <action>Call `scrum_get_backlog` to load all existing items.</action>
+        <action>Present inventory: "I found [N] items. [X] appear in-progress, [Y] in a backlog state,
+          [Z] have no status. Here's the breakdown: [list titles and current status]."</action>
+      </actions>
+      <question>"Do any of these items reflect work that's already done, or work that's no longer relevant?"</question>
+      <branches>
+        <branch condition="done items identified">
+          Mark as Done via `scrum_set_field` with `field: 'status'` and `value: 'Done'`. Note for velocity reconstruction in Phase 3.
+        </branch>
+        <branch condition="irrelevant items identified">
+          Label as icebox or archive. Never delete — preserve history.
+        </branch>
+        <branch condition="board is empty or near-empty">
+          Skip Phase 3. Jump directly to Phase 4.
+          Ask: "Would you like to start by adding the first few stories together, or do you have
+          a list somewhere we can work from?"
+        </branch>
+      </branches>
+    </phase>
+
+    <phase number="3" name="velocity_baseline">
+      <lump>Informal history — rough estimates are fine, exact numbers are not expected.</lump>
+      <questions>
+        <q>Roughly how much has the team shipped in the past 4–8 weeks?</q>
+        <q>In a typical week or two, how many items or features get finished?</q>
+        <q>Was the team fully focused on this, or splitting time across other work?</q>
+      </questions>
+      <actions>
+        <action>Derive a rough velocity estimate. Express in items/sprint if no estimates exist yet;
+          convert to story points after first estimation pass.</action>
+        <action>Set `scrum.sprint.velocity_window` in config.yml.</action>
+        <action>Annotate: "Bootstrap estimate — refine after 2–3 sprints."</action>
+      </actions>
+      <branches>
+        <branch condition="team has no sense of past throughput">
+          Use capacity formula as the starting baseline:
+          Capacity = Available Days × Focus Factor × Team Size (default Focus Factor: 0.65).
+          Translate to story points after the first sprint's estimates are set.
+          Announce: "We'll treat Sprint 1 as a calibration sprint — the goal is a reliable
+          velocity reading, not maximum output."
+        </branch>
+      </branches>
+    </phase>
+
+    <phase number="4" name="quality_gates">
+      <lump>Ask together — both are short answers that will be refined in future retros.</lump>
+      <questions>
+        <q>"What does 'done' mean for this project today — even informally?
+          What has to be true before you'd consider something finished?"</q>
+        <q>"What would prevent you from starting work on an item?
+          What makes something 'not ready yet'?"</q>
+      </questions>
+      <actions>
+        <action>Write `definition_of_done` to config.yml. Keep to 3–5 items; label as v1 in a comment.
+          Prefer concrete and verifiable over aspirational. Frame: "We'll grow this in retro."</action>
+        <action>Write `definition_of_ready` to config.yml. Minimum viable: user story format,
+          AC defined, estimated.</action>
+        <action>Call `scrum_add_vocabulary` if the board is missing status options that match config.</action>
+      </actions>
+    </phase>
+
+    <phase number="5" name="sprint_parameters">
+      <lump>Mechanical decisions — ask together, agent proposes defaults.</lump>
+      <questions>
+        <q>"How long should sprints be? (2 weeks is the standard default; 1 week for
+          faster feedback; 3 weeks if work items are naturally larger.)"</q>
+        <q>"What day of the week works best for sprint start, planning, and review?"</q>
+      </questions>
+      <actions>
+        <action>Write `scrum.sprint.length_weeks` and `scrum.sprint.start_day` to config.yml.</action>
+        <action>If field mappings are missing (`field_mapping.sprint`, `field_mapping.status`):
+          read available board fields from `scrum_orient` and propose mappings:
+          "I see a field called '[X]' — does that map to your sprint / status / priority?"
+          Confirm before writing to `backends.github.field_mapping`.</action>
+        <action>If `status_display` or `priority_display` are missing: propose standard mappings
+          and confirm before writing.</action>
+      </actions>
+    </phase>
+
+    <phase number="6" name="story_review">
+      <description>
+        Review all active backlog items using story_review_protocol.
+        Work through items grouped by status: in-progress first, then backlog.
+        Run all three checks (sufficiency, size, type) on each item.
+      </description>
+      <actions>
+        <action>After review: "Here's what's sprint-ready: [list]. Here's what needs more refinement: [list].
+          Here's what we converted or split: [list]."</action>
+        <action>Apply DoR checks to every item marked sprint-ready. Flag and defer those that fail.</action>
+      </actions>
+    </phase>
+
+    <phase number="7" name="first_sprint">
+      <description>
+        Transition into the ceremony playbook. Use sprint_planning ceremony from `1_workflow.xml`
+        from this point forward.
+      </description>
+      <question>"Should we call this Sprint 0 (setup and orientation, no delivery pressure) or
+        Sprint 1 (real commitments from the start)?
+        Sprint 0 is useful if the team needs to establish tooling, DoD, or working agreements first.
+        Sprint 1 is the right call if the team already has enough context to commit."</question>
+      <actions>
+        <action>Call `scrum_plan_sprint` with the agreed scope and a proposed Sprint Goal.</action>
+        <action>Call `scrum_get_template` for sprint_planning artifact to record the session.</action>
+        <action>If Sprint 0: set a lightweight goal — "By end of this sprint, we have a working
+          board, agreed DoD, and a calibrated velocity estimate."</action>
+      </actions>
+    </phase>
+
+  </playbook>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       PLAYBOOK: STALE RECOVERY
+       Re-orienting a project that was actively running Scrum and then paused.
+       ═══════════════════════════════════════════════════════════════════════ -->
+
+  <playbook name="stale_recovery">
+
+    <phase number="1" name="understand_the_pause">
+      <lump>Ask together — shapes the recovery path before any tool calls.</lump>
+      <questions>
+        <q>"When did active work stop, roughly? (A sprint number or approximate date is fine.)"</q>
+        <q>"What caused the pause? Is that root cause resolved now?"</q>
+        <q>"Have any team members joined or left since the project was active?"</q>
+      </questions>
+      <actions>
+        <action>Call `scrum_get_history` to find the last active sprint and its velocity.</action>
+        <action>Compute pause length: (today − last sprint end date) / sprint length = sprints elapsed.</action>
+      </actions>
+      <branches>
+        <branch condition="pause &gt; 2 sprint lengths AND team unchanged">
+          Proceed to Phase 2. Treat historical velocity as potentially stale — confirm before using.
+        </branch>
+        <branch condition="pause &gt; 2 sprint lengths AND team has changed">
+          After Phase 2: run abbreviated onboarding (Week 0 from `sm-coaching.md §Onboarding`)
+          for new members before re-planning. Flag this for Phase 5.
+        </branch>
+        <branch condition="pause &lt;= 2 sprint lengths AND team unchanged">
+          Velocity is likely still valid. Proceed with a lighter audit — skip Phase 3.
+        </branch>
+        <branch condition="root cause NOT resolved">
+          Name the unresolved cause explicitly before planning.
+          Ask: "What would change between now and sprint start that makes this safe to restart?"
+          Do not commit to re-planning until there is a credible answer.
+        </branch>
+      </branches>
+    </phase>
+
+    <phase number="2" name="scope_validity">
+      <lump>Ask together — determines which parts of the board are still relevant.</lump>
+      <questions>
+        <q>"Has the product direction or priorities changed since the pause?"</q>
+        <q>"Are there new external constraints — deadlines, stakeholder changes, or technical shifts?"</q>
+        <q>"Broadly: is most of the backlog still valid, or does a significant portion
+          need re-evaluation?"</q>
+      </questions>
+      <actions>
+        <action>If major scope change: flag the full backlog for story_review_protocol triage in Phase 4.</action>
+        <action>If minor scope change: note affected areas; target triage there in Phase 4.</action>
+        <action>Update `project.team` in config.yml if membership changed.</action>
+      </actions>
+    </phase>
+
+    <phase number="3" name="velocity_rebaseline">
+      <description>Only run if pause &gt; 2 sprint lengths OR team composition changed.</description>
+      <question>"The last recorded velocity was [X] SP/sprint. Given the pause and any team changes,
+        does that still feel like a reliable planning number?"</question>
+      <branches>
+        <branch condition="velocity confirmed as still valid">
+          Retain. Adjust `scrum.sprint.velocity_window` if the pause should not be included in the window.
+        </branch>
+        <branch condition="velocity no longer reliable">
+          Use capacity formula as the new baseline:
+          Capacity = Available Days × Focus Factor × Team Size.
+          Announce: "We'll treat the first sprint back as a calibration sprint — commit conservatively
+          (60–70% of estimated capacity). The goal is to prove we can deliver again, not to maximise output."
+        </branch>
+      </branches>
+    </phase>
+
+    <phase number="4" name="board_audit">
+      <description>
+        Agent-driven. Present findings, then ask the human to decide on each in-progress item.
+        Apply story_review_protocol to any item whose scope or type may have changed.
+      </description>
+      <actions>
+        <action>Call `scrum_get_sprint` (last active sprint) to load in-progress items.</action>
+        <action>Call `scrum_get_backlog` for remaining items.</action>
+        <action>For each in-progress item, offer four options:
+          "Resume as-is / Re-estimate (context changed) / Defer to backlog / Close as won't-do."</action>
+        <action>Apply story_review_protocol to any item the human is uncertain about.</action>
+        <action>Apply `scrum_update_story` or status change per confirmed decision.</action>
+        <action>Archive won't-do items. Never delete — preserve history.</action>
+      </actions>
+      <branches>
+        <branch condition="restart retrospective requested OR pause had a significant cause">
+          Run a brief restart retrospective before re-planning. Ask three questions:
+          1. "What caused the pause — and what have we learned from it?"
+          2. "What's different now that makes this restart viable?"
+          3. "What one change would prevent the same thing from happening again?"
+          Capture one committed change. Use `scrum_get_template` for retrospective artifact.
+        </branch>
+      </branches>
+    </phase>
+
+    <phase number="5" name="recovery_planning">
+      <description>
+        Transition to ceremony playbook. The first sprint back is a calibration sprint.
+        See `sm-coaching.md §Stale recovery` for the full recovery philosophy.
+      </description>
+      <actions>
+        <action>If abbreviated onboarding flagged in Phase 1: walk new members through
+          DoR, DoD, and sprint cadence before planning. Reference `sm-coaching.md §Onboarding`.</action>
+        <action>Ask: "What is the intended restart date?"</action>
+        <action>Call `scrum_plan_sprint` with a conservative scope (60–70% of estimated velocity).</action>
+        <action>Set a calibration Sprint Goal: "Prove the team can deliver a working increment
+          in one sprint." Output-focused, not feature-maximising.</action>
+        <action>Call `scrum_get_template` for sprint_planning artifact.</action>
+      </actions>
+    </phase>
+
+  </playbook>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       PLAYBOOK: BOARD CATCHUP
+       Board is outdated; development actually continued. Reconcile board with reality.
+       Common in informal teams, solo developers, or projects that outgrew ad-hoc tracking.
+       ═══════════════════════════════════════════════════════════════════════ -->
+
+  <playbook name="board_catchup">
+
+    <phase number="1" name="assess_the_gap">
+      <lump>Ask together — sizes the reconciliation effort before any tool calls.</lump>
+      <questions>
+        <q>"How far behind is the board? (Weeks, months, rough feature count — any estimate is fine.)"</q>
+        <q>"Was development happening consistently during that time, or in bursts?"</q>
+        <q>"Do you have any record of what got done — commits, release notes, changelogs,
+          or even just memory?"</q>
+      </questions>
+      <actions>
+        <action>Call `scrum_get_backlog` and `scrum_get_sprint` to load current board state.</action>
+        <action>Present inventory: "The board shows [N] items, most last touched [date range].
+          [X] are in-progress, [Y] are in backlog, [Z] have no sprint assigned.
+          Let's reconcile this with what actually happened."</action>
+      </actions>
+      <branches>
+        <branch condition="solo developer OR team of 1–2">
+          Note: reduce ceremony overhead throughout this playbook.
+          Sprint length may be shorter (1 week). DoR can be lighter.
+          Focus is board accuracy and forward visibility, not process compliance.
+        </branch>
+        <branch condition="large gap with no records at all">
+          Start from what the human remembers. Reconstruction doesn't need to be exact —
+          the goal is a board that reflects current reality, not a perfect historical record.
+          Announce: "We're building a working board, not an audit trail.
+          Approximate is fine — we just need to know what's done and what's next."
+        </branch>
+      </branches>
+    </phase>
+
+    <phase number="2" name="reconstruct_done_work">
+      <description>
+        Work through what actually happened. Use any available evidence.
+        The goal: board Done column reflects real completed work before forward planning begins.
+      </description>
+      <question>"Walk me through what you built or shipped since the board was last updated.
+        Rough groupings are fine — we don't need exact dates."</question>
+      <actions>
+        <action>For each item the human describes as completed:
+          (a) Find a matching board item → mark Done via `scrum_set_field` with `field: 'status'` and `value: 'Done'`.
+          (b) No matching item → create a new item and immediately mark Done.
+              This reconstructs history without inventing fictional sprints.
+          (c) Item was partially completed → update the body to reflect current state;
+              split remaining work into a new open item.</action>
+        <action>Apply story_review_protocol to any item where scope is unclear during reconstruction.
+          Reconstruction is a good time to reclassify items that were never properly typed.</action>
+        <action>Do not create sprint assignments for historical work. Mark items Done directly.</action>
+      </actions>
+    </phase>
+
+    <phase number="3" name="triage_remaining_items">
+      <description>
+        Board Done column now reflects reality. Review what's still open — these are
+        the candidates for the next sprint and future backlog.
+      </description>
+      <actions>
+        <action>Present all remaining open items.</action>
+        <action>Apply story_review_protocol to each (sufficiency, size, type).</action>
+        <action>After reviewing existing items: "Are there things you're planning to build
+          that aren't on the board yet?"
+          Add confirmed new items. Apply story_review_protocol immediately.</action>
+        <action>Result: a clean, current backlog that reflects genuine intent.</action>
+      </actions>
+    </phase>
+
+    <phase number="4" name="establish_baseline">
+      <description>
+        Reconstruct a velocity estimate from the reconciled history, if possible.
+        If not enough data: fall back to capacity formula.
+      </description>
+      <actions>
+        <action>Count Done items from Phase 2. If items have estimates: sum SP and divide by elapsed
+          sprints (approximate). If no estimates: use item count per estimated sprint length.</action>
+        <action>Ask: "Is that pace sustainable going forward, or was it an unusual push?"</action>
+        <action>Write velocity baseline to config.yml. Annotate as reconstructed.</action>
+        <action>If DoD and DoR are not yet in config: run Phase 4 of project_bootstrap playbook now.</action>
+      </actions>
+      <branches>
+        <branch condition="no estimates on any items">
+          Defer velocity calculation until after the first sprint.
+          Use capacity formula for now. Run Planning Poker during the sprint planning session.
+          Announce: "We'll set estimates collaboratively in planning and use Sprint 1 to calibrate."
+        </branch>
+      </branches>
+    </phase>
+
+    <phase number="5" name="forward_planning">
+      <description>
+        Board now reflects reality. Transition to ceremony playbook.
+        See `sm-coaching.md §Board catchup` for the reconciliation philosophy.
+      </description>
+      <question>"Should we set up the next sprint now, or would you prefer to refine
+        the backlog a bit more first?"</question>
+      <branches>
+        <branch condition="planning now">
+          Transition to sprint_planning ceremony in `1_workflow.xml`.
+          This is effectively the first properly-tracked sprint — treat it like Sprint 1 from bootstrap.
+        </branch>
+        <branch condition="refinement first">
+          Transition to backlog_refinement ceremony in `1_workflow.xml`.
+          Schedule planning for the next session.
+        </branch>
+      </branches>
+      <actions>
+        <action>Call `scrum_get_template` for sprint_planning artifact when planning begins.</action>
+      </actions>
+    </phase>
+
+  </playbook>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       CONFIG.YML WRITE GUIDANCE
+       Applies across all three playbooks whenever config.yml is written.
+       ═══════════════════════════════════════════════════════════════════════ -->
+
+  <config_write_guidance>
+    <rule>Always read `.github/scrum/config.yml` before writing. Update only keys that have
+      been explicitly elicited. Preserve all existing content and structure.</rule>
+    <rule>Never overwrite `auth.*` values. These are environment variable references — leave as-is.</rule>
+    <rule>For `backends.*.field_mapping`: propose values based on `scrum_orient` field discovery.
+      Confirm with the human before writing. Field names are case-sensitive.</rule>
+    <rule>For `backends.*.status_display` and `priority_display`: propose the full mapping
+      and confirm before writing. These affect all board operations downstream.</rule>
+    <rule>Write `definition_of_ready` and `definition_of_done` as YAML lists, one criterion
+      per line. Add a comment `# v1 — [date]` when first written.</rule>
+    <rule>After any write to config.yml, call `scrum_orient` again to confirm the changes
+      are valid and no new configuration gaps were introduced.</rule>
+    <rule>If a field value in config.yml requires a platform-specific ID (node ID, field ID,
+      option ID), fetch the ID via `scrum_orient` or relevant tool — never ask the human for it.</rule>
+  </config_write_guidance>
+
+</transitions>

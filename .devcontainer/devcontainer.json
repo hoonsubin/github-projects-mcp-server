@@ -1,0 +1,93 @@
+{
+  "name": "GitHub Projects MCP Server",
+  "dockerComposeFile": "docker-compose.dev.yml",
+  "service": "workspace",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+
+  // Install Deno, Node/npm, and gh CLI as devcontainer features.
+  // uv and Python are bootstrapped in postCreateCommand via the official uv installer.
+  "features": {
+    "ghcr.io/devcontainers-extra/features/deno:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // Deno language server — required for this project
+        "denoland.vscode-deno",
+        // RooCode AI assistant
+        "rooveterinaryinc.roo-cline",
+        "ms-azuretools.vscode-docker",
+        "mikestead.dotenv",
+        "redhat.vscode-yaml",
+        "ZainChen.json",
+        // General utilities
+        "esbenp.prettier-vscode",
+        "GitHub.vscode-pull-request-github",
+        "streetsidesoftware.code-spell-checker",
+        "pomdtr.excalidraw-editor"
+      ],
+      "settings": {
+        // Deno as the default TypeScript/JavaScript language server
+        "deno.enable": true,
+        "deno.lint": true,
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "denoland.vscode-deno",
+        "[typescript]": {
+          "editor.defaultFormatter": "denoland.vscode-deno"
+        },
+        "[javascript]": {
+          "editor.defaultFormatter": "denoland.vscode-deno"
+        },
+
+        // Terminal shell
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "roo-cline.qdrantUrl": "http://qdrant:6333",
+        "roo-cline.embeddingProvider": "openai-compatible",
+        "roo-cline.embeddingBaseUrl": "http://host.docker.internal:1234/v1",
+        "roo-cline.embeddingModel": "text-embedding-nomic-embed-text-v2-moe",
+        "roo-cline.embeddingDimension": 768
+      }
+    }
+  },
+
+  "forwardPorts": [3000, 6333, 6334, 8080],
+  "portsAttributes": {
+    "3000": {
+      "label": "MCP Server",
+      "onAutoForward": "notify"
+    },
+    "6333": {
+      "label": "Qdrant HTTP API",
+      "onAutoForward": "silent"
+    },
+    "6334": {
+      "label": "Qdrant gRPC",
+      "onAutoForward": "silent"
+    },
+    "8080": {
+      "label": "SearXNG",
+      "onAutoForward": "silent"
+    }
+  },
+
+  // Make uv (and uv-managed Python) available in all subsequent terminal sessions.
+  // uv installs to ~/.local/bin; we prepend it here so shells pick it up without sourcing .bashrc.
+  "remoteEnv": {
+    "PATH": "${containerEnv:PATH}:/home/vscode/.local/bin",
+    "QDRANT_URL": "http://vectordb:6333",
+    "QDRANT_GRPC_URL": "http://vectordb:6334",
+    "MEMPALACE_USER_NAME": "hoonsubin",
+    "MEMPALACE_USER_EMAIL": "mail@hoon.kim",
+    "MEMPALACE_WING": "github-projects-mcp-server"
+  },
+
+  // 1. Install uv (official installer) + Python 3.12 managed by uv
+  // 2. Install mempalace for AI memory tooling
+  // 3. Cache Deno dependencies declared in deno.json
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "remoteUser": "vscode"
+}
