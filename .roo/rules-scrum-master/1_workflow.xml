@@ -25,7 +25,7 @@
         - `vocabulary.dod`       — Definition of Done checklist from config
         - `vocabulary.team`      — team roster with roles and platform identities
         - `platform_state`       — active sprint, iteration IDs, field IDs (never expose to user)
-        - `config.autonomy`      — `require_confirmation_above_n_items` threshold
+        - `vocabulary.autonomy.require_confirmation_above_n_items` — confirmation threshold
         - `missing_options`      — vocabulary gaps on the board
       </details>
     </step>
@@ -46,7 +46,9 @@
         If `platform_state` shows an active sprint, check immediately — without being asked:
 
         - Blocked items with no logged impediment →
-            call `scrum_log_impediment` for each; report what was auto-logged.
+            first call `scrum_get_backlog` with `labels: ["impediment"]` to load open impediments.
+            Only call `scrum_log_impediment` for blocked stories with no matching open entry in that result.
+            Report what was auto-logged.
         - Sprint with no goal set →
             surface before engaging with any ceremony request.
         - Carry-over risk: remaining days <= `config.sprint.carry_over_threshold_days`
@@ -110,6 +112,9 @@
         <step>Confirm Sprint Goal with user — no item selection proceeds without an agreed goal</step>
         <step>Call `scrum_plan_sprint` with selected story IDs and the agreed goal (optional)</step>
         <step>Call `scrum_get_template` for the sprint_planning artifact when a ceremony record is needed</step>
+        <step>Fill in the blank sections with session data. Post the completed document to GitHub Discussions
+              under `ceremony_records.discussion_category` from config using `execute_command`
+              (`gh discussion create --title "..." --body "..." --category "..."`)</step>
       </tool_sequence>
       <sm_moves>
         <move trigger="no Sprint Goal drafted">
@@ -139,6 +144,10 @@
         <step>Compute progress toward Sprint Goal: (Done SP + In-Review SP) / total committed SP</step>
         <step>Flag carry-over risk if days remaining ≤ `config.sprint.carry_over_threshold_days`
               and remaining work is material</step>
+        <step>Call `scrum_get_template` for the daily_standup artifact</step>
+        <step>Fill in the blank sections with session data. Post the completed document to GitHub Discussions
+              under `ceremony_records.discussion_category` from config using `execute_command`
+              (`gh discussion create --title "..." --body "..." --category "..."`)</step>
       </tool_sequence>
       <standup_questions>
         <question>What did I complete that moved the Sprint Goal?</question>
@@ -169,6 +178,10 @@
         <step>Call `scrum_update_story` to add acceptance criteria or estimates where agreed</step>
         <step>Call `scrum_add_vocabulary` if new labels or field options are needed</step>
         <step>Call `scrum_set_field` to adjust priority where the PO has confirmed changes</step>
+        <step>Call `scrum_get_template` for the backlog_refinement artifact when refinement changes are recorded</step>
+        <step>Fill in the blank sections with session data. Post the completed document to GitHub Discussions
+              under `ceremony_records.discussion_category` from config using `execute_command`
+              (`gh discussion create --title "..." --body "..." --category "..."`)</step>
       </tool_sequence>
       <sm_moves>
         <move trigger="item unchanged for 2 sprints">
@@ -194,6 +207,9 @@
         <step>Separate items into Done vs. not-Done using the `terminal: true` status key from orient vocabulary</step>
         <step>Call `scrum_get_template` for the sprint_review artifact when a ceremony record is needed</step>
         <step>Draft the review: Goal achieved?, Done items, carry-over items, stakeholder feedback, backlog changes</step>
+        <step>Fill in the blank sections with session data. Post the completed document to GitHub Discussions
+              under `ceremony_records.discussion_category` from config using `execute_command`
+              (`gh discussion create --title "..." --body "..." --category "..."`)</step>
       </tool_sequence>
       <sm_moves>
         <move trigger="not-Done item about to be presented">
@@ -217,6 +233,9 @@
         <step>Surface the previous sprint's retro commitment and whether it was followed through</step>
         <step>Call `scrum_get_template` for the retrospective artifact when a ceremony record is needed</step>
         <step>Draft the retro document: gathered observations, insights, exactly one committed improvement</step>
+        <step>Fill in the blank sections with session data. Post the completed document to GitHub Discussions
+              under `ceremony_records.discussion_category` from config using `execute_command`
+              (`gh discussion create --title "..." --body "..." --category "..."`)</step>
       </tool_sequence>
       <sm_moves>
         <move trigger="team proposes multiple improvement actions">

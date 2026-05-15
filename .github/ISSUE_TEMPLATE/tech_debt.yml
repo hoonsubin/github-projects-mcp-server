@@ -1,0 +1,122 @@
+name: 🧹 Tech Debt
+description: Refactoring, cleanup, or architectural improvement that doesn't change external behaviour.
+title: "[Tech Debt]: "
+labels: ["tech_debt"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for **technical debt** items — refactors, code health improvements,
+        dependency upgrades, or architectural clean-up. These items belong on the backlog
+        alongside stories and should be estimated and prioritised like any other work.
+
+  - type: checkboxes
+    id: duplicate-check
+    attributes:
+      label: Pre-submission check
+      options:
+        - label: I have searched existing issues and this debt item is not already tracked.
+          required: true
+
+  # ── Problem ───────────────────────────────────────────────────────────────────
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What is the current state that needs to change? Be specific — name files, functions, or patterns.
+      placeholder: |
+        `backend.ts` is ~1 200 lines. The `BurndownCalculator` internal service references
+        methods that don't exist on it, causing compile errors when the file is touched.
+    validations:
+      required: true
+
+  - type: textarea
+    id: root-cause
+    attributes:
+      label: Root cause
+      description: Why did this debt accumulate? (design drift, rushed delivery, changing requirements, etc.)
+      placeholder: Phase F.1 created internal service stubs but never completed the delegation — original private methods were left in backend.ts.
+    validations:
+      required: true
+
+  # ── Scope ─────────────────────────────────────────────────────────────────────
+
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Affected architectural layer
+      description: Where does the change primarily land?
+      options:
+        - Domain layer (src/domain/)
+        - Use-case layer (src/scrum/)
+        - GitHub adapter (src/adapters/github/)
+        - Services (src/services/)
+        - Tool registrations (src/tools/)
+        - Schemas (src/schemas/)
+        - Composition root (src/index.ts)
+        - Agent mode (.roo/)
+        - Build / CI / tooling
+        - Multiple layers
+    validations:
+      required: true
+
+  - type: textarea
+    id: risk
+    attributes:
+      label: Risk if deferred
+      description: What gets worse the longer this waits? (reliability, velocity, correctness, security)
+      placeholder: Every touch to `backend.ts` risks introducing regressions. New contributors cannot follow the intended clean-architecture pattern.
+    validations:
+      required: true
+
+  # ── Solution ──────────────────────────────────────────────────────────────────
+
+  - type: textarea
+    id: approach
+    attributes:
+      label: Proposed approach
+      description: How should this be fixed? Outline the key steps or design decisions.
+      placeholder: |
+        1. Make `GitHubProjectBackend` a pure Facade — zero logic, all delegation.
+        2. Inject services via constructor (DIP).
+        3. Delete all original private methods after delegation is wired.
+    validations:
+      required: true
+
+  - type: textarea
+    id: done-criteria
+    attributes:
+      label: Done criteria
+      description: How will we know this debt is fully resolved? (tests pass, file size, no `any` types, etc.)
+      placeholder: |
+        - [ ] `deno check src/` passes with zero errors
+        - [ ] `backend.ts` is < 200 lines (facade only)
+        - [ ] No `any` casts in service constructors
+        - [ ] Existing tool contract tests still pass
+    validations:
+      required: true
+
+  # ── Scrum metadata ────────────────────────────────────────────────────────────
+
+  - type: dropdown
+    id: story-points
+    attributes:
+      label: Story Point Estimate
+      options:
+        - "?"
+        - "1"
+        - "2"
+        - "3"
+        - "5"
+        - "8"
+        - "13"
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional context / related issues
+    validations:
+      required: false

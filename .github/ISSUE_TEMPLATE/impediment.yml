@@ -1,0 +1,104 @@
+name: 🚧 Impediment
+description: Something blocking the team's progress. Maps directly to scrum_log_impediment.
+title: "[Impediment]: "
+labels: ["impediment"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to **raise an impediment** — any blocker that the team cannot resolve
+        within a single Daily Scrum and that requires Scrum Master action or escalation.
+
+        Impediments are first-class artifacts in this project. They have their own lifecycle
+        (`open → in_progress → resolved`) and can be linked to a story, a sprint, or left as a
+        project-level orphan via `scrum_log_impediment`.
+
+  # ── Description ──────────────────────────────────────────────────────────────
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Impediment description
+      description: What is blocking progress? Be specific and factual — no diagnosis needed yet.
+      placeholder: The GitHub Projects v2 GraphQL API returns a 403 for all `updateProjectV2ItemFieldValue` mutations on the staging token, even though the token has `project` scope.
+    validations:
+      required: true
+
+  # ── Impact ────────────────────────────────────────────────────────────────────
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - "Blocker – sprint goal is at risk, no workaround"
+        - "Significant – multiple stories affected, workaround is costly"
+        - "Minor – single story affected, workaround exists"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-is-blocked
+    attributes:
+      label: What is blocked?
+      description: |
+        List the story IDs, sprint name, or workflow area that cannot proceed.
+        Use `#issue-number` to link stories.
+      placeholder: |
+        - #88 (scrum_set_field write path)
+        - #91 (scrum_plan_sprint)
+        - Current sprint goal: "Complete write tool surface"
+    validations:
+      required: true
+
+  # ── Context ───────────────────────────────────────────────────────────────────
+
+  - type: textarea
+    id: discovered-when
+    attributes:
+      label: When / how was this discovered?
+      description: Sprint event, commit, test run, or manual test that surfaced the blocker.
+      placeholder: Discovered during Sprint 3 Day 2 standup while running integration tests against the staging GitHub org.
+    validations:
+      required: false
+
+  - type: textarea
+    id: attempted
+    attributes:
+      label: What has already been tried?
+      description: Avoid duplicating effort — list what was attempted and why it didn't work.
+      placeholder: |
+        - Regenerated the token with `project`, `repo`, and `admin:org` scopes — same 403.
+        - Checked GitHub status page — no ongoing incident.
+    validations:
+      required: false
+
+  # ── Resolution ────────────────────────────────────────────────────────────────
+
+  - type: textarea
+    id: resolution-path
+    attributes:
+      label: Proposed resolution path
+      description: Who needs to act, and what is the first concrete step?
+      placeholder: |
+        1. SM to escalate to GitHub Support with the exact mutation and token hash.
+        2. In parallel: team unblocks #88 by stubbing the mutation in tests so development can continue.
+        3. Close impediment once token grants the mutation successfully in CI.
+    validations:
+      required: false
+
+  - type: input
+    id: raised-by
+    attributes:
+      label: Raised by
+      description: GitHub username of the person raising this impediment.
+      placeholder: "@hoonkim"
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional context / links
+    validations:
+      required: false

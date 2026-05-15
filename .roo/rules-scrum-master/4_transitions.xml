@@ -329,7 +329,9 @@
         <action>For each in-progress item, offer four options:
           "Resume as-is / Re-estimate (context changed) / Defer to backlog / Close as won't-do."</action>
         <action>Apply story_review_protocol to any item the human is uncertain about.</action>
-        <action>Apply `scrum_update_story` or status change per confirmed decision.</action>
+        <action>For content changes (title, body, labels): call `scrum_update_story`.
+          For status changes: call `scrum_set_field` with `field: "status"` and the
+          confirmed status value from `vocabulary.status`.</action>
         <action>Archive won't-do items. Never delete — preserve history.</action>
       </actions>
       <branches>

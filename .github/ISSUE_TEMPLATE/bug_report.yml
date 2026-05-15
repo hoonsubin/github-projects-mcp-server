@@ -1,0 +1,123 @@
+name: 🐛 Bug Report
+description: Something isn't working correctly in the MCP server or agent behaviour.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for **defects** — unexpected behaviour, incorrect tool responses, or
+        contract violations in the `scrum_*` tool surface.
+
+  - type: checkboxes
+    id: duplicate-check
+    attributes:
+      label: Pre-submission check
+      options:
+        - label: I have searched existing issues and this bug is not already reported.
+          required: true
+
+  # ── What happened ─────────────────────────────────────────────────────────────
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What should have happened?
+      placeholder: "`scrum_get_story` should return the impediments array for the given story."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What actually happened? Paste error messages or incorrect output here.
+      placeholder: The tool returns an empty `impediments` array even when impediments exist.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps or MCP call sequence needed to trigger the bug.
+      placeholder: |
+        1. Call `scrum_log_impediment` with `affects.story = "STORY-12"`
+        2. Call `scrum_get_story` with the same story ID
+        3. Observe `impediments` is `[]`
+    validations:
+      required: true
+
+  # ── Affected surface ──────────────────────────────────────────────────────────
+
+  - type: dropdown
+    id: affected-tool
+    attributes:
+      label: Affected MCP tool
+      description: Which `scrum_*` tool exhibits the wrong behaviour? Select all that apply.
+      multiple: true
+      options:
+        - scrum_orient
+        - scrum_get_sprint
+        - scrum_get_backlog
+        - scrum_get_story
+        - scrum_get_history
+        - scrum_get_burndown
+        - scrum_get_template
+        - scrum_create_story
+        - scrum_update_story
+        - scrum_set_field
+        - scrum_plan_sprint
+        - scrum_log_impediment
+        - scrum_update_impediment
+        - scrum_add_vocabulary
+        - Agent behaviour (not a specific tool)
+        - Other / unknown
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - "Blocker – prevents core Scrum workflow"
+        - "Major – incorrect output, workaround exists"
+        - "Minor – cosmetic or edge-case issue"
+    validations:
+      required: true
+
+  # ── Environment ───────────────────────────────────────────────────────────────
+
+  - type: input
+    id: server-version
+    attributes:
+      label: Server version / commit SHA
+      placeholder: "e.g. main@a1b2c3d or v0.4.0"
+    validations:
+      required: false
+
+  - type: input
+    id: deno-version
+    attributes:
+      label: Deno version
+      placeholder: "e.g. 2.3.1 — run `deno --version`"
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Paste stderr / MCP debug logs. Automatically rendered as code.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional context
+    validations:
+      required: false
