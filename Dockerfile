@@ -5,13 +5,12 @@ WORKDIR /app
 COPY deno.json ./
 COPY deno.lock ./
 COPY src ./src
+COPY .github ./.github
 
 RUN deno install && chown -R deno:deno /app
 
 # Non-root user for security
 USER deno
-
-ENV PORT=3000
 
 EXPOSE 3000
 
