@@ -47,16 +47,17 @@ const SprintRefSchema = z
       'NOTE: "all" is only meaningful for scrum_get_sprint; other tools resolve it to null.',
   );
 
-// The five board fields the agent can write via scrum_set_field. Fixed set for v1.
+// The six board fields the agent can write via scrum_set_field.
 const ScrumFieldSchema = z
-  .enum(["status", "sprint", "story_points", "priority", "assignee"])
+  .enum(["status", "sprint", "story_points", "priority", "assignee", "type"])
   .describe(
     "Board field to update. " +
       '"status" = workflow column (string display name, e.g. "In Progress"); ' +
       '"sprint" = iteration (SprintRef: "current" | "next" | "<name>" | null); ' +
       '"story_points" = effort estimate (number, e.g. 5); ' +
       '"priority" = urgency tier (string display name, e.g. "Must"); ' +
-      '"assignee" = GitHub login of the owner (string, e.g. "hoonsubin"). ' +
+      '"assignee" = GitHub login of the owner (string, e.g. "hoonsubin"); ' +
+      '"type" = story type canonical key ("feature" | "bug" | "tech_debt" | "spike"). ' +
       "Call scrum_orient to see all valid vocabulary values.",
   );
 
@@ -196,8 +197,9 @@ export const CreateStorySchema = z
       .array(z.string())
       .optional()
       .describe(
-        "Additional labels to apply. Type labels (type:feature, type:bug, etc.) are " +
-          "managed automatically — do not duplicate them here.",
+        "Additional labels to apply. Only pass labels that already exist in the repository — " +
+          "check platform_state.labels.existing from scrum_orient first. " +
+          "Story type is set via the Type board field, not a label.",
       ),
     epic: z
       .string()
@@ -271,7 +273,8 @@ export const SetFieldSchema = z
           'sprint → "current" | "next" | "<sprint-name>" | null; ' +
           "story_points → number (e.g. 3, 5, 8); " +
           'priority → string display name (e.g. "Must", "Should"); ' +
-          'assignee → GitHub login string (e.g. "hoonsubin"). ' +
+          'assignee → GitHub login string (e.g. "hoonsubin"); ' +
+          'type → canonical key string ("feature" | "bug" | "tech_debt" | "spike"). ' +
           "Pass null for any field to clear the value entirely.",
       ),
   })

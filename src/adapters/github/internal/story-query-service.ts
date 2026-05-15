@@ -17,7 +17,11 @@ import {
   type IssueDetailsInput,
   toSprintInfo,
 } from "../mappers.ts";
-import { GET_DRAFT_ISSUE_DETAILS_QUERY, GET_ISSUE_DETAILS_QUERY, GET_ITEM_FIELDS_QUERY } from "../queries.ts";
+import {
+  GET_DRAFT_ISSUE_DETAILS_QUERY,
+  GET_ISSUE_DETAILS_QUERY,
+  GET_ITEM_FIELDS_QUERY,
+} from "../queries.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { SprintInfo, StoryDetail } from "../../../scrum/ports.ts";
 import type { ItemFieldValue, ProjectItem } from "../types.ts";

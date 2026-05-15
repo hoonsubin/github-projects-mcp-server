@@ -93,8 +93,7 @@ export class ImpedimentService {
     if (!issue) {
       throw new GitHubApiError("createIssue mutation returned no issue.", {
         code: "MUTATION_FAILED",
-        recovery:
-          "Check that your token has Issues (read/write) permission, then retry.",
+        recovery: "Check that your token has Issues (read/write) permission, then retry.",
       });
     }
 
@@ -113,8 +112,7 @@ export class ImpedimentService {
     if (!itemId) {
       throw new GitHubApiError("addProjectV2ItemById returned no item ID.", {
         code: "MUTATION_FAILED",
-        recovery:
-          "Check that your token has Projects (read/write) permission and the project " +
+        recovery: "Check that your token has Projects (read/write) permission and the project " +
           "number in configuration is correct, then retry.",
         context: { issueId: issue.id },
       });

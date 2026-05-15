@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "mcp__github-projects__scrum_get_story"
-    ]
-  }
-}

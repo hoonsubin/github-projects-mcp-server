@@ -179,6 +179,47 @@ export class FieldValueMutator {
     }
   }
 
+  /** Update the type of a project item via the Type single-select field */
+  async setFieldType(itemId: string, value: string | null): Promise<void> {
+    const fieldId = this.config.fields.typeFieldId;
+    if (!fieldId) {
+      throw new GitHubApiError("Type field is not configured in this project.", {
+        code: "FIELD_NOT_CONFIGURED",
+        statusCode: 400,
+        recovery:
+          'Add a single-select field and set its name under field_mapping.item_type in config.yml, ' +
+          "then re-run the server so config-loader can pick it up.",
+      });
+    }
+    if (value === null) {
+      await this.clearField(itemId, fieldId);
+      return;
+    }
+    const optionId = this.config.typeOptions[value];
+    if (!optionId) {
+      throw new GitHubApiError(
+        `Type option "${value}" is not in the project vocabulary.`,
+        {
+          code: "OPTION_NOT_FOUND",
+          statusCode: 400,
+          recovery:
+            `The canonical type "${value}" has no matching option in the Type field. ` +
+            "Check that type_display in config.yml maps this key to a valid GitHub option name.",
+          context: { field: "type", value, knownOptions: Object.keys(this.config.typeOptions) },
+        },
+      );
+    }
+    await this.gh.graphql<{ updateProjectV2ItemFieldValue: { projectV2Item: { id: string } } }>(
+      `mutation SetFieldType($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+        updateProjectV2ItemFieldValue(input: {
+          projectId: $projectId, itemId: $itemId, fieldId: $fieldId,
+          value: { singleSelectOptionId: $optionId }
+        }) { projectV2Item { id } }
+      }`,
+      { projectId: this.config.projectId, itemId, fieldId, optionId },
+    );
+  }
+
   /** Update the assignee of a GitHub issue */
   async setFieldAssignee(issueId: string, value: string | null): Promise<void> {
     if (value === null) {

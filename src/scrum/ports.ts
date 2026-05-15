@@ -289,7 +289,7 @@ export interface ProjectWriter {
   updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void>;
   setField(
     ref: StoryRef,
-    field: "status" | "sprint" | "story_points" | "priority" | "assignee",
+    field: "status" | "sprint" | "story_points" | "priority" | "assignee" | "type",
     value: string | number | SprintRef | null,
   ): Promise<void>;
   addComment(ref: StoryRef, body: string): Promise<void>;

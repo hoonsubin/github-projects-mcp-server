@@ -2,12 +2,7 @@
 // src/tools/scrum-write.ts — Register all scrum_* write tools + deprecated github_graphql
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type {
-  CreateStoryInput,
-  ImpedimentListing,
-  ProjectBackend,
-  StoryUpdates,
-} from "../scrum/ports.ts";
+import type { CreateStoryInput, ProjectBackend, StoryUpdates } from "../scrum/ports.ts";
 import type { Story, StoryRef } from "../domain/types.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 import {
@@ -106,19 +101,20 @@ export function registerScrumWriteTools(
       title: "Set Board Field",
       description:
         `Set a single board field on a story. The primary write primitive — use this to move
-        stories across the board, assign sprints, set points, and update priority or assignee.
+        stories across the board, assign sprints, set points, update priority, assignee, or type.
 
         Call scrum_get_story first if you need to read the current value before overwriting.
 
         Args:
-          ref    { number: integer } | { id: string } — story to update
-          field  one of: "status" | "sprint" | "story_points" | "priority" | "assignee"
+          ref    { id: string } — story to update (Story.ref.id from any read tool)
+          field  one of: "status" | "sprint" | "story_points" | "priority" | "assignee" | "type"
           value  shape depends on field:
                    status        → string display name (e.g. "In Progress", "Done")
                    sprint        → "current" | "next" | "<sprint-name>" | null  (null clears)
                    story_points  → number (e.g. 3, 5, 8)
                    priority      → string display name (e.g. "Must", "Should")
                    assignee      → GitHub login string (e.g. "hoonsubin")
+                   type          → canonical key: "feature" | "bug" | "tech_debt" | "spike"
                  Pass null for any field to clear the value entirely.
 
         Returns: updated Story object.`,
@@ -209,19 +205,21 @@ export function registerScrumWriteTools(
     {
       title: "Create Story",
       description:
-        `Create a new story (GitHub Issue) and optionally place it on the board in one call.
+        `Create a new story on the project board and optionally assign it to a sprint in one call.
 
-        Board fields (sprint, story_points, priority) are applied after creation. If a board
-        field fails, the story is still created — check the 'partialFailure' field in the response.
+        Stories are created as Draft Issues first. If labels or an epic are supplied the draft is
+        automatically promoted to a full Issue so those fields can be applied — this is transparent
+        to the caller. Board fields (type, priority, sprint, story_points) are applied after creation;
+        if a board field fails the story is still created — check 'partialFailure' in the response.
 
         Args:
           title        string (required) — concise one-sentence title
           body         string (required) — full markdown body; use user-story format + AC checklist
-          type         "feature" | "bug" | "tech_debt" | "spike"
+          type         "feature" | "bug" | "tech_debt" | "spike" — set via the Type board field
                        NOTE: for impediments use scrum_log_impediment, not type:"impediment"
           priority     string — vocabulary display name (e.g. "Must"); call scrum_orient for valid values
           story_points number — Fibonacci estimate (1, 2, 3, 5, 8, 13)
-          labels       string[] — additional labels; type labels are added automatically
+          labels       string[] — must already exist; check platform_state.labels.existing from scrum_orient
           epic         string — Milestone title; created if not found
           assignees    string[] — GitHub logins
           sprint       "current" | "next" | "<sprint-name>" — places on board; omit for backlog
