@@ -15,19 +15,17 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        // Deno language server — required for this project
         "denoland.vscode-deno",
-        // RooCode AI assistant
-        "rooveterinaryinc.roo-cline",
         "ms-azuretools.vscode-docker",
         "mikestead.dotenv",
         "redhat.vscode-yaml",
         "ZainChen.json",
-        // General utilities
         "esbenp.prettier-vscode",
         "GitHub.vscode-pull-request-github",
         "streetsidesoftware.code-spell-checker",
-        "pomdtr.excalidraw-editor"
+        "pomdtr.excalidraw-editor",
+        "vstirbu.vscode-mermaid-preview",
+        "RooVeterinaryInc.roo-cline"
       ],
       "settings": {
         // Deno as the default TypeScript/JavaScript language server
