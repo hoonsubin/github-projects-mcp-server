@@ -14,10 +14,7 @@ export PATH="$HOME/.local/bin:$PATH"
 
 uv tool install mempalace
 
-mempalace init /workspace
-
-# --- MemPalace: index workspace, respecting .gitignore ---
-mempalace sync /workspace
+mempalace init .
 
 pi install npm:mempalace-pi
 

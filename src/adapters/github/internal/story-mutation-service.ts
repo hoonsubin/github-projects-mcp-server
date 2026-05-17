@@ -97,35 +97,7 @@ export class StoryMutationService {
     // stays on the board) but promotes the underlying content to a real Issue,
     // enabling label and milestone mutations via updateIssue.
     if (needsFullIssue) {
-      const repositoryId = await this.labelResolver.fetchRepoNodeId();
-
-      const convertResult = await this.gh.graphql<{
-        convertProjectV2DraftIssueItemToIssue?: {
-          item?: { content?: { __typename: string; id: string } };
-        };
-      }>(
-        `mutation ConvertDraftIssue($projectId: ID!, $itemId: ID!, $repositoryId: ID!) {
-          convertProjectV2DraftIssueItemToIssue(input: {
-            projectId: $projectId, itemId: $itemId, repositoryId: $repositoryId
-          }) { item { content { __typename ... on Issue { id } } } }
-        }`,
-        { projectId: this.config.projectId, itemId, repositoryId },
-      );
-
-      const content = convertResult.convertProjectV2DraftIssueItemToIssue?.item?.content;
-      if (!content || content.__typename !== "Issue") {
-        throw new GitHubApiError(
-          "convertProjectV2DraftIssueItemToIssue did not return an Issue.",
-          {
-            code: "MUTATION_FAILED",
-            recovery:
-              "Check that your token has Issues (read/write) and Projects (read/write) permissions, " +
-              "then retry. If the error persists, verify the repository is not archived.",
-            context: { itemId },
-          },
-        );
-      }
-      const issueId = content.id;
+      const issueId = await this.convertDraftToIssue(itemId);
 
       // Apply labels via updateIssue (replaces entire label set).
       if (hasLabels) {
@@ -133,7 +105,7 @@ export class StoryMutationService {
         if (labelIds.length > 0) {
           await this.gh.graphql(
             `mutation SetLabels($issueId: ID!, $labelIds: [ID!]!) {
-              updateIssue(input: { issueId: $issueId, labelIds: $labelIds }) { issue { id } }
+              updateIssue(input: { id: $issueId, labelIds: $labelIds }) { issue { id } }
             }`,
             { issueId, labelIds },
           );
@@ -147,7 +119,7 @@ export class StoryMutationService {
         );
         await this.gh.graphql(
           `mutation SetMilestone($issueId: ID!, $milestoneId: ID!) {
-            updateIssue(input: { issueId: $issueId, milestoneId: $milestoneId }) { issue { id } }
+            updateIssue(input: { id: $issueId, milestoneId: $milestoneId }) { issue { id } }
           }`,
           { issueId, milestoneId },
         );
@@ -159,42 +131,37 @@ export class StoryMutationService {
 
   async updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void> {
     const resolved = await resolveStory(ref, this.gh);
-    if (!resolved.issueId) {
-      throw new GitHubApiError(
-        `Story "${ref.id}" is a Draft Issue — title, body, labels, assignees, and epic cannot be edited.`,
-        {
-          code: "DRAFT_ISSUE_CONSTRAINT",
-          statusCode: 422,
-          recovery: "Convert the Draft Issue to a real Issue in GitHub, then retry the update.",
-          context: { itemId: ref.id },
-        },
-      );
-    }
-    const issueId = resolved.issueId;
+    const issueId = resolved.issueId ?? await this.convertDraftToIssue(resolved.itemId);
 
     const parts: string[] = [];
+    const varDecls: string[] = ["$issueId: ID!"];
     const variables: Record<string, unknown> = { issueId };
 
     if (updates.title !== undefined) {
       parts.push("title: $title");
+      varDecls.push("$title: String");
       variables.title = updates.title;
     }
     if (updates.body !== undefined) {
       parts.push("body: $body");
+      varDecls.push("$body: String");
       variables.body = updates.body;
     }
     if (updates.labels !== undefined && updates.labels.length > 0) {
       parts.push("labelIds: $labelIds");
+      varDecls.push("$labelIds: [ID!]");
       variables.labelIds = await this.labelResolver.resolveLabelNodeIds(updates.labels);
     }
     if (updates.assignees !== undefined && updates.assignees.length > 0) {
       parts.push("assigneeIds: $assigneeIds");
+      varDecls.push("$assigneeIds: [ID!]");
       variables.assigneeIds = await this.userMilestoneResolver.resolveUserNodeIds(
         updates.assignees,
       );
     }
     if (updates.epic !== undefined) {
       parts.push("milestoneId: $milestoneId");
+      varDecls.push("$milestoneId: ID");
       variables.milestoneId = updates.epic === null
         ? null
         : await this.userMilestoneResolver.resolveOrCreateMilestoneNodeId(updates.epic);
@@ -203,11 +170,8 @@ export class StoryMutationService {
     if (parts.length === 0) return;
 
     const mutation = `
-      mutation UpdateIssue(
-        $issueId: ID!, $title: String, $body: String,
-        $labelIds: [ID!], $assigneeIds: [ID!], $milestoneId: ID
-      ) {
-        updateIssue(input: { issueId: $issueId, ${parts.join(", ")} }) { issue { id } }
+      mutation UpdateIssue(${varDecls.join(", ")}) {
+        updateIssue(input: { id: $issueId, ${parts.join(", ")} }) { issue { id } }
       }
     `;
     await this.gh.graphql(mutation, variables);
@@ -233,20 +197,10 @@ export class StoryMutationService {
       case "type":
         // Type is a project board field — works on both draft and full issues.
         return this.fieldValueMutator.setFieldType(itemId, value as string | null);
-      case "assignee":
-        if (!resolved.issueId) {
-          throw new GitHubApiError(
-            `Story "${ref.id}" is a Draft Issue — assignee cannot be set via scrum_set_field. ` +
-              "Assignees are set at creation time via scrum_create_story.",
-            {
-              code: "DRAFT_ISSUE_CONSTRAINT",
-              statusCode: 422,
-              recovery: "Convert the Draft Issue to a real Issue in GitHub, then retry.",
-              context: { itemId: ref.id, field: "assignee" },
-            },
-          );
-        }
-        return this.fieldValueMutator.setFieldAssignee(resolved.issueId, value as string | null);
+      case "assignee": {
+        const assigneeIssueId = resolved.issueId ?? await this.convertDraftToIssue(resolved.itemId);
+        return this.fieldValueMutator.setFieldAssignee(assigneeIssueId, value as string | null);
+      }
       default:
         throw new Error(`Unknown field: ${field}`);
     }
@@ -254,20 +208,54 @@ export class StoryMutationService {
 
   async addComment(ref: StoryRef, body: string): Promise<void> {
     const resolved = await resolveStory(ref, this.gh);
-    if (resolved.issueNumber === null) {
+
+    if (resolved.issueNumber !== null) {
+      await this.gh.rest(
+        `repos/${this.owner}/${this.repo}/issues/${resolved.issueNumber}/comments`,
+        { method: "POST", body: { body } },
+      );
+      return;
+    }
+
+    // Draft Issue — auto-convert then post via GraphQL (issue number not yet known).
+    const issueId = await this.convertDraftToIssue(resolved.itemId);
+    await this.gh.graphql(
+      `mutation AddComment($subjectId: ID!, $body: String!) {
+        addComment(input: { subjectId: $subjectId, body: $body }) {
+          commentEdge { node { id } }
+        }
+      }`,
+      { subjectId: issueId, body },
+    );
+  }
+
+  private async convertDraftToIssue(itemId: string): Promise<string> {
+    const repositoryId = await this.labelResolver.fetchRepoNodeId();
+    const result = await this.gh.graphql<{
+      convertProjectV2DraftIssueItemToIssue?: {
+        item?: { content?: { __typename: string; id: string } };
+      };
+    }>(
+      `mutation ConvertDraftIssue($itemId: ID!, $repositoryId: ID!) {
+        convertProjectV2DraftIssueItemToIssue(input: {
+          itemId: $itemId, repositoryId: $repositoryId
+        }) { item { content { __typename ... on Issue { id } } } }
+      }`,
+      { itemId, repositoryId },
+    );
+    const content = result.convertProjectV2DraftIssueItemToIssue?.item?.content;
+    if (!content || content.__typename !== "Issue") {
       throw new GitHubApiError(
-        `Story "${ref.id}" is a Draft Issue — comments can only be added to real Issues.`,
+        "Failed to auto-convert Draft Issue to a real Issue.",
         {
-          code: "DRAFT_ISSUE_CONSTRAINT",
-          statusCode: 422,
-          recovery: "Convert the Draft Issue to a real Issue in GitHub, then retry.",
-          context: { itemId: ref.id },
+          code: "MUTATION_FAILED",
+          recovery:
+            "Check that your token has Issues (read/write) and Projects (read/write) permissions, " +
+            "then retry. If the error persists, verify the repository is not archived.",
+          context: { itemId },
         },
       );
     }
-    await this.gh.rest(
-      `repos/${this.owner}/${this.repo}/issues/${resolved.issueNumber}/comments`,
-      { method: "POST", body: { body } },
-    );
+    return content.id;
   }
 }

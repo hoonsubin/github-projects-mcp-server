@@ -2,6 +2,12 @@
   "recommendations": [
     "rooveterinaryinc.roo-cline",
     "pomdtr.excalidraw-editor",
-    "bierner.markdown-mermaid"
+    "mermaidchart.vscode-mermaid-chart",
+    "vstirbu.vscode-mermaid-preview",
+    "aaron-bond.better-comments",
+    "leodevbro.blockman",
+    "graphql.vscode-graphql-syntax",
+    "wayou.vscode-todo-highlight",
+    "anthropic.claude-code"
   ]
 }

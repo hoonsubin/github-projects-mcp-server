@@ -1,8 +1,14 @@
 // =============================================================================
-// src/index.ts — Entry point
+// src/index.ts — Composition root and transport entry point
 //
-// After Story B (Phase 5): constructs GitHubProjectBackend and wires it to
-// tool registration. The backend is the only concretion index.ts knows about.
+// Responsibilities:
+//   - Choose which backend to build and call its factory
+//   - Wire the backend to tool registration
+//   - Set up MCP transports (stdio and HTTP)
+//   - Install cross-cutting observability (tool logging, transport tracing)
+//
+// This file imports no adapter internals — backend construction lives in
+// src/adapters/github/factory.ts, behind a single factory call.
 // =============================================================================
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -17,24 +23,9 @@ import type { JSONRPCMessage, MessageExtraInfo } from "@modelcontextprotocol/sdk
 import express, { type Request, type Response } from "express";
 import { registerScrumReadTools } from "./tools/scrum-read.ts";
 import { registerScrumWriteTools } from "./tools/scrum-write.ts";
-import { loadConfig } from "./adapters/github/config-loader.ts";
-import { GitHubProjectBackend } from "./adapters/github/backend.ts";
-import { graphql, rest } from "./adapters/github/internal/http-client.ts";
-import { LabelResolver } from "./adapters/github/internal/label-resolver.ts";
-import { UserMilestoneResolver } from "./adapters/github/internal/user-milestone-resolver.ts";
-import { FieldValueMutator } from "./adapters/github/internal/field-value-mutator.ts";
-import { BurndownCalculator } from "./adapters/github/internal/burndown-calculator.ts";
-import { SprintHistoryService } from "./adapters/github/internal/sprint-history-service.ts";
-import { VocabularyManager } from "./adapters/github/internal/vocabulary-manager.ts";
-import { StoryQueryService } from "./adapters/github/internal/story-query-service.ts";
-import { StoryMutationService } from "./adapters/github/internal/story-mutation-service.ts";
-import { ImpedimentService } from "./adapters/github/internal/impediment-service.ts";
-import { ConfigReloader } from "./adapters/github/internal/config-reloader.ts";
+import { createGitHubProjectBackend } from "./adapters/github/factory.ts";
 import { log } from "./services/logger.ts";
 import type { Socket } from "node:net";
-import type { ProjectBackend } from "./scrum/ports.ts";
-import type { GitHubBackendConfig } from "./adapters/github/types.ts";
-import type { ScrumConfig } from "./domain/config.ts";
 
 // ── Tool-call interceptor ────────────────────────────────────────────────────
 //
@@ -105,71 +96,6 @@ const wrapTransportLogging = (transport: Transport, label: string): void => {
   };
 };
 
-// ── Backend factory ──────────────────────────────────────────────────────────
-
-const createBackend = async (): Promise<{ backend: ProjectBackend; scrumConfig: ScrumConfig }> => {
-  const config = await loadConfig({ github: { graphql } });
-  const gh = config.scrumConfig.backends.github as GitHubBackendConfig;
-  const ghClient = { graphql, rest };
-  const primaryRepo = gh.tracked_repos[0]; // multi-repo support is future work
-
-  // Build services in dependency order (DIP: composition root owns construction)
-  const labelResolver = new LabelResolver(config, ghClient, gh.owner, primaryRepo);
-  const userMilestoneResolver = new UserMilestoneResolver(
-    ghClient,
-    gh.owner,
-    primaryRepo,
-    labelResolver,
-  );
-  const fieldValueMutator = new FieldValueMutator(config, ghClient, userMilestoneResolver);
-  const burndownCalculator = new BurndownCalculator(config, ghClient, gh.owner, primaryRepo);
-  const sprintHistoryService = new SprintHistoryService(config, ghClient, gh.owner, primaryRepo);
-  const vocabularyManager = new VocabularyManager(
-    config,
-    ghClient,
-    labelResolver,
-    gh.owner,
-    primaryRepo,
-  );
-  const storyQueryService = new StoryQueryService(config, ghClient, gh.owner, primaryRepo);
-  const storyMutationService = new StoryMutationService(
-    config,
-    ghClient,
-    gh.owner,
-    primaryRepo,
-    labelResolver,
-    userMilestoneResolver,
-    fieldValueMutator,
-  );
-  const impedimentService = new ImpedimentService(
-    config,
-    ghClient,
-    gh.owner,
-    primaryRepo,
-    labelResolver,
-    fieldValueMutator,
-  );
-
-  const configReloader = new ConfigReloader(config, ghClient);
-
-  const backend = new GitHubProjectBackend(
-    labelResolver,
-    userMilestoneResolver,
-    fieldValueMutator,
-    burndownCalculator,
-    sprintHistoryService,
-    vocabularyManager,
-    storyQueryService,
-    storyMutationService,
-    impedimentService,
-    config,
-    gh.owner,
-    primaryRepo,
-    configReloader,
-  );
-  return { backend, scrumConfig: config.scrumConfig };
-};
-
 // ── Server factory ───────────────────────────────────────────────────────────
 
 const createMcpServer = async (): Promise<McpServer> => {
@@ -180,7 +106,7 @@ const createMcpServer = async (): Promise<McpServer> => {
 
   patchToolLogging(server);
 
-  const { backend, scrumConfig } = await createBackend();
+  const { backend, scrumConfig } = await createGitHubProjectBackend();
   registerScrumReadTools(server, backend, scrumConfig);
   registerScrumWriteTools(server, backend, scrumConfig);
 

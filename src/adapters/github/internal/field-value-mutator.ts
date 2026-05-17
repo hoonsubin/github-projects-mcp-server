@@ -225,7 +225,7 @@ export class FieldValueMutator {
       // Clear all assignees
       await this.gh.graphql<{ updateIssue: { issue: { id: string } } }>(
         `mutation ClearAssignees($issueId: ID!) {
-          updateIssue(input: { issueId: $issueId, assigneeIds: [] }) { issue { id } }
+          updateIssue(input: { id: $issueId, assigneeIds: [] }) { issue { id } }
         }`,
         { issueId },
       );
@@ -235,7 +235,7 @@ export class FieldValueMutator {
     const userId = await this.userMilestoneResolver.resolveUserNodeId(value);
     await this.gh.graphql<{ updateIssue: { issue: { id: string } } }>(
       `mutation SetAssignee($issueId: ID!, $userId: ID!) {
-        updateIssue(input: { issueId: $issueId, assigneeIds: [$userId] }) { issue { id } }
+        updateIssue(input: { id: $issueId, assigneeIds: [$userId] }) { issue { id } }
       }`,
       { issueId, userId },
     );
