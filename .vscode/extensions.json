@@ -1,13 +1,12 @@
 {
   "recommendations": [
     "rooveterinaryinc.roo-cline",
-    "pomdtr.excalidraw-editor",
-    "mermaidchart.vscode-mermaid-chart",
-    "vstirbu.vscode-mermaid-preview",
     "aaron-bond.better-comments",
     "leodevbro.blockman",
     "graphql.vscode-graphql-syntax",
     "wayou.vscode-todo-highlight",
-    "anthropic.claude-code"
+    "anthropic.claude-code",
+    "corschenzi.mermaid-graphical-editor",
+    "streetsidesoftware.code-spell-checker"
   ]
 }

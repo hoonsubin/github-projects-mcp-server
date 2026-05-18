@@ -1,18 +1,13 @@
 # AGENT.md
 
-Guidance for coding agents working in this repository. Concise by design — see linked documents for depth.
+Project guidance for all coding agents. Concise by design — linked docs provide depth.
 
 ## Reference Documents
 
-- `README.md`: Project vision, domain model, tool surface design, interaction patterns.
-- `skill/scrum-master-agent/SKILL.md`: Agentic Scrum prompts and ceremony playbooks.
-
-## Context & Tool Rules
-
-- **Read:** Max 500 lines/op; use offset/limit for large files. Max 2 ref files active at once.
-- **Tasks:** On high context noise, break into tasks → `tasks/TODO.md`. Remove outdated entries when done.
-- **Skills:** Check `.roo/skills/` first; load skill file before any large doc.
-- **Search:** `searxng_*` tool to search the web. `mempalance_*` tool or command to perform a semantic search of the project. Never assume. Think, search, confirm, before response.
+- `README.md` — Project vision, domain model, tool surface design.
+- `tasks/TODO.md` — Active work items.
+- `tasks/REFACTORING.md` — Ongoing refactor plan.
+- `docs/proj-diagram.md` — Current module dependency diagram.
 
 ## Architecture
 
@@ -44,36 +39,24 @@ flowchart TD
   AD -.->|implements Dependency Inversion| PB
 ```
 
-- **Entry:** `src/index.ts` — bootstraps McpServer, registers tools, selects transport
-- **Refactor plan:** `tasks/REFACTORING.md`
-- **Active tasks:** `tasks/TODO.md`
-- **Current proj modules:** `docs/proj-diagram.md`
+- **Entry:** `src/index.ts` — bootstraps McpServer, registers tools, selects transport.
 
 ## Code Style
 
-- Imports: Full relative paths with `.ts`; no bare specifiers.
-- Naming: `PascalCase` types · `camelCase` functions/vars · `UPPER_SNAKE_CASE` constants.
-- Functions: Arrow only — `const fn = (arg: Type): Return => {}`.
-- Errors: Throw `GitHubApiError`; handlers return structured text via format helper.
-- Zod: Always `.strict()`.
-- Types: Avoid using concrete types (ex: `{ name: "name", val: 5 }`).
-- Lint: Always ensure the linting test passes.
+- **Imports:** Full relative paths with `.ts` extension; no bare specifiers for local modules.
+- **Naming:** `PascalCase` types · `camelCase` functions/vars · `UPPER_SNAKE_CASE` constants.
+- **Functions:** Arrow only — `const fn = (arg: Type): Return => {}`.
+- **Errors:** Throw `GitHubApiError`; handlers return structured text via format helper.
+- **Zod:** Always `.strict()` on object schemas.
+- **Types:** No inline concrete types; define named types.
+- **Lint:** `deno lint` must pass before marking any task complete.
 
-## Commonly Used Commands
+## Commands
 
 ```bash
-# semantic search the project codebase
-mempalace search "your search string"
-
-# lint check
-deno lint
-
-# unit test
-deno test
-
-# code format check
-deno fmt --check
-
-# generate module dependency report
-deno tast diagram-gen
+mempalance search "your search string"  # semantic codebase search
+deno lint                                # lint
+deno test                                # unit tests
+deno fmt --check                         # format check
+deno task diagram-gen                    # regenerate module dependency report
 ```
