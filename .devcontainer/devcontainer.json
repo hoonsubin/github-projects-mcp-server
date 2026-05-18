@@ -25,7 +25,10 @@
         "streetsidesoftware.code-spell-checker",
         "pomdtr.excalidraw-editor",
         "vstirbu.vscode-mermaid-preview",
-        "RooVeterinaryInc.roo-cline"
+        "RooVeterinaryInc.roo-cline",
+        "GraphQL.vscode-graphql-syntax",
+        "bierner.markdown-mermaid",
+        "ms-azuretools.vscode-containers"
       ],
       "settings": {
         // Deno as the default TypeScript/JavaScript language server
