@@ -1,8 +1,10 @@
-# GitHub Projects v2 MCP Server
+# The Scrum Master's MCP Toolkit
 
-A local [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for operating on **GitHub Projects v2** via the GitHub GraphQL and REST APIs. Designed to serve as the action layer for LLM agents performing autonomous Scrum project management — sprint planning, backlog refinement, history analysis, and ceremony facilitation — without leaving the GitHub Projects ecosystem.
+A local [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that enables AI agents to manage Scrum teams using scrum language.
 
-The tool surface is **backend-agnostic**: tool names, arguments, and return shapes are defined in Scrum vocabulary. Adding a Trello, Notion, or Linear backend requires replacing only the implementations behind the tools; the agent skill and human workflows remain unchanged.
+This project is designed to serve as the abstraction layer for LLM agents performing autonomous Scrum project management — sprint planning, backlog refinement, history analysis, and ceremony facilitation. Currently optimized for GitHub Projects ecosystem.
+
+The tool surface aims to become **backend-agnostic**: tool names, arguments, and return shapes are defined in Scrum vocabulary. Adding a Trello, Notion, or Linear backend requires replacing only the implementations behind the tools; the agent skill and human workflows remain unchanged.
 
 Supports two transports: **stdio** (Claude Desktop / Claude Code / LM Studio) and **Streamable HTTP** (Open WebUI / Docker / homelab).
 
@@ -299,8 +301,6 @@ USER_STORY }o--o{ REVIEW_FEEDBACK : "triggered by"
 
 SPRINT_REPORT }o--|| MEMBER : "authored by"
 ```
-
-This project provides the tools for an LLM to act as a Scrum Master assistant within the GitHub ecosystem, removing the need for complex dedicated PM tooling.
 
 It is designed to be used with the [scrum-master skill](.roo/skills/scrum-master/SKILL.md) as the orchestration layer.
 
