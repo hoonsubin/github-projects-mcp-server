@@ -47,13 +47,15 @@
 				"GITHUB_PERSONAL_ACCESS_TOKEN": "${env:GITHUB_TOKEN}"
 			},
 			"alwaysAllow": [
-				"pull_request_read"
-			]
+				"pull_request_read",
+				"issue_read"
+			],
+			"disabled": true
 		},
 		"mempalace": {
 			"command": "mempalace-mcp",
 			"args": [],
-			"disabled": true,
+			"disabled": false,
 			"alwaysAllow": []
 		},
 		"sequentialthinking": {

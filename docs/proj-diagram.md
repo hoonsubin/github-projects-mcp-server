@@ -165,6 +165,9 @@ classDiagram
                 +toSprintInfo()
                 +buildBurndownStoryInput()
             }
+            class config-reloader.ts:::internal {
+                class ConfigReloader
+            }
             class burndown-calculator.ts:::internal {
                 class BurndownCalculator
             }
@@ -212,6 +215,11 @@ classDiagram
             }
             class impediment-service.ts:::internal {
                 class ImpedimentService
+            }
+            class factory.ts:::github {
+                interface GitHubBackendResult
+                +createGitHubProjectBackend()
+                %% Unused: GitHubBackendResult
             }
             class types.ts:::github {
                 interface GitHubBackendConfig
@@ -293,6 +301,8 @@ classDiagram
     mappers.ts --> config-loader.ts : "imports"
     mappers.ts --> types.ts : "imports"
     mappers.ts --> ports.ts : "imports"
+    config-reloader.ts --> config-loader.ts : "imports"
+    config-reloader.ts --> http-client.ts : "imports"
     burndown-calculator.ts --> http-client.ts : "imports"
     burndown-calculator.ts --> pagination.ts : "imports"
     burndown-calculator.ts --> mappers.ts : "imports"
@@ -361,6 +371,22 @@ classDiagram
     impediment-service.ts --> config-loader.ts : "imports"
     impediment-service.ts --> ports.ts : "imports"
     impediment-service.ts --> types.ts : "imports"
+    factory.ts --> config-loader.ts : "imports"
+    factory.ts --> backend.ts : "imports"
+    factory.ts --> http-client.ts : "imports"
+    factory.ts --> burndown-calculator.ts : "imports"
+    factory.ts --> config-reloader.ts : "imports"
+    factory.ts --> field-value-mutator.ts : "imports"
+    factory.ts --> impediment-service.ts : "imports"
+    factory.ts --> label-resolver.ts : "imports"
+    factory.ts --> sprint-history-service.ts : "imports"
+    factory.ts --> story-mutation-service.ts : "imports"
+    factory.ts --> story-query-service.ts : "imports"
+    factory.ts --> user-milestone-resolver.ts : "imports"
+    factory.ts --> vocabulary-manager.ts : "imports"
+    factory.ts --> types.ts : "imports"
+    factory.ts --> ports.ts : "imports"
+    factory.ts --> config.ts : "imports"
     config-loader.ts --> types.ts : "imports"
     config-loader.ts --> config.ts : "imports"
     backend.ts --> contents.ts : "imports"
@@ -374,27 +400,14 @@ classDiagram
     backend.ts --> story-query-service.ts : "imports"
     backend.ts --> story-mutation-service.ts : "imports"
     backend.ts --> impediment-service.ts : "imports"
+    backend.ts --> config-reloader.ts : "imports"
     backend.ts --> mappers.ts : "imports"
     backend.ts --> ports.ts : "imports"
     backend.ts --> types.ts : "imports"
     index.ts --> scrum-read.ts : "imports"
     index.ts --> scrum-write.ts : "imports"
-    index.ts --> config-loader.ts : "imports"
-    index.ts --> backend.ts : "imports"
-    index.ts --> http-client.ts : "imports"
-    index.ts --> label-resolver.ts : "imports"
-    index.ts --> user-milestone-resolver.ts : "imports"
-    index.ts --> field-value-mutator.ts : "imports"
-    index.ts --> burndown-calculator.ts : "imports"
-    index.ts --> sprint-history-service.ts : "imports"
-    index.ts --> vocabulary-manager.ts : "imports"
-    index.ts --> story-query-service.ts : "imports"
-    index.ts --> story-mutation-service.ts : "imports"
-    index.ts --> impediment-service.ts : "imports"
+    index.ts --> factory.ts : "imports"
     index.ts --> logger.ts : "imports"
-    index.ts --> ports.ts : "imports"
-    index.ts --> types.ts : "imports"
-    index.ts --> config.ts : "imports"
 
     classDef scrum fill:#f9f,stroke:#333,stroke-width:2px,color:#000;
     classDef tools fill:#ccf,stroke:#333,stroke-width:2px,color:#000;
@@ -424,6 +437,7 @@ The following exports are never imported by any other module in the codebase:
 | [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `GitHubApiErrorParams`    | `interface` |
 | [`./src/adapters/github/internal/label-resolver.ts`](../src/adapters/github/internal/label-resolver.ts) | `GitHubLabel`             | `interface` |
 | [`./src/adapters/github/internal/http-client.ts`](../src/adapters/github/internal/http-client.ts)       | `RestResponse`            | `interface` |
+| [`./src/adapters/github/factory.ts`](../src/adapters/github/factory.ts)                                 | `GitHubBackendResult`     | `interface` |
 | [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `ImpedimentRef`           | `interface` |
 
 ## Notes

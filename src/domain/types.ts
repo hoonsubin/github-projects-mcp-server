@@ -19,6 +19,7 @@ export interface StoryRef {
   id: string; // opaque project-item handle returned by any read tool
 }
 
+// todo: need to handle epics as first-class object
 /**
  * A reference to an impediment (spike story tagged 'impediment').
  * On GitHub: id is the GitHub Issue node ID (I_...), not the project item ID.
