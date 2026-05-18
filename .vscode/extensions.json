@@ -1,8 +1,6 @@
 {
   "recommendations": [
     "rooveterinaryinc.roo-cline",
-    "mermaidchart.vscode-mermaid-chart",
-    "vstirbu.vscode-mermaid-preview",
     "aaron-bond.better-comments",
     "leodevbro.blockman",
     "graphql.vscode-graphql-syntax",

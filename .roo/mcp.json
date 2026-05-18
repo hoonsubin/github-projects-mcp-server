@@ -17,7 +17,10 @@
 				"scrum_get_story",
 				"scrum_get_burndown"
 			],
-			"timeout": 300
+			"timeout": 300,
+			"disabledTools": [
+				"github_graphql"
+			]
 		},
 		"memory": {
 			"command": "npx",
