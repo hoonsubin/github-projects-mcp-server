@@ -36,7 +36,7 @@
 				"search_nodes",
 				"open_nodes"
 			],
-			"disabled": false
+			"disabled": true
 		},
 		"github": {
 			"command": "github-mcp-server",
@@ -45,12 +45,15 @@
 			],
 			"env": {
 				"GITHUB_PERSONAL_ACCESS_TOKEN": "${env:GITHUB_TOKEN}"
-			}
+			},
+			"alwaysAllow": [
+				"pull_request_read"
+			]
 		},
 		"mempalace": {
 			"command": "mempalace-mcp",
 			"args": [],
-			"disabled": false,
+			"disabled": true,
 			"alwaysAllow": []
 		},
 		"sequentialthinking": {
@@ -75,7 +78,8 @@
 			"alwaysAllow": [
 				"searxng_web_search",
 				"web_url_read"
-			]
+			],
+			"disabled": false
 		}
 	}
 }
