@@ -353,24 +353,24 @@ This section defines the public MCP interface — the tools an LLM agent can cal
 
 The surface is governed by six rules. Any change that violates one is a breaking change.
 
-| # | Rule | Principle |
-|---|---|---|
-| 1 | **Scrum vocabulary only** | No tool name, argument, or return field references the underlying platform (no `github_*`, no `issue_id`, no `node_id`). The agent speaks Scrum; the backend translates. |
-| 2 | **Backend-agnostic shapes** | Inputs and outputs are described in domain terms (`Story`, `Sprint`, `SprintRef`, `ScrumField`). Adding a Notion, Trello, or Linear backend must require zero changes to this section. If a tool description cannot be implemented without a GitHub-specific concept, the tool does not belong in this surface. |
-| 3 | **Stateless server, per-call resolution** | No tool depends on context cached between calls. Each tool resolves any names → backend IDs at the moment of invocation. The agent may call any tool in any order without a setup step. |
-| 4 | **Atomic at the tool boundary, not below** | A single tool call performs one logically complete Scrum operation. The agent may need multiple calls for a workflow (e.g., create a story, then assign it to a sprint), but each call either succeeds end-to-end or fails cleanly. |
-| 5 | **The MCP is amoral** | It does not enforce Definition of Ready, Definition of Done, sprint-injection policy, or any other Scrum judgement. Those live in the agent skill. If the agent asks the MCP to assign an unrefined item to a sprint, the MCP complies. The skill is responsible for not asking. |
+| # | Rule                                       | Principle                                                                                                                                                                                                                                                                                                                                           |
+| - | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 | **Scrum vocabulary only**                  | No tool name, argument, or return field references the underlying platform (no `github_*`, no `issue_id`, no `node_id`). The agent speaks Scrum; the backend translates.                                                                                                                                                                            |
+| 2 | **Backend-agnostic shapes**                | Inputs and outputs are described in domain terms (`Story`, `Sprint`, `SprintRef`, `ScrumField`). Adding a Notion, Trello, or Linear backend must require zero changes to this section. If a tool description cannot be implemented without a GitHub-specific concept, the tool does not belong in this surface.                                     |
+| 3 | **Stateless server, per-call resolution**  | No tool depends on context cached between calls. Each tool resolves any names → backend IDs at the moment of invocation. The agent may call any tool in any order without a setup step.                                                                                                                                                             |
+| 4 | **Atomic at the tool boundary, not below** | A single tool call performs one logically complete Scrum operation. The agent may need multiple calls for a workflow (e.g., create a story, then assign it to a sprint), but each call either succeeds end-to-end or fails cleanly.                                                                                                                 |
+| 5 | **The MCP is amoral**                      | It does not enforce Definition of Ready, Definition of Done, sprint-injection policy, or any other Scrum judgement. Those live in the agent skill. If the agent asks the MCP to assign an unrefined item to a sprint, the MCP complies. The skill is responsible for not asking.                                                                    |
 | 6 | **Artifact reads, not insight derivation** | Read tools expose the state of Scrum artifacts. They do not pre-compute reports, metrics, or recommendations. Velocity, burndown, throughput, predictability, and all other derived insights are **agent capabilities** — the agent reasons over raw artifact data to produce them. The server returns observable facts; the agent interprets them. |
 
 ### Tool surface layers
 
 The fourteen tools in this surface occupy three distinct conceptual layers. Understanding the layers is the fastest way to see why a proposed new tool does or does not belong here.
 
-| Layer | Tools | Returns | Does not |
-|---|---|---|---|
-| **1 — Artifact readers** | `scrum_orient`, `scrum_get_sprint`, `scrum_get_backlog`, `scrum_get_story`, `scrum_get_template` | Current state of a Scrum primitive — platform state, vocabulary, sprint snapshots, story detail, or a custom template file. Makes no assumptions about what the agent does with the data. | Pre-compute metrics, apply or interpret templates, return full story bodies from listing calls. |
-| **2 — Artifact mutators** | `scrum_create_story`, `scrum_update_story`, `scrum_set_field`, `scrum_plan_sprint`, `scrum_log_impediment`, `scrum_update_impediment`, `scrum_add_vocabulary` | The updated artifact after each mutation. Each call is one complete Scrum operation. `scrum_add_vocabulary` mutates the platform schema rather than a story, but belongs here because the agent calls it autonomously in response to a vocabulary gap. | Validate DoR/DoD, check capacity, enforce Scrum rules — those belong to the agent skill. |
-| **3 — History & burndown** | `scrum_get_history`, `scrum_get_burndown` | Raw data spanning time: completed-sprint snapshots and the day-by-day burndown series for one sprint. The agent derives all insights (velocity trends, throughput, predictability) from this data. | Pre-select which metric matters, project future velocity, return current-sprint data. |
+| Layer                      | Tools                                                                                                                                                         | Returns                                                                                                                                                                                                                                                | Does not                                                                                        |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| **1 — Artifact readers**   | `scrum_orient`, `scrum_get_sprint`, `scrum_get_backlog`, `scrum_get_story`, `scrum_get_template`                                                              | Current state of a Scrum primitive — platform state, vocabulary, sprint snapshots, story detail, or a custom template file. Makes no assumptions about what the agent does with the data.                                                              | Pre-compute metrics, apply or interpret templates, return full story bodies from listing calls. |
+| **2 — Artifact mutators**  | `scrum_create_story`, `scrum_update_story`, `scrum_set_field`, `scrum_plan_sprint`, `scrum_log_impediment`, `scrum_update_impediment`, `scrum_add_vocabulary` | The updated artifact after each mutation. Each call is one complete Scrum operation. `scrum_add_vocabulary` mutates the platform schema rather than a story, but belongs here because the agent calls it autonomously in response to a vocabulary gap. | Validate DoR/DoD, check capacity, enforce Scrum rules — those belong to the agent skill.        |
+| **3 — History & burndown** | `scrum_get_history`, `scrum_get_burndown`                                                                                                                     | Raw data spanning time: completed-sprint snapshots and the day-by-day burndown series for one sprint. The agent derives all insights (velocity trends, throughput, predictability) from this data.                                                     | Pre-select which metric matters, project future velocity, return current-sprint data.           |
 
 Ceremony records (standup logs, retro entries, review feedback) are **not** a layer of this surface. They are documents the agent produces and stores in the team's chosen ceremony backend — a file, a wiki page, a discussion thread — outside the MCP's scope. Attaching ceremony records to individual stories as comments is an anti-pattern: it pollutes the story audit trail and breaks when the backend changes.
 
@@ -844,24 +844,24 @@ sequenceDiagram
 
 The table below maps every common question or decision to its owner. Anyone tempted to "just add a tool" for an agent or MCP cell should treat that impulse as a signal the boundary has slipped.
 
-| Question / Decision | Owner | Notes |
-|---|---|---|
-| What is the actual content of this work? | **Human** | Opaque labels like "solution b" must be described concretely before a Story can be drafted. |
-| Who is the user role for this story? | **Human** | "Players" vs. "new players on mobile" is a human judgement. |
-| What are the acceptance criteria? | **Human** | What does success look like, in measurable terms? |
-| What are the estimates and time-boxes? | **Human** | Team members provide these during planning; the agent records them. |
-| Mid-sprint scope decisions | **Human** | Inject into current sprint or queue for next, and if injecting, what to drop. |
-| What is the Sprint Goal? | **Human** | A sentence the team commits to. The agent can suggest; it cannot decide. |
-| Retro commitments | **Human** | Exactly one improvement per sprint, owned by the team. |
-| Approval to write | **Human** | Required for any change above the configured autonomy level. |
-| Is this Story ready? | **Agent** | Reads `scrum_get_story` and applies its own DoR check. |
-| Should we inject this into the current sprint? | **Agent** | Reads sprint state and capacity, then coaches the human. |
-| What's a good Sprint Goal for this work? | **Agent** | Synthesises backlog context and sprint history; proposes to human for approval. |
-| Who should own this? | **Agent** | Knows the team roster from `scrum_orient`; reasons over workload context. |
-| Is this estimate realistic? | **Agent** | Compares against velocity and story complexity from `scrum_get_history`. |
-| What is our velocity? | **Agent** | Computes from `scrum_get_history` data. |
-| Was the last retro commitment honoured? | **Agent** | Cross-references retro notes and story history. |
-| Why has this Story been blocked for three days? | **Agent** | Reads impediments via `scrum_get_story` and surfaces analysis to human. |
+| Question / Decision                             | Owner     | Notes                                                                                       |
+| ----------------------------------------------- | --------- | ------------------------------------------------------------------------------------------- |
+| What is the actual content of this work?        | **Human** | Opaque labels like "solution b" must be described concretely before a Story can be drafted. |
+| Who is the user role for this story?            | **Human** | "Players" vs. "new players on mobile" is a human judgement.                                 |
+| What are the acceptance criteria?               | **Human** | What does success look like, in measurable terms?                                           |
+| What are the estimates and time-boxes?          | **Human** | Team members provide these during planning; the agent records them.                         |
+| Mid-sprint scope decisions                      | **Human** | Inject into current sprint or queue for next, and if injecting, what to drop.               |
+| What is the Sprint Goal?                        | **Human** | A sentence the team commits to. The agent can suggest; it cannot decide.                    |
+| Retro commitments                               | **Human** | Exactly one improvement per sprint, owned by the team.                                      |
+| Approval to write                               | **Human** | Required for any change above the configured autonomy level.                                |
+| Is this Story ready?                            | **Agent** | Reads `scrum_get_story` and applies its own DoR check.                                      |
+| Should we inject this into the current sprint?  | **Agent** | Reads sprint state and capacity, then coaches the human.                                    |
+| What's a good Sprint Goal for this work?        | **Agent** | Synthesises backlog context and sprint history; proposes to human for approval.             |
+| Who should own this?                            | **Agent** | Knows the team roster from `scrum_orient`; reasons over workload context.                   |
+| Is this estimate realistic?                     | **Agent** | Compares against velocity and story complexity from `scrum_get_history`.                    |
+| What is our velocity?                           | **Agent** | Computes from `scrum_get_history` data.                                                     |
+| Was the last retro commitment honoured?         | **Agent** | Cross-references retro notes and story history.                                             |
+| Why has this Story been blocked for three days? | **Agent** | Reads impediments via `scrum_get_story` and surfaces analysis to human.                     |
 
 ### Canonical example: mid-sprint UX research request
 
@@ -888,10 +888,10 @@ Every other workflow this server supports — sprint planning, daily standup, sp
 
 The reason this division matters: the system survives change in three independent dimensions.
 
-| Dimension | What changes | What stays fixed |
-|---|---|---|
-| **Backend** | Adapter implementation — swap GitHub for Notion or Trello by replacing one directory. | Tool surface, agent skill, Scrum vocabulary, human workflows. |
-| **Skill** | Skill file — improve coaching, add ceremony formats, support new derived insights. | MCP server, tool surface, no release required. |
-| **Domain** | Backend field + `config.yml` declaration — new fields (e.g. a "confidence" rating) are added to the backend and read from Story body or `scrum_orient`. | Tool surface does not grow. |
+| Dimension   | What changes                                                                                                                                            | What stays fixed                                              |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| **Backend** | Adapter implementation — swap GitHub for Notion or Trello by replacing one directory.                                                                   | Tool surface, agent skill, Scrum vocabulary, human workflows. |
+| **Skill**   | Skill file — improve coaching, add ceremony formats, support new derived insights.                                                                      | MCP server, tool surface, no release required.                |
+| **Domain**  | Backend field + `config.yml` declaration — new fields (e.g. a "confidence" rating) are added to the backend and read from Story body or `scrum_orient`. | Tool surface does not grow.                                   |
 
 The fourteen tools are the contract. Everything else is a moving part.

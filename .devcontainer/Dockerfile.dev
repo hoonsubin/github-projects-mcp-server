@@ -10,6 +10,19 @@ RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
     && rm -rf /var/lib/apt/lists/* \
     && node --version && npm --version
 
+# install github mcp server
+RUN curl -L https://github.com/github/github-mcp-server/releases/latest/download/github-mcp-server_Linux_x86_64.tar.gz \
+  | tar -xz -C /usr/local/bin github-mcp-server
+
+# ── install excalidraw MCP server ─────────────────────────────────────────────
+RUN MCPB_TMP=$(mktemp -d) \
+ && curl -fsSL https://github.com/excalidraw/excalidraw-mcp/releases/download/v0.3.2/excalidraw-mcp-app.mcpb \
+      -o "$MCPB_TMP/excalidraw-mcp.zip" \
+ && unzip "$MCPB_TMP/excalidraw-mcp.zip" -d /opt/excalidraw-mcp \
+ && cd /opt/excalidraw-mcp \
+ && npm install --omit=dev --ignore-scripts 2>/dev/null || true \
+ && rm -rf "$MCPB_TMP"
+
 # ── 4. vscode user ────────────────────────────────────────────────────────────
 ARG USERNAME=vscode
 ARG USER_UID=1000
