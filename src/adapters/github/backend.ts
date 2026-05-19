@@ -128,7 +128,7 @@ export class GitHubProjectBackend implements ProjectBackend {
 
   getSprintStories(
     sprint: SprintRef,
-  ): Promise<{ stories: Story[]; sprintInfo: SprintInfo | null }> {
+  ): Promise<{ stories: Story[]; sprintInfo: SprintInfo }> {
     return this.storyQueryService.getSprintStories(sprint);
   }
 

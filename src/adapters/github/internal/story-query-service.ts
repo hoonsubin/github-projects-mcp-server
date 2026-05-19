@@ -6,6 +6,7 @@
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
+import { SprintNotScheduledError } from "../../../domain/errors.ts";
 import type { GitHubClient } from "./http-client.ts";
 import { isBacklogItem, PaginatedProjectItemFetcher } from "./pagination.ts";
 import { resolveSprint, resolveStory } from "./resolver.ts";
@@ -84,12 +85,22 @@ export class StoryQueryService {
 
   async getSprintStories(
     sprint: SprintRef,
-  ): Promise<{ stories: Story[]; sprintInfo: SprintInfo | null }> {
+  ): Promise<{ stories: Story[]; sprintInfo: SprintInfo }> {
     const iterationId = resolveSprint(sprint, this.config);
     if (iterationId === null) {
-      return { stories: [], sprintInfo: null };
+      throw new SprintNotScheduledError(
+        "current",
+        "getSprintStories called with a null sprint ref — guard the null case before calling this method.",
+      );
     }
     const iterEntry = this.config.iterations.all.find((i) => i.id === iterationId);
+    const sprintInfo = toSprintInfo(iterEntry ?? null);
+    if (!sprintInfo) {
+      throw new SprintNotScheduledError(
+        "current",
+        `Iteration ${iterationId} resolved from config but not found in iterations list.`,
+      );
+    }
     const allItems = await this.fetchAllItems();
     const sprintItems = allItems.filter((item) => {
       const fv = item.fieldValues.nodes.find(
@@ -100,7 +111,7 @@ export class StoryQueryService {
     const stories = sprintItems
       .map((item) => buildStoryFromRaw(item, this.config))
       .filter((s): s is Story => s !== null);
-    return { stories, sprintInfo: toSprintInfo(iterEntry ?? null) };
+    return { stories, sprintInfo };
   }
 
   async getBacklogStories(): Promise<Story[]> {

@@ -5,7 +5,7 @@
 // =============================================================================
 
 import type { RuntimeConfig } from "./config-loader.ts";
-import type { IterationEntry, Story } from "../../domain/types.ts";
+import type { DraftStory, IssueStory, IterationEntry, Story } from "../../domain/types.ts";
 import type { BurndownStoryInput, SprintInfo } from "../../scrum/ports.ts";
 // classifyLabels / StoryTypeLabel removed — type is now read from the Type board field,
 // not from repo labels. See extractBoardFields → typeFieldId branch below.
@@ -116,7 +116,8 @@ export const buildStoryFromRaw = (
   if (content.__typename === "DraftIssue") {
     // assignees is absent when includeDraftIssueContent: false — skip this item
     if (!content.assignees) return null;
-    return {
+    const draft: DraftStory = {
+      kind: "draft",
       ref: { id: item.id },
       key: null,
       title: content.title,
@@ -133,6 +134,7 @@ export const buildStoryFromRaw = (
       updated_at: item.updatedAt,
       url: null,
     };
+    return draft;
   }
 
   // ── Issue / PullRequest branch ──────────────────────────────────────────────
@@ -144,7 +146,8 @@ export const buildStoryFromRaw = (
   const labels = content.labels.nodes.map((l) => l.name);
   const epic = content.__typename === "Issue" ? content.milestone?.title ?? null : null;
 
-  return {
+  const issue: IssueStory = {
+    kind: "issue",
     ref: { id: item.id },
     key: content.number.toString(),
     title: content.title,
@@ -161,6 +164,7 @@ export const buildStoryFromRaw = (
     updated_at: item.updatedAt,
     url: content.url,
   };
+  return issue;
 };
 
 /**
@@ -172,13 +176,14 @@ export const buildEnrichedStory = (
   itemId: string,
   fieldValueNodes: FieldValueNode[],
   config: RuntimeConfig,
-): Story => {
+): IssueStory => {
   const boardFields = extractBoardFields(fieldValueNodes, config.fields);
   // Type comes from the Type board field — not from labels.
   // All repo labels are passed through unfiltered.
   const labels = issueNode.labels?.nodes.map((l) => l.name) ?? [];
 
   return {
+    kind: "issue",
     ref: { id: itemId },
     key: issueNode.number.toString(),
     title: issueNode.title ?? "",
@@ -193,7 +198,7 @@ export const buildEnrichedStory = (
     epic: issueNode.milestone?.title ?? null,
     created_at: issueNode.createdAt,
     updated_at: issueNode.updatedAt,
-    url: issueNode.url ?? null,
+    url: issueNode.url ?? "",
   };
 };
 

@@ -70,7 +70,7 @@ export interface BurndownStoryInput {
   title: string;
   points: number;
   status: string | null;
-  ref?: { id: string } | null;
+  ref?: { id: string };
 }
 
 /** One completed sprint's worth of data for history. */
@@ -187,7 +187,7 @@ export interface SprintSnapshot {
     start_date: string;
     end_date: string;
     duration_days: number;
-    days_remaining: number | null;
+    days_remaining: number;
   };
   items: StoryListing[];
   total_count: number;
@@ -208,12 +208,14 @@ export interface BacklogPort {
 
 /**
  * Sprint port — returns stories assigned to a specific sprint.
+ * Callers must not pass null — guard the null case before calling this.
+ * Throws SprintNotScheduledError when "current"/"next" resolves to no iteration.
  * Used by: getSprintUseCase
  */
 export interface SprintPort {
   getSprintStories(sprint: SprintRef): Promise<{
     stories: Story[];
-    sprintInfo: SprintInfo | null;
+    sprintInfo: SprintInfo;
   }>;
 }
 

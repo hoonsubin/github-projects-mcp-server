@@ -19,6 +19,8 @@ import type {
   StoryListing,
 } from "./ports.ts";
 import type { SprintRef, Story } from "../domain/types.ts";
+import { toSprintName } from "../domain/types.ts";
+import { SprintNotScheduledError } from "../domain/errors.ts";
 import { buildSprintMeta } from "./sprint-math.ts";
 
 // ── Private helpers ────────────────────────────────────────────────────────────
@@ -50,16 +52,14 @@ const buildSingleSnapshot = async (
   backend: SprintPort & ImpedimentPort,
   sprintRef: SprintRef,
 ): Promise<SprintSnapshot> => {
-  const result = await backend.getSprintStories(sprintRef);
-
-  if (!result.sprintInfo) {
+  if (sprintRef === null) {
     return {
       sprint: {
         name: "(no sprint)",
         start_date: "",
         end_date: "",
         duration_days: 0,
-        days_remaining: null, // null only for "no sprint" case
+        days_remaining: 0,
       },
       items: [],
       total_count: 0,
@@ -68,6 +68,7 @@ const buildSingleSnapshot = async (
     };
   }
 
+  const result = await backend.getSprintStories(sprintRef);
   const { name, startDate, endDate, durationDays } = result.sprintInfo;
   const items = result.stories.map(storyToListing);
 
@@ -93,8 +94,6 @@ const buildSingleSnapshot = async (
       start_date: startDate,
       end_date: endDate,
       duration_days: durationDays,
-      // buildSprintMeta returns days_remaining?: number (undefined for null iterEntry)
-      // For valid sprintInfo, it is always defined (Math.max(0, ...)).
       days_remaining: meta.days_remaining ?? 0,
     },
     items,
@@ -126,16 +125,22 @@ interface SprintAllResult {
  * "all" is intentionally excluded from SprintRef because it is a query-mode flag,
  * not a sprint reference.
  *
- * Current and next fetches use .catch(() => null) because one or both
- * may not exist (e.g. no next sprint has been scheduled yet).
+ * Current and next fetches catch SprintNotScheduledError (absent sprint is expected)
+ * but re-throw any other error so auth failures and network errors are not swallowed.
  */
 const buildAllSnapshots = async (
   backend: SprintPort & ImpedimentPort & HistoryPort,
   limit: number,
 ): Promise<SprintAllResult> => {
   const [currentResult, nextResult, historyEntries] = await Promise.all([
-    buildSingleSnapshot(backend, "current").catch(() => null),
-    buildSingleSnapshot(backend, "next").catch(() => null),
+    buildSingleSnapshot(backend, "current").catch((err) => {
+      if (err instanceof SprintNotScheduledError) return null;
+      throw err;
+    }),
+    buildSingleSnapshot(backend, "next").catch((err) => {
+      if (err instanceof SprintNotScheduledError) return null;
+      throw err;
+    }),
     backend.getCompletedSprintHistory(limit),
   ]);
 
@@ -162,7 +167,7 @@ const buildAllSnapshots = async (
       }
 
       // Fetch impediments associated with this completed sprint
-      const impediments = await backend.getSprintImpediments(entry.info.name);
+      const impediments = await backend.getSprintImpediments(toSprintName(entry.info.name));
 
       return {
         sprint: {

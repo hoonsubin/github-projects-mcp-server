@@ -10,6 +10,7 @@
 // =============================================================================
 
 import { z } from "zod";
+import { toSprintName } from "../domain/types.ts";
 
 // ── Primitive schemas (shared by multiple tools) ──────────────────────────────
 
@@ -35,7 +36,7 @@ const SprintRefSchema = z
     z.literal("next"),
     z.literal("all"),
     z.null(),
-    z.string().min(1),
+    z.string().min(1).transform(toSprintName),
   ])
   .describe(
     'Which sprint to target. "current" = the active sprint, ' +
