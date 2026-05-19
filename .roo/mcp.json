@@ -14,8 +14,7 @@
 				"scrum_get_backlog",
 				"scrum_get_history",
 				"scrum_get_burndown",
-				"scrum_orient",
-				"scrum_get_story"
+				"scrum_orient"
 			],
 			"timeout": 300,
 			"disabledTools": [

@@ -76,11 +76,19 @@ classDiagram
             class get-sprint.ts:::scrum {
                 +getSprintUseCase()
             }
+            class errors.ts:::domain {
+                +assertNever()
+                class SprintNotScheduledError
+            }
             class types.ts:::domain {
                 interface StoryRef
                 interface ImpedimentRef
+                type SprintName
+                +toSprintName()
                 type SprintRef
-                interface Story
+                interface DraftStory
+                interface IssueStory
+                type Story
                 interface IterationEntry
                 interface BurndownResponse
                 interface BurndownSprintMeta
@@ -89,7 +97,7 @@ classDiagram
                 interface BurndownStory
                 type ArtifactType
                 type TemplateResponse
-                %% Unused: ImpedimentRef
+                %% Unused: ImpedimentRef, SprintName
             }
             class acceptance-criteria.ts:::rules {
                 +parseAcceptanceCriteria()
@@ -270,10 +278,12 @@ classDiagram
     ports.ts --> types.ts : "imports"
     get-history.ts --> ports.ts : "imports"
     get-history.ts --> config.ts : "imports"
+    get-history.ts --> types.ts : "imports"
     get-history.ts --> status.ts : "imports"
     update-impediment.ts --> ports.ts : "imports"
     get-sprint.ts --> ports.ts : "imports"
     get-sprint.ts --> types.ts : "imports"
+    get-sprint.ts --> errors.ts : "imports"
     get-sprint.ts --> sprint-math.ts : "imports"
     types.ts --> github-types.ts : "imports"
     status.ts --> config.ts : "imports"
@@ -298,6 +308,7 @@ classDiagram
     scrum-write.ts --> mutation-validator.ts : "imports"
     scrum-write.ts --> error-enrichment.ts : "imports"
     scrum-write.ts --> http-client.ts : "imports"
+    scrum.ts --> types.ts : "imports"
     mappers.ts --> config-loader.ts : "imports"
     mappers.ts --> types.ts : "imports"
     mappers.ts --> ports.ts : "imports"
@@ -439,6 +450,7 @@ The following exports are never imported by any other module in the codebase:
 | [`./src/adapters/github/internal/http-client.ts`](../src/adapters/github/internal/http-client.ts)       | `RestResponse`            | `interface` |
 | [`./src/adapters/github/factory.ts`](../src/adapters/github/factory.ts)                                 | `GitHubBackendResult`     | `interface` |
 | [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `ImpedimentRef`           | `interface` |
+| [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `SprintName`              | `type`      |
 
 ## Notes
 
