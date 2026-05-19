@@ -1,6 +1,7 @@
 # Ceremony Templates
 
 Copy-paste Markdown templates for ceremonies and story-level artifacts.
+These are the minimal requirements. Adapt them into different format if required.
 Management artifacts (velocity tracker, charter, roadmap, capacity calendar) → `templates-management.md`.
 
 ---

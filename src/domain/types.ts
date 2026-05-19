@@ -19,6 +19,7 @@ export interface StoryRef {
   id: string; // opaque project-item handle returned by any read tool
 }
 
+// todo: need to handle epics as first-class object
 /**
  * A reference to an impediment (spike story tagged 'impediment').
  * On GitHub: id is the GitHub Issue node ID (I_...), not the project item ID.
@@ -29,22 +30,32 @@ export interface ImpedimentRef {
 }
 
 /**
- * A reference to a sprint.
- * Accepted forms: `"current"`, `"next"`, `null` (= no sprint, i.e., the backlog),
- * or an explicit sprint name (e.g., `"Sprint 12"`).
+ * An explicit sprint name (e.g. "Sprint 12") lifted into a branded type.
+ * Prevents arbitrary strings from being used as sprint references without
+ * going through a validated boundary (schema transform or `toSprintName`).
  */
-export type SprintRef = "current" | "next" | null | string;
+export type SprintName = string & { readonly _brand: "SprintName" };
+
+/** Cast a validated string to SprintName. Call only at system boundaries. */
+export const toSprintName = (name: string): SprintName => name as SprintName;
+
+/**
+ * A reference to a sprint.
+ * Accepted forms: `"current"`, `"next"`, `null` (= no sprint / clear),
+ * or an explicit `SprintName` (e.g. `toSprintName("Sprint 12")`).
+ * Note: `"all"` is a query-mode flag for `scrum_get_sprint` only — it is NOT
+ * part of `SprintRef` and must be handled before values enter port methods.
+ */
+export type SprintRef = "current" | "next" | null | SprintName;
 
 // ── Story entity ──────────────────────────────────────────────────────────────
 
 /**
- * The canonical Story entity returned by every read tool.
- *
- * Epic IS writable in v1 (maps to GitHub Milestone).
+ * Fields shared by every Story variant. Board fields (type, status, sprint,
+ * story_points, priority) are nullable because they may be unset on the board.
  */
-export interface Story {
+interface StoryBase {
   ref: { id: string }; // opaque project-item handle — use in subsequent tool calls
-  key: string | null; // human-readable identifier ("42", "PRO-123"); null for draft issues
   title: string;
   body: string;
   type: string | null; // canonical type key from config (e.g. "feature", "bug"); null when unset
@@ -54,11 +65,31 @@ export interface Story {
   priority: string | null; // team's vocabulary value, e.g. "Must"
   assignees: string[]; // GitHub logins
   labels: string[]; // repo labels; type is tracked via the Type board field, not labels
-  epic: string | null; // GitHub Milestone title; null if unset
   created_at: string; // ISO-8601
   updated_at: string; // ISO-8601
-  url: string | null; // canonical URL in the backend UI
 }
+
+/** A GitHub Projects draft issue — has no issue number, URL, or milestone. */
+export interface DraftStory extends StoryBase {
+  kind: "draft";
+  key: null;
+  url: null;
+  epic: null;
+}
+
+/** A real GitHub Issue (or PR) promoted to a project item. */
+export interface IssueStory extends StoryBase {
+  kind: "issue";
+  key: string; // human-readable issue number, e.g. "42"
+  url: string; // canonical URL in the backend UI
+  epic: string | null; // GitHub Milestone title; null if unset
+}
+
+/**
+ * Discriminated union of all Story variants.
+ * Narrow on `story.kind` to access variant-specific fields without null checks.
+ */
+export type Story = DraftStory | IssueStory;
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
 

@@ -6,6 +6,7 @@
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
+import { SprintNotScheduledError } from "../../../domain/errors.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { SprintRef, StoryRef } from "../../../domain/types.ts";
 
@@ -72,10 +73,10 @@ interface ItemByIdResponse {
  * Resolve a SprintRef to a GitHub iteration ID (or null to clear the sprint field).
  * Pure function — operates on the already-fetched RuntimeConfig; no network call.
  *
- * - "current" → config.iterations.active?.id — throws if no active sprint
- * - "next"    → config.iterations.next?.id   — throws with a user-readable message if none scheduled
- * - null      → returns null (caller passes this to clear/remove the sprint field on an item)
- * - string    → case-insensitive title match against config.iterations.all; throws if no match
+ * - "current"   → config.iterations.active.id — throws SprintNotScheduledError if none
+ * - "next"      → config.iterations.next.id   — throws SprintNotScheduledError if none
+ * - null        → returns null (clears the sprint field on an item)
+ * - SprintName  → case-insensitive title match against config.iterations.all; throws if no match
  */
 export const resolveSprint = (
   ref: SprintRef,
@@ -87,7 +88,8 @@ export const resolveSprint = (
 
   if (ref === "current") {
     if (!config.iterations.active) {
-      throw new Error(
+      throw new SprintNotScheduledError(
+        "current",
         "No active sprint found. There is no sprint currently running in this project. " +
           "Check the Sprint field in GitHub Projects to ensure a sprint iteration is configured.",
       );
@@ -97,7 +99,8 @@ export const resolveSprint = (
 
   if (ref === "next") {
     if (!config.iterations.next) {
-      throw new Error(
+      throw new SprintNotScheduledError(
+        "next",
         "No next sprint is scheduled. " +
           "Create a new sprint iteration in the GitHub Projects UI before assigning stories to it.",
       );
@@ -105,14 +108,7 @@ export const resolveSprint = (
     return config.iterations.next.id;
   }
 
-  // "all" is a query-mode flag for scrum_get_sprint only.
-  // For write tools, resolve to null (clear sprint assignment) to avoid
-  // accidental mutations on ambiguous input.
-  if (ref === "all") {
-    return null;
-  }
-
-  // Explicit sprint name — case-insensitive title match against all known iterations
+  // Explicit sprint name (SprintName) — case-insensitive title match against all known iterations
   const normalised = ref.toLowerCase();
   const match = config.iterations.all.find(
     (iter) => iter.title.toLowerCase() === normalised,

@@ -11,6 +11,7 @@ import type {
   StoryListing,
 } from "./ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
+import { toSprintName } from "../domain/types.ts";
 import { isTerminalStatus } from "../domain/rules/status.ts";
 
 // ── Return type ────────────────────────────────────────────────────────────────
@@ -80,7 +81,7 @@ const entryToSnapshot = async (
   );
 
   // Fetch impediments associated with this sprint
-  const impediments = await backend.getSprintImpediments(entry.info.name);
+  const impediments = await backend.getSprintImpediments(toSprintName(entry.info.name));
 
   return {
     sprint: {
@@ -88,7 +89,7 @@ const entryToSnapshot = async (
       start_date: entry.info.startDate,
       end_date: entry.info.endDate,
       duration_days: entry.info.durationDays,
-      days_remaining: null, // completed sprint — null is more accurate than 0
+      days_remaining: 0, // completed sprint
     },
     items,
     total_count: items.length,

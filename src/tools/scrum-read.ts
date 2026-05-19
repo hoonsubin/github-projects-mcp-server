@@ -90,7 +90,7 @@ export const registerScrumReadTools = (
         Returns: {
           "sprints": [
             {
-              "sprint": { "name": string, "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD", "duration_days": number, "days_remaining": null },
+              "sprint": { "name": string, "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD", "duration_days": number, "days_remaining": 0 },
               "items": [
                 { "ref": { "id": string, "key": string|null }, "title": string, "status": string|null, "story_points": number|null, "priority": null, "sprint": string|null, "writable": false }
               ],
@@ -278,7 +278,13 @@ export const registerScrumReadTools = (
     },
     async (params: z.infer<typeof GetBurndownSchema>) => {
       try {
-        const result = await getBurndownUseCase(backend, scrumConfig, params);
+        const { sprint } = params;
+        if (sprint === "all") {
+          throw new Error(
+            '"all" is not valid for scrum_get_burndown — use "current", "next", null, or an explicit sprint name.',
+          );
+        }
+        const result = await getBurndownUseCase(backend, scrumConfig, { sprint });
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
         return {

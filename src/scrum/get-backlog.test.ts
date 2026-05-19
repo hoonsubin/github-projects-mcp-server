@@ -13,12 +13,15 @@ import type { Story } from "../domain/types.ts";
 
 // ── Test fixtures ──────────────────────────────────────────────────────────────
 
-const makeStory = (overrides: Partial<Story> = {}): Story => ({
+import type { IssueStory } from "../domain/types.ts";
+
+const makeStory = (overrides: Partial<IssueStory> = {}): IssueStory => ({
+  kind: "issue",
   ref: { id: `PVTI_${Math.random().toString(36).slice(2, 8)}` },
   key: "PRO-1",
   title: "Test Story",
   body: "As a user, I want to test backlog filtering.",
-  type: "feature" as const,
+  type: "feature",
   status: "In Progress",
   sprint: null,
   story_points: 3,
@@ -86,7 +89,11 @@ const createMockBackend = (
       iterations: { active: null, next: null, completed: [], completedCount: 0 },
     }),
   reload: () => Promise.resolve(),
-  getSprintStories: () => Promise.resolve({ stories: [], sprintInfo: null }),
+  getSprintStories: () =>
+    Promise.resolve({
+      stories: [],
+      sprintInfo: { name: "", startDate: "", durationDays: 0, endDate: "" },
+    }),
   getStoryDetail: () => Promise.resolve({ story: {} as Story, comments: [], linkedPrs: [] }),
   getCompletedSprintHistory: () => Promise.resolve([]),
   getBurndownInput: () => Promise.resolve({ sprint: {} as SprintInfo, stories: [] }),

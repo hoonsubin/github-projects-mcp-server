@@ -53,7 +53,7 @@ scrum:
     length_weeks: 2
     start_day: monday # monday | tuesday | wednesday | thursday | friday
     story_point_scale: fibonacci # fibonacci | linear | tshirt (informational)
-    story_point_values: [1, 2, 3, 5, 8, 13]
+    story_point_values: [1, 2, 3, 5, 8]
     velocity_window: 4 # sprints to include when agent computes velocity
     carry_over_threshold_days: 2 # days remaining before agent flags carry-over risk
 

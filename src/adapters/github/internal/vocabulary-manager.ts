@@ -7,6 +7,7 @@
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
+import { assertNever } from "../../../domain/errors.ts";
 import { type GitHubClient } from "./http-client.ts";
 import { LabelResolver } from "./label-resolver.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
@@ -64,7 +65,7 @@ export class VocabularyManager {
       case "label":
         return await this.labelResolver.addLabel(value);
       default:
-        throw new Error(`Unknown vocabulary kind: ${kind}`);
+        return assertNever(kind);
     }
   }
 
