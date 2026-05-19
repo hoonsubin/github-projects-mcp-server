@@ -90,7 +90,10 @@ const createMockBackend = (
     }),
   reload: () => Promise.resolve(),
   getSprintStories: () =>
-    Promise.resolve({ stories: [], sprintInfo: { name: "", startDate: "", durationDays: 0, endDate: "" } }),
+    Promise.resolve({
+      stories: [],
+      sprintInfo: { name: "", startDate: "", durationDays: 0, endDate: "" },
+    }),
   getStoryDetail: () => Promise.resolve({ story: {} as Story, comments: [], linkedPrs: [] }),
   getCompletedSprintHistory: () => Promise.resolve([]),
   getBurndownInput: () => Promise.resolve({ sprint: {} as SprintInfo, stories: [] }),

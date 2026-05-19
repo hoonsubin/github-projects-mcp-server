@@ -280,7 +280,9 @@ export const registerScrumReadTools = (
       try {
         const { sprint } = params;
         if (sprint === "all") {
-          throw new Error('"all" is not valid for scrum_get_burndown — use "current", "next", null, or an explicit sprint name.');
+          throw new Error(
+            '"all" is not valid for scrum_get_burndown — use "current", "next", null, or an explicit sprint name.',
+          );
         }
         const result = await getBurndownUseCase(backend, scrumConfig, { sprint });
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };

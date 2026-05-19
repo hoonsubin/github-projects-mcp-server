@@ -340,7 +340,9 @@ export function registerScrumWriteTools(
         // Step 1: If replace: true, clear existing sprint items
         if (params.replace) {
           if (params.sprint === "all") {
-            throw new Error('"all" is not valid for plan_sprint — use "current", "next", null, or an explicit sprint name.');
+            throw new Error(
+              '"all" is not valid for plan_sprint — use "current", "next", null, or an explicit sprint name.',
+            );
           }
           const { stories: currentStories } = await backend.getSprintStories(params.sprint);
           for (const story of currentStories) {
