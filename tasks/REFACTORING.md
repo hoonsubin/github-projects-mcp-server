@@ -63,15 +63,26 @@ It is `true` if and only if the story body contains a non-empty `## Dependencies
 
 Parsing `#17` from the body yields an issue number, not a project item ID. Resolving issue numbers to project item IDs requires additional queries. The `DependencyEntry.ref.id` field is typed as `string | null` — the adapter sets it to the resolved project item ID when it can (backlog/sprint contexts where all items are already in memory), and `null` otherwise. The `key` (issue number string) is always present and is sufficient for the agent to look up the story.
 
-### D8 — `scrum_update_story` gains `blocked_by?: StoryRef[] | null`
+### D8 — `scrum_update_story` gains `blocked_by` and `blocks` write fields
 
-This replaces the full `blocked_by` list atomically (same pattern as `labels` and `assignees`). `null` clears all entries. Omitting the field leaves existing dependencies unchanged. The adapter writes by rewriting the `## Dependencies` section of the body.
+Both `blocked_by?: StoryRef[] | null` and `blocks?: StoryRef[] | null` are added symmetrically.
+Each replaces its respective direction atomically (same pattern as `labels` and `assignees`). `null`
+clears all entries in that direction; omitting the field leaves it unchanged. The adapter rewrites
+only the affected direction in the `## Dependencies` body section, preserving the other direction's
+lines. Both fields provided → rewrite both. Both `null` → remove the entire section.
 
 ---
 
 ## Implementation Phases
 
-The phases are **strictly sequential**. Each phase must leave the build green (`deno lint` passes, `deno test` passes, TypeScript compiles without errors) before the next phase begins. Each phase is designed to be executed by a single agent working in isolation.
+The phases are **strictly sequential**. Each phase must leave the build green (`deno lint` passes,
+`deno test` passes, TypeScript compiles without errors) before the next phase begins. Each phase
+is designed to be executed by a single agent working in isolation.
+
+**Exception — Phases 4 and 5 must be paired.** Phase 4 intentionally introduces TypeScript compile
+errors (required `blocked_by`/`blocks` fields without adapter implementation) that serve as a
+guided checklist for Phase 5. Do not hand off between them — treat Phases 4 and 5 as a single
+unit when assigning to agents or planning across sessions.
 
 ---
 
@@ -134,7 +145,7 @@ The phases are **strictly sequential**. Each phase must leave the build green (`
    }
    ```
 
-4. **Add dependency fields to `StoryBase`** — add two optional fields at the end of the `StoryBase` interface (optional `?` keeps this non-breaking; Phase 2 makes them required):
+4. **Add dependency fields to `StoryBase`** — add two optional fields at the end of the `StoryBase` interface (optional `?` keeps this non-breaking; Phase 4 makes them required):
 
    ```typescript
    blocked_by?: DependencyEntry[];  // stories that must be Done before this one starts
@@ -207,7 +218,9 @@ The phases are **strictly sequential**. Each phase must leave the build green (`
 - `src/domain/types.ts`
 - `src/adapters/github/types.ts`
 - `src/adapters/github/mappers.ts`
+- `src/adapters/github/internal/story-query-service.ts`
 - `src/scrum/get-backlog.ts`
+- `src/scrum/get-story.ts`
 - `src/schemas/scrum.ts` (if a Zod schema for the backlog response exists; if not, check `src/tools/scrum-read.ts` for inline schema definitions)
 - `src/tools/scrum-read.ts`
 
@@ -253,6 +266,23 @@ Two operations reference `milestone` without the `id` field. Add `id` to both:
 
 1. In the project item fragment that fetches `Issue` content (used by `GetProjectItems` or equivalent) — find `milestone { title` and change to `milestone { id title`.
 2. In `GetIssueDetails` — find `milestone { title }` and change to `milestone { id title }`.
+
+### Changes to `src/adapters/github/internal/story-query-service.ts`
+
+`GetIssueDetailsResponse` (line ~33) contains an inline `milestone` type that is separate from
+`IssueDetailsInput` in `mappers.ts`. Add `id` to this inline type to match the GraphQL change:
+
+```typescript
+// Before
+milestone?: { title: string } | null;
+
+// After
+milestone?: { id: string; title: string } | null;
+```
+
+This is in the `node` sub-shape of `GetIssueDetailsResponse`, approximately line 44. Failing to
+update this type means the `id` field is silently dropped when the GraphQL response is typed, even
+if the query correctly requests it.
 
 ### Changes to `src/adapters/github/mappers.ts`
 
@@ -338,6 +368,30 @@ In the `scrum_get_backlog` handler, pass the `epics` field from the use case res
 
 If a Zod output schema exists for this tool, add the `epics` field definition. Follow the same pattern used for `orphan_impediments`.
 
+### Changes to `src/scrum/get-story.ts`
+
+`GetStoryResult.story` is currently typed as `unknown`. Change it to `Story`:
+
+```typescript
+// Before
+interface GetStoryResult {
+  story: unknown;
+  // ...
+}
+
+// After
+import type { Story } from "../domain/types.ts";
+
+interface GetStoryResult {
+  story: Story;
+  // ...
+}
+```
+
+This is a one-line change that ensures the `blocked_by`/`blocks` fields added in Phase 4, and any
+future `Story` fields, are compiler-validated through the full use-case return path rather than
+silently typed as `unknown`.
+
 ### Verification
 
 - `deno lint` passes.
@@ -409,15 +463,23 @@ Add `getEpics(): Promise<EpicListing[]>` to `GitHubProjectBackend`. Delegate to 
 
 ## Phase 4 — Dependencies: Domain, Use Case & Tool Schema
 
-**Goal:** Make dependency fields required (not optional) on `Story`, populate them in the use case layer, expose `has_dependencies` in `StoryListing`, and add `blocked_by` to the `scrum_update_story` input schema. The GitHub adapter wires in Phase 5.
+**Goal:** Make dependency fields required (not optional) on `Story`, populate them in the use case
+layer, expose `has_dependencies` in `StoryListing` for both backlog and sprint views, and add
+`blocked_by` and `blocks` to the `scrum_update_story` input schema symmetrically. The GitHub
+adapter wires in Phase 5.
 
 **Prerequisite:** Phase 3 complete.
+
+**Must be paired with Phase 5** — this phase intentionally leaves the build broken. See the
+pairing note in the Implementation Phases preamble.
 
 **Files in scope:**
 
 - `src/domain/types.ts`
 - `src/scrum/get-backlog.ts`
+- `src/scrum/get-sprint.ts`
 - `src/scrum/get-story.ts`
+- `src/scrum/ports.ts`
 - `src/schemas/scrum.ts` (or wherever `UpdateStorySchema` is defined)
 - `src/tools/scrum-write.ts`
 
@@ -430,7 +492,23 @@ blocked_by: DependencyEntry[];
 blocks: DependencyEntry[];
 ```
 
-This will produce TypeScript compile errors in any code that constructs a `Story` without these fields — those errors guide what to fix in the adapter (Phase 5).
+This will produce TypeScript compile errors in any code that constructs a `Story` without these
+fields — those errors guide what to fix in the adapter (Phase 5).
+
+Also explicitly add the required fields to `DraftStory`. `DraftStory` extends `StoryBase` and
+inherits the fields structurally, but the mapper constructs `DraftStory` objects directly in
+Phase 5. Making them explicit on `DraftStory` catches any future divergence:
+
+```typescript
+export interface DraftStory extends StoryBase {
+  kind: "draft";
+  key: null;
+  url: null;
+  epic: null;
+  blocked_by: DependencyEntry[]; // always [] — Draft Issues have no tracked dependencies
+  blocks: DependencyEntry[];     // always []
+}
+```
 
 ### Changes to `src/scrum/get-backlog.ts`
 
@@ -449,15 +527,40 @@ const storyToListing = (story: Story): StoryListing => ({
 });
 ```
 
+### Changes to `src/scrum/get-sprint.ts`
+
+`get-sprint.ts` has its own story-to-listing projection (separate from `get-backlog.ts`). Apply the
+same `has_dependencies` population there. Find the function or inline expression that maps a
+`Story` to a `StoryListing` and add:
+
+```typescript
+has_dependencies: story.blocked_by.length > 0 || story.blocks.length > 0,
+```
+
+The sprint board view is where the agent does standup and mid-sprint planning — this is where the
+`has_dependencies` flag has the most day-to-day value.
+
 ### Changes to `src/scrum/get-story.ts`
 
-The `Story` object returned by the adapter already contains `blocked_by` and `blocks` once Phase 5 is complete. The use case passes them through to the tool response without transformation.
+The `Story` object returned by the adapter already contains `blocked_by` and `blocks` once Phase 5
+is complete. The use case passes them through to the tool response without transformation.
 
-Verify the use case does not strip these fields when constructing its return value. If it builds a new object from the story, add the two fields explicitly.
+Verify the use case does not strip these fields when constructing its return value. If it builds a
+new object from the story, add the two fields explicitly.
+
+### Changes to `src/scrum/ports.ts`
+
+Add `blocks` to `StoryUpdates` alongside the existing `blocked_by` field (added in Phase 1):
+
+```typescript
+blocked_by?: StoryRef[] | null; // null clears all; omit to leave unchanged
+blocks?: StoryRef[] | null;     // null clears all; omit to leave unchanged
+```
 
 ### Changes to `src/schemas/scrum.ts`
 
-Add `blocked_by` to the `UpdateStorySchema` (find the schema for `scrum_update_story`):
+Add both `blocked_by` and `blocks` to the `UpdateStorySchema` (find the schema for
+`scrum_update_story`). Add them as a pair — they follow identical patterns:
 
 ```typescript
 blocked_by: z
@@ -468,17 +571,29 @@ blocked_by: z
       "Each entry is a StoryRef ({ id }) obtained from a previous read tool. " +
       "Pass null to clear all dependencies. Omit to leave dependencies unchanged.",
   ),
+blocks: z
+  .array(StoryRefSchema)
+  .nullish()
+  .describe(
+    "Replace the full list of stories that this story blocks (downstream dependencies). " +
+      "Each entry is a StoryRef ({ id }) obtained from a previous read tool. " +
+      "Pass null to clear all. Omit to leave unchanged.",
+  ),
 ```
 
 ### Changes to `src/tools/scrum-write.ts`
 
-In the `scrum_update_story` handler, pass `blocked_by` from the validated input through to `StoryUpdates`. If `blocked_by` is `undefined` (omitted by caller), omit it from `StoryUpdates`. If it is `null`, pass `null`. If it is an array, pass the array.
+In the `scrum_update_story` handler, pass both `blocked_by` and `blocks` from the validated input
+through to `StoryUpdates`. For each field: if `undefined` (omitted), omit from `StoryUpdates`; if
+`null`, pass `null`; if an array, pass the array.
 
 ### Verification
 
-- TypeScript will have compile errors from the required `blocked_by`/`blocks` fields on `Story` — these are expected and guide Phase 5 (the adapter must be updated to populate them).
+- TypeScript will have compile errors from the required `blocked_by`/`blocks` fields on `Story` —
+  these are expected and guide Phase 5 (the adapter must be updated to populate them).
 - `deno lint` passes on non-erroring files.
-- The `UpdateStorySchema` now includes `blocked_by` — verify with a JSON schema dump or test.
+- The `UpdateStorySchema` now includes both `blocked_by` and `blocks` — verify with a JSON schema
+  dump or test.
 
 ---
 
@@ -514,10 +629,17 @@ Parsing rules:
 - Any other lines in the section are ignored.
 - If the section is absent, both arrays are empty.
 
-Writing rules (in `scrum_update_story` with `blocked_by` provided):
+Writing rules (applied when `blocked_by` and/or `blocks` are provided in `StoryUpdates`):
 
-- When `blocked_by` is `null`: remove the entire `## Dependencies` section from the body.
-- When `blocked_by` is an array: rewrite the section. For each `StoryRef` in the array, resolve it to an issue number via the item-to-issue resolver (`resolveStory` in `resolver.ts`), then write `- Blocked by: #N` lines. Preserve any existing `- Blocks: #N` lines from the old section.
+- **Only `blocked_by` provided:** rewrite all `- Blocked by: #N` lines; preserve all existing
+  `- Blocks: #N` lines unchanged.
+- **Only `blocks` provided:** rewrite all `- Blocks: #N` lines; preserve all existing
+  `- Blocked by: #N` lines unchanged.
+- **Both provided:** rewrite both sets of lines atomically.
+- **A field is `null`:** clear all lines for that direction; preserve the other direction.
+- **Both are `null`:** remove the entire `## Dependencies` section from the body.
+- **A field is an array:** for each `StoryRef`, resolve it to an issue number via `resolveStory`
+  in `resolver.ts`, then write `- Blocked by: #N` or `- Blocks: #N` accordingly.
 
 ### Changes to `src/adapters/github/mappers.ts`
 
@@ -562,22 +684,34 @@ For `getStoryDetail`, dependency ref resolution requires a separate lookup if th
 
 ### Changes to `src/adapters/github/internal/story-mutation-service.ts`
 
-Add dependency write support to `updateStory`. When `StoryUpdates.blocked_by` is defined:
+Add dependency write support to `updateStory`. When `StoryUpdates.blocked_by` or `StoryUpdates.blocks` is defined, apply the writing rules from D8:
 
-1. Fetch the current story body (already done as part of the update flow if the body is being replaced; otherwise fetch via `GET_ITEM_FIELDS_QUERY` or `GET_ISSUE_DETAILS_QUERY`).
-2. Resolve each `StoryRef` in `blocked_by` to an issue number using `resolveStory`.
-3. Rewrite the `## Dependencies` section. Preserve any existing `- Blocks: #N` lines.
-4. Proceed with the body mutation using the updated body text.
+1. Fetch the current story body (already done as part of the update flow if the body is being
+   replaced; otherwise fetch via `GET_ITEM_FIELDS_QUERY` or `GET_ISSUE_DETAILS_QUERY`).
+2. Parse the existing `## Dependencies` section to extract the current `blocked_by` and `blocks`
+   line sets.
+3. For each field that is provided (non-`undefined` in `StoryUpdates`): if `null`, clear its
+   direction's lines; if an array, resolve each `StoryRef` to an issue number via `resolveStory`
+   in `resolver.ts` and overwrite that direction's lines.
+4. Reconstruct the `## Dependencies` section from the updated line sets. If both directions are
+   empty after the update, remove the section entirely.
+5. Proceed with the body mutation using the reconstructed body text.
 
 ### Verification
 
 - `deno lint` passes.
 - `deno test` passes.
 - TypeScript compiles without errors.
-- `scrum_get_story` on a story with a `## Dependencies` section returns populated `blocked_by` and/or `blocks` arrays.
-- `scrum_get_backlog` returns `has_dependencies: true` for stories with a `## Dependencies` section.
-- `scrum_update_story` with `blocked_by: [{ id: "..." }]` rewrites the body section correctly.
-- `scrum_update_story` with `blocked_by: null` removes the section without corrupting the body.
+- `scrum_get_story` on a story with a `## Dependencies` section returns populated `blocked_by`
+  and/or `blocks` arrays.
+- `scrum_get_sprint` returns `has_dependencies: true` for sprint items that have a `## Dependencies`
+  section (not just backlog items — both views must reflect the flag).
+- `scrum_get_backlog` returns `has_dependencies: true` for stories with a `## Dependencies`
+  section.
+- `scrum_update_story` with `blocked_by: [{ id: "..." }]` rewrites only the `Blocked by` lines,
+  preserving existing `Blocks` lines.
+- `scrum_update_story` with `blocked_by: null, blocks: null` removes the entire `## Dependencies`
+  section without corrupting surrounding body content.
 
 ---
 
@@ -619,11 +753,12 @@ Add dependency write support to `updateStory`. When `StoryUpdates.blocked_by` is
 
 **`scrum_get_story` — Returns section** — note that the `Story` shape now includes `blocked_by` and `blocks` arrays.
 
-**`scrum_update_story` — Arguments table** — add `blocked_by` row:
+**`scrum_update_story` — Arguments table** — add `blocked_by` and `blocks` rows:
 
-| Argument     | Meaning                                                                                                                                                               |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `blocked_by` | optional, array of `StoryRef` or `null`. Replaces the full `blocked_by` list atomically. Pass `null` to clear all dependencies. Omit to leave dependencies unchanged. |
+| Argument     | Meaning                                                                                                                                                                           |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `blocked_by` | optional, array of `StoryRef` or `null`. Replaces the full upstream dependency list atomically. Pass `null` to clear all. Omit to leave unchanged.                                |
+| `blocks`     | optional, array of `StoryRef` or `null`. Replaces the full downstream dependency list atomically. Pass `null` to clear all. Omit to leave unchanged. Symmetric with `blocked_by`. |
 
 ### Verification
 
