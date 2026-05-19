@@ -109,6 +109,7 @@ const createMockBackend = (
   addComment: () => Promise.resolve(),
   addVocabulary: () => Promise.resolve({ created: false }),
   getSprintImpediments: () => Promise.resolve([]),
+  getEpics: () => Promise.resolve([]),
   createImpediment: () =>
     Promise.resolve({
       listing: {
@@ -304,8 +305,18 @@ Deno.test({
     const backend = createMockBackend({
       getBacklogStories: () =>
         Promise.resolve([
-          makeStory({ title: "Epic A Story", status: "In Progress", sprint: null, epic: "Epic A" }),
-          makeStory({ title: "Epic B Story", status: "In Progress", sprint: null, epic: "Epic B" }),
+          makeStory({
+            title: "Epic A Story",
+            status: "In Progress",
+            sprint: null,
+            epic: { ref: { id: "MI_epic_a" }, name: "Epic A" },
+          }),
+          makeStory({
+            title: "Epic B Story",
+            status: "In Progress",
+            sprint: null,
+            epic: { ref: { id: "MI_epic_b" }, name: "Epic B" },
+          }),
         ]),
       getOrphanImpediments: () => Promise.resolve([]),
     });
@@ -381,6 +392,8 @@ Deno.test({
     assert("total_count" in result, "result should have total_count field");
     assert("readiness" in result, "result should have readiness field");
     assert("orphan_impediments" in result, "result should have orphan_impediments field");
+    assert("epics" in result, "result should have epics field");
+    assert(Array.isArray(result.epics), "epics should be an array");
     assert(typeof result.total_count === "number", "total_count should be a number");
     assert(typeof result.readiness === "object", "readiness should be an object");
     assert("ready" in result.readiness, "readiness should have ready field");

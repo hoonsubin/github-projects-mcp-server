@@ -77,7 +77,7 @@ The phases are **strictly sequential**. Each phase must leave the build green (`
 
 ---
 
-## Phase 1 — Domain Layer: New Types & Port Contracts
+## Phase 1 — Domain Layer: New Types & Port Contracts [done]
 
 > **Board tickets:** [#75](https://github.com/hoonsubin/github-projects-mcp-server/issues/75), [#96](https://github.com/hoonsubin/github-projects-mcp-server/issues/96), [#101](https://github.com/hoonsubin/github-projects-mcp-server/issues/101)
 
@@ -200,9 +200,9 @@ The phases are **strictly sequential**. Each phase must leave the build green (`
 
 ---
 
-## Phase 2 — Epics: Type Migration, Use Case, Tool Schema
+## Phase 2 — Epics: Type Migration, Use Case, Tool Schema [done]
 
-> **Board tickets:** [#80](https://github.com/hoonsubin/github-projects-mcp-server/issues/80), [#81](https://github.com/hoonsubin/github-projects-mcp-server/issues/81), [#102](https://github.com/hoonsubin/github-projects-mcp-server/issues/102)
+> **Board tickets:** [#80](https://github.com/hoonsubin/github-projects-mcp-server/issues/80), [#102](https://github.com/hoonsubin/github-projects-mcp-server/issues/102)
 
 **Goal:** Upgrade `Story.epic` from `string | null` to a structured object. Update all downstream consumers of `story.epic` atomically. Expose `epics: EpicListing[]` in the `scrum_get_backlog` response. The build must pass at the end of this phase.
 
@@ -455,7 +455,7 @@ Add `getEpics(): Promise<EpicListing[]>` to `GitHubProjectBackend`. Delegate to 
 
 ## Phase 4 — Dependencies: Domain, Use Case & Tool Schema
 
-> **Board tickets:** [#82](https://github.com/hoonsubin/github-projects-mcp-server/issues/82) [#98](https://github.com/hoonsubin/github-projects-mcp-server/issues/98) [#104](https://github.com/hoonsubin/github-projects-mcp-server/issues/104)
+> **Board tickets:** [#82](https://github.com/hoonsubin/github-projects-mcp-server/issues/82) [#98](https://github.com/hoonsubin/github-projects-mcp-server/issues/98) [#104](https://github.com/hoonsubin/github-projects-mcp-server/issues/104), [#81](https://github.com/hoonsubin/github-projects-mcp-server/issues/81),
 
 **Goal:** Make dependency fields required (not optional) on `Story`, populate them in the use case layer, expose `has_dependencies` in `StoryListing` for both backlog and sprint views, and add `blocked_by` and `blocks` to the `scrum_update_story` input schema symmetrically. The GitHub adapter wires in Phase 5.
 

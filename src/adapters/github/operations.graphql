@@ -93,7 +93,7 @@ fragment ItemContent on ProjectV2Item {
       id number title url state body
       assignees(first: 5) { nodes { login } }
       labels(first: 10)   { nodes { name color } }
-      milestone { title dueOn }
+      milestone { id title dueOn }
       repository { name nameWithOwner }
     }
     ... on PullRequest {
@@ -354,7 +354,7 @@ query GetIssueDetails($issueId: ID!) {
       id number title body url createdAt updatedAt
       assignees(first: 10) { nodes { login } }
       labels(first: 20)    { nodes { name } }
-      milestone { title }
+      milestone { id title }
       comments(first: 50) {
         nodes {
           id

@@ -19,7 +19,6 @@ export interface StoryRef {
   id: string; // opaque project-item handle returned by any read tool
 }
 
-// todo: need to handle epics as first-class object
 /**
  * A reference to an impediment (spike story tagged 'impediment').
  * On GitHub: id is the GitHub Issue node ID (I_...), not the project item ID.
@@ -27,6 +26,42 @@ export interface StoryRef {
  */
 export interface ImpedimentRef {
   id: string;
+}
+
+/**
+ * A reference to a single Epic.
+ * On GitHub: id is the Milestone node ID (MI_...).
+ * Pass to story create/update tools as the epic identifier.
+ */
+export interface EpicRef {
+  id: string;
+}
+
+/**
+ * Lightweight epic entry for planning contexts.
+ * Returned in scrum_get_backlog alongside StoryListing[].
+ * Full epic detail (child stories, history) is derived by the agent via
+ * scrum_get_backlog filtered by epic name.
+ */
+export interface EpicListing {
+  ref: EpicRef;
+  name: string;
+  description: string | null;
+  priority: string | null; // team's vocabulary value, or null
+  status: "open" | "in_progress" | "done" | null;
+  story_count: number; // total stories under this epic (all statuses)
+}
+
+/**
+ * A single dependency link between two stories.
+ * key is always present (human-readable issue number, e.g. "17").
+ * ref.id is the project item ID when resolvable from in-memory context; null otherwise.
+ * title is the story title when available; null if not yet resolved.
+ */
+export interface DependencyEntry {
+  key: string;
+  title: string | null;
+  ref: { id: string | null };
 }
 
 /**
@@ -67,6 +102,8 @@ interface StoryBase {
   labels: string[]; // repo labels; type is tracked via the Type board field, not labels
   created_at: string; // ISO-8601
   updated_at: string; // ISO-8601
+  blocked_by?: DependencyEntry[]; // stories that must be Done before this one starts
+  blocks?: DependencyEntry[]; // stories that are downstream of this one
 }
 
 /** A GitHub Projects draft issue — has no issue number, URL, or milestone. */
@@ -82,7 +119,7 @@ export interface IssueStory extends StoryBase {
   kind: "issue";
   key: string; // human-readable issue number, e.g. "42"
   url: string; // canonical URL in the backend UI
-  epic: string | null; // GitHub Milestone title; null if unset
+  epic: { ref: EpicRef; name: string } | null;
 }
 
 /**

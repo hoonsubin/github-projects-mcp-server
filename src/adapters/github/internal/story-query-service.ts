@@ -41,7 +41,7 @@ interface GetIssueDetailsResponse {
     updatedAt?: string;
     assignees?: { nodes: Array<{ login: string }> };
     labels?: { nodes: Array<{ name: string }> };
-    milestone?: { title: string } | null;
+    milestone?: { id: string; title: string } | null;
     comments?: {
       nodes: Array<{
         id: string;

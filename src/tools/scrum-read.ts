@@ -142,14 +142,15 @@ export const registerScrumReadTools = (
           search    string — case-insensitive substring match on title + body
           labels    string[] — include only stories carrying ALL of these labels
           priority  string — vocabulary display name, e.g. "Must" (from scrum_orient)
-          epic      string — Milestone title (exact match)
+          epic      string — Epic name to filter by (exact match on epic.name)
           limit     integer > 0, default 50
 
         Returns: {
           stories: StoryListing[],         — lightweight entries (no body or comments)
           total_count: number,
           readiness: { ready, partially_ready, not_ready },
-          orphan_impediments: ImpedimentListing[]  — unresolved impediments with no story/sprint context
+          orphan_impediments: ImpedimentListing[],  — unresolved impediments with no story/sprint context
+          epics: EpicListing[]                      — all project epics, regardless of story filter applied
         }
         Each story has ref.id for use in subsequent write calls.`,
       inputSchema: GetBacklogSchema.shape,

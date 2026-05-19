@@ -48,7 +48,7 @@ export interface IssueDetailsInput {
   updatedAt: string;
   assignees?: { nodes: Array<{ login: string }> };
   labels?: { nodes: Array<{ name: string }> };
-  milestone?: { title: string } | null;
+  milestone?: { id: string; title: string } | null;
   comments?: { nodes: CommentInput[] };
   timelineItems?: { nodes: TimelineItemInput[] };
 }
@@ -144,7 +144,9 @@ export const buildStoryFromRaw = (
   // Type comes from the Type board field — not from labels.
   // All repo labels are passed through unfiltered.
   const labels = content.labels.nodes.map((l) => l.name);
-  const epic = content.__typename === "Issue" ? content.milestone?.title ?? null : null;
+  const epic = content.__typename === "Issue" && content.milestone
+    ? { ref: { id: content.milestone.id }, name: content.milestone.title }
+    : null;
 
   const issue: IssueStory = {
     kind: "issue",
@@ -195,7 +197,9 @@ export const buildEnrichedStory = (
     priority: boardFields.priority,
     assignees: issueNode.assignees?.nodes.map((a) => a.login) ?? [],
     labels,
-    epic: issueNode.milestone?.title ?? null,
+    epic: issueNode.milestone
+      ? { ref: { id: issueNode.milestone.id }, name: issueNode.milestone.title }
+      : null,
     created_at: issueNode.createdAt,
     updated_at: issueNode.updatedAt,
     url: issueNode.url ?? "",
