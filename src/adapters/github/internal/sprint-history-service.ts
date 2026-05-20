@@ -2,7 +2,6 @@
 // src/adapters/github/internal/sprint-history-service.ts — Sprint History
 //
 // Single responsibility: fetch and project completed sprint history.
-// Extracted from GitHubProjectBackend as part of Phase F (Adapter refactor).
 // Injected into GitHubProjectBackend via constructor (DIP).
 // =============================================================================
 

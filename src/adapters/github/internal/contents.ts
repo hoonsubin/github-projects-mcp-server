@@ -1,7 +1,6 @@
 // =============================================================================
 // src/adapters/github/internal/contents.ts — GitHub Contents API helpers
 //
-// Extracted from services/github.ts as part of Phase C (Structural Cleanup).
 // Provides file fetching and decoding for the GitHub Contents API.
 // =============================================================================
 

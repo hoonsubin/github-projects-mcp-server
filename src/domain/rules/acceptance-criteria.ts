@@ -1,7 +1,6 @@
 // =============================================================================
 // src/domain/rules/acceptance-criteria.ts — Pure domain rule: AC parsing
 //
-// Extracted from scrum-read.ts as part of Story B (Phase 5).
 // This module has no imports outside the standard library.
 // =============================================================================
 
@@ -14,6 +13,7 @@ interface AcceptanceCriterion {
 /**
  * Parse markdown checkboxes from a story body into acceptance criteria.
  * Matches patterns: `- [ ]`, `- [x]`, `- [X]`, `* [ ]`, `* [x]`, `* [X]`.
+ * todo: is this really the best method? Shouldn't this be in the adaptor layer?
  */
 export const parseAcceptanceCriteria = (body: string): AcceptanceCriterion[] => {
   const ac: AcceptanceCriterion[] = [];

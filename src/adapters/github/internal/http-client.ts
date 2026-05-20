@@ -1,7 +1,6 @@
 // =============================================================================
 // src/adapters/github/internal/http-client.ts — GitHub HTTP transport layer
 //
-// Extracted from services/github.ts as part of Phase C (Structural Cleanup).
 // Provides GraphQL and REST transport to the GitHub API.
 // =============================================================================
 

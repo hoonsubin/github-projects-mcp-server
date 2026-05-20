@@ -1,7 +1,6 @@
 // =============================================================================
 // src/tools/scrum-read.ts — Thin tool handlers delegating to use-case functions
 //
-// After Story B (Phase 5): handlers are thin — parse, delegate, format.
 // No handler imports graphql, rest, loadConfig, resolveSprint, or any GitHub raw type.
 // =============================================================================
 

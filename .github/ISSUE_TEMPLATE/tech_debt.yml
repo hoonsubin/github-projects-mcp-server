@@ -36,7 +36,7 @@ body:
     attributes:
       label: Root cause
       description: Why did this debt accumulate? (design drift, rushed delivery, changing requirements, etc.)
-      placeholder: Phase F.1 created internal service stubs but never completed the delegation — original private methods were left in backend.ts.
+      placeholder: Story \#54 created internal service stubs but never completed the delegation — original private methods were left in backend.ts.
     validations:
       required: true
 

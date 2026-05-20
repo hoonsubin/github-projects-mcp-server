@@ -1,5 +1,5 @@
 // =============================================================================
-// tests/scrum/get-backlog.test.ts — Unit tests for Phase 7 backlog redesign
+// tests/scrum/get-backlog.test.ts — Unit tests for backlog
 //
 // Tests for: storyToListing(), isActiveItem(), getBacklogUseCase()
 // =============================================================================

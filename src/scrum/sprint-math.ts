@@ -1,7 +1,6 @@
 // =============================================================================
 // src/scrum/sprint-math.ts — Pure sprint computation helpers
 //
-// Extracted from scrum-read.ts as part of Story B (Phase 5).
 // All functions depend only on domain types — no RuntimeConfig or GitHub types.
 // =============================================================================
 

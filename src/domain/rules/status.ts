@@ -1,8 +1,7 @@
 // =============================================================================
 // src/domain/rules/status.ts — Domain rules for status handling
 //
-// Extracted from get-backlog.ts and get-history.ts as part of Phase E.1
-// (DRY refactoring). Pure domain rules belong here — no platform-specific
+// Pure domain rules belong here — no platform-specific
 // logic, no GraphQL shapes, no adapter dependencies.
 // =============================================================================
 
