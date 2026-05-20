@@ -271,12 +271,10 @@ export interface ImpedimentPort {
 }
 
 /**
- * Template port — fetches repository files for ceremony templates.
+ * File reader port — fetches files from the repository backing the PM platform.
  * Used by: getTemplateUseCase
- *
- * NOTE: This is GitHub-specific. Non-GitHub backends should not implement this.
  */
-export interface TemplatePort {
+export interface FileReaderPort {
   fetchRepoFile(path: string): Promise<string>;
 }
 
@@ -336,6 +334,4 @@ export interface ProjectWriter {
  * focused ports they need. This type will be removed after all consumers are
  * migrated to focused ports.
  */
-// TemplatePort is GitHub-specific — non-GitHub backends may omit this;
-// tool handler accepts TemplatePort directly
-export interface ProjectBackend extends ProjectReader, ProjectWriter, TemplatePort {}
+export interface ProjectBackend extends ProjectReader, ProjectWriter {}

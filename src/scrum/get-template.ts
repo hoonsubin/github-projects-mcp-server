@@ -1,10 +1,10 @@
 // =============================================================================
 // src/scrum/get-template.ts — getTemplateUseCase
 //
-// Receives backend: ProjectBackend and scrumConfig: ScrumConfig.
+// Receives backend: FileReaderPort and scrumConfig: ScrumConfig.
 // =============================================================================
 
-import type { TemplatePort } from "./ports.ts";
+import type { FileReaderPort } from "./ports.ts";
 import type { ArtifactType, TemplateResponse } from "../domain/types.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 
@@ -13,7 +13,7 @@ import type { ScrumConfig } from "../domain/config.ts";
  * Returns { content: null, source: "default" } when no custom template is declared.
  */
 export const getTemplateUseCase = async (
-  backend: TemplatePort,
+  backend: FileReaderPort,
   scrumConfig: ScrumConfig,
   artifactType: ArtifactType,
 ): Promise<TemplateResponse> => {

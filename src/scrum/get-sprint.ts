@@ -2,7 +2,7 @@
 // src/scrum/get-sprint.ts — getSprintUseCase
 //
 // Returns SprintSnapshot for single sprint requests, SprintSnapshot[] for "all".
-// Receives backend: ProjectBackend.
+// Receives backend: SprintPort & ImpedimentPort & HistoryPort.
 //
 // "all" is intentionally excluded from SprintRef because it is a query-mode flag,
 // not a sprint reference. Other tools that accept SprintRef will resolve "all"
@@ -199,7 +199,7 @@ const buildAllSnapshots = async (
 /**
  * Get sprint board data.
  *
- * @param backend — ProjectBackend implementation
+ * @param backend — SprintPort & ImpedimentPort & HistoryPort implementation
  * @param sprintRef — sprint reference or "all" for multi-snapshot mode
  * @param limit — max sprints to return when sprintRef is "all"
  * @returns SprintSingleResult for single sprint, SprintAllResult for "all"

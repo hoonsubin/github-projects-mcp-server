@@ -106,8 +106,8 @@ const createMcpServer = async (): Promise<McpServer> => {
 
   patchToolLogging(server);
 
-  const { backend, scrumConfig } = await createGitHubProjectBackend();
-  registerScrumReadTools(server, backend, scrumConfig);
+  const { backend, fileReader, scrumConfig } = await createGitHubProjectBackend();
+  registerScrumReadTools(server, backend, scrumConfig, fileReader);
   registerScrumWriteTools(server, backend, scrumConfig);
 
   return server;

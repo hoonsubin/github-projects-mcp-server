@@ -217,6 +217,8 @@ classDiagram
             class sprint-history-service.ts:::internal {
                 class SprintHistoryService
             }
+            class user-milestone-resolver.test.ts:::internal {
+            }
             class vocabulary-manager.ts:::internal {
                 class VocabularyManager
             }
@@ -372,6 +374,10 @@ classDiagram
     sprint-history-service.ts --> config-loader.ts : "imports"
     sprint-history-service.ts --> ports.ts : "imports"
     sprint-history-service.ts --> types.ts : "imports"
+    user-milestone-resolver.test.ts --> user-milestone-resolver.ts : "imports"
+    user-milestone-resolver.test.ts --> http-client.ts : "imports"
+    user-milestone-resolver.test.ts --> label-resolver.ts : "imports"
+    user-milestone-resolver.test.ts --> errors.ts : "imports"
     vocabulary-manager.ts --> errors.ts : "imports"
     vocabulary-manager.ts --> http-client.ts : "imports"
     vocabulary-manager.ts --> label-resolver.ts : "imports"
