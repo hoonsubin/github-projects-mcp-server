@@ -109,3 +109,4 @@ export const GET_ITEM_FIELDS_QUERY = getQuery("GetItemFields");
 export const GET_DRAFT_ISSUE_DETAILS_QUERY = getQuery("GetDraftIssueDetails");
 export const GET_REPO_LABELS_QUERY = getQuery("GetRepoLabels");
 export const GET_IMPEDIMENT_ISSUES_QUERY = getQuery("GetImpedimentIssues");
+export const LIST_MILESTONES_QUERY = getQuery("ListMilestones");

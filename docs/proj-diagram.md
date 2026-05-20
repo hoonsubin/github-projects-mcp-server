@@ -54,6 +54,7 @@ classDiagram
                 interface SprintTotalsActive
                 interface SprintTotalsHistory
                 interface SprintSnapshot
+                interface EpicPort
                 interface BacklogPort
                 interface SprintPort
                 interface StoryPort
@@ -83,6 +84,9 @@ classDiagram
             class types.ts:::domain {
                 interface StoryRef
                 interface ImpedimentRef
+                interface EpicRef
+                interface EpicListing
+                interface DependencyEntry
                 type SprintName
                 +toSprintName()
                 type SprintRef
@@ -97,7 +101,13 @@ classDiagram
                 interface BurndownStory
                 type ArtifactType
                 type TemplateResponse
-                %% Unused: ImpedimentRef, SprintName
+                %% Unused: ImpedimentRef, EpicRef, SprintName
+            }
+            class dependencies.ts:::rules {
+                +parseDependencies()
+                +hasDependencySection()
+                +generateDependencySection()
+                %% Unused: parseDependencies, hasDependencySection, generateDependencySection
             }
             class acceptance-criteria.ts:::rules {
                 +parseAcceptanceCriteria()
@@ -163,6 +173,7 @@ classDiagram
                 +var GET_DRAFT_ISSUE_DETAILS_QUERY
                 +var GET_REPO_LABELS_QUERY
                 +var GET_IMPEDIMENT_ISSUES_QUERY
+                +var LIST_MILESTONES_QUERY
             }
             class mappers.ts:::github {
                 interface IssueDetailsInput
@@ -178,6 +189,10 @@ classDiagram
             }
             class burndown-calculator.ts:::internal {
                 class BurndownCalculator
+            }
+            class epic-service.ts:::internal {
+                class EpicService
+                %% Unused: EpicService
             }
             class pagination.ts:::internal {
                 class PaginatedProjectItemFetcher
@@ -286,6 +301,7 @@ classDiagram
     get-sprint.ts --> errors.ts : "imports"
     get-sprint.ts --> sprint-math.ts : "imports"
     types.ts --> github-types.ts : "imports"
+    dependencies.ts --> types.ts : "imports"
     status.ts --> config.ts : "imports"
     config.ts --> types.ts : "imports"
     error-enrichment.ts --> errors.ts : "imports"
@@ -321,6 +337,9 @@ classDiagram
     burndown-calculator.ts --> config-loader.ts : "imports"
     burndown-calculator.ts --> ports.ts : "imports"
     burndown-calculator.ts --> types.ts : "imports"
+    epic-service.ts --> http-client.ts : "imports"
+    epic-service.ts --> queries.ts : "imports"
+    epic-service.ts --> types.ts : "imports"
     pagination.ts --> errors.ts : "imports"
     pagination.ts --> config-loader.ts : "imports"
     pagination.ts --> types.ts : "imports"
@@ -435,22 +454,27 @@ classDiagram
 
 The following exports are never imported by any other module in the codebase:
 
-| Module                                                                                                  | Export                    | Kind        |
-| ------------------------------------------------------------------------------------------------------- | ------------------------- | ----------- |
-| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                                             | `groupStoriesByStatus`    | `function`  |
-| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                                             | `computeSprintTotals`     | `function`  |
-| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `SprintTotalsActive`      | `interface` |
-| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `SprintTotalsHistory`     | `interface` |
-| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `ProjectWriter`           | `interface` |
-| [`./src/scrum/update-impediment.ts`](../src/scrum/update-impediment.ts)                                 | `updateImpedimentUseCase` | `function`  |
-| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `GitHubErrorCode`         | `type`      |
-| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `assertNever`             | `function`  |
-| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `GitHubApiErrorParams`    | `interface` |
-| [`./src/adapters/github/internal/label-resolver.ts`](../src/adapters/github/internal/label-resolver.ts) | `GitHubLabel`             | `interface` |
-| [`./src/adapters/github/internal/http-client.ts`](../src/adapters/github/internal/http-client.ts)       | `RestResponse`            | `interface` |
-| [`./src/adapters/github/factory.ts`](../src/adapters/github/factory.ts)                                 | `GitHubBackendResult`     | `interface` |
-| [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `ImpedimentRef`           | `interface` |
-| [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `SprintName`              | `type`      |
+| Module                                                                                                  | Export                      | Kind        |
+| ------------------------------------------------------------------------------------------------------- | --------------------------- | ----------- |
+| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                                             | `groupStoriesByStatus`      | `function`  |
+| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                                             | `computeSprintTotals`       | `function`  |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `SprintTotalsActive`        | `interface` |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `SprintTotalsHistory`       | `interface` |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `ProjectWriter`             | `interface` |
+| [`./src/scrum/update-impediment.ts`](../src/scrum/update-impediment.ts)                                 | `updateImpedimentUseCase`   | `function`  |
+| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `GitHubErrorCode`           | `type`      |
+| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `assertNever`               | `function`  |
+| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `GitHubApiErrorParams`      | `interface` |
+| [`./src/adapters/github/internal/epic-service.ts`](../src/adapters/github/internal/epic-service.ts)     | `EpicService`               | `class`     |
+| [`./src/adapters/github/internal/label-resolver.ts`](../src/adapters/github/internal/label-resolver.ts) | `GitHubLabel`               | `interface` |
+| [`./src/adapters/github/internal/http-client.ts`](../src/adapters/github/internal/http-client.ts)       | `RestResponse`              | `interface` |
+| [`./src/adapters/github/factory.ts`](../src/adapters/github/factory.ts)                                 | `GitHubBackendResult`       | `interface` |
+| [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `ImpedimentRef`             | `interface` |
+| [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `EpicRef`                   | `interface` |
+| [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `SprintName`                | `type`      |
+| [`./src/domain/rules/dependencies.ts`](../src/domain/rules/dependencies.ts)                             | `parseDependencies`         | `function`  |
+| [`./src/domain/rules/dependencies.ts`](../src/domain/rules/dependencies.ts)                             | `hasDependencySection`      | `function`  |
+| [`./src/domain/rules/dependencies.ts`](../src/domain/rules/dependencies.ts)                             | `generateDependencySection` | `function`  |
 
 ## Notes
 

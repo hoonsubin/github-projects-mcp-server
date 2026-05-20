@@ -391,7 +391,7 @@ This is a one-line change that ensures the `blocked_by`/`blocks` fields added in
 
 ---
 
-## Phase 3 — Epics: GitHub Adapter Implementation
+## Phase 3 — Epics: GitHub Adapter Implementation [done]
 
 > **Board tickets:** [#103](https://github.com/hoonsubin/github-projects-mcp-server/issues/103)
 

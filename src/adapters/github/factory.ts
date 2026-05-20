@@ -21,6 +21,7 @@ import { SprintHistoryService } from "./internal/sprint-history-service.ts";
 import { StoryMutationService } from "./internal/story-mutation-service.ts";
 import { StoryQueryService } from "./internal/story-query-service.ts";
 import { UserMilestoneResolver } from "./internal/user-milestone-resolver.ts";
+import { EpicService } from "./internal/epic-service.ts";
 import { VocabularyManager } from "./internal/vocabulary-manager.ts";
 import type { GitHubBackendConfig } from "./types.ts";
 import type { ProjectBackend } from "../../scrum/ports.ts";
@@ -77,6 +78,8 @@ export const createGitHubProjectBackend = async (): Promise<GitHubBackendResult>
 
   const storyQueryService = new StoryQueryService(config, ghClient, owner, primaryRepo);
 
+  const epicService = new EpicService(ghClient, owner, gh.tracked_repos);
+
   const storyMutationService = new StoryMutationService(
     config,
     ghClient,
@@ -110,6 +113,7 @@ export const createGitHubProjectBackend = async (): Promise<GitHubBackendResult>
     storyQueryService,
     storyMutationService,
     impedimentService,
+    epicService,
     config,
     owner,
     primaryRepo,
