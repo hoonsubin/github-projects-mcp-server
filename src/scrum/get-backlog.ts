@@ -5,9 +5,9 @@
 // Active-item filter excludes Done stories with no sprint assigned.
 // =============================================================================
 
-import type { BacklogPort, ImpedimentListing, StoryListing } from "./ports.ts";
+import type { BacklogPort, EpicPort, ImpedimentListing, StoryListing } from "./ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
-import type { Story } from "../domain/types.ts";
+import type { EpicListing, Story } from "../domain/types.ts";
 import { computeReadinessSummary } from "../domain/rules/readiness.ts";
 import { isTerminalStatus } from "../domain/rules/status.ts";
 
@@ -24,6 +24,7 @@ interface GetBacklogResult {
   total_count: number;
   readiness: { ready: number; partially_ready: number; not_ready: number };
   orphan_impediments: ImpedimentListing[];
+  epics: EpicListing[];
 }
 
 /** Project a full Story down to its lightweight StoryListing entry. */
@@ -34,7 +35,8 @@ const storyToListing = (story: Story): StoryListing => ({
   story_points: story.story_points,
   priority: story.priority,
   sprint: story.sprint,
-  writable: true, // Active backlog items are writable; see Step 7c.2 for future enhancement
+  writable: true,
+  has_dependencies: story.blocked_by.length > 0 || story.blocks.length > 0,
 });
 
 /**
@@ -52,14 +54,14 @@ const isActiveItem = (story: Story, config: ScrumConfig): boolean => {
 };
 
 export const getBacklogUseCase = async (
-  backend: BacklogPort,
+  backend: BacklogPort & EpicPort,
   scrumConfig: ScrumConfig,
   params: GetBacklogParams,
 ): Promise<GetBacklogResult> => {
-  // Fetch stories and orphan impediments in parallel
-  const [allStories, orphanImpediments] = await Promise.all([
+  const [allStories, orphanImpediments, epics] = await Promise.all([
     backend.getBacklogStories(),
     backend.getOrphanImpediments(),
+    backend.getEpics(),
   ]);
 
   // Apply active-item filter before any user-supplied filters to prevent stale data exposure
@@ -81,7 +83,7 @@ export const getBacklogUseCase = async (
     stories = stories.filter((s) => s.priority === params.priority);
   }
   if (params.epic) {
-    stories = stories.filter((s) => s.epic === params.epic);
+    stories = stories.filter((s) => s.epic?.name === params.epic);
   }
 
   const totalCount = stories.length;
@@ -97,5 +99,6 @@ export const getBacklogUseCase = async (
     total_count: totalCount,
     readiness: readinessSummary,
     orphan_impediments: orphanImpediments,
+    epics,
   };
 };

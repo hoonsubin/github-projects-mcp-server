@@ -13,7 +13,7 @@
 // needs. ProjectBackend remains as a composition type for backward compatibility.
 // =============================================================================
 
-import type { SprintRef, Story, StoryRef } from "../domain/types.ts";
+import type { EpicListing, SprintRef, Story, StoryRef } from "../domain/types.ts";
 
 // ── Supporting types that cross the boundary ──────────────────────────────────
 
@@ -112,6 +112,8 @@ export interface StoryUpdates {
   labels?: string[];
   assignees?: string[];
   epic?: string | null;
+  blocked_by?: StoryRef[] | null; // null clears all; omit to leave unchanged
+  blocks?: StoryRef[] | null; // null clears all; omit to leave unchanged
 }
 
 export type VocabularyKind = "status_option" | "priority_option" | "label";
@@ -143,6 +145,7 @@ export interface StoryListing {
   priority: string | null;
   sprint: string | null;
   writable: boolean; // true for active items, false for history/read-only
+  has_dependencies: boolean; // true when the story body contains a ## Dependencies section
 }
 
 /**
@@ -196,6 +199,14 @@ export interface SprintSnapshot {
 }
 
 // ── Focused port interfaces (Interface Segregation) ─────────────────────────────
+
+/**
+ * Epic port — returns all epics for the project.
+ * Used by: getBacklogUseCase
+ */
+export interface EpicPort {
+  getEpics(): Promise<EpicListing[]>;
+}
 
 /**
  * Backlog port — returns stories not assigned to any sprint and orphan impediments.
@@ -272,7 +283,7 @@ export interface TemplatePort {
  * Used by: orientUseCase (via getPlatformState), scrum-read tools
  */
 export interface ProjectReader
-  extends BacklogPort, SprintPort, StoryPort, HistoryPort, BurndownPort, ImpedimentPort {
+  extends BacklogPort, SprintPort, StoryPort, HistoryPort, BurndownPort, ImpedimentPort, EpicPort {
   getPlatformState(declaredVocabulary: {
     statusValues: string[];
     priorityValues: string[];
@@ -313,6 +324,11 @@ export interface ProjectWriter {
 /**
  * ProjectBackend — the full interface combining all ports.
  * Kept for backward compatibility; new code should import specific ports.
+ *
+ * @deprecated Import specific port interfaces (BacklogPort, SprintPort, etc.)
+ * instead of this monolithic type. New use cases should depend only on the
+ * focused ports they need. This type will be removed after all consumers are
+ * migrated to focused ports.
  */
 // TemplatePort is GitHub-specific — non-GitHub backends may omit this;
 // tool handler accepts TemplatePort directly

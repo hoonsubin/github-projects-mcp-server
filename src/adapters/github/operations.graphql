@@ -93,7 +93,7 @@ fragment ItemContent on ProjectV2Item {
       id number title url state body
       assignees(first: 5) { nodes { login } }
       labels(first: 10)   { nodes { name color } }
-      milestone { title dueOn }
+      milestone { id title dueOn }
       repository { name nameWithOwner }
     }
     ... on PullRequest {
@@ -354,7 +354,7 @@ query GetIssueDetails($issueId: ID!) {
       id number title body url createdAt updatedAt
       assignees(first: 10) { nodes { login } }
       labels(first: 20)    { nodes { name } }
-      milestone { title }
+      milestone { id title }
       comments(first: 50) {
         nodes {
           id
@@ -477,6 +477,30 @@ query GetRepoLabels($owner: String!, $repo: String!) {
   }
 }
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# QUERIES — Milestones
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── ListMilestones ─────────────────────────────────────────────────────────────
+# Fetch all milestones (open and closed) for a single repository.
+# Called once per tracked repo by EpicService; results are merged and deduplicated.
+# Fetches up to 100 milestones — sufficient for typical project sizes.
+
+query ListMilestones($owner: String!, $repo: String!) {
+  repository(owner: $owner, name: $repo) {
+    milestones(first: 100, states: [OPEN, CLOSED]) {
+      nodes {
+        id
+        title
+        description
+        state
+        openIssues: issues(states: [OPEN]) { totalCount }
+        closedIssues: issues(states: [CLOSED]) { totalCount }
+      }
+    }
+  }
+}
 
 # ══════════════════════════════════════════════════════════════════════════════
 # QUERIES — Discussions (ceremony records)

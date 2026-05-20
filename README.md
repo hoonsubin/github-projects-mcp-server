@@ -407,30 +407,34 @@ flowchart LR
 
 These appear in arguments and return values across multiple tools.
 
-| Type                | Meaning                                                                                                                                                                                                                             |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `StoryRef`          | A reference to a single Story. Shape: `{ "id": "<opaque>" }` where `id` is the project-item handle returned by any read tool in `Story.ref.id`. The agent obtains an `id` from a listing tool first, then passes it to write tools. |
-| `SprintRef`         | A reference to a sprint. Accepted forms: `"current"`, `"next"`, `null` (= no sprint, i.e. the backlog), or an explicit sprint name or sprint ID that the backend accepts (e.g. `"Sprint 12", "31"`).                                |
-| `ScrumField`        | One of `status`, `sprint`, `story_points`, `priority`, `assignee`. The set is fixed; new field types are out of scope for v1.                                                                                                       |
-| `StoryType`         | One of `feature`, `bug`, `tech_debt`, `spike`. Drives the type label or category the backend applies. Impediments are a separate first-class artifact — not a `StoryType`.                                                          |
-| `ImpedimentRef`     | A reference to a single Impediment. Shape: `{ "id": "<opaque>" }`. The opaque `id` is returned by `scrum_log_impediment` and appears in every `ImpedimentListing`. Pass it to `scrum_update_impediment`.                            |
-| `StoryListing`      | Lightweight listing entry returned by all listing tools. See shape below.                                                                                                                                                           |
-| `SprintSnapshot`    | Sprint metadata plus its `StoryListing[]` and `ImpedimentListing[]`. The common envelope for `scrum_get_sprint` and `scrum_get_history`. See shape below.                                                                           |
-| `Story`             | Full story detail — body, comments, AC, linked PRs, impediments. Returned **only** by `scrum_get_story` and write tools. See shape below.                                                                                           |
-| `ImpedimentListing` | Lightweight impediment entry. Full description always included (no separate detail fetch). See shape below.                                                                                                                         |
+| Type                | Meaning                                                                                                                                                                                                                                                                                            |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `StoryRef`          | A reference to a single Story. Shape: `{ "id": "<opaque>" }` where `id` is the project-item handle returned by any read tool in `Story.ref.id`. The agent obtains an `id` from a listing tool first, then passes it to write tools.                                                                |
+| `SprintRef`         | A reference to a sprint. Accepted forms: `"current"`, `"next"`, `null` (= no sprint, i.e. the backlog), or an explicit sprint name or sprint ID that the backend accepts (e.g. `"Sprint 12", "31"`).                                                                                               |
+| `ScrumField`        | One of `status`, `sprint`, `story_points`, `priority`, `assignee`. The set is fixed; new field types are out of scope for v1.                                                                                                                                                                      |
+| `StoryType`         | One of `feature`, `bug`, `tech_debt`, `spike`. Drives the type label or category the backend applies. Impediments are a separate first-class artifact — not a `StoryType`.                                                                                                                         |
+| `ImpedimentRef`     | A reference to a single Impediment. Shape: `{ "id": "<opaque>" }`. The opaque `id` is returned by `scrum_log_impediment` and appears in every `ImpedimentListing`. Pass it to `scrum_update_impediment`.                                                                                           |
+| `EpicRef`           | A reference to a single Epic. Shape: `{ "id": "<opaque>" }`. Returned in `EpicListing.ref` and `Story.epic.ref`. Pass `ref.id` as the `epic` argument in `scrum_create_story` or `scrum_update_story` to associate a story.                                                                        |
+| `EpicListing`       | Lightweight epic entry returned in `scrum_get_backlog`. Fields: `ref` (`EpicRef`), `name` (string), `description` (string or `null`), `priority` (string or `null`), `status` (`"open"` / `"in_progress"` / `"done"` / `null`), `story_count` (total stories under this epic across all statuses). |
+| `DependencyEntry`   | A single dependency link between two stories. Fields: `key` (issue number string, always present — e.g. `"17"`), `title` (string or `null`), `ref.id` (project-item ID when resolvable from in-memory context, `null` otherwise).                                                                  |
+| `StoryListing`      | Lightweight listing entry returned by all listing tools. See shape below.                                                                                                                                                                                                                          |
+| `SprintSnapshot`    | Sprint metadata plus its `StoryListing[]` and `ImpedimentListing[]`. The common envelope for `scrum_get_sprint` and `scrum_get_history`. See shape below.                                                                                                                                          |
+| `Story`             | Full story detail — body, comments, AC, linked PRs, impediments. Returned **only** by `scrum_get_story` and write tools. See shape below.                                                                                                                                                          |
+| `ImpedimentListing` | Lightweight impediment entry. Full description always included (no separate detail fetch). See shape below.                                                                                                                                                                                        |
 
 #### StoryListing shape
 
 Returned by listing tools (`scrum_get_sprint`, `scrum_get_backlog`, `scrum_get_history`). Contains only the fields needed for board orientation. Call `scrum_get_story` when body, acceptance criteria, comments, or linked PRs are needed.
 
-| Field          | Meaning                                                                   |
-| -------------- | ------------------------------------------------------------------------- |
-| `ref`          | `{ number, id }` — both forms always present so the agent can use either. |
-| `title`        | The story title.                                                          |
-| `status`       | Current status display name (e.g. `"In Progress"`), or `null` if unset.   |
-| `story_points` | Numeric estimate, or `null` if unestimated.                               |
-| `priority`     | Priority display name (e.g. `"Must"`), or `null` if unset.                |
-| `sprint`       | Sprint name, or `null` if the story is in the backlog.                    |
+| Field              | Meaning                                                                                                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ref`              | `{ number, id }` — both forms always present so the agent can use either.                                                                                                      |
+| `title`            | The story title.                                                                                                                                                               |
+| `status`           | Current status display name (e.g. `"In Progress"`), or `null` if unset.                                                                                                        |
+| `story_points`     | Numeric estimate, or `null` if unestimated.                                                                                                                                    |
+| `priority`         | Priority display name (e.g. `"Must"`), or `null` if unset.                                                                                                                     |
+| `sprint`           | Sprint name, or `null` if the story is in the backlog.                                                                                                                         |
+| `has_dependencies` | `true` when the story body contains a `## Dependencies` section with at least one entry. Use as a signal to call `scrum_get_story` for full dependency detail before planning. |
 
 #### SprintSnapshot shape
 
@@ -455,22 +459,24 @@ Returned **only** by `scrum_get_story` and write tools (`scrum_create_story`, `s
 
 Every full Story has this shape:
 
-| Field                      | Meaning                                                                                                                                      |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ref`                      | `{ id: string }` — the opaque project-item handle. Pass `Story.ref.id` to any write tool that accepts a `StoryRef`.                          |
-| `title`                    | The story title.                                                                                                                             |
-| `body`                     | The story body, rendered as markdown. Includes user-story format, AC checklist, dependencies, and technical notes — whatever the team wrote. |
-| `type`                     | `StoryType` resolved from the type label or category.                                                                                        |
-| `status`                   | The current status in the team's vocabulary (e.g. `"In Progress"`).                                                                          |
-| `sprint`                   | The current sprint name, or `null` if the story is in the backlog.                                                                           |
-| `story_points`             | Numeric estimate, or `null` if unestimated.                                                                                                  |
-| `priority`                 | The team's priority value (e.g. `"Must"`), or `null`.                                                                                        |
-| `assignees`                | Array of team member identifiers (login or display name as configured).                                                                      |
-| `labels`                   | Array of label strings, excluding the `type:*` label which is reflected in `type`.                                                           |
-| `epic`                     | Parent epic name, or `null`. Readable and writable.                                                                                          |
-| `created_at`, `updated_at` | ISO-8601 timestamps.                                                                                                                         |
-| `url`                      | Canonical URL to view the story in the backend UI, when available.                                                                           |
-| `impediments`              | Array of `ImpedimentListing` — all impediments that reference this story, ordered newest first. Both open and resolved are included.         |
+| Field                      | Meaning                                                                                                                                                                                             |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ref`                      | `{ id: string }` — the opaque project-item handle. Pass `Story.ref.id` to any write tool that accepts a `StoryRef`.                                                                                 |
+| `title`                    | The story title.                                                                                                                                                                                    |
+| `body`                     | The story body, rendered as markdown. Includes user-story format, AC checklist, dependencies, and technical notes — whatever the team wrote.                                                        |
+| `type`                     | `StoryType` resolved from the type label or category.                                                                                                                                               |
+| `status`                   | The current status in the team's vocabulary (e.g. `"In Progress"`).                                                                                                                                 |
+| `sprint`                   | The current sprint name, or `null` if the story is in the backlog.                                                                                                                                  |
+| `story_points`             | Numeric estimate, or `null` if unestimated.                                                                                                                                                         |
+| `priority`                 | The team's priority value (e.g. `"Must"`), or `null`.                                                                                                                                               |
+| `assignees`                | Array of team member identifiers (login or display name as configured).                                                                                                                             |
+| `labels`                   | Array of label strings, excluding the `type:*` label which is reflected in `type`.                                                                                                                  |
+| `epic`                     | Parent epic as `{ ref: EpicRef; name: string }`, or `null`. The `ref.id` can be passed as the `epic` argument in `scrum_create_story` and `scrum_update_story` to associate a story with this epic. |
+| `blocked_by`               | Array of `DependencyEntry` — stories that must be Done before this one can start. Empty array if none.                                                                                              |
+| `blocks`                   | Array of `DependencyEntry` — stories that are downstream of this one (cannot start until this story is Done). Empty array if none.                                                                  |
+| `created_at`, `updated_at` | ISO-8601 timestamps.                                                                                                                                                                                |
+| `url`                      | Canonical URL to view the story in the backend UI, when available.                                                                                                                                  |
+| `impediments`              | Array of `ImpedimentListing` — all impediments that reference this story, ordered newest first. Both open and resolved are included.                                                                |
 
 #### ImpedimentListing shape
 
@@ -534,7 +540,7 @@ Returns the Product Backlog: all Stories not assigned to any sprint, ordered by 
 - `epic` (optional, string): include only Stories under this epic.
 - `limit` (optional, integer, default 50): cap on items returned.
 
-**Returns:** an object with `stories` (array of `StoryListing`), `total_count` (number matching the filter regardless of `limit`), `readiness` (object summarising how many items are sprint-ready, in refinement, or future candidates — based on whether they have `story_points`, acceptance criteria in the body, and a priority), and `orphan_impediments` (array of `ImpedimentListing` — unresolved impediments with no `affects` context that require Scrum Master triage).
+**Returns:** an object with `stories` (array of `StoryListing`), `total_count` (number matching the filter regardless of `limit`), `readiness` (object summarising how many items are sprint-ready, in refinement, or future candidates — based on whether they have `story_points`, acceptance criteria in the body, and a priority), `orphan_impediments` (array of `ImpedimentListing` — unresolved impediments with no `affects` context that require Scrum Master triage), and `epics` (array of `EpicListing` — all epics currently defined for the project, regardless of the story filter applied; the agent uses this list for epic-level planning and to populate the `epic` argument in create/update calls).
 
 **Notes:** The readiness summary is a pure aggregation of observable facts, not a Scrum judgement. It reports what is present; it does not enforce DoR. Archived items and items in terminal status with no sprint (orphaned completed stories that were never cleaned up) are silently excluded. `orphan_impediments` contains only unresolved impediments (status `"open"` or `"in_progress"`) with no story or sprint reference; resolved orphans are excluded. The agent calls `scrum_get_story` when it needs the full body, acceptance criteria, comments, or impediment detail for a specific item.
 
@@ -548,11 +554,11 @@ Returns the full detail of one Story, including comments, linked PRs, and parsed
 
 - `ref` (required, `StoryRef`).
 
-**Returns:** a `Story` object plus `comments` (array of `{ author, body, created_at, url }`), `linked_prs` (array of PR references with state), `sub_tasks` (array of `{ title, status }` if the backend exposes sub-tasks), `acceptance_criteria` (array of `{ text, checked }` parsed from the body), and `impediments` (array of `ImpedimentListing` — all impediments that reference this story, ordered newest first, both open and resolved).
+**Returns:** a `Story` object plus `comments` (array of `{ author, body, created_at, url }`), `linked_prs` (array of PR references with state), `sub_tasks` (array of `{ title, status }` if the backend exposes sub-tasks), `acceptance_criteria` (array of `{ text, checked }` parsed from the body), and `impediments` (array of `ImpedimentListing` — all impediments that reference this story, ordered newest first, both open and resolved). The `Story` object includes `blocked_by` and `blocks` arrays (`DependencyEntry[]`) populated from the story's `## Dependencies` body section — check `StoryListing.has_dependencies` first to avoid fetching stories with no dependencies.
 
-**Notes:** Use when the agent needs deep context on a single item — assessing DoR compliance, drafting a status update, or diagnosing a blocked item. The `impediments` field is the primary way the agent traces what is blocking a story and whether any active impediments need escalation.
+**Notes:** Use when the agent needs deep context on a single item — assessing DoR compliance, drafting a status update, or diagnosing a blocked item. The `impediments` field is the primary way the agent traces what is blocking a story and whether any active impediments need escalation. The `blocked_by` and `blocks` fields expose structured dependency data; each `DependencyEntry.key` is the upstream or downstream story's issue number.
 
-**Does not:** return diff content of linked PRs, render image attachments, or follow links to other stories transitively.
+**Does not:** return diff content of linked PRs, render image attachments, or follow dependency chains transitively.
 
 #### `scrum_get_history`
 
@@ -650,10 +656,12 @@ Edits the content of an existing Story — title, body, labels, assignees, epic.
 - `labels` (optional, array of strings): replaces the label set, excluding `type:*` labels managed by their own writes.
 - `assignees` (optional, array of strings): replaces the assignee set.
 - `epic` (optional, string or `null`): set to `null` to detach from epic.
+- `blocked_by` (optional, array of `StoryRef` or `null`): replaces the full upstream dependency list atomically. Pass `null` to clear all upstream dependencies. Omit entirely to leave the existing `blocked_by` lines unchanged.
+- `blocks` (optional, array of `StoryRef` or `null`): replaces the full downstream dependency list atomically. Pass `null` to clear all downstream dependencies. Omit entirely to leave the existing `blocks` lines unchanged. Symmetric with `blocked_by`.
 
 **Returns:** the updated `Story`.
 
-**Does not:** modify board state, change story type, archive or close the story.
+**Does not:** modify board state, change story type, archive or close the story, or follow dependency chains transitively.
 
 #### `scrum_set_field`
 

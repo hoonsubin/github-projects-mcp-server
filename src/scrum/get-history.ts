@@ -40,6 +40,7 @@ const projectStoriesToListings = (
     priority: null, // BurndownStoryInput does not carry priority
     sprint: sprintName,
     writable: false, // history item — not safe to mutate
+    has_dependencies: false, // history items have no body; dependencies not persisted in BurndownStoryInput
   }));
 
 /**

@@ -45,6 +45,8 @@ export interface GitHubBackendConfig {
     story_points?: string; // optional — NUMBER type field
     priority?: string; // optional — SINGLE_SELECT type field
     item_type?: string; // optional — SINGLE_SELECT type field for story type
+    epic?: string; // optional — field used to track epic association on the board
+    assignee?: string; // optional — field used to track assignees on the board
     [key: string]: string | undefined;
   };
   /** Maps canonical status keys → exact GitHub single-select option names. */
@@ -95,7 +97,7 @@ export interface ProjectItemIssueContent
   state: GH.IssueState; // "OPEN" | "CLOSED" — grounded in generated enum
   assignees: { nodes: Array<{ login: string }> };
   labels: { nodes: Array<{ name: string; color: string }> };
-  milestone: { title: string; dueOn: string | null } | null;
+  milestone: { id: string; title: string; dueOn: string | null } | null;
   repository: { name: string; nameWithOwner: string };
 }
 
@@ -165,7 +167,7 @@ export interface ItemFieldValue {
   // Label
   labels?: { nodes: Array<{ name: string; color: string }> };
   // Milestone
-  milestone?: { title: string; dueOn: string | null };
+  milestone?: { id: string; title: string; dueOn: string | null };
   // Repository
   repository?: { name: string; nameWithOwner: string };
 }

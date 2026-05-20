@@ -17,6 +17,7 @@ import { VocabularyManager } from "./internal/vocabulary-manager.ts";
 import { StoryQueryService } from "./internal/story-query-service.ts";
 import { StoryMutationService } from "./internal/story-mutation-service.ts";
 import { ImpedimentService } from "./internal/impediment-service.ts";
+import { EpicService } from "./internal/epic-service.ts";
 import { ConfigReloader } from "./internal/config-reloader.ts";
 import { toSprintInfo } from "./mappers.ts";
 import type {
@@ -33,7 +34,7 @@ import type {
   StoryUpdates,
   VocabularyKind,
 } from "../../scrum/ports.ts";
-import type { SprintRef, Story, StoryRef } from "../../domain/types.ts";
+import type { EpicListing, SprintRef, Story, StoryRef } from "../../domain/types.ts";
 
 // ── GitHubProjectBackend ──────────────────────────────────────────────────────
 
@@ -48,6 +49,7 @@ export class GitHubProjectBackend implements ProjectBackend {
     private readonly storyQueryService: StoryQueryService,
     private readonly storyMutationService: StoryMutationService,
     private readonly impedimentService: ImpedimentService,
+    private readonly epicService: EpicService,
     private readonly config: RuntimeConfig,
     private readonly owner: string,
     private readonly repo: string,
@@ -138,6 +140,10 @@ export class GitHubProjectBackend implements ProjectBackend {
 
   getStoryDetail(ref: StoryRef): Promise<StoryDetail> {
     return this.storyQueryService.getStoryDetail(ref);
+  }
+
+  getEpics(): Promise<EpicListing[]> {
+    return this.epicService.getEpics();
   }
 
   // ── Story write delegations ───────────────────────────────────────────────

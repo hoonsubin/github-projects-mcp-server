@@ -259,6 +259,22 @@ export const UpdateStorySchema = z
           "Can be combined with content fields (title, body, etc.) in one call. " +
           "Use with only { ref, comment } to post a comment without changing story content.",
       ),
+    blocked_by: z
+      .array(StoryRefSchema)
+      .nullish()
+      .describe(
+        "Replace the full list of stories that block this story. " +
+          "Each entry is a StoryRef ({ id }) obtained from a previous read tool. " +
+          "Pass null to clear all upstream dependencies. Omit to leave dependencies unchanged.",
+      ),
+    blocks: z
+      .array(StoryRefSchema)
+      .nullish()
+      .describe(
+        "Replace the full list of stories that this story blocks (downstream dependencies). " +
+          "Each entry is a StoryRef ({ id }) obtained from a previous read tool. " +
+          "Pass null to clear all downstream dependencies. Omit to leave unchanged.",
+      ),
   })
   .strict();
 

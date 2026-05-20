@@ -6,11 +6,11 @@
 // =============================================================================
 
 import type { StoryPort } from "./ports.ts";
-import type { StoryRef } from "../domain/types.ts";
+import type { Story, StoryRef } from "../domain/types.ts";
 import { parseAcceptanceCriteria } from "../domain/rules/acceptance-criteria.ts";
 
 interface GetStoryResult {
-  story: unknown;
+  story: Story;
   comments: Array<{ author: string; body: string; created_at: string; url: string }>;
   linked_prs: Array<
     { number: number; title: string; url: string; state: string; is_draft: boolean }

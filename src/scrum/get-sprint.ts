@@ -33,7 +33,8 @@ const storyToListing = (story: Story): StoryListing => ({
   story_points: story.story_points,
   priority: story.priority,
   sprint: story.sprint,
-  writable: true, // active sprint item — safe to mutate
+  writable: true,
+  has_dependencies: story.blocked_by.length > 0 || story.blocks.length > 0,
 });
 
 /** Project a BurndownStoryInput to a writable StoryListing entry. */
@@ -42,9 +43,10 @@ const storyListingFromHistory = (story: BurndownStoryInput): StoryListing => ({
   title: story.title,
   status: story.status,
   story_points: story.points,
-  priority: null, // BurndownStoryInput does not carry priority
-  sprint: null, // set below with sprint name
-  writable: false, // history item — not safe to mutate
+  priority: null,
+  sprint: null,
+  writable: false,
+  has_dependencies: false,
 });
 
 /** Build a SprintSnapshot for a single sprint resolved from a SprintRef. */
