@@ -1,7 +1,7 @@
 // =============================================================================
 // src/scrum/get-burndown.ts — getBurndownUseCase
 //
-// Receives backend: ProjectBackend and scrumConfig: ScrumConfig.
+// Receives backend: BurndownPort and scrumConfig: ScrumConfig.
 // =============================================================================
 
 import type { BurndownPort } from "./ports.ts";

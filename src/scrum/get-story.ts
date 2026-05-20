@@ -1,7 +1,7 @@
 // =============================================================================
 // src/scrum/get-story.ts — getStoryUseCase
 //
-// Receives backend: ProjectBackend.
+// Receives backend: StoryPort.
 // =============================================================================
 
 import type { StoryPort } from "./ports.ts";

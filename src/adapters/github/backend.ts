@@ -6,7 +6,6 @@
 // Constructor receives pre-built service instances (DIP via composition root).
 // =============================================================================
 
-import { fetchRepoFile } from "./internal/contents.ts";
 import { type RuntimeConfig } from "./config-loader.ts";
 import { LabelResolver } from "./internal/label-resolver.ts";
 import { FieldValueMutator } from "./internal/field-value-mutator.ts";
@@ -188,11 +187,5 @@ export class GitHubProjectBackend implements ProjectBackend {
     resolutionNotes?: string,
   ): Promise<ImpedimentListing> {
     return this.impedimentService.updateImpediment(ref, status, resolutionNotes);
-  }
-
-  // ── Repo file ─────────────────────────────────────────────────────────────
-
-  fetchRepoFile(path: string): Promise<string> {
-    return fetchRepoFile(this.owner, this.repo, path);
   }
 }

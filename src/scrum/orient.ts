@@ -1,7 +1,7 @@
 // =============================================================================
 // src/scrum/orient.ts — orientUseCase
 //
-// Receives backend: ProjectBackend and scrumConfig: ScrumConfig.
+// Receives backend: ProjectReader and scrumConfig: ScrumConfig.
 // =============================================================================
 
 import type { ProjectReader } from "./ports.ts";

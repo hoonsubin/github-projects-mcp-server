@@ -5,7 +5,7 @@
 // =============================================================================
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { ProjectBackend } from "../scrum/ports.ts";
+import type { FileReaderPort, ProjectBackend } from "../scrum/ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 
 import {
@@ -33,6 +33,7 @@ export const registerScrumReadTools = (
   server: McpServer,
   backend: ProjectBackend,
   scrumConfig: ScrumConfig,
+  fileReader: FileReaderPort,
 ): void => {
   // ── scrum_orient ───────────────────────────────────────────────────────────
 
@@ -325,7 +326,7 @@ export const registerScrumReadTools = (
     },
     async (params: z.infer<typeof GetTemplateSchema>) => {
       try {
-        const result = await getTemplateUseCase(backend, scrumConfig, params.artifact_type);
+        const result = await getTemplateUseCase(fileReader, scrumConfig, params.artifact_type);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
         return {

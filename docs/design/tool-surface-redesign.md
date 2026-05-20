@@ -1,7 +1,7 @@
 # Tool Surface & Agent Behavioral Design — Redesign Proposal
 
-**Status:** Draft  
-**Scope:** Framework layer (MCP tool surface) and Agent layer (behavioral design)  
+**Status:** Draft\
+**Scope:** Framework layer (MCP tool surface) and Agent layer (behavioral design)\
 **Out of scope:** Adapter implementation, backend query changes, GitHub-specific concerns
 
 ---
@@ -18,7 +18,7 @@ Scrum defines one Product Backlog. The Sprint Backlog is not a separate containe
 
 ### 1.3 `scrum_orient` is a setup validator, not an executive summary
 
-The current orient response answers: *"Is the platform correctly wired?"* and *"What vocabulary does this team use?"* It does not answer: *"What sprint are we in and how far along?"*, *"What epics are active?"*, or *"What is the current state of this project?"* The agent has no temporal or thematic context after orient and must make additional calls to reconstruct basic situational awareness.
+The current orient response answers: _"Is the platform correctly wired?"_ and _"What vocabulary does this team use?"_ It does not answer: _"What sprint are we in and how far along?"_, _"What epics are active?"_, or _"What is the current state of this project?"_ The agent has no temporal or thematic context after orient and must make additional calls to reconstruct basic situational awareness.
 
 ### 1.4 Sprint analytics are split across two tools with no unifying concept
 
@@ -74,18 +74,18 @@ The MCP server is a stateless fact layer. It returns current project state accur
 
 ### 4.1 Summary of changes
 
-| Tool | Change |
-|---|---|
-| `scrum_orient` | **Enhanced** — adds sprint time-progress, active epics, template resource URIs |
-| `scrum_get_backlog` | **Narrowed** — health/aggregate view only; no item lists |
-| `scrum_get_sprint` | **Removed** — item retrieval replaced by `scrum_find_items`; sprint metadata moved to `scrum_orient` |
-| `scrum_find_items` | **New** — unified item search across all PBIs with filter parameters |
-| `scrum_get_story` | **Unchanged** |
-| `scrum_get_burndown` | **Merged** into `scrum_get_analytics` |
-| `scrum_get_history` | **Merged** into `scrum_get_analytics` |
-| `scrum_get_analytics` | **New** — unified sprint analytics (burndown + velocity history) |
-| `scrum_get_template` | **Removed** — replaced by `scrum://template/{type}` resource |
-| `scrum://template/{type}` | **New resource** — template documents addressable by item type |
+| Tool                      | Change                                                                                               |
+| ------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `scrum_orient`            | **Enhanced** — adds sprint time-progress, active epics, template resource URIs                       |
+| `scrum_get_backlog`       | **Narrowed** — health/aggregate view only; no item lists                                             |
+| `scrum_get_sprint`        | **Removed** — item retrieval replaced by `scrum_find_items`; sprint metadata moved to `scrum_orient` |
+| `scrum_find_items`        | **New** — unified item search across all PBIs with filter parameters                                 |
+| `scrum_get_story`         | **Unchanged**                                                                                        |
+| `scrum_get_burndown`      | **Merged** into `scrum_get_analytics`                                                                |
+| `scrum_get_history`       | **Merged** into `scrum_get_analytics`                                                                |
+| `scrum_get_analytics`     | **New** — unified sprint analytics (burndown + velocity history)                                     |
+| `scrum_get_template`      | **Removed** — replaced by `scrum://template/{type}` resource                                         |
+| `scrum://template/{type}` | **New resource** — template documents addressable by item type                                       |
 
 **Net change:** 7 read tools → 5 read tools + 1 resource type.
 
@@ -142,6 +142,7 @@ OrientResult {
 ```
 
 **Key additions over current:**
+
 - `platform_state.iterations.active` now includes `days_elapsed`, `days_remaining`, `time_elapsed_pct` (computed from `start_date` + `duration_days` + today; no new backend calls)
 - `platform_state.epics` — active epics with names, descriptions, item counts (one additional backend call)
 - `vocabulary.template_uris` — map of item type → `scrum://template/{type}` URI, replacing the static template path map; gives the agent a discovery surface for resources without a separate listing call
@@ -280,11 +281,11 @@ interface SprintContext {
   id: string;
   name: string;
   goal: string | null;
-  start_date: string;            // ISO date
+  start_date: string; // ISO date
   duration_days: number;
-  days_elapsed: number;          // computed: today - start_date
-  days_remaining: number;        // computed: (start_date + duration_days) - today
-  time_elapsed_pct: number;      // days_elapsed / duration_days * 100
+  days_elapsed: number; // computed: today - start_date
+  days_remaining: number; // computed: (start_date + duration_days) - today
+  time_elapsed_pct: number; // days_elapsed / duration_days * 100
 }
 
 // Lightweight epic summary (in scrum_orient)
@@ -319,7 +320,7 @@ interface BacklogHealth {
 
 // Enriched list entry returned by scrum_find_items — richer than StoryRef, lighter than full Story
 interface StoryListing {
-  ref: { id: string; key: string | null };  // key is the human-readable issue number (e.g. "42")
+  ref: { id: string; key: string | null }; // key is the human-readable issue number (e.g. "42")
   title: string;
   type: string | null;
   status: string | null;
@@ -332,18 +333,18 @@ interface StoryListing {
 // Using key as the canonical node identifier guarantees the field is always present
 // (ref.id is nullable for unresolved items; see §7 known issue).
 interface DependencyNode {
-  key: string;               // issue number — stable, human-readable, always present
-  title: string | null;      // resolved at parse time from DependencyEntry; null if unknown
+  key: string; // issue number — stable, human-readable, always present
+  title: string | null; // resolved at parse time from DependencyEntry; null if unknown
 
   // State signals — populated for all in-project items (resolved or not);
   // null only for items genuinely outside the project (cross-repo, off-board)
-  status: string | null;     // e.g. "Done", "In Progress" — primary fetch-or-skip signal
-  sprint: string | null;     // sprint name, or null if in backlog
-  epic_name: string | null;  // epic name, or null if ungrouped
+  status: string | null; // e.g. "Done", "In Progress" — primary fetch-or-skip signal
+  sprint: string | null; // sprint name, or null if in backlog
+  epic_name: string | null; // epic name, or null if ungrouped
 
-  resolved: boolean;         // true = full StoryListing present in items[]; false = partial node
-  blocks: string[];          // keys of downstream items (this item must finish first)
-  blocked_by: string[];      // keys of upstream items (those must finish before this one)
+  resolved: boolean; // true = full StoryListing present in items[]; false = partial node
+  blocks: string[]; // keys of downstream items (this item must finish first)
+  blocked_by: string[]; // keys of upstream items (those must finish before this one)
 }
 
 // Full dependency graph — map of issue key → node.
@@ -360,7 +361,7 @@ interface ItemFilter {
   assignee?: string;
   estimated?: boolean;
   sprint_ref?: "current" | "next" | string;
-  include_dependencies?: boolean;           // default false
+  include_dependencies?: boolean; // default false
   limit?: number;
 }
 
@@ -372,7 +373,7 @@ interface ItemSearchResult {
     sprint_count: number | null;
     backlog_count: number | null;
   };
-  dependency_map: DependencyMap | null;     // null unless include_dependencies=true
+  dependency_map: DependencyMap | null; // null unless include_dependencies=true
 }
 
 // Analytics query input
@@ -443,11 +444,11 @@ For full item detail the agent always follows up with `scrum_get_story(id)`. It 
 
 The `time_elapsed_pct` field from `SprintContext` feeds directly into the agent's sprint risk assessment. The agent does not compute time-based risk from raw dates — it reads the pre-computed signal and maps it to a stance:
 
-| `time_elapsed_pct` | Agent stance |
-|---|---|
-| < 40% | Normal — focus on readiness and unblocking |
-| 40–70% | Monitor — cross-check `sprint_risk` from `scrum_get_backlog` |
-| > 70% | Elevated — proactively surface unfinished items and scope risk |
+| `time_elapsed_pct` | Agent stance                                                   |
+| ------------------ | -------------------------------------------------------------- |
+| < 40%              | Normal — focus on readiness and unblocking                     |
+| 40–70%             | Monitor — cross-check `sprint_risk` from `scrum_get_backlog`   |
+| > 70%              | Elevated — proactively surface unfinished items and scope risk |
 
 This mapping is encoded in the agent's playbooks, not in the MCP server.
 
@@ -474,13 +475,13 @@ scrum_find_items({ scope: "sprint", include_dependencies: true })
 
 The `dependency_map` covers every node in the graph: items in the result set (`resolved: true`) and out-of-scope dependencies they reference (`resolved: false`). For any unresolved node the agent uses the inline state signals to make a fetch-or-skip decision before making any additional call:
 
-| Unresolved node signals | Agent decision |
-|---|---|
-| `status: "Done"` | Blocker is resolved. No follow-up needed. |
-| `status: "In Progress"`, `sprint: "Sprint N"` | Active in another sprint. Fetch if sprint health is relevant to the current task. |
-| `status: "In Progress"`, `sprint: null` | Active but unscheduled — a backlog risk. Surface to the team; fetch full detail if actioning it. |
-| `status: null` | Item is external to the project. Agent notes the dependency but cannot resolve it via MCP. |
-| `epic_name: "X"` on unresolved node | Cross-epic dependency. Use `scrum_find_items({ epic_id: X })` for full context, not `scrum_get_story` on a single item. |
+| Unresolved node signals                       | Agent decision                                                                                                          |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `status: "Done"`                              | Blocker is resolved. No follow-up needed.                                                                               |
+| `status: "In Progress"`, `sprint: "Sprint N"` | Active in another sprint. Fetch if sprint health is relevant to the current task.                                       |
+| `status: "In Progress"`, `sprint: null`       | Active but unscheduled — a backlog risk. Surface to the team; fetch full detail if actioning it.                        |
+| `status: null`                                | Item is external to the project. Agent notes the dependency but cannot resolve it via MCP.                              |
+| `epic_name: "X"` on unresolved node           | Cross-epic dependency. Use `scrum_find_items({ epic_id: X })` for full context, not `scrum_get_story` on a single item. |
 
 The agent calls `scrum_get_story` on a dependency node only when it needs the full detail (body, AC, audit trail) to take a specific action — not merely to determine whether the dependency is active.
 

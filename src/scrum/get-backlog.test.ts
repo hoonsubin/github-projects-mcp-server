@@ -6,10 +6,8 @@
 
 import { assert, assertEquals } from "jsr:@std/assert@^1.0.0";
 import { getBacklogUseCase } from "./get-backlog.ts";
-import type { CompletionMap, ProjectBackend, SprintInfo } from "./ports.ts";
-import type { StoryRef } from "../domain/types.ts";
+import type { BacklogPort, EpicPort } from "./ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
-import type { Story } from "../domain/types.ts";
 
 // ── Test fixtures ──────────────────────────────────────────────────────────────
 
@@ -38,12 +36,15 @@ const makeStory = (overrides: Partial<IssueStory> = {}): IssueStory => ({
 });
 
 /**
- * Creates a mock ProjectBackend implementing all required methods.
+ * Creates a mock backend implementing the focused ports needed by getBacklogUseCase.
  * Uses synchronous returns wrapped in Promise.resolve() where no async I/O is needed.
+ *
+ * The use case depends on BacklogPort & EpicPort — only { getBacklogStories, getOrphanImpediments, getEpics }.
  */
 const createMockBackend = (
-  overrides: Partial<Record<keyof ProjectBackend, unknown>> = {},
-): ProjectBackend => ({
+  overrides: Partial<Record<"getBacklogStories" | "getOrphanImpediments" | "getEpics", unknown>> =
+    {},
+): BacklogPort & EpicPort => ({
   getBacklogStories: () =>
     Promise.resolve([
       makeStory({ title: "Active Story", status: "In Progress", sprint: null }),
@@ -79,64 +80,11 @@ const createMockBackend = (
         resolved_at: "2026-01-04T00:00:00Z",
       },
     ]),
-  getPlatformState: () =>
-    Promise.resolve({
-      fields: {
-        status: { exists: true, options: [], missingOptions: [] },
-        sprint: { exists: true },
-        story_points: { exists: true },
-        priority: { exists: true, options: [], missingOptions: [] },
-      },
-      labels: { existing: [], expected: [], missing: [] },
-      iterations: { active: null, next: null, completed: [], completedCount: 0 },
-    }),
-  reload: () => Promise.resolve(),
-  getSprintStories: () =>
-    Promise.resolve({
-      stories: [],
-      sprintInfo: { name: "", startDate: "", durationDays: 0, endDate: "" },
-    }),
-  getStoryDetail: () => Promise.resolve({ story: {} as Story, comments: [], linkedPrs: [] }),
-  getCompletedSprintHistory: () => Promise.resolve([]),
-  getBurndownInput: () => Promise.resolve({ sprint: {} as SprintInfo, stories: [] }),
-  resolveCompletionTimestamps: () =>
-    Promise.resolve<CompletionMap>({
-      completions: new Map(),
-      dataSource: "issue_close_proxy",
-    }),
-  fetchRepoFile: () => Promise.resolve(""),
-  createStory: () => Promise.resolve({ id: "" } as StoryRef),
-  updateStory: () => Promise.resolve(),
-  setField: () => Promise.resolve(),
-  addComment: () => Promise.resolve(),
-  addVocabulary: () => Promise.resolve({ created: false }),
-  getSprintImpediments: () => Promise.resolve([]),
   getEpics: () => Promise.resolve([]),
-  createImpediment: () =>
-    Promise.resolve({
-      listing: {
-        ref: { id: "" },
-        description: "",
-        status: "open",
-        raised_by: null,
-        raised_at: "",
-        resolved_at: null,
-      },
-      itemRef: { id: "" },
-    }),
-  updateImpediment: () =>
-    Promise.resolve({
-      ref: { id: "" },
-      description: "",
-      status: "open",
-      raised_by: null,
-      raised_at: "",
-      resolved_at: null,
-    }),
   ...Object.fromEntries(
     Object.entries(overrides).map(([k, v]) => [k, typeof v === "function" ? v : v]),
   ),
-} as ProjectBackend);
+});
 
 const createMockConfig = (): ScrumConfig => ({
   project: { name: "Test Project" },

@@ -23,15 +23,17 @@ import { StoryQueryService } from "./internal/story-query-service.ts";
 import { UserMilestoneResolver } from "./internal/user-milestone-resolver.ts";
 import { EpicService } from "./internal/epic-service.ts";
 import { VocabularyManager } from "./internal/vocabulary-manager.ts";
+import { GitHubFileReader } from "./internal/file-reader.ts";
 import type { GitHubBackendConfig } from "./types.ts";
-import type { ProjectBackend } from "../../scrum/ports.ts";
+import type { FileReaderPort, ProjectBackend } from "../../scrum/ports.ts";
 import type { ScrumConfig } from "../../domain/config.ts";
 
 // ── Return type ───────────────────────────────────────────────────────────────
 
-/** The two values the composition root needs after backend construction. */
+/** The three values the composition root needs after backend construction. */
 export interface GitHubBackendResult {
   backend: ProjectBackend;
+  fileReader: FileReaderPort;
   scrumConfig: ScrumConfig;
 }
 
@@ -101,6 +103,10 @@ export const createGitHubProjectBackend = async (): Promise<GitHubBackendResult>
 
   const configReloader = new ConfigReloader(config, ghClient);
 
+  // ── Platform-agnostic file reader (not part of ProjectBackend) ────────────
+
+  const fileReader = new GitHubFileReader(owner, primaryRepo);
+
   // ── Facade assembly ────────────────────────────────────────────────────────
 
   const backend = new GitHubProjectBackend(
@@ -119,5 +125,5 @@ export const createGitHubProjectBackend = async (): Promise<GitHubBackendResult>
     configReloader,
   );
 
-  return { backend, scrumConfig: config.scrumConfig };
+  return { backend, fileReader, scrumConfig: config.scrumConfig };
 };
