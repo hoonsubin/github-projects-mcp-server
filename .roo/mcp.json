@@ -50,12 +50,12 @@
 				"pull_request_read",
 				"issue_read"
 			],
-			"disabled": true
+			"disabled": false
 		},
 		"mempalace": {
 			"command": "mempalace-mcp",
 			"args": [],
-			"disabled": false,
+			"disabled": true,
 			"alwaysAllow": []
 		},
 		"sequentialthinking": {
@@ -81,7 +81,7 @@
 				"searxng_web_search",
 				"web_url_read"
 			],
-			"disabled": false
+			"disabled": true
 		}
 	}
 }

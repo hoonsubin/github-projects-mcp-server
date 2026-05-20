@@ -16,6 +16,7 @@ import {
   buildLinkedPrList,
   buildStoryFromRaw,
   type IssueDetailsInput,
+  resolveDependencyRefs,
   toSprintInfo,
 } from "../mappers.ts";
 import {
@@ -108,9 +109,12 @@ export class StoryQueryService {
       );
       return fv?.iterationId === iterationId;
     });
-    const stories = sprintItems
-      .map((item) => buildStoryFromRaw(item, this.config))
-      .filter((s): s is Story => s !== null);
+    const stories = resolveDependencyRefs(
+      sprintItems
+        .map((item) => buildStoryFromRaw(item, this.config))
+        .filter((s): s is Story => s !== null),
+      allItems,
+    );
     return { stories, sprintInfo };
   }
 
@@ -125,9 +129,12 @@ export class StoryQueryService {
     const backlogItems = await fetcher.collect((item) =>
       isBacklogItem(item, this.config.fields.sprintFieldId)
     );
-    return backlogItems
-      .map((item) => buildStoryFromRaw(item, this.config))
-      .filter((s): s is Story => s !== null);
+    return resolveDependencyRefs(
+      backlogItems
+        .map((item) => buildStoryFromRaw(item, this.config))
+        .filter((s): s is Story => s !== null),
+      backlogItems,
+    );
   }
 
   async getStoryDetail(ref: StoryRef): Promise<StoryDetail> {

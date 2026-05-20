@@ -453,7 +453,7 @@ Add `getEpics(): Promise<EpicListing[]>` to `GitHubProjectBackend`. Delegate to 
 
 ---
 
-## Phase 4 — Dependencies: Domain, Use Case & Tool Schema
+## Phase 4 — Dependencies: Domain, Use Case & Tool Schema [done]
 
 > **Board tickets:** [#82](https://github.com/hoonsubin/github-projects-mcp-server/issues/82) [#98](https://github.com/hoonsubin/github-projects-mcp-server/issues/98) [#104](https://github.com/hoonsubin/github-projects-mcp-server/issues/104), [#81](https://github.com/hoonsubin/github-projects-mcp-server/issues/81),
 
@@ -574,7 +574,7 @@ In the `scrum_update_story` handler, pass both `blocked_by` and `blocks` from th
 
 ---
 
-## Phase 5 — Dependencies: GitHub Adapter Implementation
+## Phase 5 — Dependencies: GitHub Adapter Implementation [done]
 
 > **Board tickets:** [#104](https://github.com/hoonsubin/github-projects-mcp-server/issues/104) _(paired with Phase 4)_
 

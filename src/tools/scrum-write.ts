@@ -146,7 +146,8 @@ export function registerScrumWriteTools(
     "scrum_update_story",
     {
       title: "Update Story",
-      description: `Edit the content fields of a story: title, body, labels, assignees, or epic.
+      description:
+        `Edit the content fields of a story: title, body, labels, assignees, epic, or dependencies.
         For board fields (status, sprint, story_points, priority, assignee) use scrum_set_field.
 
         WARNING — labels and assignees REPLACE the full existing set, they do not append.
@@ -161,6 +162,8 @@ export function registerScrumWriteTools(
           assignees  string[] — REPLACES all existing assignees, GitHub logins (omit to leave unchanged)
           epic       string | null — Milestone title to assign to; null detaches from epic (omit to leave unchanged)
           comment    string — Post a comment on the story after updating (omit to skip)
+          blocked_by  StoryRef[] | null — REPLACES all upstream dependencies; null clears; omit to leave unchanged
+          blocks      StoryRef[] | null — REPLACES all downstream dependencies; null clears; omit to leave unchanged
 
         Returns: updated Story object.`,
       inputSchema: UpdateStorySchema.shape,
@@ -174,6 +177,8 @@ export function registerScrumWriteTools(
         if (params.labels !== undefined) updates.labels = params.labels;
         if (params.assignees !== undefined) updates.assignees = params.assignees;
         if (params.epic !== undefined) updates.epic = params.epic;
+        if (params.blocked_by !== undefined) updates.blocked_by = params.blocked_by;
+        if (params.blocks !== undefined) updates.blocks = params.blocks;
 
         await backend.updateStory(params.ref, updates as StoryUpdates);
 

@@ -5,7 +5,13 @@
 // =============================================================================
 
 import type { RuntimeConfig } from "./config-loader.ts";
-import type { DraftStory, IssueStory, IterationEntry, Story } from "../../domain/types.ts";
+import type {
+  DependencyEntry,
+  DraftStory,
+  IssueStory,
+  IterationEntry,
+  Story,
+} from "../../domain/types.ts";
 import type { BurndownStoryInput, SprintInfo } from "../../scrum/ports.ts";
 // classifyLabels / StoryTypeLabel removed — type is now read from the Type board field,
 // not from repo labels. See extractBoardFields → typeFieldId branch below.
@@ -31,6 +37,33 @@ interface TimelineItemInput {
     isDraft?: boolean | null;
   } | null;
 }
+
+// ── Dependency parsing ─────────────────────────────────────────────────────────
+
+const parseDependencies = (
+  body: string,
+): { blocked_by: DependencyEntry[]; blocks: DependencyEntry[] } => {
+  const sectionMatch = body.match(/^##\s+dependencies\b.*$([\s\S]*?)(?=^##\s|\z)/im);
+  if (!sectionMatch) return { blocked_by: [], blocks: [] };
+
+  const section = sectionMatch[1];
+  const blocked_by: DependencyEntry[] = [];
+  const blocks: DependencyEntry[] = [];
+
+  for (const line of section.split("\n")) {
+    const blockedMatch = line.match(/^-\s+blocked\s+by:\s+#(\d+)\s*$/i);
+    if (blockedMatch) {
+      blocked_by.push({ key: blockedMatch[1], title: null, ref: { id: null } });
+      continue;
+    }
+    const blocksMatch = line.match(/^-\s+blocks:\s+#(\d+)\s*$/i);
+    if (blocksMatch) {
+      blocks.push({ key: blocksMatch[1], title: null, ref: { id: null } });
+    }
+  }
+
+  return { blocked_by, blocks };
+};
 
 // ── Exported input shape for backend.ts ───────────────────────────────────────
 
@@ -133,6 +166,8 @@ export const buildStoryFromRaw = (
       created_at: item.createdAt,
       updated_at: item.updatedAt,
       url: null,
+      blocked_by: [],
+      blocks: [],
     };
     return draft;
   }
@@ -148,6 +183,7 @@ export const buildStoryFromRaw = (
     ? { ref: { id: content.milestone.id }, name: content.milestone.title }
     : null;
 
+  const deps = parseDependencies(content.body);
   const issue: IssueStory = {
     kind: "issue",
     ref: { id: item.id },
@@ -165,6 +201,8 @@ export const buildStoryFromRaw = (
     created_at: item.createdAt,
     updated_at: item.updatedAt,
     url: content.url,
+    blocked_by: deps.blocked_by,
+    blocks: deps.blocks,
   };
   return issue;
 };
@@ -184,6 +222,7 @@ export const buildEnrichedStory = (
   // All repo labels are passed through unfiltered.
   const labels = issueNode.labels?.nodes.map((l) => l.name) ?? [];
 
+  const deps = parseDependencies(issueNode.body ?? "");
   return {
     kind: "issue",
     ref: { id: itemId },
@@ -203,6 +242,8 @@ export const buildEnrichedStory = (
     created_at: issueNode.createdAt,
     updated_at: issueNode.updatedAt,
     url: issueNode.url ?? "",
+    blocked_by: deps.blocked_by,
+    blocks: deps.blocks,
   };
 };
 
@@ -252,6 +293,41 @@ export const toSprintInfo = (iter: IterationEntry | null): SprintInfo | null => 
     durationDays: iter.duration,
     endDate: endDate.toISOString().slice(0, 10),
   };
+};
+
+// ── Dependency ref resolution ──────────────────────────────────────────────────
+
+/**
+ * Second-pass resolver: fills in ref.id for dependency entries that were parsed
+ * from body markdown by matching issue numbers against in-memory project items.
+ *
+ * Called at the end of getBacklogStories() and getSprintStories() — both of which
+ * have the full list of ProjectItems already in memory. Not called from
+ * getStoryDetail() — ref.id stays null in that context.
+ */
+export const resolveDependencyRefs = (
+  stories: Story[],
+  allItems: ProjectItem[],
+): Story[] => {
+  // Build a lookup: issue number string → project item ID
+  const keyToId = new Map<string, string>();
+  for (const item of allItems) {
+    const content = item.content;
+    if (!content || content.__typename === "DraftIssue") continue;
+    const issueKey = String(content.number);
+    if (issueKey && item.id) keyToId.set(issueKey, item.id);
+  }
+
+  const resolve = (entries: DependencyEntry[]): DependencyEntry[] =>
+    entries.map((e) =>
+      e.ref.id === null && keyToId.has(e.key) ? { ...e, ref: { id: keyToId.get(e.key)! } } : e
+    );
+
+  return stories.map((s) => ({
+    ...s,
+    blocked_by: resolve(s.blocked_by),
+    blocks: resolve(s.blocks),
+  }));
 };
 
 // ── Burndown projection ────────────────────────────────────────────────────────

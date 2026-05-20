@@ -118,8 +118,6 @@ classDiagram
             class readiness.ts:::rules {
                 +computeReadinessSummary()
             }
-            class labels.ts:::rules {
-            }
             class config.ts:::domain {
                 interface ScrumConfig
             }
@@ -182,6 +180,7 @@ classDiagram
                 +buildCommentList()
                 +buildLinkedPrList()
                 +toSprintInfo()
+                +resolveDependencyRefs()
                 +buildBurndownStoryInput()
             }
             class config-reloader.ts:::internal {
@@ -192,7 +191,6 @@ classDiagram
             }
             class epic-service.ts:::internal {
                 class EpicService
-                %% Unused: EpicService
             }
             class pagination.ts:::internal {
                 class PaginatedProjectItemFetcher
@@ -413,6 +411,7 @@ classDiagram
     factory.ts --> story-mutation-service.ts : "imports"
     factory.ts --> story-query-service.ts : "imports"
     factory.ts --> user-milestone-resolver.ts : "imports"
+    factory.ts --> epic-service.ts : "imports"
     factory.ts --> vocabulary-manager.ts : "imports"
     factory.ts --> types.ts : "imports"
     factory.ts --> ports.ts : "imports"
@@ -430,6 +429,7 @@ classDiagram
     backend.ts --> story-query-service.ts : "imports"
     backend.ts --> story-mutation-service.ts : "imports"
     backend.ts --> impediment-service.ts : "imports"
+    backend.ts --> epic-service.ts : "imports"
     backend.ts --> config-reloader.ts : "imports"
     backend.ts --> mappers.ts : "imports"
     backend.ts --> ports.ts : "imports"
@@ -465,7 +465,6 @@ The following exports are never imported by any other module in the codebase:
 | [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `GitHubErrorCode`           | `type`      |
 | [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `assertNever`               | `function`  |
 | [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `GitHubApiErrorParams`      | `interface` |
-| [`./src/adapters/github/internal/epic-service.ts`](../src/adapters/github/internal/epic-service.ts)     | `EpicService`               | `class`     |
 | [`./src/adapters/github/internal/label-resolver.ts`](../src/adapters/github/internal/label-resolver.ts) | `GitHubLabel`               | `interface` |
 | [`./src/adapters/github/internal/http-client.ts`](../src/adapters/github/internal/http-client.ts)       | `RestResponse`              | `interface` |
 | [`./src/adapters/github/factory.ts`](../src/adapters/github/factory.ts)                                 | `GitHubBackendResult`       | `interface` |

@@ -113,6 +113,7 @@ export interface StoryUpdates {
   assignees?: string[];
   epic?: string | null;
   blocked_by?: StoryRef[] | null; // null clears all; omit to leave unchanged
+  blocks?: StoryRef[] | null; // null clears all; omit to leave unchanged
 }
 
 export type VocabularyKind = "status_option" | "priority_option" | "label";
@@ -144,7 +145,7 @@ export interface StoryListing {
   priority: string | null;
   sprint: string | null;
   writable: boolean; // true for active items, false for history/read-only
-  has_dependencies?: boolean; // true when the story body contains a ## Dependencies section
+  has_dependencies: boolean; // true when the story body contains a ## Dependencies section
 }
 
 /**

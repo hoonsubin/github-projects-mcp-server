@@ -45,6 +45,8 @@ export interface GitHubBackendConfig {
     story_points?: string; // optional — NUMBER type field
     priority?: string; // optional — SINGLE_SELECT type field
     item_type?: string; // optional — SINGLE_SELECT type field for story type
+    epic?: string; // optional — field used to track epic association on the board
+    assignee?: string; // optional — field used to track assignees on the board
     [key: string]: string | undefined;
   };
   /** Maps canonical status keys → exact GitHub single-select option names. */

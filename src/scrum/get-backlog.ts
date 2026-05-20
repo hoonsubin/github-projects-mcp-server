@@ -35,7 +35,8 @@ const storyToListing = (story: Story): StoryListing => ({
   story_points: story.story_points,
   priority: story.priority,
   sprint: story.sprint,
-  writable: true, // Active backlog items are writable; see Step 7c.2 for future enhancement
+  writable: true,
+  has_dependencies: story.blocked_by.length > 0 || story.blocks.length > 0,
 });
 
 /**

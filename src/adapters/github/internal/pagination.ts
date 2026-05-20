@@ -110,7 +110,7 @@ interface RawFieldValue {
   // Label
   labels?: { nodes: Array<{ name: string; color: string }> };
   // Milestone
-  milestone?: { title: string; dueOn: string | null };
+  milestone?: { id: string; title: string; dueOn: string | null };
   // Repository
   repository?: { name: string; nameWithOwner: string };
 }
@@ -138,7 +138,7 @@ const buildItemsQuery = (
           __typename id number title url state body
           assignees(first: 5) { nodes { login } }
           labels(first: 10) { nodes { name color } }
-          milestone { title dueOn }
+          milestone { id title dueOn }
           repository { name nameWithOwner }
         }
     `);
@@ -198,7 +198,7 @@ const buildItemsQuery = (
               ... on ProjectV2ItemFieldIterationValue { iterationId title startDate duration field { ... on ProjectV2FieldCommon { id name } } }
               ... on ProjectV2ItemFieldUserValue { users(first: 5) { nodes { login } } field { ... on ProjectV2FieldCommon { id name } } }
               ... on ProjectV2ItemFieldLabelValue { labels(first: 10) { nodes { name color } } field { ... on ProjectV2FieldCommon { id name } } }
-              ... on ProjectV2ItemFieldMilestoneValue { milestone { title dueOn } field { ... on ProjectV2FieldCommon { id name } } }
+              ... on ProjectV2ItemFieldMilestoneValue { milestone { id title dueOn } field { ... on ProjectV2FieldCommon { id name } } }
               ... on ProjectV2ItemFieldRepositoryValue { repository { name nameWithOwner } field { ... on ProjectV2FieldCommon { id name } } }
             }
           }

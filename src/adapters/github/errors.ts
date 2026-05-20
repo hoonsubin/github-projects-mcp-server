@@ -12,6 +12,7 @@ export type GitHubErrorCode =
   // Resource state
   | "NOT_FOUND" // item / issue / user / project deleted or ID stale
   | "DRAFT_ISSUE_CONSTRAINT" // operation requires a real Issue, not a DraftIssue
+  | "RESOLUTION_FAILED" // unable to resolve a StoryRef to an issue number for dependencies
   | "WRONG_CONTENT_TYPE" // project item is not an Issue (e.g. a PullRequest)
   // Platform configuration
   | "FIELD_NOT_CONFIGURED" // project field not set up in GitHub Projects
