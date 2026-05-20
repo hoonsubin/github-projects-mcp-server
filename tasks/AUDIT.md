@@ -1,14 +1,16 @@
 # Comprehensive Clean Code Audit Report
 
+> **Verification Status:** ✅ All 16 claims verified against actual codebase (2026-05-20). See [§ Verification Results](#-verification-results-summary) at the end for per-claim evidence and corrections.
+
 ## Overall Assessment
 
-The codebase is **well-structured**, with a clean three-layer architecture (Framework → Use-Case → Adapter) that generally follows SOLID principles and the Dependency Inversion Principle. However, the audit revealed **16 actionable issues** across multiple categories, including three layer-breach violations, duplicated code, and test-quality gaps. The most critical finding is a **duplicated `parseDependencies` implementation** that diverges between the domain and adapter layers — this is a latent correctness risk.
+The codebase is **well-structured**, with a clean three-layer architecture (Framework → Use-Case → Adapter) that generally follows SOLID principles and the Dependency Inversion Principle. However, the audit revealed **16 claims**, of which **14 are confirmed actionable** (1 is falsified, 1 is substantively confirmed but with a tighter call-chain trace). The most critical finding is a **duplicated `parseDependencies` implementation** that diverges between the domain and adapter layers — this is a latent correctness risk.
 
 ---
 
 ## 🔴 CRITICAL: Layer Breaches & Duplication
 
-### 1. G5 (Duplication) — Two diverging `parseDependencies` implementations
+### 1. G5 (Duplication) — Two diverging `parseDependencies` implementations ✅ CONFIRMED
 
 **Files:**
 
@@ -30,7 +32,7 @@ The domain version is **never imported anywhere** (confirmed by regex search: 0 
 
 ---
 
-### 2. G5 (Duplication) — Two identical `storyToListing` functions
+### 2. G5 (Duplication) — Two identical `storyToListing` functions ✅ CONFIRMED
 
 **Files:**
 
@@ -45,7 +47,7 @@ These are **character-for-character identical** except the import path for `Stor
 
 ---
 
-### 3. G5 (Duplication) — Two identical `assertNever` functions
+### 3. G5 (Duplication) — Two identical `assertNever` functions ✅ CONFIRMED
 
 **Files:**
 
@@ -60,7 +62,7 @@ Identical except the error message phrasing (`"Unhandled variant"` vs `"Unhandle
 
 ---
 
-### 4. G6 (Code at wrong level of abstraction) — Framework layer imports adapter internals
+### 4. G6 (Code at wrong level of abstraction) — Framework layer imports adapter internals ✅ CONFIRMED
 
 **File:** [`src/tools/scrum-write.ts:20`](src/tools/scrum-write.ts:20)
 
@@ -76,7 +78,7 @@ This is a **direct layer breach** — the framework layer (`src/tools/`) should 
 
 ---
 
-### 5. G6 (Code at wrong level of abstraction) — Domain rule accesses adapter config
+### 5. G6 (Code at wrong level of abstraction) — Domain rule accesses adapter config ✅ CONFIRMED
 
 **File:** [`src/domain/rules/status.ts:21`](src/domain/rules/status.ts:21)
 
@@ -99,21 +101,32 @@ The domain layer should receive the resolved `status_display` mapping as a param
 
 ## 🟠 HIGH: Architectural & Design Issues
 
-### 6. G9 (Dead code) — Unused domain/rules/dependencies.ts exports
+### 6. G9 (Dead code) / G6 (Layer breach) — `dependencies.ts` AND `update-impediment.ts` are dead code ✅ CONFIRMED
 
-**File:** [`src/domain/rules/dependencies.ts`](src/domain/rules/dependencies.ts)
+**Two modules are dead code, confirmed by import search:**
 
-All three exports (`parseDependencies`, `hasDependencySection`, `generateDependencySection`) are imported by **no other file** in the codebase (confirmed via regex search). They are dead code — the adapter uses its own `parseDependencies()` in `mappers.ts`.
+**A) [`src/domain/rules/dependencies.ts`](src/domain/rules/dependencies.ts)**
 
-Additionally, per the proj-diagram analysis, `update-impediment.ts`'s `updateImpedimentUseCase` is marked as unused.
+All three exports (`parseDependencies`, `hasDependencySection`, `generateDependencySection`) are imported by **no other file** in the codebase (confirmed via regex search of `from.*dependencies`). They are dead code — the adapter uses its own `parseDependencies()` in `mappers.ts`.
 
-**Fix:** Delete the file if the adapter's version is canonical, or make the adapter delegate to this domain function. Similarly, audit other "%% Unused" markings in [`docs/proj-diagram.md`](docs/proj-diagram.md:26-68).
+**B) [`src/scrum/update-impediment.ts`](src/scrum/update-impediment.ts)**
 
-**Smell codes:** G9 (Dead code)
+The exported `updateImpedimentUseCase` is imported by **no other file** in the codebase. The call chain for `scrum_update_impediment` **bypasses the use-case layer entirely**:
+
+```
+scrum-write.ts:506  →  backend.updateImpediment()        [calls ProjectBackend directly]
+backend.ts:192      →  this.impedimentService.update...()  [adapter internal]
+```
+
+The handler never calls `updateImpedimentUseCase()`. This is both dead code (G9) and a layer breach (G6) — all other handlers follow the `handler → useCase → backend` pattern, but `scrum_update_impediment` skips the use case.
+
+**Fix:** Delete `src/domain/rules/dependencies.ts`. For `update-impediment.ts`: either wire the handler through the use case (restoring the architecture), or delete the file and keep the direct backend call. Also audit other "%% Unused" markings in [`docs/proj-diagram.md`](docs/proj-diagram.md:26-68).
+
+**Smell codes:** G9 (Dead code), G6 (Code at wrong level of abstraction)
 
 ---
 
-### 7. G8 (Too much information) — Test mocks implement full ProjectBackend when only 2 ports needed
+### 7. G8 (Too much information) — Test mocks implement full ProjectBackend when only 2 ports needed ✅ CONFIRMED
 
 **File:** [`src/scrum/get-backlog.test.ts:44-139`](src/scrum/get-backlog.test.ts:44)
 
@@ -129,7 +142,7 @@ Contrast with [`get-burndown.test.ts:56-60`](src/scrum/get-burndown.test.ts:56) 
 
 ---
 
-### 8. F3 (Flag arguments) / G15 (Selector arguments) — `_scrumConfig` unused parameter
+### 8. F3 (Flag arguments) / G15 (Selector arguments) — `_scrumConfig` unused parameter ✅ CONFIRMED
 
 **File:** [`src/scrum/get-burndown.ts:27`](src/scrum/get-burndown.ts:27)
 
@@ -150,9 +163,9 @@ The underscore convention signals the parameter is unused but required by the ca
 
 ## 🟡 MODERATE: Code Quality & Maintainability
 
-### 9. G1 (Multiple languages in one source file) — Inline GraphQL in TypeScript
+### 9. G1 (Multiple languages in one source file) — Inline GraphQL in TypeScript ✅ CONFIRMED
 
-**File:** [`src/adapters/github/internal/story-mutation-service.ts`](src/adapters/github/internal/story-mutation-service.ts)
+**File:** [`src/adapters/github/internal/story-mutation-service.ts`](src/adapters/github/internal/story-mutation-service.ts) (primary)
 
 Multiple places inline GraphQL mutation strings directly in TypeScript code:
 
@@ -164,15 +177,17 @@ Multiple places inline GraphQL mutation strings directly in TypeScript code:
 - Lines 368-375: `AddComment` mutation
 - Lines 385-390: `ConvertDraftIssue` mutation
 
-Contrast with the read side, which uses named constants from [`src/adapters/github/queries.ts`](src/adapters/github/queries.ts). The `operations.graphql` file exists but may not be used.
+> 📝 **Broader scope:** The inline pattern also appears in 4 other adapter files: [`impediment-service.ts`](src/adapters/github/internal/impediment-service.ts:265-276), [`field-value-mutator.ts`](src/adapters/github/internal/field-value-mutator.ts:39), [`vocabulary-manager.ts`](src/adapters/github/internal/vocabulary-manager.ts:125), and [`label-resolver.ts`](src/adapters/github/internal/label-resolver.ts:168) — totalling **11 inline mutation strings across 5 files**.
 
-**Fix:** Extract all inline GraphQL to the `queries.ts` module for consistency with the read path.
+Contrast with the read side, which uses named constants from [`src/adapters/github/queries.ts`](src/adapters/github/queries.ts). The `operations.graphql` file exists but is only consumed by `queries.ts` for read operations — mutations are not yet extracted.
+
+**Fix:** Extract all inline GraphQL (across all 5 adapter files) to `operations.graphql` / `queries.ts` for consistency with the read path.
 
 **Smell codes:** G1 (Multiple languages in one source file), G11 (Inconsistency)
 
 ---
 
-### 10. G33 (Encapsulate boundary conditions) — Date math scattered across modules
+### 10. G33 (Encapsulate boundary conditions) — Date math scattered across modules ✅ CONFIRMED
 
 Date computation appears in three places with slightly different implementations:
 
@@ -188,7 +203,7 @@ The `buildSprintMeta` uses local-time `setDate`/`setHours` while `buildSprintWin
 
 ---
 
-### 11. N1 (Non-descriptive name) — `resolveP0PriorityDisplay` is imprecise
+### 11. N1 (Non-descriptive name) — `resolveP0PriorityDisplay` is imprecise ✅ CONFIRMED
 
 **File:** [`src/tools/scrum-write.ts:34`](src/tools/scrum-write.ts:34)
 
@@ -202,7 +217,7 @@ The name `resolveP0PriorityDisplay` suggests it resolves the P0 (highest-priorit
 
 ---
 
-### 12. G10 (Vertical separation) — `PartialFailureResult` type far from usage
+### 12. G10 (Vertical separation) — `PartialFailureResult` type far from usage ✅ CONFIRMED
 
 **File:** [`src/tools/scrum-write.ts:25-29`](src/tools/scrum-write.ts:25)
 
@@ -212,7 +227,7 @@ The `PartialFailureResult` interface is defined at the top of the file but only 
 
 ---
 
-### 13. G28 (Encapsulate conditionals) — Repeated `undefined` checks in handler
+### 13. G28 (Encapsulate conditionals) — Repeated `undefined` checks in handler ✅ CONFIRMED
 
 **File:** [`src/tools/scrum-write.ts:175-181`](src/tools/scrum-write.ts:175)
 
@@ -234,7 +249,7 @@ This pattern is repetitive and error-prone (easy to miss a field). A helper func
 
 ## 🟢 LOW: Polish & Documentation
 
-### 14. N2 (Name at wrong abstraction level) — `orient.ts` uses `unknown` for vocabulary types
+### 14. N2 (Name at wrong abstraction level) — `orient.ts` uses `unknown` for vocabulary types ✅ CONFIRMED
 
 **File:** [`src/scrum/orient.ts:34-36`](src/scrum/orient.ts:34)
 
@@ -252,7 +267,7 @@ The `team`, `dor`, and `dod` fields are typed as `unknown`, requiring consumers 
 
 ---
 
-### 15. G11 (Inconsistency) — `get-burndown.ts` returns `BurndownResponse | { message: string }`
+### 15. G11 (Inconsistency) — `get-burndown.ts` returns `BurndownResponse | { message: string }` ✅ CONFIRMED
 
 **File:** [`src/scrum/get-burndown.ts:29`](src/scrum/get-burndown.ts:29)
 
@@ -264,21 +279,32 @@ The return type `BurndownResponse | { message: string }` is a tagged union patte
 
 ---
 
-### 16. E2 (Tests require more than one step) — No single-test-runner check for all test files
+### 16. E2 (Tests require more than one step) — No single-test-runner check for all test files ❌ FALSIFIED
 
-The test files (`get-backlog.test.ts`, `get-burndown.test.ts`, `get-history.test.ts`) are comprehensive and well-structured with ISP-aligned mocks. However, there's no centralized test runner configuration file confirming all tests run with a single `deno test` command. The `deno.json` should be verified for a `"test"` task.
+~~The test files are comprehensive but there's no centralized test runner configuration.~~
+
+> ⚠️ **FALSIFIED:** This claim is **invalid**. [`deno.json:7`](deno.json:7) **does** contain a `"test"` task:
+>
+> ```json
+> "test": "GITHUB_TOKEN=test-token deno test --allow-env=DEBUG,GITHUB_TOKEN --allow-net src/"
+> ```
+>
+> This runs all tests under `src/` with a single command. **No action required.**
 
 ---
 
 ## 📊 Summary Statistics
 
-| Severity  | Count  | Smell Codes                    |
-| --------- | ------ | ------------------------------ |
-| CRITICAL  | 5      | G5, G6, G9                     |
-| HIGH      | 4      | G8, G9, F3, G15, G12           |
-| MODERATE  | 5      | G1, G5, G11, G33, N1, G10, G28 |
-| LOW       | 2      | N2, G11                        |
-| **Total** | **16** |                                |
+| Severity  | Count  | Smell Codes                    | Actionable |
+| --------- | ------ | ------------------------------ | ---------- |
+| CRITICAL  | 5      | G5, G6, G9                     | 5          |
+| HIGH      | 2      | G8, F3/G15/G12                 | 2          |
+| MODERATE  | 5      | G1, G5, G11, G33, N1, G10, G28 | 5          |
+| LOW       | 2      | N2, G11                        | 2          |
+| FALSIFIED | 1      | E2                             | 0          |
+| **Total** | **15** |                                | **14**     |
+
+---
 
 ## ✅ Architecture Adherence — What's Working
 
@@ -289,6 +315,8 @@ The test files (`get-backlog.test.ts`, `get-burndown.test.ts`, `get-history.test
 5. **Strong Error Design** — `GitHubApiError` carries code, recovery instructions, and structured context.
 6. **Test Quality** — Tests are ISP-aligned, use focused mocks, and cover edge cases (empty history, partial failures, case-insensitive matching).
 
+---
+
 ## 🔧 Recommended Action Order
 
 1. **Delete** [`src/domain/rules/dependencies.ts`](src/domain/rules/dependencies.ts) (dead code — G9)
@@ -297,6 +325,39 @@ The test files (`get-backlog.test.ts`, `get-burndown.test.ts`, `get-history.test
 4. **Remove** `graphql` import from [`scrum-write.ts`](src/tools/scrum-write.ts:20) (G6)
 5. **Refactor** `isTerminalStatus` to not reach into `backends.github` (G6)
 6. **Consolidate** `assertNever` (keep domain version) (G5)
-7. **Refactor** `get-backlog.test.ts` mock to ISP pattern (G8)
-8. **Extract** inline GraphQL to `queries.ts` (G1)
-9. **Consolidate** date math in `sprint-math.ts` (G5/G33)
+7. **Wire `scrum_update_impediment` through `updateImpedimentUseCase`** or **delete** the use-case file (G9/G6)
+8. **Refactor** `get-backlog.test.ts` mock to ISP pattern (G8)
+9. **Extract** inline GraphQL to `queries.ts` (G1)
+10. **Consolidate** date math in `sprint-math.ts` (G5/G33)
+11. **Rename** `resolveP0PriorityDisplay` → `resolveHighestPriorityDisplay` (N1)
+12. **Add** proper types for `team`/`dor`/`dod` in `orient.ts` (N2)
+13. **Normalize** error handling pattern in `get-burndown.ts` (G11)
+
+---
+
+## 📋 Verification Results Summary
+
+### Verification Methodology
+
+Every claim was verified by reading the exact `file:line` references and running regex import searches across the codebase.
+
+- **File reads:** Each referenced file was read at the cited line ranges; code excerpt accuracy confirmed.
+- **Import searches:** `search_files` with regex patterns against `src/` for:
+  - `from.*domain/rules/dependencies` → **0 results** (dead code confirmed)
+  - `from.*update-impediment` → **0 results** (dead code confirmed)
+  - `groupStoriesByStatus|computeSprintTotals` → only definition site, 0 importers (dead code confirmed)
+- **Call-site tracing:** `scrum-write.ts:506` calls `backend.updateImpediment()` **directly on `ProjectBackend`** — it does NOT call `updateImpedimentUseCase()`. The handler bypasses the use-case layer.
+- **Config verification:** `deno.json:7` confirmed the `"test"` task exists and covers `src/`.
+
+### Corrections / Refinements
+
+| Claim                        | Original Audit      | After Verification                                                |
+| ---------------------------- | ------------------- | ----------------------------------------------------------------- |
+| #6 `updateImpedimentUseCase` | Dead code (G9)      | **Confirmed** — 0 importers. Handler bypasses use case (also G6). |
+| #6 `dependencies.ts`         | Dead code (G9)      | **Confirmed** — 0 importers.                                      |
+| #9 Inline GraphQL scope      | 1 file, 7 mutations | **Expanded** — 5 files, 11 inline mutations total.                |
+| #16 Test runner config       | Claimed absent (E2) | **Falsified** — `deno.json:7` has `"test"` task.                  |
+
+### Readiness Assessment
+
+The codebase is **ready to proceed** with the refactoring plan in [`tasks/REFACTORING.md`](tasks/REFACTORING.md). The 14 remaining actionable items are well-scoped and do not block forward progress. The recommended action order above is prioritized by risk: dead code removal and layer breach fixes first, then consolidation and extraction work.
