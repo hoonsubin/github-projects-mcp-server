@@ -7,6 +7,7 @@
 // or wire-format details appear here.
 // =============================================================================
 
+// todo: this entire type conflates backend adaptor types with the use-case layer types.
 // ── Story references ──────────────────────────────────────────────────────────
 
 /**
@@ -61,6 +62,8 @@ export interface EpicListing {
 export interface DependencyEntry {
   key: string;
   title: string | null;
+  // ref is sometimes a id, key pair (https://github.com/hoonsubin/github-projects-mcp-server/blob/0af4b3cefbc24470262964c3f9a27a1129ec6bc5/src/scrum/ports.ts#L146)
+  // and sometimes it's not. The item reference type should be unified across the project
   ref: { id: string | null };
 }
 
@@ -89,7 +92,7 @@ export type SprintRef = "current" | "next" | null | SprintName;
  * Fields shared by every Story variant. Board fields (type, status, sprint,
  * story_points, priority) are nullable because they may be unset on the board.
  */
-interface StoryBase {
+interface StoryBase { // todo: also a close duplicate of the `ports.ts`. The type should be uniformed
   ref: { id: string }; // opaque project-item handle — use in subsequent tool calls
   title: string;
   body: string;

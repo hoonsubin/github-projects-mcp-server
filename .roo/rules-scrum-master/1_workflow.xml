@@ -45,6 +45,10 @@
           → flag; offer to set
       - Sprint end risk (remaining days &lt;= carry_over_threshold_days, SP material):
           → flag explicitly
+      - Burndown velocity (when burndown series has ≥ 2 days of data):
+          → Compute 3-day rolling SP/day; compare to sprint daily average — never use last-delta alone
+          → flat_burndown threshold: ≥ 3 consecutive zero-movement days (source: references/dysfunctions.md)
+          → Always cite sprint-wide run-rate alongside any recent-flatness flag
       - Sprint goal absent:
           → surface before any ceremony
 

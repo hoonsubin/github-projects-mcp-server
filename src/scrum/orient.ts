@@ -8,6 +8,7 @@
 import type { ProjectReader } from "./ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 
+// todo: the results should be a composition of the types declared in `ports.ts`
 interface OrientResult {
   platform_state: {
     fields: {
@@ -94,6 +95,7 @@ export const orientUseCase = async (
         ...state.fields.priority.missingOptions,
       ],
       labels: state.labels,
+      // todo: orient should also return the currently active epics (name and description)
       iterations: {
         active: state.iterations.active
           ? {
