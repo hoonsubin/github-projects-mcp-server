@@ -10,7 +10,7 @@
 
 // =============================================================================
 
-import type { EpicListing, SprintRef, Story, StoryRef } from "../domain/types.ts";
+import type { EpicListing, EpicRef, SprintRef, Story, StoryRef } from "../domain/types.ts";
 
 // ── Supporting types that cross the boundary ──────────────────────────────────
 
@@ -102,7 +102,7 @@ export interface CreateStoryInput {
   priority?: string;
   storyPoints?: number;
   labels?: string[];
-  epic?: string;
+  epic?: EpicRef;
   assignees?: string[];
   sprint?: SprintRef;
 }
@@ -113,7 +113,7 @@ export interface StoryUpdates {
   body?: string;
   labels?: string[];
   assignees?: string[];
-  epic?: string | null;
+  epic?: EpicRef | null;
   blocked_by?: StoryRef[] | null; // null clears all; omit to leave unchanged
   blocks?: StoryRef[] | null; // null clears all; omit to leave unchanged
 }

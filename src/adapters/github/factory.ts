@@ -105,7 +105,6 @@ export const createGitHubProjectBackend = async (): Promise<GitHubBackendResult>
 
   const backend = new GitHubProjectBackend(
     labelResolver,
-    userMilestoneResolver,
     fieldValueMutator,
     burndownCalculator,
     sprintHistoryService,

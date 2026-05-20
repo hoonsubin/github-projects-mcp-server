@@ -9,7 +9,6 @@
 import { fetchRepoFile } from "./internal/contents.ts";
 import { type RuntimeConfig } from "./config-loader.ts";
 import { LabelResolver } from "./internal/label-resolver.ts";
-import { UserMilestoneResolver } from "./internal/user-milestone-resolver.ts";
 import { FieldValueMutator } from "./internal/field-value-mutator.ts";
 import { BurndownCalculator } from "./internal/burndown-calculator.ts";
 import { SprintHistoryService } from "./internal/sprint-history-service.ts";
@@ -41,7 +40,6 @@ import type { EpicListing, SprintRef, Story, StoryRef } from "../../domain/types
 export class GitHubProjectBackend implements ProjectBackend {
   constructor(
     private readonly labelResolver: LabelResolver,
-    private readonly userMilestoneResolver: UserMilestoneResolver,
     private readonly fieldValueMutator: FieldValueMutator,
     private readonly burndownCalculator: BurndownCalculator,
     private readonly sprintHistoryService: SprintHistoryService,

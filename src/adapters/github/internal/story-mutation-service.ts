@@ -180,14 +180,12 @@ export class StoryMutationService {
       }
 
       if (hasEpic) {
-        const milestoneId = await this.userMilestoneResolver.resolveOrCreateMilestoneNodeId(
-          input.epic!,
-        );
+        // EpicRef.id is the GitHub Milestone node ID (MI_...) — no resolution needed.
         await this.gh.graphql(
           `mutation SetMilestone($issueId: ID!, $milestoneId: ID!) {
             updateIssue(input: { id: $issueId, milestoneId: $milestoneId }) { issue { id } }
           }`,
-          { issueId, milestoneId },
+          { issueId, milestoneId: input.epic!.id },
         );
       }
     }
@@ -243,9 +241,8 @@ export class StoryMutationService {
         part: "milestoneId: $milestoneId",
         decl: "$milestoneId: ID",
         name: "milestoneId",
-        value: updates.epic === null
-          ? null
-          : await this.userMilestoneResolver.resolveOrCreateMilestoneNodeId(updates.epic),
+        // EpicRef.id is the GitHub Milestone node ID (MI_...) — no resolution needed.
+        value: updates.epic === null ? null : updates.epic.id,
       });
     }
 

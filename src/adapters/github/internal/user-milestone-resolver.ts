@@ -61,6 +61,8 @@ export class UserMilestoneResolver {
     return ids;
   }
 
+  // TODO: dead after EpicRef migration — remove in follow-up.
+  // Epic refs now pass MI_ node IDs directly; no title→ID resolution needed.
   /** Resolve or create a milestone by title on the repository */
   async resolveOrCreateMilestoneNodeId(title: string): Promise<string> {
     // Check existing milestones on the repo

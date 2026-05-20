@@ -155,7 +155,7 @@ export function registerScrumWriteTools(
           body       string — replacement markdown body (omit to leave unchanged)
           labels     string[] — REPLACES all existing labels (omit to leave unchanged)
           assignees  string[] — REPLACES all existing assignees, GitHub logins (omit to leave unchanged)
-          epic       string | null — Milestone title to assign to; null detaches from epic (omit to leave unchanged)
+          epic       { id: string } | null — EpicRef to assign, or null to detach from epic (omit to leave unchanged)
           comment    string — Post a comment on the story after updating (omit to skip)
           blocked_by  StoryRef[] | null — REPLACES all upstream dependencies; null clears; omit to leave unchanged
           blocks      StoryRef[] | null — REPLACES all downstream dependencies; null clears; omit to leave unchanged
@@ -218,7 +218,7 @@ export function registerScrumWriteTools(
           priority     string — vocabulary display name (e.g. "Must"); call scrum_orient for valid values
           story_points number — Fibonacci estimate (1, 2, 3, 5, 8, 13)
           labels       string[] — must already exist; check platform_state.labels.existing from scrum_orient
-          epic         string — Milestone title; created if not found
+          epic         { id: string } — EpicRef from scrum_get_backlog.epics[].ref.id
           assignees    string[] — GitHub logins
           sprint       "current" | "next" | "<sprint-name>" — places on board; omit for backlog
 

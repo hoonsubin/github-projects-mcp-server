@@ -10,6 +10,7 @@
 // =============================================================================
 
 import { z } from "zod";
+import type { EpicRef } from "../domain/types.ts";
 import { toSprintName } from "../domain/types.ts";
 
 // ── Primitive schemas (shared by multiple tools) ──────────────────────────────
@@ -24,6 +25,18 @@ const StoryRefSchema = z.object({
         "scrum_get_backlog, scrum_get_story, scrum_create_story, etc.). " +
         "Always present in Story.ref.id. Use scrum_get_sprint or scrum_get_backlog " +
         "first if you do not yet have the id for the story you want to act on.",
+    ),
+});
+
+// Accepted as input by any tool that references an epic (Milestone).
+// Derived from the domain EpicRef type to maintain a single source of truth.
+// Every read tool returns EpicRef.id — pass that value here.
+const EpicRefSchema: z.ZodType<EpicRef> = z.object({
+  id: z
+    .string()
+    .describe(
+      "Opaque Milestone node ID returned by scrum_get_backlog.epics[].ref.id " +
+        "or scrum_get_story.story.epic.ref.id.",
     ),
 });
 
@@ -203,10 +216,10 @@ export const CreateStorySchema = z
           "check platform_state.labels.existing from scrum_orient first. " +
           "Story type is set via the Type board field, not a label.",
       ),
-    epic: z
-      .string()
-      .optional()
-      .describe("Milestone title to assign this story to. Created automatically if not found."),
+    epic: EpicRefSchema.optional().describe(
+      "Epic reference ({ id: string }) from scrum_get_backlog.epics[].ref.id. " +
+        "Associates the new story with the corresponding Milestone.",
+    ),
     assignees: z
       .array(z.string())
       .optional()
@@ -243,13 +256,12 @@ export const UpdateStorySchema = z
         "Replacement assignee list of GitHub logins — REPLACES ALL existing assignees. " +
           "Call scrum_get_story first to read current assignees if you want to add without removing.",
       ),
-    epic: z
-      .string()
+    epic: EpicRefSchema
       .or(z.null())
       .optional()
       .describe(
-        "Milestone title to assign to, or null to detach from the current epic. " +
-          "Omit entirely to leave unchanged.",
+        "Epic reference ({ id: string }) to assign to, or null to detach from the current epic. " +
+          "Pass the EpicRef.id from scrum_get_backlog.epics[].ref.id. Omit entirely to leave unchanged.",
       ),
     comment: z
       .string()
