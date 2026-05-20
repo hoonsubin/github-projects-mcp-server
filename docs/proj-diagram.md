@@ -450,30 +450,32 @@ classDiagram
     classDef services fill:#f0f,stroke:#333,stroke-width:2px,color:#000;
 ```
 
+
 ## Unused Exports
 
 The following exports are never imported by any other module in the codebase:
 
-| Module                                                                                                  | Export                      | Kind        |
-| ------------------------------------------------------------------------------------------------------- | --------------------------- | ----------- |
-| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                                             | `groupStoriesByStatus`      | `function`  |
-| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                                             | `computeSprintTotals`       | `function`  |
-| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `SprintTotalsActive`        | `interface` |
-| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `SprintTotalsHistory`       | `interface` |
-| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `ProjectWriter`             | `interface` |
-| [`./src/scrum/update-impediment.ts`](../src/scrum/update-impediment.ts)                                 | `updateImpedimentUseCase`   | `function`  |
-| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `GitHubErrorCode`           | `type`      |
-| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `assertNever`               | `function`  |
-| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `GitHubApiErrorParams`      | `interface` |
-| [`./src/adapters/github/internal/label-resolver.ts`](../src/adapters/github/internal/label-resolver.ts) | `GitHubLabel`               | `interface` |
-| [`./src/adapters/github/internal/http-client.ts`](../src/adapters/github/internal/http-client.ts)       | `RestResponse`              | `interface` |
-| [`./src/adapters/github/factory.ts`](../src/adapters/github/factory.ts)                                 | `GitHubBackendResult`       | `interface` |
-| [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `ImpedimentRef`             | `interface` |
-| [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `EpicRef`                   | `interface` |
-| [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `SprintName`                | `type`      |
-| [`./src/domain/rules/dependencies.ts`](../src/domain/rules/dependencies.ts)                             | `parseDependencies`         | `function`  |
-| [`./src/domain/rules/dependencies.ts`](../src/domain/rules/dependencies.ts)                             | `hasDependencySection`      | `function`  |
-| [`./src/domain/rules/dependencies.ts`](../src/domain/rules/dependencies.ts)                             | `generateDependencySection` | `function`  |
+| Module | Export | Kind |
+|--------|--------|------|
+| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts) | `groupStoriesByStatus` | `function` |
+| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts) | `computeSprintTotals` | `function` |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts) | `SprintTotalsActive` | `interface` |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts) | `SprintTotalsHistory` | `interface` |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts) | `ProjectWriter` | `interface` |
+| [`./src/scrum/update-impediment.ts`](../src/scrum/update-impediment.ts) | `updateImpedimentUseCase` | `function` |
+| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts) | `GitHubErrorCode` | `type` |
+| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts) | `assertNever` | `function` |
+| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts) | `GitHubApiErrorParams` | `interface` |
+| [`./src/adapters/github/internal/label-resolver.ts`](../src/adapters/github/internal/label-resolver.ts) | `GitHubLabel` | `interface` |
+| [`./src/adapters/github/internal/http-client.ts`](../src/adapters/github/internal/http-client.ts) | `RestResponse` | `interface` |
+| [`./src/adapters/github/factory.ts`](../src/adapters/github/factory.ts) | `GitHubBackendResult` | `interface` |
+| [`./src/domain/types.ts`](../src/domain/types.ts) | `ImpedimentRef` | `interface` |
+| [`./src/domain/types.ts`](../src/domain/types.ts) | `EpicRef` | `interface` |
+| [`./src/domain/types.ts`](../src/domain/types.ts) | `SprintName` | `type` |
+| [`./src/domain/rules/dependencies.ts`](../src/domain/rules/dependencies.ts) | `parseDependencies` | `function` |
+| [`./src/domain/rules/dependencies.ts`](../src/domain/rules/dependencies.ts) | `hasDependencySection` | `function` |
+| [`./src/domain/rules/dependencies.ts`](../src/domain/rules/dependencies.ts) | `generateDependencySection` | `function` |
+
 
 ## Notes
 
@@ -486,4 +488,4 @@ The following exports are never imported by any other module in the codebase:
 
 ---
 
-_Auto-generated — do not edit manually_
+*Auto-generated — do not edit manually*
