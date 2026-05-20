@@ -101,7 +101,7 @@ classDiagram
                 interface BurndownStory
                 type ArtifactType
                 type TemplateResponse
-                %% Unused: ImpedimentRef, EpicRef, SprintName
+                %% Unused: ImpedimentRef, SprintName
             }
             class dependencies.ts:::rules {
                 +parseDependencies()
@@ -203,6 +203,8 @@ classDiagram
             class field-value-mutator.ts:::internal {
                 class FieldValueMutator
             }
+            class story-mutation-service.test.ts:::internal {
+            }
             class user-milestone-resolver.ts:::internal {
                 class UserMilestoneResolver
             }
@@ -232,7 +234,6 @@ classDiagram
                 interface GitHubClient
                 +graphql()
                 +rest()
-                %% Unused: RestResponse
             }
             class impediment-service.ts:::internal {
                 class ImpedimentService
@@ -350,6 +351,15 @@ classDiagram
     field-value-mutator.ts --> user-milestone-resolver.ts : "imports"
     field-value-mutator.ts --> config-loader.ts : "imports"
     field-value-mutator.ts --> types.ts : "imports"
+    story-mutation-service.test.ts --> story-mutation-service.ts : "imports"
+    story-mutation-service.test.ts --> http-client.ts : "imports"
+    story-mutation-service.test.ts --> config-loader.ts : "imports"
+    story-mutation-service.test.ts --> label-resolver.ts : "imports"
+    story-mutation-service.test.ts --> user-milestone-resolver.ts : "imports"
+    story-mutation-service.test.ts --> field-value-mutator.ts : "imports"
+    story-mutation-service.test.ts --> ports.ts : "imports"
+    story-mutation-service.test.ts --> types.ts : "imports"
+    story-mutation-service.test.ts --> errors.ts : "imports"
     user-milestone-resolver.ts --> errors.ts : "imports"
     user-milestone-resolver.ts --> http-client.ts : "imports"
     user-milestone-resolver.ts --> label-resolver.ts : "imports"
@@ -421,7 +431,6 @@ classDiagram
     backend.ts --> contents.ts : "imports"
     backend.ts --> config-loader.ts : "imports"
     backend.ts --> label-resolver.ts : "imports"
-    backend.ts --> user-milestone-resolver.ts : "imports"
     backend.ts --> field-value-mutator.ts : "imports"
     backend.ts --> burndown-calculator.ts : "imports"
     backend.ts --> sprint-history-service.ts : "imports"
@@ -466,10 +475,8 @@ The following exports are never imported by any other module in the codebase:
 | [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `assertNever`               | `function`  |
 | [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `GitHubApiErrorParams`      | `interface` |
 | [`./src/adapters/github/internal/label-resolver.ts`](../src/adapters/github/internal/label-resolver.ts) | `GitHubLabel`               | `interface` |
-| [`./src/adapters/github/internal/http-client.ts`](../src/adapters/github/internal/http-client.ts)       | `RestResponse`              | `interface` |
 | [`./src/adapters/github/factory.ts`](../src/adapters/github/factory.ts)                                 | `GitHubBackendResult`       | `interface` |
 | [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `ImpedimentRef`             | `interface` |
-| [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `EpicRef`                   | `interface` |
 | [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `SprintName`                | `type`      |
 | [`./src/domain/rules/dependencies.ts`](../src/domain/rules/dependencies.ts)                             | `parseDependencies`         | `function`  |
 | [`./src/domain/rules/dependencies.ts`](../src/domain/rules/dependencies.ts)                             | `hasDependencySection`      | `function`  |
