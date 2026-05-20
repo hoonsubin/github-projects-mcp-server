@@ -42,15 +42,20 @@ export interface PlatformState {
   };
 }
 
+interface StoryComment {
+  author: string;
+  body: string;
+  created_at: string;
+  url: string;
+}
+
 /** Full story payload with associated data, returned by getStoryDetail. */
 export interface StoryDetail {
   story: Story;
-  comments: Array<{
-    author: string;
-    body: string;
-    created_at: string;
-    url: string;
-  }>;
+  comments: StoryComment[];
+  // todo: instead of linked PRs (a GitHub term), it should be a generalized type of `LinkedStory`
+  // and extend the type with the nature of the link.
+  // Ideally, this should be reused as dependency resolution too
   linkedPrs: Array<{
     number: number;
     title: string;
@@ -309,6 +314,10 @@ export interface ProjectWriter {
   updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void>;
   setField(
     ref: StoryRef,
+    // todo: this is a hard-coded project field. This should be dynamically generated based on the
+    // scrum config, and the code will keep an internal default to check 'readiness'
+    // the language model should be flexible enough to map dynamic fields with its purpose
+    // even without explicit instruction for each cases (assuming the user's prompt is reasonable)
     field: "status" | "sprint" | "story_points" | "priority" | "assignee" | "type",
     value: string | number | SprintRef | null,
   ): Promise<void>;

@@ -15,7 +15,7 @@ import { toSprintName } from "../domain/types.ts";
 import { isTerminalStatus } from "../domain/rules/status.ts";
 
 // ── Return type ────────────────────────────────────────────────────────────────
-
+// todo: the results should be a composition of the types declared in `ports.ts`
 interface GetHistoryResult {
   sprints: SprintSnapshot[];
   window: number;
@@ -84,6 +84,7 @@ const entryToSnapshot = async (
   // Fetch impediments associated with this sprint
   const impediments = await backend.getSprintImpediments(toSprintName(entry.info.name));
 
+  // todo: this should be a composition of the types declared ion `ports.ts`
   return {
     sprint: {
       name: entry.info.name,

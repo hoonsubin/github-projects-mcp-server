@@ -48,7 +48,7 @@ flowchart TD
 - **Functions:** Arrow only — `const fn = (arg: Type): Return => {}`.
 - **Errors:** Throw `GitHubApiError`; handlers return structured text via format helper.
 - **Zod:** Always `.strict()` on object schemas.
-- **Types:** No inline concrete types; define named types.
+- **Types:** No inline concrete types; define named types. Compose or extend existing ones.
 - **Lint:** `deno lint` must pass before marking any task complete.
 
 ## Commands

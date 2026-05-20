@@ -46,7 +46,6 @@ export function registerScrumWriteTools(
   scrumConfig: ScrumConfig,
 ): void {
   const p0PriorityDisplay = resolveP0PriorityDisplay(scrumConfig);
-  // ── C1: scrum_add_vocabulary ──────────────────────────────────────────────────
 
   server.registerTool(
     "scrum_add_vocabulary",
@@ -93,8 +92,6 @@ export function registerScrumWriteTools(
     },
   );
 
-  // ── C2: scrum_set_field ──────────────────────────────────────────────────────
-
   server.registerTool(
     "scrum_set_field",
     {
@@ -139,8 +136,6 @@ export function registerScrumWriteTools(
       }
     },
   );
-
-  // ── C3: scrum_update_story ──────────────────────────────────────────────────
 
   server.registerTool(
     "scrum_update_story",
@@ -202,8 +197,6 @@ export function registerScrumWriteTools(
       }
     },
   );
-
-  // ── C4: scrum_create_story ──────────────────────────────────────────────────
 
   server.registerTool(
     "scrum_create_story",
@@ -314,8 +307,6 @@ export function registerScrumWriteTools(
     },
   );
 
-  // ── C5: scrum_plan_sprint ──────────────────────────────────────────────────
-
   server.registerTool(
     "scrum_plan_sprint",
     {
@@ -394,8 +385,6 @@ export function registerScrumWriteTools(
       }
     },
   );
-
-  // ── C6: scrum_log_impediment ────────────────────────────────────────────────
 
   server.registerTool(
     "scrum_log_impediment",
@@ -484,8 +473,6 @@ export function registerScrumWriteTools(
     },
   );
 
-  // ── C7: scrum_update_impediment ──────────────────────────────────────────────
-
   server.registerTool(
     "scrum_update_impediment",
     {
@@ -519,8 +506,6 @@ export function registerScrumWriteTools(
       }
     },
   );
-
-  // ── C8: github_graphql (deprecated) ───────────────────────────────────────────
 
   server.registerTool(
     "github_graphql",

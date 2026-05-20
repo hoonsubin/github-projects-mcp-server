@@ -5,7 +5,7 @@
 
 ## Overall Assessment
 
-The codebase exhibits a **well-structured**, clean three-layer architecture (Framework → Use-Case → Adapter) that generally adheres to SOLID principles and the Dependency Inversion Principle. The audit identified **16 claims**, resulting in **15 actionable findings** (1 falsified). The most critical architectural risk is a duplicated `parseDependencies` implementation between the domain and adapter layers, which poses a latent correctness threat due to divergent parsing logic.
+The codebase exhibits a **well-structured**, clean three-layer architecture (Framework → Use-Case → Adapter) that generally adheres to SOLID principles and the Dependency Inversion Principle. The audit identified **16 claims**, resulting in **15 actionable findings** (1 falsified). A detailed follow-up examination added **8 new findings**, and a subsequent verification pass corrected 2 severity ratings, unified 2 co-rooted findings, and added 1 new finding — bringing the total to **26 actionable findings**. The most critical architectural risks are: duplicated `parseDependencies` implementations (with structurally incompatible return types), type erasure via unsafe casts, a handler bypassing the use-case layer, and dead code in the domain and adapter layers.
 
 ---
 
@@ -39,7 +39,9 @@ The domain version is **never imported anywhere** (0 imports confirmed). The ada
 
 **Risk:** Refactoring the adapter's parse logic in only one place could create silent bugs. The divergent formats mean a story with `- #17 Login` in `## Dependencies` would parse correctly in one code path but silently fail in another.
 
-**Fix:** Consolidate into one canonical implementation. Since the adapter version implements the format described in [`tasks/REFACTORING.md:33-39`](tasks/REFACTORING.md:33-39) (`Blocked by:` / `Blocks:`), either remove the domain version entirely or make the adapter delegate to it.
+**Note (verified):** The two functions are not just format-divergent — they are structurally incompatible. The domain version returns `DependencyEntry[]` (flat list); the adapter version returns `{ blocked_by: DependencyEntry[]; blocks: DependencyEntry[] }` (directional). The adapter cannot delegate to the domain version without a signature change. These cannot be unified by wrapping.
+
+**Fix:** Delete `src/domain/rules/dependencies.ts` entirely (see Finding 8). The adapter's directional format is the canonical one; the domain version has no callers and implements the wrong shape.
 
 ---
 
@@ -57,9 +59,9 @@ These are **character-for-character identical** (9 lines each) except for the im
 **Severity:** CRITICAL
 **Files:** [`src/domain/errors.ts:20`](src/domain/errors.ts:20) · [`src/adapters/github/errors.ts:42`](src/adapters/github/errors.ts:42)
 
-Identical except the error message phrasing (`"Unhandled variant"` vs `"Unhandled GitHubErrorCode"`).
+The implementations differ in signature, not just message phrasing: the domain version is `(x: never, msg?: string): never` (accepts an optional message); the adapter version is `(x: never): never`. The adapter version is a strict subset. Since the domain version's `msg` parameter is optional, all existing call sites in the adapter are compatible without modification.
 
-**Fix:** Keep the domain version only; the adapter can import it.
+**Fix:** Delete the adapter version; import `assertNever` from `src/domain/errors.ts` at adapter call sites.
 
 ---
 
@@ -95,8 +97,8 @@ This is a **direct layer breach** — the framework layer (`src/tools/`) should 
 
 ---
 
-#### 6. Domain Rule Accesses Platform Config (G6 + G35)
-**Severity:** CRITICAL
+#### 6. Domain Rule Resolves Adapter-Specific Config (SRP / G35)
+**Severity:** HIGH *(downgraded from CRITICAL — see verification note)*
 **File:** [`src/domain/rules/status.ts:21`](src/domain/rules/status.ts:21)
 
 ```typescript
@@ -104,13 +106,9 @@ const ghConfig = config.backends.github as Record<string, unknown>;
 const statusDisplay = (ghConfig.status_display as Record<string, string>) ?? {};
 ```
 
-The domain rules module accesses `config.backends.github`, a platform-specific field. The comment on line 13 explicitly admits this:
+**Verification note:** This is not a strict layer breach — `ScrumConfig.backends` is intentionally typed as `Record<string, unknown>` at the domain level ([`src/domain/config.ts:95`](src/domain/config.ts:95)), and no adapter module is imported. However, it is a **Single Responsibility violation**: the domain rule is performing adapter config resolution (looking up `status_display` by platform key) rather than receiving an already-resolved mapping. The domain function knows it must look in `backends.github` — a platform-specific assumption baked into pure business logic.
 
-> "Resolves via scrum.status[terminal=true] → backends.github.status_display."
-
-The domain layer should receive the resolved `status_display` mapping as a parameter rather than reaching into `backends.github` itself.
-
-**Fix:** The use-case caller (`get-backlog.ts` or `get-history.ts`) should resolve the display mapping from config and pass it to `isTerminalStatus()` as an argument, keeping the domain function pure.
+**Fix:** The use-case caller (`get-backlog.ts` or `get-history.ts`) should resolve the `status_display` mapping from config and pass it to `isTerminalStatus()` as a parameter, keeping the domain function free of config-resolution logic.
 
 ---
 
@@ -280,36 +278,182 @@ The underscore convention signals the parameter is unused but required by the ca
 
 ---
 
+## 🔍 New Findings from Detailed Examination
+
+The following **8 additional findings** were discovered during a thorough codebase examination beyond the initial audit scope.
+
+### 🔴 Critical Severity
+
+#### 18. Type Erasure via `as Record<string, unknown>`
+**Severity:** CRITICAL
+**Files:** [`src/domain/rules/status.ts:21`](src/domain/rules/status.ts:21), [`src/tools/scrum-write.ts:36`](src/tools/scrum-write.ts:36), [`src/scrum/orient.ts:64`](src/scrum/orient.ts:64)
+
+Four locations cast `config.backends.github` then access arbitrary properties:
+
+- [`status.ts:21`](src/domain/rules/status.ts:21): `const ghConfig = config.backends.github as Record<string, unknown>; const statusDisplay = (ghConfig.status_display as Record<string, string>) ?? {};`
+- [`scrum-write.ts:36`](src/tools/scrum-write.ts:36): Same double-cast pattern for `priority_display`
+- [`orient.ts:64`](src/scrum/orient.ts:64): `const ghDisplay = scrumConfig.backends.github as GhDisplay | undefined;` — partially better: uses a locally-defined `GhDisplay` interface, but that interface is defined in the same function and is still unverified against the actual config shape
+- [`src/index.ts:40`](src/index.ts:40): `const _server = server as unknown as Record<string, any>;` — **worst case**: a double cast through `unknown` into `any`, which bypasses the type system entirely (see Finding 26)
+
+The three production cast sites are inconsistent: `status.ts` and `scrum-write.ts` use raw `Record<string, string>` for property access; `orient.ts` at least uses a named interface. None are verified by the compiler.
+
+**Risk:** Silent runtime errors if config structure changes. The `as` cast suppresses all type checking.
+
+**Fix:** Define a `GitHubBackendConfig` interface with explicit optional properties in `src/adapters/github/` and use it consistently across all cast sites. Each caller should cast once via the typed interface rather than double-casting to `Record<string, unknown>`.
+
+---
+
+#### 19. `console.error` in Logger — Not a Transport Safety Issue
+**Severity:** LOW *(downgraded from CRITICAL — see verification note)*
+**File:** [`src/services/logger.ts:43`](src/services/logger.ts:43)
+
+**Verification note:** This finding was incorrect as stated. `console.error()` writes to **stderr**, not stdout. The MCP JSON-RPC wire format runs over **stdout**. These are separate file descriptors; stderr output does not corrupt the MCP protocol. The AGENT.md rule targets `console.log` (stdout), not `console.error`. The logger's use of stderr is the correct pattern for CLI diagnostic output.
+
+The remaining concern is stylistic: the logger provides no transport abstraction, so callers cannot redirect log output (e.g., to a file) without patching `console.error`. This is low priority given the MCP server context.
+
+**Fix (optional):** If log redirection becomes a requirement, abstract the output channel behind a writer interface. No action required for transport safety.
+
+---
+
+#### 20. `default` Branch Throws Generic Error Instead of `assertNever`
+**Severity:** CRITICAL
+**File:** [`src/adapters/github/internal/story-mutation-service.ts:351`](src/adapters/github/internal/story-mutation-service.ts:351)
+
+The `setField` switch uses `throw new Error(\`Unknown field: ${field}\`)` instead of `assertNever(field)`. This loses the compile-time exhaustiveness guarantee that `assertNever` provides.
+
+**Risk:** If a new field is added to the union type but not handled here, TypeScript will not flag it at compile time.
+
+**Fix:** Replace with `assertNever(field, \`Unknown field: ${field}\`)`.
+
+---
+
+#### 21. Impediment Sprint Matching Uses Fragile String Matching
+**Severity:** CRITICAL
+**File:** [`src/adapters/github/internal/impediment-service.ts:181-196`](src/adapters/github/internal/impediment-service.ts:181)
+
+The `getSprintImpediments` method matches sprint names via regex on issue body/comments. The TODO comment on line 181 acknowledges this is a known issue. This is a **layer breach** — the adapter should resolve project item iteration fields directly, not parse text.
+
+**Risk:** False positives/negatives if sprint names appear in unrelated text.
+
+**Fix:** Implement PVTI_ project item resolution + iteration field check as noted in the TODO.
+
+---
+
+### 🟠 High Severity
+
+#### 22. `hasDependencies` Inconsistency Between Readiness and Domain
+**Severity:** HIGH
+**Files:** [`src/domain/rules/readiness.ts:30`](src/domain/rules/readiness.ts:30) · [`src/adapters/github/mappers.ts:43`](src/adapters/github/mappers.ts:43)
+
+`readiness.ts:30` uses regex `(?:Depends\\s+on|Blocked\\s+by|Related\\s+to|Blocks)\\s+#\\d+` to detect dependencies in readiness scoring. The adapter's `parseDependencies` uses `- Blocked by: #N` / `- Blocks: #N` format. These are **different formats** — the readiness check will match inline references that the adapter won't parse into structured dependencies.
+
+**Risk:** A story with `Depends on #123` in its body will score as "has dependencies" for readiness but won't have structured `blocked_by` entries. This is the same root cause as Finding 24 — the `has_dependencies` flag on `StoryListing` is populated from structured arrays (`blocked_by.length > 0`), not the regex, so `hasDependencies() = true` can coexist with `has_dependencies: false` on the same story. See Finding 24 for the documentation mismatch that compounds this.
+
+**Fix:** Use a single canonical dependency detection function that matches the adapter's structured format. Findings 22 and 24 should be resolved together.
+
+---
+
+#### 23. `computeSprintTotals` and `groupStoriesByStatus` Are Dead Code
+**Severity:** HIGH
+**File:** [`src/scrum/sprint-math.ts:53`](src/scrum/sprint-math.ts:53) · [`src/scrum/sprint-math.ts:90`](src/scrum/sprint-math.ts:90)
+
+Both `groupStoriesByStatus` and `computeSprintTotals` have **0 importers** in the codebase. They were extracted as part of Story B (Phase 5) but never wired into any use case. The `get-sprint.ts` computes `by_status` inline (lines 77-81) and `story_points` via `reduce` (line 105).
+
+**Fix:** Delete these functions or wire them into `buildSingleSnapshot`.
+
+---
+
+### 🟡 Moderate Severity
+
+#### 24. `StoryListing.has_dependencies` Comment Mismatch
+**Severity:** MODERATE
+**File:** [`src/scrum/ports.ts:148`](src/scrum/ports.ts:148)
+
+The `has_dependencies` field comment says "true when the story body contains a ## Dependencies section" but the actual implementation in `storyToListing` checks `story.blocked_by.length > 0 || story.blocks.length > 0`. These are **different conditions** — a story could have a `## Dependencies` section with no entries, or have inline dependency references that don't create structured entries.
+
+**Risk:** Misleading documentation causes consumer confusion, and compounds the inconsistency in Finding 22: `hasDependencies()` in `readiness.ts` fires on inline patterns (`Depends on #N`) that never populate the structured arrays, meaning a story can have `has_dependencies: false` in its listing while scoring as dependency-blocked in readiness. Findings 22 and 24 share the same root cause.
+
+**Fix:** Resolve together with Finding 22. The comment should read: "true when `blocked_by` or `blocks` contains at least one structured dependency entry." Long-term, unify the detection logic so readiness scoring and structured parsing agree on what constitutes a dependency.
+
+---
+
+### 🟡 Low Severity
+
+#### 25. Test Helper Has Unnecessary Stub Methods
+**Severity:** LOW
+**File:** [`src/scrum/get-backlog.test.ts:82-93`](src/scrum/get-backlog.test.ts:82)
+
+The mock implements `getPlatformState`, `reload`, `getSprintStories`, `getStoryDetail`, `getCompletedSprintHistory`, `getBurndownInput`, `resolveCompletionTimestamps`, `fetchRepoFile`, `createImpediment`, `updateImpediment` — all returning empty/null stubs. These are never called by `getBacklogUseCase`.
+
+**Fix:** Use a focused mock implementing only `BacklogPort & EpicPort`.
+
+---
+
+#### 26. Double Cast with `any` in Server Initialization
+**Severity:** MODERATE
+**File:** [`src/index.ts:40`](src/index.ts:40)
+
+```typescript
+const _server = server as unknown as Record<string, any>;
+```
+
+This is a double cast through `unknown` into `any` — the most permissive type erasure available in TypeScript. Unlike the `Record<string, unknown>` casts in Finding 18, which at least constrain property values to `unknown`, the `any` cast disables all further type checking on the object and its properties. The `_server` prefix suggests this is a workaround to satisfy the compiler without actually using the variable, which makes the cast even more suspicious.
+
+**Risk:** If the code around this cast evolves to use `_server`, the `any` type will silently propagate through downstream operations with no compiler safety net.
+
+**Fix:** Investigate why the cast is needed. If `_server` is truly unused (the underscore prefix convention), delete the line. If it is needed, find the correct type rather than casting to `any`.
+
+---
+
 ## 📊 Summary Statistics
 
-| Severity      | Count | Smell Codes                          | Actionable |
-| :------------ | :---- | :----------------------------------- | :--------- |
-| CRITICAL      | 7     | G5, G6, G9                           | 7          |
-| HIGH          | 3     | G1, G5/G33, G8, F3/G12               | 3          |
-| MODERATE      | 3     | N1, G10, G28                         | 3          |
-| LOW           | 2     | N2, G11                              | 2          |
-| **Total**     | **16**|                                      | **15**     |
+| Severity      | Count | Smell Codes                                            |
+| :------------ | :---- | :----------------------------------------------------- |
+| CRITICAL      | **10** | G5 (×3), G9 (×4), type-erasure, impediment-matching  |
+| HIGH          | **7**  | G1, G5/G33, SRP/G35, G8, F3/G12, dead-code (×2)      |
+| MODERATE      | **5**  | N1, G10, G28, comment-mismatch, any-cast              |
+| LOW           | **4**  | N2, G11, test-stubs, logger                           |
+| **Total**     | **26** |                                                        |
+
+> **Note on prior counts:** The original audit reported "7 CRITICAL / 15 total" and the follow-up reported "+4 CRITICAL / +8 total". After verification: Finding 6 downgraded CRITICAL→HIGH (SRP violation, not a layer breach per `config.ts:95`); Finding 19 downgraded CRITICAL→LOW (`console.error` is stderr, not MCP stdout); Finding 26 added as MODERATE (`as unknown as Record<string, any>` double cast in `index.ts:40`). The original CRITICAL count was also 8 (not 7) — Findings 8 and 9 were labeled CRITICAL despite appearing under a HIGH-severity section header.
 
 ---
 
 ## 🔧 Recommended Action Order (Prioritized by Risk)
 
+### Phase 1: Immediate (Risk Reduction)
+
 1. **Delete** [`src/domain/rules/dependencies.ts`](src/domain/rules/dependencies.ts) (Dead code — G9)
-2. **Consolidate** two `parseDependencies` implementations (G5)
-3. **Extract** shared `storyToListing` to a new module (G5)
-4. **Remove** `graphql` import from [`src/tools/scrum-write.ts:20`](src/tools/scrum-write.ts:20) (G6)
-5. **Refactor** `isTerminalStatus` to not reach into `backends.github` (G6)
-6. **Consolidate** `assertNever` (keep domain version) (G5)
-7. **Wire `scrum_update_impediment` through `updateImpedimentUseCase`** or **delete** the use-case file (G9/G6)
-8. **Refactor** `get-backlog.test.ts` mock to ISP pattern (G8)
-9. **Extract** inline GraphQL to `queries.ts` (G1)
-10. **Consolidate** date math in `sprint-math.ts` (G5/G33)
-11. **Rename** `resolveP0PriorityDisplay` → `resolveHighestPriorityDisplay` (N1)
-12. **Add** proper types for `team`/`dor`/`dod` in `src/scrum/orient.ts` (N2)
-13. **Normalize** error handling pattern in `src/scrum/get-burndown.ts` (G11)
-14. **Move** `PartialFailureResult` closer to usage (G10)
-15. **Encapsulate** `undefined` checks with helper function (G28)
-16. **Remove or document** unused `_scrumConfig` parameter (F3/G12)
+2. **Delete** `computeSprintTotals` and `groupStoriesByStatus` from [`sprint-math.ts`](src/scrum/sprint-math.ts) (Dead code — G9)
+3. **Fix** `assertNever` in [`story-mutation-service.ts:351`](src/adapters/github/internal/story-mutation-service.ts:351) (Loses exhaustiveness — G5)
+4. **Delete** `graphql` import from [`scrum-write.ts:20`](src/tools/scrum-write.ts:20) if deprecated tool is removed (G6)
+
+### Phase 2: Consolidation (Code Quality)
+
+5. **Delete** domain `parseDependencies` (unreachable dead code; incompatible return type prevents unification — see Finding 1)
+6. **Extract** shared `storyToListing` to a new module (G5)
+7. **Consolidate** `assertNever` — delete adapter version, import domain version (G5)
+8. **Consolidate** date math in `sprint-math.ts` (G5/G33)
+
+### Phase 3: Architecture Fixes (Layer Compliance)
+
+9. **Wire** `scrum_update_impediment` through `updateImpedimentUseCase` or **delete** the use-case file (G9/G6)
+10. **Refactor** `isTerminalStatus` — pass resolved `status_display` mapping as a parameter instead of resolving it from `backends.github` (SRP/G35)
+11. **Define** `GitHubBackendConfig` interface; replace all `as Record<string, unknown>` casts at `status.ts:21`, `scrum-write.ts:36`, `orient.ts:64` (G6)
+12. **Investigate and remove** `as unknown as Record<string, any>` double cast in `src/index.ts:40` (Finding 26)
+13. **Refactor** impediment sprint matching to use PVTI_ resolution (G6)
+
+### Phase 4: Polish (Maintainability)
+
+14. **Refactor** `get-backlog.test.ts` mock to ISP pattern (G8)
+15. **Extract** inline GraphQL to `queries.ts` (G1)
+16. **Rename** `resolveP0PriorityDisplay` → `resolveHighestPriorityDisplay` (N1)
+17. **Add** proper types for `team`/`dor`/`dod` in `src/scrum/orient.ts` (N2)
+18. **Normalize** error handling pattern in `src/scrum/get-burndown.ts` (G11)
+19. **Move** `PartialFailureResult` closer to usage (G10)
+20. **Encapsulate** `undefined` checks with helper function (G28)
+21. **Remove or document** unused `_scrumConfig` parameter (F3/G12)
+22. **Fix** `has_dependencies` comment in `ports.ts` and align `hasDependencies` regex in `readiness.ts` — resolve together (Findings 22 + 24 share the same root cause)
 
 ---
 
@@ -330,10 +474,52 @@ Every claim was verified by reading the exact `file:line` references and running
 | Claim                        | Original Audit      | After Verification                                                |
 | ---------------------------- | ------------------- | ----------------------------------------------------------------- |
 | `updateImpedimentUseCase`    | Dead code (G9)      | **Confirmed** — 0 importers. Handler bypasses use case (also G6). |
-| `dependencies.ts`            | Dead code (G9)      | **Confirmed** — 0 importers.                                      |
+| `dependencies.ts`            | Dead code (G9)      | **Confirmed** — 0 importers. Return type is also incompatible with adapter version; consolidation via delegation is not feasible. |
+| `assertNever` duplication    | "Identical except message" | **Refined** — signatures differ: domain adds optional `msg` param. Adapter is a strict subset; no call-site changes needed on consolidation. |
+| Finding 6 (status.ts)        | Layer breach — CRITICAL | **Downgraded to HIGH** — `backends` is intentionally `Record<string, unknown>` in `ScrumConfig`; no adapter import occurs. Real issue is SRP: the domain function resolves platform-specific config instead of receiving a resolved value. |
+| Finding 19 (console.error)   | MCP transport safety — CRITICAL | **Downgraded to LOW** — `console.error` writes to stderr, not stdout. MCP wire format uses stdout. No transport corruption risk. The pattern is correct for CLI diagnostic output. |
+| Findings 22 + 24             | Two separate findings | **Unified root cause** — `hasDependencies()` regex (4 patterns) is a superset of what the adapter structures (2 patterns). A story can score as dependency-blocked in readiness while showing `has_dependencies: false` in its listing. Resolve together. |
 | Inline GraphQL scope         | 1 file, 7 mutations | **Expanded** — 5 files, 11 inline mutations total.                |
 | Test runner config (E2)      | Claimed absent      | **Falsified** — `deno.json:7` has `"test"` task.                  |
+| Finding 26 (index.ts cast)   | Not in audit        | **New** — `as unknown as Record<string, any>` double cast; worse than the `Record<string, unknown>` casts in Finding 18 because `any` disables all downstream type checking. |
 
 ### Readiness Assessment
 
-The codebase is **ready to proceed** with the refactoring plan in [`tasks/REFACTORING.md`](tasks/REFACTORING.md). The 15 remaining actionable items are well-scoped and do not block forward progress. The recommended action order above is prioritized by risk: dead code removal and layer breach fixes first, then consolidation and extraction work.
+The codebase is **ready to proceed** with the refactoring plan in [`tasks/REFACTORING.md`](tasks/REFACTORING.md). The 26 actionable items are well-scoped and do not block forward progress. The recommended action order above is prioritized by risk: dead code removal and layer breach fixes first (Phase 1-2), then architecture compliance (Phase 3), and finally polish (Phase 4).
+
+Two previously CRITICAL findings were downgraded after verification (Finding 6 → HIGH, Finding 19 → LOW), reducing the critical count from 11 to 9. One new MODERATE finding was added (Finding 26). Findings 22 and 24 were confirmed to share the same root cause and should be resolved together.
+
+---
+
+## 📐 Architecture Health Metrics
+
+### Layer Compliance
+
+| Layer | Imports From | Violations |
+|-------|-------------|------------|
+| Framework (`src/tools/`) | Use-Case, Schemas | 1: imports `adapters/github/internal/http-client.ts` |
+| Use-Case (`src/scrum/`, `src/domain/`) | Standard lib, each other | 1: `domain/rules/status.ts` imports `backends.github` |
+| Adapter (`src/adapters/`) | Use-Case ports, Standard lib | 0 |
+
+### Dead Code Inventory
+
+| Module | Exports | Importers | Status |
+|--------|---------|-----------|--------|
+| `src/domain/rules/dependencies.ts` | 3 | 0 | **Delete** |
+| `src/scrum/update-impediment.ts` | 1 | 0 | **Wire or delete** |
+| `src/scrum/sprint-math.ts::groupStoriesByStatus` | 1 | 0 | **Delete or wire** |
+| `src/scrum/sprint-math.ts::computeSprintTotals` | 1 | 0 | **Delete or wire** |
+| `src/scrum/get-backlog.ts::storyToListing` | 1 | 0 (duplicate) | **Extract to shared** |
+| `src/scrum/get-sprint.ts::storyToListing` | 1 | 0 (duplicate) | **Extract to shared** |
+| `src/domain/errors.ts::assertNever` | 1 | 0 (duplicate) | **Keep, adapter imports** |
+| `src/adapters/github/errors.ts::assertNever` | 1 | 0 (duplicate) | **Delete, import domain** |
+
+### Duplication Matrix
+
+| Pattern | Locations | Lines Each |
+|---------|-----------|------------|
+| `storyToListing` | get-backlog.ts:31, get-sprint.ts:29 | 9 |
+| `assertNever` | domain/errors.ts:20, adapter/errors.ts:42 | 3 |
+| `parseDependencies` | domain/dependencies.ts:31, adapter/mappers.ts:43 | 34, 24 |
+| Date math (local) | sprint-math.ts:26, mappers.ts:288 | 3, 2 |
+| Date math (UTC) | sprint-math.ts:127 | 4 |

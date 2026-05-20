@@ -9,6 +9,7 @@ import type { StoryPort } from "./ports.ts";
 import type { Story, StoryRef } from "../domain/types.ts";
 import { parseAcceptanceCriteria } from "../domain/rules/acceptance-criteria.ts";
 
+// todo: the results should be a composition of the types declared in `ports.ts`
 interface GetStoryResult {
   story: Story;
   comments: Array<{ author: string; body: string; created_at: string; url: string }>;
