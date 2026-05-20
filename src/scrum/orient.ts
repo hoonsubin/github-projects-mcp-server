@@ -1,7 +1,6 @@
 // =============================================================================
 // src/scrum/orient.ts — orientUseCase
 //
-// Extracted from scrum-read.ts as part of Story B (Phase 5).
 // Receives backend: ProjectBackend and scrumConfig: ScrumConfig.
 // =============================================================================
 

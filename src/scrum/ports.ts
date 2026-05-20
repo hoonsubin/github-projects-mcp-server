@@ -7,10 +7,7 @@
 //
 // No GitHub field IDs, GraphQL shapes, or platform-specific primitives appear
 // on either side of this interface.
-//
-// Phase C (Structural Cleanup): Decomposed into focused interfaces following
-// the Interface Segregation Principle. Each use case imports only the port it
-// needs. ProjectBackend remains as a composition type for backward compatibility.
+
 // =============================================================================
 
 import type { EpicListing, SprintRef, Story, StoryRef } from "../domain/types.ts";

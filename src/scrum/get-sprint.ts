@@ -2,7 +2,6 @@
 // src/scrum/get-sprint.ts — getSprintUseCase
 //
 // Returns SprintSnapshot for single sprint requests, SprintSnapshot[] for "all".
-// Extracted from scrum-read.ts as part of Story B (Phase 5).
 // Receives backend: ProjectBackend.
 //
 // "all" is intentionally excluded from SprintRef because it is a query-mode flag,

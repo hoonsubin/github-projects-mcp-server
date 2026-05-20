@@ -52,13 +52,11 @@ export interface GitHubApiErrorParams {
   statusCode?: number;
   /**
    * Structured key/value detail (resource IDs, field names, operation names).
-   * Tech debt: replace with a discriminated union keyed on `code` once the
    * per-code shapes stabilise.
    */
   context?: Record<string, unknown>;
   /**
    * Raw GraphQL error messages from the GitHub API.
-   * Tech debt: demote to context.rawErrors and remove this field once
    * legacyResolveHint in error-enrichment.ts is deleted.
    */
   graphqlErrors?: string[];

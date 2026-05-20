@@ -1,8 +1,6 @@
 // =============================================================================
 // src/schemas/inputs.ts — Legacy input schemas
 //
-// Phase 4 cleanup: All dead schemas removed. Only GraphQLQuerySchema remains
-// (imported by scrum-write.ts for the deprecated github_graphql tool).
 // =============================================================================
 
 import { z } from "zod";

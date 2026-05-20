@@ -1,7 +1,6 @@
 // =============================================================================
 // src/scrum/get-story.ts — getStoryUseCase
 //
-// Extracted from scrum-read.ts as part of Story B (Phase 5).
 // Receives backend: ProjectBackend.
 // =============================================================================
 

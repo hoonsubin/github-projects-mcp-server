@@ -1,10 +1,6 @@
 // =============================================================================
 // scripts/graphql-codegen.ts
 //
-// Phase 1 — Schema    Fetch the GitHub GraphQL schema → src/schemas/schema.graphql
-// Phase 2 — Validate  Parse src/adapters/github/operations.graphql and validate against schema
-// Phase 3 — Generate  Emit TypeScript types for every schema type → src/generated/github-types.ts
-//
 // Usage:
 //   deno task codegen              # all three phases
 //   deno task codegen:validate     # Phase 1 + 2 only

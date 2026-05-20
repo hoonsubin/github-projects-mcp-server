@@ -1,7 +1,6 @@
 // =============================================================================
 // src/domain/rules/readiness.ts — Pure domain rule: Definition of Ready
 //
-// Extracted from services/readiness.ts as part of Story B (Phase 5).
 // Replaces StoryReadiness interface with ReadinessLevel type.
 // This module has no imports outside the standard library.
 // =============================================================================
