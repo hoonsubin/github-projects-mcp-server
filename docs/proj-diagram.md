@@ -61,7 +61,7 @@ classDiagram
                 interface HistoryPort
                 interface BurndownPort
                 interface ImpedimentPort
-                interface TemplatePort
+                interface FileReaderPort
                 interface ProjectReader
                 interface ProjectWriter
                 interface ProjectBackend
@@ -73,6 +73,9 @@ classDiagram
             class update-impediment.ts:::scrum {
                 +updateImpedimentUseCase()
                 %% Unused: updateImpedimentUseCase
+            }
+            class config-helpers.ts:::scrum {
+                +resolveTerminalDisplay()
             }
             class get-sprint.ts:::scrum {
                 +getSprintUseCase()
@@ -102,12 +105,6 @@ classDiagram
                 type ArtifactType
                 type TemplateResponse
                 %% Unused: ImpedimentRef, SprintName
-            }
-            class dependencies.ts:::rules {
-                +parseDependencies()
-                +hasDependencySection()
-                +generateDependencySection()
-                %% Unused: parseDependencies, hasDependencySection, generateDependencySection
             }
             class acceptance-criteria.ts:::rules {
                 +parseAcceptanceCriteria()
@@ -203,8 +200,6 @@ classDiagram
             class field-value-mutator.ts:::internal {
                 class FieldValueMutator
             }
-            class story-mutation-service.test.ts:::internal {
-            }
             class user-milestone-resolver.ts:::internal {
                 class UserMilestoneResolver
             }
@@ -217,7 +212,8 @@ classDiagram
             class sprint-history-service.ts:::internal {
                 class SprintHistoryService
             }
-            class user-milestone-resolver.test.ts:::internal {
+            class file-reader.ts:::internal {
+                class GitHubFileReader
             }
             class vocabulary-manager.ts:::internal {
                 class VocabularyManager
@@ -236,6 +232,7 @@ classDiagram
                 interface GitHubClient
                 +graphql()
                 +rest()
+                %% Unused: RestResponse
             }
             class impediment-service.ts:::internal {
                 class ImpedimentService
@@ -279,6 +276,7 @@ classDiagram
     get-backlog.ts --> types.ts : "imports"
     get-backlog.ts --> readiness.ts : "imports"
     get-backlog.ts --> status.ts : "imports"
+    get-backlog.ts --> config-helpers.ts : "imports"
     get-template.ts --> ports.ts : "imports"
     get-template.ts --> types.ts : "imports"
     get-template.ts --> config.ts : "imports"
@@ -296,14 +294,14 @@ classDiagram
     get-history.ts --> config.ts : "imports"
     get-history.ts --> types.ts : "imports"
     get-history.ts --> status.ts : "imports"
+    get-history.ts --> config-helpers.ts : "imports"
     update-impediment.ts --> ports.ts : "imports"
+    config-helpers.ts --> config.ts : "imports"
     get-sprint.ts --> ports.ts : "imports"
     get-sprint.ts --> types.ts : "imports"
     get-sprint.ts --> errors.ts : "imports"
     get-sprint.ts --> sprint-math.ts : "imports"
     types.ts --> github-types.ts : "imports"
-    dependencies.ts --> types.ts : "imports"
-    status.ts --> config.ts : "imports"
     config.ts --> types.ts : "imports"
     error-enrichment.ts --> errors.ts : "imports"
     scrum-read.ts --> ports.ts : "imports"
@@ -353,15 +351,6 @@ classDiagram
     field-value-mutator.ts --> user-milestone-resolver.ts : "imports"
     field-value-mutator.ts --> config-loader.ts : "imports"
     field-value-mutator.ts --> types.ts : "imports"
-    story-mutation-service.test.ts --> story-mutation-service.ts : "imports"
-    story-mutation-service.test.ts --> http-client.ts : "imports"
-    story-mutation-service.test.ts --> config-loader.ts : "imports"
-    story-mutation-service.test.ts --> label-resolver.ts : "imports"
-    story-mutation-service.test.ts --> user-milestone-resolver.ts : "imports"
-    story-mutation-service.test.ts --> field-value-mutator.ts : "imports"
-    story-mutation-service.test.ts --> ports.ts : "imports"
-    story-mutation-service.test.ts --> types.ts : "imports"
-    story-mutation-service.test.ts --> errors.ts : "imports"
     user-milestone-resolver.ts --> errors.ts : "imports"
     user-milestone-resolver.ts --> http-client.ts : "imports"
     user-milestone-resolver.ts --> label-resolver.ts : "imports"
@@ -374,10 +363,8 @@ classDiagram
     sprint-history-service.ts --> config-loader.ts : "imports"
     sprint-history-service.ts --> ports.ts : "imports"
     sprint-history-service.ts --> types.ts : "imports"
-    user-milestone-resolver.test.ts --> user-milestone-resolver.ts : "imports"
-    user-milestone-resolver.test.ts --> http-client.ts : "imports"
-    user-milestone-resolver.test.ts --> label-resolver.ts : "imports"
-    user-milestone-resolver.test.ts --> errors.ts : "imports"
+    file-reader.ts --> contents.ts : "imports"
+    file-reader.ts --> ports.ts : "imports"
     vocabulary-manager.ts --> errors.ts : "imports"
     vocabulary-manager.ts --> http-client.ts : "imports"
     vocabulary-manager.ts --> label-resolver.ts : "imports"
@@ -429,12 +416,12 @@ classDiagram
     factory.ts --> user-milestone-resolver.ts : "imports"
     factory.ts --> epic-service.ts : "imports"
     factory.ts --> vocabulary-manager.ts : "imports"
+    factory.ts --> file-reader.ts : "imports"
     factory.ts --> types.ts : "imports"
     factory.ts --> ports.ts : "imports"
     factory.ts --> config.ts : "imports"
     config-loader.ts --> types.ts : "imports"
     config-loader.ts --> config.ts : "imports"
-    backend.ts --> contents.ts : "imports"
     backend.ts --> config-loader.ts : "imports"
     backend.ts --> label-resolver.ts : "imports"
     backend.ts --> field-value-mutator.ts : "imports"
@@ -469,24 +456,22 @@ classDiagram
 
 The following exports are never imported by any other module in the codebase:
 
-| Module                                                                                                  | Export                      | Kind        |
-| ------------------------------------------------------------------------------------------------------- | --------------------------- | ----------- |
-| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                                             | `groupStoriesByStatus`      | `function`  |
-| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                                             | `computeSprintTotals`       | `function`  |
-| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `SprintTotalsActive`        | `interface` |
-| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `SprintTotalsHistory`       | `interface` |
-| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `ProjectWriter`             | `interface` |
-| [`./src/scrum/update-impediment.ts`](../src/scrum/update-impediment.ts)                                 | `updateImpedimentUseCase`   | `function`  |
-| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `GitHubErrorCode`           | `type`      |
-| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `assertNever`               | `function`  |
-| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `GitHubApiErrorParams`      | `interface` |
-| [`./src/adapters/github/internal/label-resolver.ts`](../src/adapters/github/internal/label-resolver.ts) | `GitHubLabel`               | `interface` |
-| [`./src/adapters/github/factory.ts`](../src/adapters/github/factory.ts)                                 | `GitHubBackendResult`       | `interface` |
-| [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `ImpedimentRef`             | `interface` |
-| [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `SprintName`                | `type`      |
-| [`./src/domain/rules/dependencies.ts`](../src/domain/rules/dependencies.ts)                             | `parseDependencies`         | `function`  |
-| [`./src/domain/rules/dependencies.ts`](../src/domain/rules/dependencies.ts)                             | `hasDependencySection`      | `function`  |
-| [`./src/domain/rules/dependencies.ts`](../src/domain/rules/dependencies.ts)                             | `generateDependencySection` | `function`  |
+| Module                                                                                                  | Export                    | Kind        |
+| ------------------------------------------------------------------------------------------------------- | ------------------------- | ----------- |
+| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                                             | `groupStoriesByStatus`    | `function`  |
+| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                                             | `computeSprintTotals`     | `function`  |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `SprintTotalsActive`      | `interface` |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `SprintTotalsHistory`     | `interface` |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `ProjectWriter`           | `interface` |
+| [`./src/scrum/update-impediment.ts`](../src/scrum/update-impediment.ts)                                 | `updateImpedimentUseCase` | `function`  |
+| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `GitHubErrorCode`         | `type`      |
+| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `assertNever`             | `function`  |
+| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `GitHubApiErrorParams`    | `interface` |
+| [`./src/adapters/github/internal/label-resolver.ts`](../src/adapters/github/internal/label-resolver.ts) | `GitHubLabel`             | `interface` |
+| [`./src/adapters/github/internal/http-client.ts`](../src/adapters/github/internal/http-client.ts)       | `RestResponse`            | `interface` |
+| [`./src/adapters/github/factory.ts`](../src/adapters/github/factory.ts)                                 | `GitHubBackendResult`     | `interface` |
+| [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `ImpedimentRef`           | `interface` |
+| [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `SprintName`              | `type`      |
 
 ## Notes
 

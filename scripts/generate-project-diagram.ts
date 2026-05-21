@@ -16,7 +16,7 @@ import * as helper from "./diagram/helpers.ts";
 import { ParsedModule } from "./diagram/ParsedModule.ts";
 // ── Defaults ───────────────────────────────────────────────────────────────────
 
-const DEFAULT_EXCLUSIONS = ["generated/**", "graphql/**", "**/*test.ts"];
+const DEFAULT_EXCLUSIONS = ["**/generated/**", "graphql/**", "**/*test.ts"];
 // ── CLI ────────────────────────────────────────────────────────────────────────
 const printHelp = (): void => {
   console.log(`
@@ -70,17 +70,29 @@ const parseArgs = (): {
 };
 
 // ── Scanner ────────────────────────────────────────────────────────────────────
-const isExcluded = (path: string, patterns: string[]): boolean =>
-  patterns.some((p) => {
-    const re = new RegExp(
-      "^" +
-        p
-          .replace(/\*\*/g, "[/]?[^/]*")
-          .replace(/\*/g, "[^/]*") +
-        "$",
-    );
-    return re.test(path);
+const isExcluded = (relPath: string, patterns: string[]): boolean => {
+  // Check if any path segment is an excluded directory (handles **/dir/** matching "foo/bar/dir")
+  const segments = relPath.split("/");
+  const hasExcludedDir = patterns.some((p) => {
+    const m = p.match(/^(\*\*\/)?([^*]+)(\/\*\*)?$/);
+    return m && segments.includes(m[2]);
   });
+  if (hasExcludedDir) return true;
+
+  // Convert glob to regex: ** → .* (any depth), * → [^/]* (single segment)
+  // Use a unique placeholder string so ** is replaced before *
+  const placeholder = "__GLOBSTAR__";
+  return patterns.some((p) => {
+    const regexStr = "^" +
+      p
+        .replace(/\*\*/g, placeholder)
+        .replace(/\*/g, "[^/]*")
+        .replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), ".*") +
+      "$";
+    const re = new RegExp(regexStr);
+    return re.test(relPath);
+  });
+};
 
 const scanModules = async (
   srcDir: string,

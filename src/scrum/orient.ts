@@ -7,7 +7,6 @@
 import type { ProjectReader } from "./ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 
-// todo: the results should be a composition of the types declared in `ports.ts`
 interface OrientResult {
   platform_state: {
     fields: {

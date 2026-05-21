@@ -24,10 +24,8 @@
         "GitHub.vscode-pull-request-github",
         "streetsidesoftware.code-spell-checker",
         "pomdtr.excalidraw-editor",
-        "vstirbu.vscode-mermaid-preview",
         "RooVeterinaryInc.roo-cline",
         "GraphQL.vscode-graphql-syntax",
-        "bierner.markdown-mermaid",
         "ms-azuretools.vscode-containers"
       ],
       "settings": {
