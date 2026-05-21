@@ -29,6 +29,7 @@ export interface PlatformState {
     sprint: { exists: boolean };
     story_points: { exists: boolean };
     priority: { exists: boolean; options: string[]; missingOptions: string[] };
+    type: { exists: boolean; configured: boolean };
   };
   labels: { existing: string[]; expected: string[]; missing: string[] };
   iterations: {

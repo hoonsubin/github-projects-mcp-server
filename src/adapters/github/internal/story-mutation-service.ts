@@ -169,10 +169,23 @@ export class StoryMutationService {
     const storyRef: StoryRef = { id: itemId };
 
     // Type is a project board field — works on draft issues without conversion.
-    // Silently skipped on config mismatch so partial configs don't break creation.
-    if (this.config.fields.typeFieldId && this.config.typeOptions[input.type]) {
-      await this.fieldValueMutator.setFieldType(itemId, input.type);
+    // Config validation at startup guarantees typeFieldId and typeOptions are populated.
+    const optionId = this.config.typeOptions[input.type];
+    if (!optionId) {
+      throw new GitHubApiError(
+        `Cannot set story type: "${input.type}" is not a recognized canonical type key. ` +
+          `Valid keys: ${Object.keys(this.config.typeOptions).join(", ")}. ` +
+          `Check backends.github.type_display in your config file.`,
+        {
+          code: "OPTION_NOT_FOUND",
+          recovery: `Call scrum_orient to see valid type keys (vocabulary.type). ` +
+            `If "${input.type}" is a new type, add it to type_display in your config file and ` +
+            `ensure the matching option exists on the Type project field.`,
+          context: { requested: input.type, valid: Object.keys(this.config.typeOptions) },
+        },
+      );
     }
+    await this.fieldValueMutator.setFieldType(itemId, input.type);
 
     if (input.priority) {
       await this.fieldValueMutator.setFieldPriority(itemId, input.priority);
@@ -185,7 +198,7 @@ export class StoryMutationService {
       const issueId = await this.convertDraftToIssue(itemId);
 
       if (hasLabels) {
-        const labelIds = await this.labelResolver.resolveLabelNodeIds(input.labels!);
+        const labelIds = await this.labelResolver.resolveExistingLabelNodeIds(input.labels!);
         if (labelIds.length > 0) {
           await this.gh.graphql(
             `mutation SetLabels($issueId: ID!, $labelIds: [ID!]!) {
@@ -262,7 +275,7 @@ export class StoryMutationService {
         part: "labelIds: $labelIds",
         decl: "$labelIds: [ID!]",
         name: "labelIds",
-        value: await this.labelResolver.resolveLabelNodeIds(updates.labels),
+        value: await this.labelResolver.resolveExistingLabelNodeIds(updates.labels),
       });
     }
     if (updates.assignees !== undefined && updates.assignees.length > 0) {

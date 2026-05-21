@@ -15,6 +15,7 @@ interface OrientResult {
       sprint: { exists: boolean };
       story_points: { exists: boolean };
       priority: { exists: boolean; options: string[]; missing_options: string[] };
+      type_field: { exists: boolean; configured: boolean };
     };
     missing_options: string[]; // convenience: concat of status + priority missing_options
     labels: { existing: string[]; expected: string[]; missing: string[] };
@@ -87,6 +88,10 @@ export const orientUseCase = async (
           exists: state.fields.priority.exists,
           options: state.fields.priority.options,
           missing_options: state.fields.priority.missingOptions,
+        },
+        type_field: {
+          exists: state.fields.type.exists,
+          configured: state.fields.type.configured,
         },
       },
       missing_options: [

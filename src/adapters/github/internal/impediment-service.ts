@@ -67,7 +67,7 @@ export class ImpedimentService {
     if (input.labels) labelNames.push(...input.labels);
 
     const [labelIds, repositoryId] = await Promise.all([
-      this.labelResolver.resolveLabelNodeIds(labelNames),
+      this.labelResolver.resolveOrCreateLabelNodeIds(labelNames),
       this.labelResolver.fetchRepoNodeId(),
     ]);
 

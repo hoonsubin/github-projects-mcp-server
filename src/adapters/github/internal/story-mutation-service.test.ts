@@ -178,7 +178,7 @@ const makeUpdates = (overrides: Partial<StoryUpdates> = {}): StoryUpdates => ({
 
 interface CreateServiceOptions {
   configOverrides?: Partial<RuntimeConfig>;
-  labelResolverOverrides?: Partial<Pick<LabelResolver, "resolveLabelNodeIds">>;
+  labelResolverOverrides?: Partial<Pick<LabelResolver, "resolveExistingLabelNodeIds">>;
 }
 
 const createService = (options: CreateServiceOptions = {}) => {
@@ -187,7 +187,7 @@ const createService = (options: CreateServiceOptions = {}) => {
   // Track label resolver calls
   const labelCalls: string[][] = [];
   const labelResolver = {
-    resolveLabelNodeIds(names: string[]): Promise<string[]> {
+    resolveExistingLabelNodeIds(names: string[]): Promise<string[]> {
       labelCalls.push([...names]);
       return Promise.resolve(names.map((_, i) => `LA_${i + 1}`));
     },
@@ -301,40 +301,19 @@ Deno.test({
 });
 
 Deno.test({
-  name: "createStory - skips type when typeFieldId is null",
+  name: "createStory - throws when type value not in typeOptions",
   async fn() {
-    const { service, gh, fieldCalls } = createServiceWithConfig({
-      fields: {
-        sprintFieldId: "F_sprint",
-        statusFieldId: "F_status",
-        storyPointsFieldId: null,
-        priorityFieldId: null,
-        epicFieldId: null,
-        assigneeFieldId: null,
-        typeFieldId: null,
-      },
-    });
-    gh.enqueue(ADD_DRAFT_SUCCESS);
-    const input = makeCreateInput({ labels: undefined, epic: undefined, priority: undefined });
-
-    const ref = await service.createStory(input);
-    assertEquals(ref.id, "PVTI_new1");
-    assertEquals(fieldCalls.length, 0);
-  },
-});
-
-Deno.test({
-  name: "createStory - skips type when type value not in typeOptions",
-  async fn() {
-    const { service, gh, fieldCalls } = createServiceWithConfig({
+    const { service, gh } = createServiceWithConfig({
       typeOptions: {},
     });
     gh.enqueue(ADD_DRAFT_SUCCESS);
     const input = makeCreateInput({ labels: undefined, epic: undefined, priority: undefined });
 
-    const ref = await service.createStory(input);
-    assertEquals(ref.id, "PVTI_new1");
-    assertEquals(fieldCalls.length, 0);
+    await assertRejects(
+      () => service.createStory(input),
+      GitHubApiError,
+      "is not a recognized canonical type key",
+    );
   },
 });
 
@@ -397,7 +376,7 @@ Deno.test({
   async fn() {
     const { service, gh } = createService({
       labelResolverOverrides: {
-        resolveLabelNodeIds: (_names: string[]) => Promise.resolve([] as string[]),
+        resolveExistingLabelNodeIds: (_names: string[]) => Promise.resolve([] as string[]),
       },
     });
     gh.enqueue(ADD_DRAFT_SUCCESS, CONVERT_SUCCESS);
