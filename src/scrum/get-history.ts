@@ -13,6 +13,7 @@ import type {
 import type { ScrumConfig } from "../domain/config.ts";
 import { toSprintName } from "../domain/types.ts";
 import { isTerminalStatus } from "../domain/rules/status.ts";
+import { resolveTerminalDisplay } from "./config-helpers.ts";
 
 // ── Return type ────────────────────────────────────────────────────────────────
 // todo: the results should be a composition of the types declared in `ports.ts`
@@ -56,13 +57,14 @@ const computeTotals = (
   completed_points: number;
 } => {
   const by_status: Record<string, number> = {};
+  const terminalDisplay = resolveTerminalDisplay(config);
   for (const s of stories) {
     const key = s.status ?? "(none)";
     by_status[key] = (by_status[key] ?? 0) + 1;
   }
   const committed_points = stories.reduce((sum, s) => sum + s.points, 0);
   const completed_points = stories
-    .filter((s) => isTerminalStatus(s.status, config))
+    .filter((s) => isTerminalStatus(s.status, terminalDisplay))
     .reduce((sum, s) => sum + s.points, 0);
   return { by_status, committed_points, completed_points };
 };

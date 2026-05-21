@@ -38,6 +38,12 @@ export interface PlatformState {
     completed: SprintInfo[];
     completedCount: number;
   };
+  /** Vocabulary display maps — resolved by the adapter from backend-specific config. */
+  vocabulary: {
+    statusDisplay: Record<string, string> | null; // canonical → display
+    priorityDisplay: Record<string, string> | null; // canonical → display
+    typeDisplay: Record<string, string> | null; // canonical → display
+  };
 }
 
 interface StoryComment {
@@ -285,8 +291,8 @@ export interface FileReaderPort {
 export interface ProjectReader
   extends BacklogPort, SprintPort, StoryPort, HistoryPort, BurndownPort, ImpedimentPort, EpicPort {
   getPlatformState(declaredVocabulary: {
-    statusValues: string[];
-    priorityValues: string[];
+    canonicalStatusKeys: string[];
+    canonicalPriorityKeys: string[];
   }): Promise<PlatformState>;
 
   /**

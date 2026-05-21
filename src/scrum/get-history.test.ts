@@ -72,8 +72,13 @@ const createMockBackend = (
 
 const createMockConfig = (overrides: Partial<ScrumConfig> = {}): ScrumConfig => ({
   project: { name: "Test Project" },
-  scrum: { priority: [], status: {} },
-  backends: { github: {} as Record<string, unknown> },
+  scrum: {
+    priority: [],
+    status: { done: { terminal: true, blocking: false } },
+  },
+  backends: {
+    github: { status_display: { done: "Done" } } as Record<string, unknown>,
+  },
   ...overrides,
 });
 

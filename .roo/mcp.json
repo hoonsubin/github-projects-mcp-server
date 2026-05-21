@@ -50,12 +50,12 @@
 				"pull_request_read",
 				"issue_read"
 			],
-			"disabled": false
+			"disabled": true
 		},
 		"mempalace": {
 			"command": "mempalace-mcp",
 			"args": [],
-			"disabled": true,
+			"disabled": false,
 			"alwaysAllow": []
 		},
 		"sequentialthinking": {

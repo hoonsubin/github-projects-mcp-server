@@ -10,6 +10,7 @@ import type { ScrumConfig } from "../domain/config.ts";
 import type { EpicListing, Story } from "../domain/types.ts";
 import { computeReadinessSummary } from "../domain/rules/readiness.ts";
 import { isTerminalStatus } from "../domain/rules/status.ts";
+import { resolveTerminalDisplay } from "./config-helpers.ts";
 // todo: the params should be a composition of the types declared in `ports.ts`
 interface GetBacklogParams {
   search?: string;
@@ -48,7 +49,8 @@ const storyToListing = (story: Story): StoryListing => ({
  * Uses config-driven terminal status detection via `isTerminalStatus()`.
  */
 const isActiveItem = (story: Story, config: ScrumConfig): boolean => {
-  const isDoneStatus = isTerminalStatus(story.status, config);
+  const terminalDisplay = resolveTerminalDisplay(config);
+  const isDoneStatus = isTerminalStatus(story.status, terminalDisplay);
   const hasNoSprint = story.sprint === null;
   return !(isDoneStatus && hasNoSprint);
 };

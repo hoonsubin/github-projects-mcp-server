@@ -6,7 +6,6 @@
     "graphql.vscode-graphql-syntax",
     "wayou.vscode-todo-highlight",
     "anthropic.claude-code",
-    "corschenzi.mermaid-graphical-editor",
     "streetsidesoftware.code-spell-checker"
   ]
 }

@@ -1,10 +1,10 @@
 // =============================================================================
-// src/tools/scrum-write.ts — Register all scrum_* write tools + deprecated github_graphql
+// src/tools/scrum-write.ts — Register all scrum_* write tools
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CreateStoryInput, ProjectBackend, StoryUpdates } from "../scrum/ports.ts";
 import type { Story, StoryRef } from "../domain/types.ts";
-import type { ScrumConfig } from "../domain/config.ts";
+import type { CommitBackendDisplayConfig, ScrumConfig } from "../domain/config.ts";
 import {
   AddVocabularySchema,
   CreateStorySchema,
@@ -14,10 +14,7 @@ import {
   UpdateImpedimentSchema,
   UpdateStorySchema,
 } from "../schemas/scrum.ts";
-import { GraphQLQuerySchema } from "../schemas/inputs.ts";
-import { isMutationQuery } from "../services/mutation-validator.ts";
 import { enrichError } from "../services/error-enrichment.ts";
-import { graphql } from "../adapters/github/internal/http-client.ts";
 import { z } from "zod";
 
 // ── Helper types ──────────────────────────────────────────────────────────────
@@ -33,8 +30,8 @@ interface PartialFailureResult {
 /** Resolve the p0 (highest-tier) priority display label from config. */
 const resolveP0PriorityDisplay = (scrumConfig: ScrumConfig): string => {
   const p0Key = scrumConfig.scrum.priority?.[0]?.key ?? "p0";
-  const ghConfig = scrumConfig.backends.github as Record<string, unknown>;
-  const priorityDisplay = (ghConfig.priority_display as Record<string, string>) ?? {};
+  const ghConfig = scrumConfig.backends.github as CommitBackendDisplayConfig;
+  const priorityDisplay = ghConfig.priority_display ?? {};
   return priorityDisplay[p0Key] ?? "Must";
 };
 
@@ -493,52 +490,6 @@ export function registerScrumWriteTools(
           params.status,
           params.resolution_notes,
         );
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (err) {
-        return {
-          content: [{ type: "text", text: enrichError(err) }],
-          isError: true,
-        };
-      }
-    },
-  );
-
-  server.registerTool(
-    "github_graphql",
-    {
-      title: "GitHub GraphQL (Deprecated)",
-      description:
-        `**DEPRECATED.** Preserved for ad-hoc diagnostic GraphQL lookups only. Will be removed in a future version. Prefer the \`scrum_*\` tools for all agent workflows. Mutations are blocked.`,
-      inputSchema: GraphQLQuerySchema.shape,
-      annotations: { role: "admin" },
-    },
-    async (params: z.infer<typeof GraphQLQuerySchema>) => {
-      try {
-        // Validate query does not contain mutations
-        if (isMutationQuery(params.query)) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(
-                  {
-                    error: "Mutation blocked",
-                    message:
-                      "The deprecated github_graphql tool only supports read queries. Use scrum_* tools for mutations.",
-                  },
-                  null,
-                  2,
-                ),
-              },
-            ],
-            isError: true,
-          };
-        }
-
-        // Forward to GitHub GraphQL API
-        const result = await graphql(params.query, params.variables ?? {});
         return {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
         };

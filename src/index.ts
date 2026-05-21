@@ -36,8 +36,17 @@ import type { Socket } from "node:net";
 //   TRACE=1  — raw JSON-RPC wire messages (transport dump, very noisy)
 
 const patchToolLogging = (server: McpServer): void => {
-  // deno-lint-ignore no-explicit-any
-  const _server = server as unknown as Record<string, any>;
+  // McpServer does not expose registerTool on its public type, but the
+  // runtime object carries it as an own method. We patch it via a local
+  // interface that declares only the shape we need.
+  interface McpServerInternal {
+    registerTool(
+      name: string,
+      config: unknown,
+      handler: (params: unknown, extra: unknown) => Promise<unknown>,
+    ): unknown;
+  }
+  const _server = server as unknown as McpServerInternal;
   const original = _server["registerTool"].bind(server) as (
     name: string,
     config: unknown,

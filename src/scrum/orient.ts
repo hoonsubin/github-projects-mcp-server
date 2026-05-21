@@ -7,7 +7,6 @@
 import type { ProjectReader } from "./ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 
-// todo: the results should be a composition of the types declared in `ports.ts`
 interface OrientResult {
   platform_state: {
     fields: {
@@ -53,25 +52,15 @@ export const orientUseCase = async (
   backend: ProjectReader,
   scrumConfig: ScrumConfig,
 ): Promise<OrientResult> => {
-  // todo: Once Story.status returns canonical keys, expose scrum.status semantic
-  // metadata here instead of display names. For now, status_display values are
-  // passed so the adapter can diff them against live platform options.
-  // todo: Remove this cast once status uses canonical keys — backends is type-erased.
-  type GhDisplay = {
-    status_display?: Record<string, string>;
-    priority_display?: Record<string, string>;
-    type_display?: Record<string, string>;
-  };
-  const ghDisplay = scrumConfig.backends.github as GhDisplay | undefined;
-  const statusVocab = ghDisplay?.status_display ?? null;
-  const priorityVocab = ghDisplay?.priority_display ?? null;
-  const typeVocab = ghDisplay?.type_display ?? null;
+  // Extract canonical keys from domain-level config (no adapter-specific types)
+  const canonicalStatusKeys = Object.keys(scrumConfig.scrum.status);
+  const canonicalPriorityKeys = scrumConfig.scrum.priority.map((p) => p.key);
 
   await backend.reload();
 
   const state = await backend.getPlatformState({
-    statusValues: statusVocab ? Object.values(statusVocab) : [],
-    priorityValues: priorityVocab ? Object.values(priorityVocab) : [],
+    canonicalStatusKeys,
+    canonicalPriorityKeys,
   });
 
   return {
@@ -119,9 +108,9 @@ export const orientUseCase = async (
       },
     },
     vocabulary: {
-      status: statusVocab,
-      priority: priorityVocab,
-      type: typeVocab,
+      status: state.vocabulary.statusDisplay,
+      priority: state.vocabulary.priorityDisplay,
+      type: state.vocabulary.typeDisplay,
       story_points: {
         scale: scrumConfig.scrum.sprint?.story_point_scale ?? null,
         values: scrumConfig.scrum.sprint?.story_point_values ?? null,
