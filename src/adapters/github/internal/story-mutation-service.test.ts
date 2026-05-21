@@ -74,8 +74,6 @@ const RESOLVED_EXISTING = {
   },
 };
 
-const BODY_EMPTY = { node: { body: "" } };
-
 const REPO_ID = { repository: { id: "R_repo1" } };
 
 const ADD_COMMENT_OK = { addComment: { commentEdge: { node: { id: "C_1" } } } };
