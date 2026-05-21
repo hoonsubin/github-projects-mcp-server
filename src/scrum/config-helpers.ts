@@ -6,7 +6,7 @@
 // These helpers belong in the use-case layer, not the domain layer.
 // =============================================================================
 
-import type { ScrumConfig } from "../domain/config.ts";
+import type { CommitBackendDisplayConfig, ScrumConfig } from "../domain/config.ts";
 
 /**
  * Resolve the canonical terminal (done) status display name from config.
@@ -21,8 +21,8 @@ export const resolveTerminalDisplay = (config: ScrumConfig): string => {
 
   if (!terminalKey) return "Done";
 
-  const ghConfig = config.backends.github as Record<string, unknown>;
-  const statusDisplay = (ghConfig.status_display as Record<string, string>) ?? {};
+  const ghConfig = config.backends.github as CommitBackendDisplayConfig;
+  const statusDisplay = ghConfig.status_display ?? {};
 
   return statusDisplay[terminalKey] ?? "Done";
 };

@@ -92,3 +92,19 @@ export interface ScrumConfig {
    */
   backends: Record<string, unknown>;
 }
+
+/**
+ * Narrow domain-level projection of backend display mappings.
+ *
+ * Extracted from the type-erased {@link ScrumConfig.backends} by use-case and
+ * framework code that needs to resolve canonical status/priority keys into
+ * platform-specific display labels. Each backend's concrete config (e.g.
+ * GitHubBackendConfig) satisfies this interface structurally — no adapter
+ * imports are needed by callers.
+ */
+export interface CommitBackendDisplayConfig {
+  /** Canonical status key → platform display name (e.g. "done" → "Done"). */
+  status_display: Record<string, string>;
+  /** Canonical priority key → platform display name (e.g. "p0" → "Must"). */
+  priority_display: Record<string, string>;
+}

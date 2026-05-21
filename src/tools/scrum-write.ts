@@ -1,10 +1,10 @@
 // =============================================================================
-// src/tools/scrum-write.ts — Register all scrum_* write tools + deprecated github_graphql
+// src/tools/scrum-write.ts — Register all scrum_* write tools
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CreateStoryInput, ProjectBackend, StoryUpdates } from "../scrum/ports.ts";
 import type { Story, StoryRef } from "../domain/types.ts";
-import type { ScrumConfig } from "../domain/config.ts";
+import type { CommitBackendDisplayConfig, ScrumConfig } from "../domain/config.ts";
 import {
   AddVocabularySchema,
   CreateStorySchema,
@@ -30,8 +30,8 @@ interface PartialFailureResult {
 /** Resolve the p0 (highest-tier) priority display label from config. */
 const resolveP0PriorityDisplay = (scrumConfig: ScrumConfig): string => {
   const p0Key = scrumConfig.scrum.priority?.[0]?.key ?? "p0";
-  const ghConfig = scrumConfig.backends.github as Record<string, unknown>;
-  const priorityDisplay = (ghConfig.priority_display as Record<string, string>) ?? {};
+  const ghConfig = scrumConfig.backends.github as CommitBackendDisplayConfig;
+  const priorityDisplay = ghConfig.priority_display ?? {};
   return priorityDisplay[p0Key] ?? "Must";
 };
 
