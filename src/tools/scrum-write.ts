@@ -15,6 +15,7 @@ import {
   UpdateStorySchema,
 } from "../schemas/scrum.ts";
 import { enrichError } from "../services/error-enrichment.ts";
+import { pickDefined } from "../services/pick-defined.ts";
 import { z } from "zod";
 
 // ── Helper types ──────────────────────────────────────────────────────────────
@@ -162,13 +163,14 @@ export function registerScrumWriteTools(
     },
     async (params: z.infer<typeof UpdateStorySchema>) => {
       try {
-        const updates: Partial<z.infer<typeof UpdateStorySchema>> = {};
-        if (params.title !== undefined) updates.title = params.title;
-        if (params.body !== undefined) updates.body = params.body;
-        if (params.labels !== undefined) updates.labels = params.labels;
-        if (params.assignees !== undefined) updates.assignees = params.assignees;
-        if (params.epic !== undefined) updates.epic = params.epic;
-        if (params.blocked_by !== undefined) updates.blocked_by = params.blocked_by;
+        const updates = pickDefined(params, [
+          "title",
+          "body",
+          "labels",
+          "assignees",
+          "epic",
+          "blocked_by",
+        ]);
 
         await backend.updateStory(params.ref, updates as StoryUpdates);
 
