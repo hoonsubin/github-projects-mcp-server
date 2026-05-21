@@ -48,7 +48,6 @@ const DEFAULT_LAYER_MAPPING: LayerMapping = {
   "src/domain/": Layer.USE_CASE,
   "src/services/": Layer.USE_CASE,
   "src/adapters/": Layer.ADAPTER,
-  "src/generated/": Layer.ADAPTER,
 };
 
 // ── DiagramStyler ──────────────────────────────────────────────────────────────
