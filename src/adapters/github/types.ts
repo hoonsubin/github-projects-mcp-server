@@ -16,7 +16,7 @@
 // Nothing in the domain layer (src/domain/, src/scrum/) imports from this file.
 // =============================================================================
 
-import type * as GH from "../../generated/github-types.ts";
+import type * as GH from "./generated/github-types.ts";
 
 // ── GitHub backend connection config (moved from src/types.ts) ───────────────
 
@@ -187,7 +187,7 @@ export interface FieldValueNode {
 }
 
 /** Extracted board fields from a field-value node array. */
-export interface BoardFields {
+export interface BoardFields { // todo: this should be semi-dynamically created from the scrum_orient results
   status: string | null;
   sprint: string | null;
   story_points: number | null;

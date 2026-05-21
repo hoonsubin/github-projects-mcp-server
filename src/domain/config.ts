@@ -6,8 +6,6 @@
 // mappings) are type-erased here as `Record<string, unknown>` — each adapter
 // casts its own config out of `backends[platform]` without polluting the domain
 // with platform-specific details.
-//
-// Nothing here imports from src/adapters/, src/services/, or src/generated/.
 // =============================================================================
 
 import type { ArtifactType } from "./types.ts";

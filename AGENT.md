@@ -27,7 +27,7 @@ flowchart TD
     PB["interface ProjectBackend (src/scrum/ports.ts)"]
   end
 
-  subgraph Adapter["ADAPTER LAYER src/adapters/ + src/generated/"]
+  subgraph Adapter["ADAPTER LAYER src/adapters/"]
     direction TB
     AD["GitHubProjectBackend implements ProjectBackend"]
     SVC["internal/ services (LabelResolver, FieldValueMutator, etc.)"]
