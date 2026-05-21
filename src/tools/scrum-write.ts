@@ -157,8 +157,7 @@ export function registerScrumWriteTools(
           assignees  string[] — REPLACES all existing assignees, GitHub logins (omit to leave unchanged)
           epic       { id: string } | null — EpicRef to assign, or null to detach from epic (omit to leave unchanged)
           comment    string — Post a comment on the story after updating (omit to skip)
-          blocked_by  StoryRef[] | null — REPLACES all upstream dependencies; null clears; omit to leave unchanged
-          blocks      StoryRef[] | null — REPLACES all downstream dependencies; null clears; omit to leave unchanged
+          blocked_by  StoryRef[] | null — REPLACES all upstream (blocked_by) dependencies; null clears; omit to leave unchanged
 
         Returns: updated Story object.`,
       inputSchema: UpdateStorySchema.shape,
@@ -173,7 +172,6 @@ export function registerScrumWriteTools(
         if (params.assignees !== undefined) updates.assignees = params.assignees;
         if (params.epic !== undefined) updates.epic = params.epic;
         if (params.blocked_by !== undefined) updates.blocked_by = params.blocked_by;
-        if (params.blocks !== undefined) updates.blocks = params.blocks;
 
         await backend.updateStory(params.ref, updates as StoryUpdates);
 

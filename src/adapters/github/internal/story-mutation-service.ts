@@ -15,72 +15,89 @@ import type { RuntimeConfig } from "../config-loader.ts";
 import type { CreateStoryInput, StoryUpdates } from "../../../scrum/ports.ts";
 import type { SprintRef, StoryRef } from "../../../domain/types.ts";
 
-// ── Dependency section rewrite helper ────────────────────────────────────────
-
-const BLOCKED_BY_LINE_RE = /^-\s+blocked\s+by:\s+#\d+\s*$/im;
-const BLOCKS_LINE_RE = /^-\s+blocks:\s+#\d+\s*$/im;
+// ── Dependency mutation helpers ──────────────────────────────────────────────
 
 /**
- * Rewrite the `## Dependencies` markdown section in a story body.
- *
- * Rules (per direction):
- *   `undefined` — leave that direction untouched (preserve existing lines)
- *   `null`       — clear all lines for that direction
- *   `StoryRef[]` — replace all lines for that direction with new entries
- *
- * If both directions end up empty, the entire section (heading + content)
- * is removed. Otherwise the section is upserted — replaced if it already
- * exists, or appended to the end of the body if absent.
+ * Apply blocked_by dependency changes using native GitHub addBlockedBy/removeBlockedBy mutations.
+ * Computes diff between current and desired state, then executes all changes
+ * in a single batched GraphQL call using aliases.
  */
-const rewriteDependencySection = (
-  currentBody: string,
+const applyDependencyMutations = async (
+  gh: GitHubClient,
+  issueId: string,
   blockedBy: StoryRef[] | null | undefined,
-  blocks: StoryRef[] | null | undefined,
-  resolveIssueNumber: (ref: StoryRef) => string,
-): string => {
-  // Match the ## Dependencies section up to the next ## heading or end of string.
-  // $(?![\s\S]) is the JS idiom for end-of-string in multiline mode.
-  const sectionMatch = currentBody.match(
-    /^##\s+dependencies\b.*$([\s\S]*?)(?=^##\s|$(?![\s\S]))/im,
-  );
-  const existingSection = sectionMatch ? sectionMatch[0] : "";
-  const existingBody = sectionMatch
-    ? currentBody.replace(sectionMatch[0], "").trimEnd()
-    : currentBody;
+  resolveRefsToIssueIds: (refs: StoryRef[]) => Promise<string[]>,
+): Promise<void> => {
+  if (blockedBy === undefined) return;
 
-  const existingBlockedBy: string[] = [];
-  const existingBlocks: string[] = [];
-  const otherLines: string[] = [];
-  for (const line of existingSection.split("\n")) {
-    if (BLOCKED_BY_LINE_RE.test(line)) {
-      existingBlockedBy.push(line);
-    } else if (BLOCKS_LINE_RE.test(line)) {
-      existingBlocks.push(line);
-    } else if (line.trim() !== "" || otherLines.length > 0) {
-      otherLines.push(line);
+  // Fetch current blocked_by relationships
+  const current = await gh.graphql<{
+    node?: { blockedBy?: { nodes: Array<{ id: string }> } } | null;
+  }>(
+    `query($issueId: ID!) {
+      node(id: $issueId) {
+        ... on Issue {
+          blockedBy(first: 50) { nodes { id } }
+        }
+      }
+    }`,
+    { issueId },
+  );
+  const currentBlockedByIds = new Set(
+    (current.node?.blockedBy?.nodes ?? []).map((n) => n.id),
+  );
+
+  // Resolve desired refs to issue node IDs (null = clear all)
+  const desiredBlockedByIds: Set<string> = blockedBy === null
+    ? new Set()
+    : blockedBy.length
+    ? new Set(await resolveRefsToIssueIds(blockedBy))
+    : new Set();
+
+  // Build batched mutation with aliases
+  const adds: Array<{ alias: string; blockerId: string }> = [];
+  const removes: Array<{ alias: string; blockerId: string }> = [];
+
+  for (const id of desiredBlockedByIds) {
+    if (!currentBlockedByIds.has(id)) {
+      adds.push({ alias: `addBb${id.slice(-8)}`, blockerId: id });
+    }
+  }
+  for (const id of currentBlockedByIds) {
+    if (!desiredBlockedByIds.has(id)) {
+      removes.push({ alias: `rmBb${id.slice(-8)}`, blockerId: id });
     }
   }
 
-  const finalBlockedBy: string[] = blockedBy === undefined
-    ? existingBlockedBy
-    : blockedBy === null
-    ? []
-    : blockedBy.map((ref) => `- Blocked by: #${resolveIssueNumber(ref)}`);
-  const finalBlocks: string[] = blocks === undefined
-    ? existingBlocks
-    : blocks === null
-    ? []
-    : blocks.map((ref) => `- Blocks: #${resolveIssueNumber(ref)}`);
+  if (adds.length === 0 && removes.length === 0) return;
 
-  const sectionLines = [...otherLines, ...finalBlockedBy, ...finalBlocks]
-    .filter((line) => line.trim() !== "");
+  const mutationParts: string[] = [];
+  const variables: Record<string, unknown> = {};
 
-  if (sectionLines.length === 0) {
-    return existingBody || "";
+  for (const a of adds) {
+    const varName = `bid_${a.alias}`;
+    mutationParts.push(
+      `${a.alias}: addBlockedBy(input: { issueId: $issueId, blockingIssueId: $${varName} }) { clientMutationId }`,
+    );
+    variables[varName] = a.blockerId;
+  }
+  for (const r of removes) {
+    const varName = `bid_${r.alias}`;
+    mutationParts.push(
+      `${r.alias}: removeBlockedBy(input: { issueId: $issueId, blockingIssueId: $${varName} }) { clientMutationId }`,
+    );
+    variables[varName] = r.blockerId;
   }
 
-  const section = ["## Dependencies", "", ...sectionLines].join("\n");
-  return existingBody ? `${existingBody}\n\n${section}` : section;
+  variables["issueId"] = issueId;
+  await gh.graphql(
+    `mutation($issueId: ID!, ${
+      Object.keys(variables).filter((k) => k !== "issueId").map((k) => `$${k}: ID!`).join(", ")
+    }) {
+      ${mutationParts.join("\n")}
+    }`,
+    variables,
+  );
 };
 
 // ── StoryMutationService class ────────────────────────────────────────────────
@@ -197,9 +214,29 @@ export class StoryMutationService {
     const resolved = await resolveStory(ref, this.gh);
     const issueId = resolved.issueId ?? await this.convertDraftToIssue(resolved.itemId);
 
-    if (updates.blocked_by !== undefined || updates.blocks !== undefined) {
-      const updatedBody = await this._buildDependencyBody(updates, issueId);
-      updates = { ...updates, body: updatedBody };
+    // Apply blocked_by changes via native GitHub mutations (not body text manipulation)
+    if (updates.blocked_by !== undefined) {
+      await applyDependencyMutations(
+        this.gh,
+        issueId,
+        updates.blocked_by,
+        async (refs: StoryRef[]) => {
+          const results = await Promise.all(refs.map((r) => resolveStory(r, this.gh)));
+          return results.map((r) => {
+            if (!r.issueId) {
+              throw new GitHubApiError(
+                `Cannot resolve dependency: story ${r.itemId} is a Draft Issue.`,
+                {
+                  code: "RESOLUTION_FAILED",
+                  recovery: "Use a real Issue for dependencies.",
+                  context: { itemId: r.itemId },
+                },
+              );
+            }
+            return r.issueId;
+          });
+        },
+      );
     }
 
     const fields: MutationField[] = [];
@@ -259,64 +296,6 @@ export class StoryMutationService {
       }
     `;
     await this.gh.graphql(mutation, variables);
-  }
-
-  /**
-   * Build an updated body with the ## Dependencies section rewritten.
-   * Resolves all StoryRef arrays in a single parallel pass before the sync rewrite.
-   */
-  private async _buildDependencyBody(
-    updates: StoryUpdates,
-    issueId: string,
-  ): Promise<string> {
-    const currentBody: string = updates.body !== undefined
-      ? (updates.body ?? "")
-      : await this._fetchCurrentBody(issueId);
-
-    // Collect only the refs that need network resolution (non-null arrays).
-    const blockedByRefs = Array.isArray(updates.blocked_by) ? updates.blocked_by : [];
-    const blocksRefs = Array.isArray(updates.blocks) ? updates.blocks : [];
-    const allRefs = [...blockedByRefs, ...blocksRefs];
-
-    const resolvedNumbers = await Promise.all(
-      allRefs.map((ref) => this._resolveRefToIssueNumber(ref)),
-    );
-    const numById = new Map(allRefs.map((ref, i) => [ref.id, resolvedNumbers[i]]));
-
-    return rewriteDependencySection(
-      currentBody,
-      updates.blocked_by,
-      updates.blocks,
-      (ref) => numById.get(ref.id) ?? "",
-    );
-  }
-
-  /** Resolve a StoryRef to its issue number string for dependency body entries. */
-  private async _resolveRefToIssueNumber(ref: StoryRef): Promise<string> {
-    const resolved = await resolveStory(ref, this.gh);
-    if (resolved.issueNumber === null) {
-      throw new GitHubApiError(
-        `Cannot resolve dependency reference: story ${ref.id} is a Draft Issue with no issue number.`,
-        {
-          code: "RESOLUTION_FAILED",
-          recovery: "Draft Issues cannot be referenced in dependency lists. " +
-            "Convert the draft to a full Issue first, then retry.",
-          context: { itemId: ref.id },
-        },
-      );
-    }
-    return String(resolved.issueNumber);
-  }
-
-  /** Fetch the current body of an issue by its node ID. */
-  private async _fetchCurrentBody(issueId: string): Promise<string> {
-    const result = await this.gh.graphql<{
-      node?: { body?: string } | null;
-    }>(
-      `query GetIssueBody($issueId: ID!) { node(id: $issueId) { ... on Issue { body } } }`,
-      { issueId },
-    );
-    return result.node?.body ?? "";
   }
 
   async setField(

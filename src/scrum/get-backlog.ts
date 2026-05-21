@@ -36,7 +36,7 @@ const storyToListing = (story: Story): StoryListing => ({
   priority: story.priority,
   sprint: story.sprint,
   writable: true,
-  has_dependencies: story.blocked_by.length > 0 || story.blocks.length > 0,
+  has_dependencies: story.blocked_by.length > 0,
 });
 
 /**
@@ -91,7 +91,11 @@ export const getBacklogUseCase = async (
 
   // Compute readiness from full Story objects (limitedStories is still Story[] at this point)
   const readinessSummary = computeReadinessSummary(
-    limitedStories.map((s) => ({ body: s.body, story_points: s.story_points })),
+    limitedStories.map((s) => ({
+      body: s.body,
+      story_points: s.story_points,
+      has_dependencies: s.blocked_by.length > 0,
+    })),
   );
 
   return {

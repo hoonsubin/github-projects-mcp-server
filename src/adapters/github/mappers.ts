@@ -38,31 +38,23 @@ interface TimelineItemInput {
   } | null;
 }
 
-// ── Dependency parsing ─────────────────────────────────────────────────────────
+// ── Dependency mapping ─────────────────────────────────────────────────────────
 
-const parseDependencies = (
-  body: string,
-): { blocked_by: DependencyEntry[]; blocks: DependencyEntry[] } => {
-  const sectionMatch = body.match(/^##\s+dependencies\b.*$([\s\S]*?)(?=^##\s|\z)/im);
-  if (!sectionMatch) return { blocked_by: [], blocks: [] };
-
-  const section = sectionMatch[1];
-  const blocked_by: DependencyEntry[] = [];
-  const blocks: DependencyEntry[] = [];
-
-  for (const line of section.split("\n")) {
-    const blockedMatch = line.match(/^-\s+blocked\s+by:\s+#(\d+)\s*$/i);
-    if (blockedMatch) {
-      blocked_by.push({ key: blockedMatch[1], title: null, ref: { id: null } });
-      continue;
-    }
-    const blocksMatch = line.match(/^-\s+blocks:\s+#(\d+)\s*$/i);
-    if (blocksMatch) {
-      blocks.push({ key: blocksMatch[1], title: null, ref: { id: null } });
-    }
-  }
-
-  return { blocked_by, blocks };
+/**
+ * Map Issue.blockedBy GraphQL connection to a DependencyEntry array.
+ * Used by buildStoryFromRaw (project items) and buildEnrichedStory (detail query).
+ */
+const mapIssueDependencies = (
+  issueContent: {
+    blockedBy?: { nodes: Array<{ id: string; number: number; title: string }> };
+  },
+): DependencyEntry[] => {
+  const toEntry = (n: { id: string; number: number; title: string }): DependencyEntry => ({
+    key: String(n.number),
+    title: n.title,
+    ref: { id: n.id }, // issue node ID — resolveDependencyRefs() maps to project item IDs
+  });
+  return (issueContent.blockedBy?.nodes ?? []).map(toEntry);
 };
 
 // ── Exported input shape for backend.ts ───────────────────────────────────────
@@ -82,6 +74,8 @@ export interface IssueDetailsInput {
   assignees?: { nodes: Array<{ login: string }> };
   labels?: { nodes: Array<{ name: string }> };
   milestone?: { id: string; title: string } | null;
+  blockedBy?: { nodes: Array<{ id: string; number: number; title: string }> };
+  blocking?: { nodes: Array<{ id: string; number: number; title: string }> };
   comments?: { nodes: CommentInput[] };
   timelineItems?: { nodes: TimelineItemInput[] };
 }
@@ -167,7 +161,6 @@ export const buildStoryFromRaw = (
       updated_at: item.updatedAt,
       url: null,
       blocked_by: [],
-      blocks: [],
     };
     return draft;
   }
@@ -183,7 +176,10 @@ export const buildStoryFromRaw = (
     ? { ref: { id: content.milestone.id }, name: content.milestone.title }
     : null;
 
-  const deps = parseDependencies(content.body);
+  // Dependencies come from native Issue.blockedBy GraphQL field
+  const blockedBy = content.__typename === "Issue"
+    ? mapIssueDependencies(content)
+    : [] as DependencyEntry[];
   const issue: IssueStory = {
     kind: "issue",
     ref: { id: item.id },
@@ -201,8 +197,7 @@ export const buildStoryFromRaw = (
     created_at: item.createdAt,
     updated_at: item.updatedAt,
     url: content.url,
-    blocked_by: deps.blocked_by,
-    blocks: deps.blocks,
+    blocked_by: blockedBy,
   };
   return issue;
 };
@@ -222,7 +217,7 @@ export const buildEnrichedStory = (
   // All repo labels are passed through unfiltered.
   const labels = issueNode.labels?.nodes.map((l) => l.name) ?? [];
 
-  const deps = parseDependencies(issueNode.body ?? "");
+  // Dependencies come from native Issue.blockedBy GraphQL field
   return {
     kind: "issue",
     ref: { id: itemId },
@@ -242,8 +237,7 @@ export const buildEnrichedStory = (
     created_at: issueNode.createdAt,
     updated_at: issueNode.updatedAt,
     url: issueNode.url ?? "",
-    blocked_by: deps.blocked_by,
-    blocks: deps.blocks,
+    blocked_by: mapIssueDependencies(issueNode),
   };
 };
 
@@ -298,35 +292,46 @@ export const toSprintInfo = (iter: IterationEntry | null): SprintInfo | null => 
 // ── Dependency ref resolution ──────────────────────────────────────────────────
 
 /**
- * Second-pass resolver: fills in ref.id for dependency entries that were parsed
- * from body markdown by matching issue numbers against in-memory project items.
+ * Second-pass resolver: fills in ref.id for dependency entries by matching
+ * issue node IDs or issue numbers against in-memory project items.
  *
  * Called at the end of getBacklogStories() and getSprintStories() — both of which
  * have the full list of ProjectItems already in memory. Not called from
- * getStoryDetail() — ref.id stays null in that context.
+ * getStoryDetail() — ref.id stays as issue node ID in that context.
  */
 export const resolveDependencyRefs = (
   stories: Story[],
   allItems: ProjectItem[],
 ): Story[] => {
-  // Build a lookup: issue number string → project item ID
+  // Build lookups: issue number string → project item ID, and issue node ID → project item ID
   const keyToId = new Map<string, string>();
+  const issueIdToItemId = new Map<string, string>();
   for (const item of allItems) {
     const content = item.content;
     if (!content || content.__typename === "DraftIssue") continue;
     const issueKey = String(content.number);
-    if (issueKey && item.id) keyToId.set(issueKey, item.id);
+    if (issueKey && item.id) {
+      keyToId.set(issueKey, item.id);
+      issueIdToItemId.set(content.id, item.id);
+    }
   }
 
   const resolve = (entries: DependencyEntry[]): DependencyEntry[] =>
-    entries.map((e) =>
-      e.ref.id === null && keyToId.has(e.key) ? { ...e, ref: { id: keyToId.get(e.key)! } } : e
-    );
+    entries.map((e) => {
+      // First try: issue node ID → project item ID (from native API mapping)
+      if (e.ref.id !== null && issueIdToItemId.has(e.ref.id)) {
+        return { ...e, ref: { id: issueIdToItemId.get(e.ref.id)! } };
+      }
+      // Fallback: issue number string → project item ID (legacy path)
+      if (e.ref.id === null && keyToId.has(e.key)) {
+        return { ...e, ref: { id: keyToId.get(e.key)! } };
+      }
+      return e;
+    });
 
   return stories.map((s) => ({
     ...s,
     blocked_by: resolve(s.blocked_by),
-    blocks: resolve(s.blocks),
   }));
 };
 

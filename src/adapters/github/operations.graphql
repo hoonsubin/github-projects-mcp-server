@@ -95,6 +95,7 @@ fragment ItemContent on ProjectV2Item {
       labels(first: 10)   { nodes { name color } }
       milestone { id title dueOn }
       repository { name nameWithOwner }
+      blockedBy(first: 10) { nodes { id number title } }
     }
     ... on PullRequest {
       id number title url state body isDraft
@@ -355,6 +356,7 @@ query GetIssueDetails($issueId: ID!) {
       assignees(first: 10) { nodes { login } }
       labels(first: 20)    { nodes { name } }
       milestone { id title }
+      blockedBy(first: 50) { nodes { id number title } }
       comments(first: 50) {
         nodes {
           id

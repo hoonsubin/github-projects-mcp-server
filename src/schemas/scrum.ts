@@ -279,14 +279,6 @@ export const UpdateStorySchema = z
           "Each entry is a StoryRef ({ id }) obtained from a previous read tool. " +
           "Pass null to clear all upstream dependencies. Omit to leave dependencies unchanged.",
       ),
-    blocks: z
-      .array(StoryRefSchema)
-      .nullish()
-      .describe(
-        "Replace the full list of stories that this story blocks (downstream dependencies). " +
-          "Each entry is a StoryRef ({ id }) obtained from a previous read tool. " +
-          "Pass null to clear all downstream dependencies. Omit to leave unchanged.",
-      ),
   })
   .strict();
 

@@ -99,6 +99,7 @@ export interface ProjectItemIssueContent
   labels: { nodes: Array<{ name: string; color: string }> };
   milestone: { id: string; title: string; dueOn: string | null } | null;
   repository: { name: string; nameWithOwner: string };
+  blockedBy?: { nodes: Array<{ id: string; number: number; title: string }> };
 }
 
 export interface ProjectItemPRContent

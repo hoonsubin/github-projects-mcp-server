@@ -115,7 +115,6 @@ export interface StoryUpdates {
   assignees?: string[];
   epic?: EpicRef | null;
   blocked_by?: StoryRef[] | null; // null clears all; omit to leave unchanged
-  blocks?: StoryRef[] | null; // null clears all; omit to leave unchanged
 }
 
 export type VocabularyKind = "status_option" | "priority_option" | "label";

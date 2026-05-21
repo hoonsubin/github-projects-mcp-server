@@ -31,7 +31,6 @@ const makeStory = (overrides: Partial<IssueStory> = {}): IssueStory => ({
   updated_at: "2026-01-02T00:00:00Z",
   url: "https://github.com/test/repo/issues/1",
   blocked_by: [],
-  blocks: [],
   ...overrides,
 });
 

@@ -106,7 +106,6 @@ interface StoryBase { // todo: also a close duplicate of the `ports.ts`. The typ
   created_at: string; // ISO-8601
   updated_at: string; // ISO-8601
   blocked_by: DependencyEntry[]; // stories that must be Done before this one starts
-  blocks: DependencyEntry[]; // stories that are downstream of this one
 }
 
 /** A GitHub Projects draft issue — has no issue number, URL, or milestone. */
@@ -116,7 +115,6 @@ export interface DraftStory extends StoryBase {
   url: null;
   epic: null;
   blocked_by: DependencyEntry[]; // always [] — Draft Issues have no tracked dependencies
-  blocks: DependencyEntry[]; // always []
 }
 
 /** A real GitHub Issue (or PR) promoted to a project item. */

@@ -24,12 +24,6 @@ const hasUserStoryFormat = (body: string): boolean =>
 const hasAcceptanceCriteria = (body: string): boolean => /[-*]\s+\[[\s xX]\]/.test(body);
 
 /**
- * Check if body contains dependency references.
- */
-const hasDependencies = (body: string): boolean =>
-  /(?:Depends\s+on|Blocked\s+by|Related\s+to|Blocks)\s+#\d+/i.test(body);
-
-/**
  * Check if body indicates the story is too large for one sprint.
  */
 const isTooLarge = (body: string): boolean =>
@@ -47,17 +41,19 @@ const isTooLarge = (body: string): boolean =>
  *
  * @param body - Story body markdown
  * @param storyPoints - Assigned story points (null = unestimated)
+ * @param hasDependencies - Whether the story has dependencies (from adapter layer)
  * @returns ReadinessLevel assessment
  */
 const computeStoryReadiness = (
   body: string,
   storyPoints: number | null,
+  hasDependencies: boolean,
 ): ReadinessLevel => {
   const criteria = [
     hasUserStoryFormat(body),
     hasAcceptanceCriteria(body),
     (storyPoints ?? 0) > 0,
-    hasDependencies(body),
+    hasDependencies,
   ];
 
   const score = criteria.filter(Boolean).length;
@@ -77,18 +73,18 @@ const computeStoryReadiness = (
 /**
  * Compute readiness summary across multiple stories.
  *
- * @param stories - Array of { body, story_points } tuples
+ * @param stories - Array of { body, story_points, has_dependencies } tuples
  * @returns Readiness counts { ready, partially_ready, not_ready }
  */
 export const computeReadinessSummary = (
-  stories: Array<{ body: string; story_points: number | null }>,
+  stories: Array<{ body: string; story_points: number | null; has_dependencies: boolean }>,
 ): { ready: number; partially_ready: number; not_ready: number } => {
   let ready = 0;
   let partiallyReady = 0;
   let notReady = 0;
 
   for (const story of stories) {
-    const readiness = computeStoryReadiness(story.body, story.story_points);
+    const readiness = computeStoryReadiness(story.body, story.story_points, story.has_dependencies);
     if (readiness === "ready") ready++;
     else if (readiness === "partially_ready") partiallyReady++;
     else notReady++;

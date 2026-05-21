@@ -55,7 +55,6 @@ const makeIssueStory = (overrides: Partial<IssueStory> = {}): IssueStory => ({
   created_at: "2026-01-06T00:00:00Z",
   updated_at: "2026-01-06T00:00:00Z",
   blocked_by: [],
-  blocks: [],
   epic: null,
   ...overrides,
 });
@@ -77,7 +76,6 @@ const makeDraftStory = (overrides: Partial<DraftStory> = {}): DraftStory => ({
   created_at: "2026-01-06T00:00:00Z",
   updated_at: "2026-01-06T00:00:00Z",
   blocked_by: [],
-  blocks: [],
   epic: null,
   ...overrides,
 });
@@ -433,12 +431,7 @@ Deno.test({
     const backend = createMockBackend({
       getSprintStories: () =>
         Promise.resolve({
-          stories: [
-            makeIssueStory({
-              blocked_by: [makeDependencyEntry()],
-              blocks: [],
-            }),
-          ],
+          stories: [makeIssueStory({ blocked_by: [makeDependencyEntry()] })],
           sprintInfo: makeSprintInfo(),
         }),
     });
@@ -449,38 +442,12 @@ Deno.test({
 });
 
 Deno.test({
-  name: "[C3] has_dependencies is true when blocks is non-empty",
+  name: "[C3] has_dependencies is false when blocked_by is empty",
   async fn() {
     const backend = createMockBackend({
       getSprintStories: () =>
         Promise.resolve({
-          stories: [
-            makeIssueStory({
-              blocked_by: [],
-              blocks: [makeDependencyEntry()],
-            }),
-          ],
-          sprintInfo: makeSprintInfo(),
-        }),
-    });
-    const result = await getSprintUseCase(backend, "current");
-    const snapshot = assertIsSingleResult(result);
-    assertEquals(snapshot.items[0].has_dependencies, true);
-  },
-});
-
-Deno.test({
-  name: "[C4] has_dependencies is false when both empty",
-  async fn() {
-    const backend = createMockBackend({
-      getSprintStories: () =>
-        Promise.resolve({
-          stories: [
-            makeIssueStory({
-              blocked_by: [],
-              blocks: [],
-            }),
-          ],
+          stories: [makeIssueStory({ blocked_by: [] })],
           sprintInfo: makeSprintInfo(),
         }),
     });
