@@ -377,7 +377,7 @@ const classifyIterations = (
   const next = allSorted.find((iter) => {
     const s = new Date(iter.startDate);
     s.setHours(0, 0, 0, 0);
-    return s > cutoff;
+    return s >= cutoff;
   }) ?? null;
 
   // Deduplicate across active and completed by ID in case GitHub returns overlaps,
