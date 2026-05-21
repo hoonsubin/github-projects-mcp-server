@@ -14,10 +14,7 @@ import {
   UpdateImpedimentSchema,
   UpdateStorySchema,
 } from "../schemas/scrum.ts";
-import { GraphQLQuerySchema } from "../schemas/inputs.ts";
-import { isMutationQuery } from "../services/mutation-validator.ts";
 import { enrichError } from "../services/error-enrichment.ts";
-import { graphql } from "../adapters/github/internal/http-client.ts";
 import { z } from "zod";
 
 // ── Helper types ──────────────────────────────────────────────────────────────
@@ -493,52 +490,6 @@ export function registerScrumWriteTools(
           params.status,
           params.resolution_notes,
         );
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (err) {
-        return {
-          content: [{ type: "text", text: enrichError(err) }],
-          isError: true,
-        };
-      }
-    },
-  );
-
-  server.registerTool(
-    "github_graphql",
-    {
-      title: "GitHub GraphQL (Deprecated)",
-      description:
-        `**DEPRECATED.** Preserved for ad-hoc diagnostic GraphQL lookups only. Will be removed in a future version. Prefer the \`scrum_*\` tools for all agent workflows. Mutations are blocked.`,
-      inputSchema: GraphQLQuerySchema.shape,
-      annotations: { role: "admin" },
-    },
-    async (params: z.infer<typeof GraphQLQuerySchema>) => {
-      try {
-        // Validate query does not contain mutations
-        if (isMutationQuery(params.query)) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(
-                  {
-                    error: "Mutation blocked",
-                    message:
-                      "The deprecated github_graphql tool only supports read queries. Use scrum_* tools for mutations.",
-                  },
-                  null,
-                  2,
-                ),
-              },
-            ],
-            isError: true,
-          };
-        }
-
-        // Forward to GitHub GraphQL API
-        const result = await graphql(params.query, params.variables ?? {});
         return {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
         };
