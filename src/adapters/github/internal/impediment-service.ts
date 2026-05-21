@@ -15,7 +15,9 @@ import { resolveSprint } from "./resolver.ts";
 import { LabelResolver } from "./label-resolver.ts";
 import { FieldValueMutator } from "./field-value-mutator.ts";
 import { GET_IMPEDIMENT_ISSUES_QUERY } from "../queries.ts";
+import { PaginatedProjectItemFetcher } from "./pagination.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
+import type { ProjectItemIssueContent } from "../types.ts";
 import type { CreateStoryInput, ImpedimentListing, Ref } from "../../../scrum/ports.ts";
 import type { SprintRef, StoryRef } from "../../../domain/types.ts";
 
@@ -166,46 +168,42 @@ export class ImpedimentService {
     const iterationId = resolveSprint(sprint, this.config);
     if (!iterationId) return [];
 
-    const iterEntry = this.config.iterations.all.find((i) => i.id === iterationId);
-    if (!iterEntry) return [];
-
-    const sprintName = iterEntry.title;
-    const result = await this.gh.graphql<ImpedimentIssuesResponse>(GET_IMPEDIMENT_ISSUES_QUERY, {
-      owner: this.owner,
-      repo: this.repo,
-      states: ["OPEN", "CLOSED"],
+    const fetcher = new PaginatedProjectItemFetcher(this.config, this.gh, {
+      sprintFieldIds: [this.config.fields.sprintFieldId],
+      includeIssueContent: true,
+      includePRContent: false,
+      includeDraftIssueContent: false,
+      pageSize: 100,
     });
 
-    const issues = result?.repository?.issues?.nodes ?? [];
+    // Fetch all items, filter by sprint iteration
+    const sprintItems = await fetcher.collect((item) => {
+      const fv = item.fieldValues.nodes.find(
+        (v) => v.field?.id === this.config.fields.sprintFieldId,
+      );
+      return fv?.iterationId === iterationId;
+    });
 
-    // TODO: Refactor to use PVTI_ project item resolution + iteration field check
-    // instead of string matching. Currently, GitHub Issues lack a native sprint field,
-    // so we match by sprint name in issue body/comments. A more robust approach would
-    // resolve PVTI_ references in comments to project items and check their iterationId
-    // field directly (see getSprintStories for the pattern).
-
-    const sprintNamePattern = new RegExp(
-      `\\b${sprintName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,
-      "i",
-    );
-
-    return issues
-      .filter((issue) => {
-        const bodyMatches = sprintNamePattern.test(issue.body ?? "");
-        const comments = issue.comments?.nodes ?? [];
-        return bodyMatches || comments.some((c) => sprintNamePattern.test(c.body ?? ""));
-      })
-      .map((issue) => ({
-        ref: { id: issue.id },
-        description: issue.body ?? "",
-        status: (issue.state === "OPEN" ? "open" : "resolved") as
-          | "open"
-          | "in_progress"
-          | "resolved",
-        raised_by: issue.author?.login ?? null,
-        raised_at: issue.createdAt,
-        resolved_at: issue.closedAt,
-      }));
+    // Filter to Issues with the "impediment" label, map to ImpedimentListing
+    return sprintItems
+      .filter((item) =>
+        item.content?.__typename === "Issue" &&
+        item.content.labels.nodes.some((l) => l.name === "impediment")
+      )
+      .map((item) => {
+        const issue = item.content as ProjectItemIssueContent;
+        return {
+          ref: { id: issue.id },
+          description: issue.body ?? "",
+          status: (issue.state === "OPEN" ? "open" : "resolved") as
+            | "open"
+            | "in_progress"
+            | "resolved",
+          raised_by: null,
+          raised_at: item.createdAt,
+          resolved_at: null,
+        };
+      });
   }
 
   async updateImpediment(
