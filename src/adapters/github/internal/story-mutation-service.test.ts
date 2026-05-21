@@ -66,8 +66,12 @@ const RESOLVED_DRAFT = {
 /** resolveStory → not found */
 const RESOLVED_NOT_FOUND = { node: null };
 
-const BODY_WITH_DEPS = {
-  node: { body: "Existing body\n\n## Dependencies\n\n- Blocked by: #5\n- Blocks: #6" },
+/** resolveStory → issue with the "existing" node ID used in dependency current-state mocks */
+const RESOLVED_EXISTING = {
+  node: {
+    id: "PVTI_existing",
+    content: { __typename: "Issue" as const, id: "I_existing1", number: 100 },
+  },
 };
 
 const BODY_EMPTY = { node: { body: "" } };
@@ -94,7 +98,7 @@ const createGhSpy = (): GitHubClientSpy => {
     restCalls: [],
     async graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
       spy.graphqlCalls.push({
-        queryExcerpt: query.slice(0, 80).replace(/\s+/g, " "),
+        queryExcerpt: query.slice(0, 300).replace(/\s+/g, " "),
         variables: variables ?? {},
       });
       if (queue.length === 0) {
@@ -651,93 +655,100 @@ Deno.test({
 });
 
 Deno.test({
-  name: "updateStory - rewrites dependency blocked_by section",
+  name: "updateStory - adds blocked_by via native addBlockedBy mutation",
   async fn() {
     const { service, gh } = createService();
-    // resolveStory → resolveRef #1 → resolveRef #2 → fetch body → updateIssue
+    // Flow: resolveStory → fetch current blocked_by → resolve dep ref → batched mutation → title update
     gh.enqueue(
       RESOLVED_ISSUE,
-      BODY_EMPTY,
+      { node: { blockedBy: { nodes: [] } } },
       RESOLVED_ISSUE,
-      RESOLVED_ISSUE,
+      { addBbI_issue1: { clientMutationId: null } },
       UPDATE_ISSUE_OK,
     );
-    const updates = makeUpdates({
-      blocked_by: [{ id: "PVTI_dep1" }],
-      blocks: [{ id: "PVTI_dep2" }],
-    });
+    const updates = makeUpdates({ blocked_by: [{ id: "PVTI_dep1" }] });
 
     await service.updateStory(makeStoryRef(), updates);
 
-    const mutationVars = gh.graphqlCalls[gh.graphqlCalls.length - 1].variables;
-    const body: string = mutationVars.body as string;
-    assertStringIncludes(body, "## Dependencies");
-    assertStringIncludes(body, "- Blocked by: #42");
-    assertStringIncludes(body, "- Blocks: #42");
+    const batchCall = gh.graphqlCalls[3];
+    assert(batchCall.queryExcerpt.includes("addBlockedBy"));
   },
 });
 
 Deno.test({
-  name: "updateStory - clears blocked_by when null",
+  name: "updateStory - clears blocked_by via removeBlockedBy when null",
   async fn() {
     const { service, gh } = createService();
-    gh.enqueue(RESOLVED_ISSUE, BODY_WITH_DEPS, UPDATE_ISSUE_OK);
+    gh.enqueue(
+      RESOLVED_ISSUE,
+      { node: { blockedBy: { nodes: [{ id: "I_existing1" }] } } },
+      { rmBbisting1: { clientMutationId: null } },
+    );
     const updates: StoryUpdates = { blocked_by: null };
 
     await service.updateStory(makeStoryRef(), updates);
 
-    const mutationVars = gh.graphqlCalls[2].variables;
-    const body: string = mutationVars.body as string;
-    assertEquals(body.includes("- Blocked by:"), false);
+    const batchCall = gh.graphqlCalls[2];
+    assert(batchCall.queryExcerpt.includes("removeBlockedBy"));
   },
 });
 
 Deno.test({
-  name: "updateStory - preserves existing blocked_by when undefined",
+  name: "updateStory - skips dep mutation when blocked_by is undefined",
   async fn() {
     const { service, gh } = createService();
-    // blocked_by: undefined + blocks: non-empty → enters _buildDependencyBody
-    // Sequence: resolveStory → _fetchCurrentBody → resolve dep ref → updateIssue
-    gh.enqueue(RESOLVED_ISSUE, BODY_WITH_DEPS, RESOLVED_ISSUE, UPDATE_ISSUE_OK);
-    const updates: StoryUpdates = { blocked_by: undefined, blocks: [{ id: "PVTI_dep2" }] };
+    // blocked_by: undefined → applyDependencyMutations not called at all
+    gh.enqueue(RESOLVED_ISSUE, UPDATE_ISSUE_OK);
+    const updates = makeUpdates({ blocked_by: undefined });
 
     await service.updateStory(makeStoryRef(), updates);
 
-    const mutationVars = gh.graphqlCalls[3].variables;
-    const body: string = mutationVars.body as string;
-    assertStringIncludes(body, "- Blocked by: #5");
+    const mutationCalls = gh.graphqlCalls.filter((c) =>
+      c.queryExcerpt.includes("addBlockedBy") || c.queryExcerpt.includes("removeBlockedBy")
+    );
+    assertEquals(mutationCalls.length, 0, "No dep mutations when blocked_by is undefined");
   },
 });
 
 Deno.test({
-  name: "updateStory - rewrites blocks section",
+  name: "updateStory - skips redundant mutations when blocked_by unchanged",
   async fn() {
     const { service, gh } = createService();
-    gh.enqueue(RESOLVED_ISSUE, BODY_EMPTY, RESOLVED_ISSUE, UPDATE_ISSUE_OK);
-    const updates = makeUpdates({ blocks: [{ id: "PVTI_dep2" }] });
+    // Current: blocked_by=[I_existing1]; desired: PVTI_existing → I_existing1 (no change)
+    gh.enqueue(
+      RESOLVED_ISSUE,
+      { node: { blockedBy: { nodes: [{ id: "I_existing1" }] } } },
+      RESOLVED_EXISTING,
+    );
+    const updates: StoryUpdates = { blocked_by: [{ id: "PVTI_existing" }] };
 
     await service.updateStory(makeStoryRef(), updates);
 
-    const mutationVars = gh.graphqlCalls[3].variables;
-    const body: string = mutationVars.body as string;
-    assertStringIncludes(body, "- Blocks: #42");
+    const mutationCalls = gh.graphqlCalls.filter((c) =>
+      c.queryExcerpt.includes("addBlockedBy") || c.queryExcerpt.includes("removeBlockedBy")
+    );
+    assertEquals(mutationCalls.length, 0, "No dep mutations when blocked_by unchanged");
   },
 });
 
 Deno.test({
-  name: "updateStory - removes entire Dependencies section when both directions cleared",
+  name: "updateStory - handles circular dependency (self-reference) gracefully",
   async fn() {
     const { service, gh } = createService();
-    gh.enqueue(RESOLVED_ISSUE, BODY_WITH_DEPS, UPDATE_ISSUE_OK);
-    const updates: StoryUpdates = { blocked_by: null, blocks: null };
+    gh.enqueue(
+      RESOLVED_ISSUE,
+      { node: { blockedBy: { nodes: [] } } },
+      RESOLVED_ISSUE, // resolveStory for the self-ref
+      { addBbI_issue1: { clientMutationId: null } },
+      UPDATE_ISSUE_OK,
+    );
+    const updates = makeUpdates({ blocked_by: [{ id: "PVTI_self" }] });
 
     await service.updateStory(makeStoryRef(), updates);
 
-    const mutationVars = gh.graphqlCalls[2].variables;
-    const body: string = mutationVars.body as string;
-    assertStringIncludes(body, "Existing body");
-    assertEquals(body.includes("- Blocked by:"), false);
-    assertEquals(body.includes("- Blocks:"), false);
+    // Mutation is still sent — GitHub API will reject self-references
+    const batchCall = gh.graphqlCalls[3];
+    assert(batchCall.queryExcerpt.includes("addBlockedBy"));
   },
 });
 
@@ -745,7 +756,7 @@ Deno.test({
   name: "updateStory - throws RESOLUTION_FAILED when dependency ref is a Draft Issue",
   async fn() {
     const { service, gh } = createService();
-    gh.enqueue(RESOLVED_ISSUE, BODY_EMPTY, RESOLVED_DRAFT);
+    gh.enqueue(RESOLVED_ISSUE, { node: { blockedBy: { nodes: [] } } }, RESOLVED_DRAFT);
     const updates = makeUpdates({ blocked_by: [{ id: "PVTI_draft_dep" }] });
 
     await assertRejects(

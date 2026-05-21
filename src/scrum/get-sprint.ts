@@ -33,7 +33,7 @@ const storyToListing = (story: Story): StoryListing => ({
   priority: story.priority,
   sprint: story.sprint,
   writable: true,
-  has_dependencies: story.blocked_by.length > 0 || story.blocks.length > 0,
+  has_dependencies: story.blocked_by.length > 0,
 });
 
 /** Project a BurndownStoryInput to a writable StoryListing entry. */
