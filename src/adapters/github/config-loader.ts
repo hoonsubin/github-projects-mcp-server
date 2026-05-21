@@ -270,6 +270,17 @@ const resolveFieldIds = (
     );
   }
 
+  // item_type is required — the Type board field is how every story indicates its type.
+  if (!typeFieldId) {
+    throw new Error(
+      `Type field '${
+        mapping.item_type ?? "(not configured)"
+      }' not found in project #${projectNumber}. ` +
+        `Update backends.github.field_mapping.item_type in ${configPath} to match ` +
+        `the exact SINGLE_SELECT field name in GitHub Projects, or add the field to the project.`,
+    );
+  }
+
   return {
     sprintFieldId,
     statusFieldId,
@@ -453,6 +464,20 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
     configPath,
   );
   validateTeamRefs(patchedGhConfig.team, projectTeamNames, "github", configPath);
+
+  // Validate type_display — required because the Type board field is how every story
+  // indicates its type (bug, feature, etc.). Without this mapping, canonical keys
+  // cannot be resolved to GitHub single-select option names.
+  if (!patchedGhConfig.type_display || Object.keys(patchedGhConfig.type_display).length === 0) {
+    throw new Error(
+      `${configPath}: backends.github.type_display is missing or empty. ` +
+        `type_display maps canonical type keys (e.g. 'bug', 'feature') to exact ` +
+        `single-select option names on the Type project field. Add the mapping, e.g.:\n` +
+        `  type_display:\n` +
+        `    bug: "Bug"\n` +
+        `    feature: "Feature"`,
+    );
+  }
 
   // Fetch live GitHub project fields.
   const { owner, owner_type: ownerType, project_number: projectNumber } = patchedGhConfig;

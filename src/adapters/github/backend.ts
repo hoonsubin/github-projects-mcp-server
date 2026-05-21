@@ -104,6 +104,10 @@ export class GitHubProjectBackend implements ProjectBackend {
           options: livePriorityOptions,
           missingOptions: missingPriorityOptions,
         },
+        type: {
+          exists: !!this.config.fields.typeFieldId,
+          configured: Object.keys(this.config.typeOptions).length > 0,
+        },
       },
       labels: {
         existing: typeLabels.existing,

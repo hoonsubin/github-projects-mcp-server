@@ -101,7 +101,7 @@ export class LabelResolver {
   }
 
   /** Resolve label names to node IDs, creating missing labels with auto-generated colors */
-  async resolveLabelNodeIds(names: string[]): Promise<string[]> {
+  async resolveOrCreateLabelNodeIds(names: string[]): Promise<string[]> {
     const existingLabels = await this.fetchAllLabels();
     const nodeIds: string[] = [];
     const missing: string[] = [];
@@ -129,6 +129,46 @@ export class LabelResolver {
         );
         nodeIds.push(createResult.createLabel.label.id);
       }
+    }
+
+    return nodeIds;
+  }
+
+  /**
+   * Resolve label names to node IDs. Throws if any label does not already exist
+   * on the repository — this is the correct behavior for story creation/update.
+   *
+   * Used by: StoryMutationService.createStory(), StoryMutationService.updateStory()
+   */
+  async resolveExistingLabelNodeIds(names: string[]): Promise<string[]> {
+    const existingLabels = await this.fetchAllLabels();
+    const nodeIds: string[] = [];
+    const unknown: string[] = [];
+
+    for (const name of names) {
+      const found = existingLabels.find((l) => l.name === name);
+      if (found) {
+        nodeIds.push(found.id);
+      } else {
+        unknown.push(name);
+      }
+    }
+
+    if (unknown.length > 0) {
+      throw new GitHubApiError(
+        `Cannot assign unknown label(s): ${unknown.join(", ")}. ` +
+          `Available labels on ${this.owner}/${this.repo}: ${
+            existingLabels.map((l) => l.name).join(", ")
+          }.`,
+        {
+          code: "OPTION_NOT_FOUND",
+          recovery:
+            `Call scrum_orient to see all existing repo labels in platform_state.labels.existing. ` +
+            `If you need to create a new label, use scrum_add_vocabulary with kind: "label" first, ` +
+            `then assign it to the story.`,
+          context: { unknown, available: existingLabels.map((l) => l.name) },
+        },
+      );
     }
 
     return nodeIds;

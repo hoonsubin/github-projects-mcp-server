@@ -174,7 +174,7 @@ backends:
     field_mapping:
       sprint: "Sprint" # REQUIRED — ITERATION type field
       status: "Status" # REQUIRED — SINGLE_SELECT type field
-      type: "Type" # REQUIRED — SINGLE_SELECT type field
+      item_type: "Type" # REQUIRED — SINGLE_SELECT type field
       story_points: "Story Points" # optional — NUMBER type field
       priority: "Priority" # optional — SINGLE_SELECT type field
 
