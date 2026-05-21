@@ -33,6 +33,7 @@ import type {
   VocabularyKind,
 } from "../../scrum/ports.ts";
 import type { EpicListing, SprintRef, Story, StoryRef } from "../../domain/types.ts";
+import type { GitHubBackendConfig } from "./types.ts";
 
 // ── GitHubProjectBackend ──────────────────────────────────────────────────────
 
@@ -74,16 +75,33 @@ export class GitHubProjectBackend implements ProjectBackend {
   // ── Platform state ────────────────────────────────────────────────────────
 
   async getPlatformState(declaredVocabulary: {
-    statusValues: string[];
-    priorityValues: string[];
+    canonicalStatusKeys: string[];
+    canonicalPriorityKeys: string[];
   }): Promise<PlatformState> {
+    // Resolve canonical keys → display names using adapter-specific config
+    const ghConfig = this.config.scrumConfig.backends.github as GitHubBackendConfig;
+
+    const statusDisplayMap: Record<string, string> = {};
+    for (const key of declaredVocabulary.canonicalStatusKeys) {
+      const display = ghConfig.status_display[key];
+      if (display) statusDisplayMap[key] = display;
+    }
+    const priorityDisplayMap: Record<string, string> = {};
+    for (const key of declaredVocabulary.canonicalPriorityKeys) {
+      const display = ghConfig.priority_display[key];
+      if (display) priorityDisplayMap[key] = display;
+    }
+
+    // Diff display names against live platform options (keys are display names)
     const liveStatusOptions = Object.keys(this.config.statusOptions);
     const livePriorityOptions = Object.keys(this.config.priorityOptions);
+    const declaredStatusValues = Object.values(statusDisplayMap);
+    const declaredPriorityValues = Object.values(priorityDisplayMap);
 
-    const missingStatusOptions = declaredVocabulary.statusValues.filter(
+    const missingStatusOptions = declaredStatusValues.filter(
       (v) => !liveStatusOptions.includes(v),
     );
-    const missingPriorityOptions = declaredVocabulary.priorityValues.filter(
+    const missingPriorityOptions = declaredPriorityValues.filter(
       (v) => !livePriorityOptions.includes(v),
     );
 
@@ -119,6 +137,11 @@ export class GitHubProjectBackend implements ProjectBackend {
         next: toSprintInfo(this.config.iterations.next),
         completed: this.config.iterations.completed.map((i) => toSprintInfo(i)!),
         completedCount: this.config.iterations.completed.length,
+      },
+      vocabulary: {
+        statusDisplay: Object.keys(statusDisplayMap).length > 0 ? statusDisplayMap : null,
+        priorityDisplay: Object.keys(priorityDisplayMap).length > 0 ? priorityDisplayMap : null,
+        typeDisplay: ghConfig.type_display ?? null,
       },
     };
   }
