@@ -7,7 +7,7 @@
 
 import { GitHubApiError } from "../errors.ts";
 import { GitHubClient } from "./http-client.ts";
-import { GET_REPO_LABELS_QUERY } from "../queries.ts";
+import { CREATE_LABEL_MUTATION, GET_REPO_LABELS_QUERY, GET_REPO_QUERY } from "../queries.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 
 // ── Helper types ─────────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ export class LabelResolver {
   /** Fetch the repository node ID from GitHub GraphQL API */
   async fetchRepoNodeId(): Promise<string> {
     const result = await this.gh.graphql<{ repository?: { id: string } }>(
-      `query GetRepo($owner: String!, $repo: String!) { repository(owner: $owner, name: $repo) { id } }`,
+      GET_REPO_QUERY,
       { owner: this.owner, repo: this.repo },
     );
     const nodeId = result?.repository?.id;
@@ -120,11 +120,7 @@ export class LabelResolver {
       for (const name of missing) {
         const color = this.hashToColor(name);
         const createResult = await this.gh.graphql<{ createLabel: { label: { id: string } } }>(
-          `mutation CreateLabel($repositoryId: ID!, $name: String!, $color: String!) {
-            createLabel(input: { repositoryId: $repositoryId, name: $name, color: $color }) {
-              label { id }
-            }
-          }`,
+          CREATE_LABEL_MUTATION,
           { repositoryId, name, color },
         );
         nodeIds.push(createResult.createLabel.label.id);
@@ -185,11 +181,7 @@ export class LabelResolver {
     const repositoryId = await this.fetchRepoNodeId();
     const color = this.hashToColor(name);
     const createResult = await this.gh.graphql<{ createLabel?: { label?: { id: string } } }>(
-      `mutation CreateLabel($repositoryId: ID!, $name: String!, $color: String!) {
-        createLabel(input: { repositoryId: $repositoryId, name: $name, color: $color }) {
-          label { id }
-        }
-      }`,
+      CREATE_LABEL_MUTATION,
       { repositoryId, name, color },
     );
     return createResult.createLabel?.label?.id ?? null;
@@ -205,11 +197,7 @@ export class LabelResolver {
     const color = this.hashToColor(value);
     const repositoryId = await this.fetchRepoNodeId();
     await this.gh.graphql(
-      `mutation CreateLabel($repositoryId: ID!, $name: String!, $color: String!) {
-        createLabel(input: { repositoryId: $repositoryId, name: $name, color: $color }) {
-          label { id name }
-        }
-      }`,
+      CREATE_LABEL_MUTATION,
       { repositoryId, name: value, color },
     );
     return { created: true };

@@ -12,6 +12,8 @@ import { resolveSprint } from "./resolver.ts";
 import { UserMilestoneResolver } from "./user-milestone-resolver.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { SprintRef } from "../../../domain/types.ts";
+import { CLEAR_ITEM_FIELD_MUTATION, UPDATE_ITEM_FIELD_MUTATION } from "../queries.ts";
+import { CLEAR_ASSIGNEES_MUTATION, SET_ASSIGNEE_MUTATION } from "../queries.ts";
 
 // ── FieldValueMutator class ──────────────────────────────────────────────────
 
@@ -37,14 +39,8 @@ export class FieldValueMutator {
   /** Clear a project field value using the dedicated GitHub mutation. */
   async clearField(itemId: string, fieldId: string): Promise<void> {
     await this.gh.graphql(
-      `mutation ClearField($projectId: ID!, $itemId: ID!, $fieldId: ID!) {
-        clearProjectV2ItemFieldValue(input: {
-          projectId: $projectId
-          itemId: $itemId
-          fieldId: $fieldId
-        }) { projectV2Item { id } }
-      }`,
-      { projectId: this.config.projectId, itemId, fieldId },
+      CLEAR_ITEM_FIELD_MUTATION,
+      { input: { projectId: this.config.projectId, itemId, fieldId } },
     );
   }
 
@@ -73,13 +69,15 @@ export class FieldValueMutator {
       });
     }
     await this.gh.graphql<{ updateProjectV2ItemFieldValue: { projectV2Item: { id: string } } }>(
-      `mutation SetFieldStatus($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
-        updateProjectV2ItemFieldValue(input: {
-          projectId: $projectId, itemId: $itemId, fieldId: $fieldId,
-          value: { singleSelectOptionId: $optionId }
-        }) { projectV2Item { id } }
-      }`,
-      { projectId: this.config.projectId, itemId, fieldId, optionId },
+      UPDATE_ITEM_FIELD_MUTATION,
+      {
+        input: {
+          projectId: this.config.projectId,
+          itemId,
+          fieldId,
+          value: { singleSelectOptionId: optionId },
+        },
+      },
     );
   }
 
@@ -99,13 +97,8 @@ export class FieldValueMutator {
       await this.clearField(itemId, fieldId);
     } else {
       await this.gh.graphql<{ updateProjectV2ItemFieldValue: { projectV2Item: { id: string } } }>(
-        `mutation SetFieldSprint($projectId: ID!, $itemId: ID!, $fieldId: ID!, $iterationId: String!) {
-          updateProjectV2ItemFieldValue(input: {
-            projectId: $projectId, itemId: $itemId, fieldId: $fieldId,
-            value: { iterationId: $iterationId }
-          }) { projectV2Item { id } }
-        }`,
-        { projectId: this.config.projectId, itemId, fieldId, iterationId },
+        UPDATE_ITEM_FIELD_MUTATION,
+        { input: { projectId: this.config.projectId, itemId, fieldId, value: { iterationId } } },
       );
     }
   }
@@ -125,13 +118,8 @@ export class FieldValueMutator {
       await this.clearField(itemId, fieldId);
     } else {
       await this.gh.graphql<{ updateProjectV2ItemFieldValue: { projectV2Item: { id: string } } }>(
-        `mutation SetFieldStoryPoints($projectId: ID!, $itemId: ID!, $fieldId: ID!, $number: Float!) {
-          updateProjectV2ItemFieldValue(input: {
-            projectId: $projectId, itemId: $itemId, fieldId: $fieldId,
-            value: { number: $number }
-          }) { projectV2Item { id } }
-        }`,
-        { projectId: this.config.projectId, itemId, fieldId, number: value },
+        UPDATE_ITEM_FIELD_MUTATION,
+        { input: { projectId: this.config.projectId, itemId, fieldId, value: { number: value } } },
       );
     }
   }
@@ -168,13 +156,15 @@ export class FieldValueMutator {
         );
       }
       await this.gh.graphql<{ updateProjectV2ItemFieldValue: { projectV2Item: { id: string } } }>(
-        `mutation SetFieldPriority($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
-          updateProjectV2ItemFieldValue(input: {
-            projectId: $projectId, itemId: $itemId, fieldId: $fieldId,
-            value: { singleSelectOptionId: $optionId }
-          }) { projectV2Item { id } }
-        }`,
-        { projectId: this.config.projectId, itemId, fieldId, optionId },
+        UPDATE_ITEM_FIELD_MUTATION,
+        {
+          input: {
+            projectId: this.config.projectId,
+            itemId,
+            fieldId,
+            value: { singleSelectOptionId: optionId },
+          },
+        },
       );
     }
   }
@@ -209,13 +199,15 @@ export class FieldValueMutator {
       );
     }
     await this.gh.graphql<{ updateProjectV2ItemFieldValue: { projectV2Item: { id: string } } }>(
-      `mutation SetFieldType($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
-        updateProjectV2ItemFieldValue(input: {
-          projectId: $projectId, itemId: $itemId, fieldId: $fieldId,
-          value: { singleSelectOptionId: $optionId }
-        }) { projectV2Item { id } }
-      }`,
-      { projectId: this.config.projectId, itemId, fieldId, optionId },
+      UPDATE_ITEM_FIELD_MUTATION,
+      {
+        input: {
+          projectId: this.config.projectId,
+          itemId,
+          fieldId,
+          value: { singleSelectOptionId: optionId },
+        },
+      },
     );
   }
 
@@ -224,9 +216,7 @@ export class FieldValueMutator {
     if (value === null) {
       // Clear all assignees
       await this.gh.graphql<{ updateIssue: { issue: { id: string } } }>(
-        `mutation ClearAssignees($issueId: ID!) {
-          updateIssue(input: { id: $issueId, assigneeIds: [] }) { issue { id } }
-        }`,
+        CLEAR_ASSIGNEES_MUTATION,
         { issueId },
       );
       return;
@@ -234,9 +224,7 @@ export class FieldValueMutator {
     // Resolve login → user node ID
     const userId = await this.userMilestoneResolver.resolveUserNodeId(value);
     await this.gh.graphql<{ updateIssue: { issue: { id: string } } }>(
-      `mutation SetAssignee($issueId: ID!, $userId: ID!) {
-        updateIssue(input: { id: $issueId, assigneeIds: [$userId] }) { issue { id } }
-      }`,
+      SET_ASSIGNEE_MUTATION,
       { issueId, userId },
     );
   }

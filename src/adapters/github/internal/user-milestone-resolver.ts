@@ -8,6 +8,11 @@
 import { GitHubApiError } from "../errors.ts";
 import { GitHubClient } from "./http-client.ts";
 import { RepoNodeIdProvider } from "./label-resolver.ts";
+import {
+  CREATE_MILESTONE_MUTATION,
+  GET_USER_MILESTONES_QUERY,
+  GET_USER_NODE_ID,
+} from "../queries.ts";
 
 // ── UserMilestoneResolver class ───────────────────────────────────────────────
 
@@ -36,7 +41,7 @@ export class UserMilestoneResolver {
   /** Resolve a single user login to their GitHub node ID */
   async resolveUserNodeId(login: string): Promise<string> {
     const result = await this.gh.graphql<{ user?: { id: string } }>(
-      `query GetUser($login: String!) { user(login: $login) { id } }`,
+      GET_USER_NODE_ID,
       { login },
     );
     const nodeId = result?.user?.id;
@@ -66,18 +71,9 @@ export class UserMilestoneResolver {
   /** Resolve or create a milestone by title on the repository */
   async resolveOrCreateMilestoneNodeId(title: string): Promise<string> {
     // Check existing milestones on the repo
-    const milestonesQuery = `
-      query($owner: String!, $repo: String!) {
-        repository(owner: $owner, name: $repo) {
-          milestones(first: 100, states: [OPEN]) {
-            nodes { id title }
-          }
-        }
-      }
-    `;
     const result = await this.gh.graphql<{
       repository?: { milestones?: { nodes: Array<{ id: string; title: string }> } };
-    }>(milestonesQuery, { owner: this.owner, repo: this.repo });
+    }>(GET_USER_MILESTONES_QUERY, { owner: this.owner, repo: this.repo });
     const nodes = result?.repository?.milestones?.nodes ?? [];
     const found = nodes.find((m) => m.title.toLowerCase() === title.toLowerCase());
     if (found) {
@@ -90,11 +86,7 @@ export class UserMilestoneResolver {
     const createResult = await this.gh.graphql<{
       createMilestone: { milestone: { id: string } };
     }>(
-      `mutation CreateMilestone($repositoryId: ID!, $title: String!) {
-        createMilestone(input: { repositoryId: $repositoryId, title: $title }) {
-          milestone { id }
-        }
-      }`,
+      CREATE_MILESTONE_MUTATION,
       { repositoryId, title },
     );
     return createResult.createMilestone.milestone.id;

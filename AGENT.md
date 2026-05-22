@@ -56,7 +56,7 @@ flowchart TD
 ```bash
 mempalance search "your search string"  # semantic codebase search
 deno lint                                # lint
-deno test                                # unit tests
+deno task test                                # unit tests
 deno fmt --check                         # format check
 deno task diagram-gen                    # regenerate module dependency report
 ```

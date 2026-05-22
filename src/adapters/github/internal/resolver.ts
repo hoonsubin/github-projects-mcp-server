@@ -9,6 +9,7 @@ import { GitHubApiError } from "../errors.ts";
 import { SprintNotScheduledError } from "../../../domain/errors.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { SprintRef, StoryRef } from "../../../domain/types.ts";
+import { GET_PROJECT_ITEM_BY_ID_QUERY } from "../queries.ts";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -29,32 +30,6 @@ interface ResolvedStory {
 interface GitHubClient {
   graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T>;
 }
-
-// ── GraphQL queries ───────────────────────────────────────────────────────────
-
-/**
- * Lookup by project item ID (PVTI_...): returns the underlying content node.
- * Handles both real Issues and DraftIssues — DraftIssues have no issue ID or number.
- */
-const GET_ITEM_BY_ID_QUERY = `
-  query GetProjectItemById($itemId: ID!) {
-    node(id: $itemId) {
-      ... on ProjectV2Item {
-        id
-        content {
-          __typename
-          ... on Issue {
-            id
-            number
-          }
-          ... on DraftIssue {
-            id
-          }
-        }
-      }
-    }
-  }
-`;
 
 interface ItemByIdResponse {
   node?: {
@@ -140,7 +115,7 @@ export const resolveStory = async (
   ref: StoryRef,
   github: GitHubClient,
 ): Promise<ResolvedStory> => {
-  const data = await github.graphql<ItemByIdResponse>(GET_ITEM_BY_ID_QUERY, {
+  const data = await github.graphql<ItemByIdResponse>(GET_PROJECT_ITEM_BY_ID_QUERY, {
     itemId: ref.id,
   });
 

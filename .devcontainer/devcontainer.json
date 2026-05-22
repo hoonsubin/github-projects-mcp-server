@@ -26,7 +26,8 @@
         "pomdtr.excalidraw-editor",
         "RooVeterinaryInc.roo-cline",
         "GraphQL.vscode-graphql-syntax",
-        "ms-azuretools.vscode-containers"
+        "ms-azuretools.vscode-containers",
+        "github.vscode-github-actions"
       ],
       "settings": {
         // Deno as the default TypeScript/JavaScript language server

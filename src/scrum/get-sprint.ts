@@ -33,7 +33,7 @@ const storyToListing = (story: Story): StoryListing => ({
   priority: story.priority,
   sprint: story.sprint,
   writable: true,
-  has_dependencies: story.blocked_by.length > 0,
+  has_dependencies: story.blocked_by,
 });
 
 /** Project a BurndownStoryInput to a writable StoryListing entry. */
@@ -45,7 +45,7 @@ const storyListingFromHistory = (story: BurndownStoryInput): StoryListing => ({
   priority: null,
   sprint: null,
   writable: false,
-  has_dependencies: false,
+  has_dependencies: [],
 });
 
 /** Build a SprintSnapshot for a single sprint resolved from a SprintRef. */

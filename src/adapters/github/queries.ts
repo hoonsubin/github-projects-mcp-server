@@ -110,3 +110,46 @@ export const GET_DRAFT_ISSUE_DETAILS_QUERY = getQuery("GetDraftIssueDetails");
 export const GET_REPO_LABELS_QUERY = getQuery("GetRepoLabels");
 export const GET_IMPEDIMENT_ISSUES_QUERY = getQuery("GetImpedimentIssues");
 export const LIST_MILESTONES_QUERY = getQuery("ListMilestones");
+export const GET_USER_NODE_ID = getQuery("GetUserNodeId");
+export const ADD_PROJECT_ITEM_MUTATION = getQuery("AddProjectItem");
+export const CLEAR_ITEM_FIELD_MUTATION = getQuery("ClearItemField");
+export const UPDATE_ITEM_FIELD_MUTATION = getQuery("UpdateItemField");
+
+// ── Item lookups (internal services) ──────────────────────────────────────────
+export const GET_PROJECT_ITEM_BY_ID_QUERY = getQuery("GetProjectItemById");
+export const GET_ISSUE_BY_ID_QUERY = getQuery("GetIssueById");
+export const GET_BLOCKED_BY_QUERY = getQuery("GetBlockedBy");
+
+// ── Repository and user lookups ────────────────────────────────────────────────
+export const GET_REPO_QUERY = getQuery("GetRepo");
+export const GET_USER_MILESTONES_QUERY = getQuery("GetUserMilestones");
+
+// ── Field management queries ───────────────────────────────────────────────────
+export const GET_FIELD_OPTIONS_QUERY = getQuery("GetFieldOptions");
+
+// ── Bootstrap queries (config-loader) ──────────────────────────────────────────
+export const GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY = getQuery("GetUserProjectFieldsBootstrap");
+export const GET_ORG_PROJECT_FIELDS_BOOTSTRAP_QUERY = getQuery("GetOrgProjectFieldsBootstrap");
+
+// ── Label mutations ────────────────────────────────────────────────────────────
+export const CREATE_LABEL_MUTATION = getQuery("CreateLabel");
+export const REPLACE_ISSUE_LABELS_MUTATION = getQuery("ReplaceIssueLabels");
+export const SET_LABELS_MUTATION = getQuery("SetLabels");
+
+// ── Issue mutations ────────────────────────────────────────────────────────────
+export const CREATE_ISSUE_MUTATION = getQuery("CreateIssue");
+export const CLOSE_ISSUE_MUTATION = getQuery("CloseIssue");
+export const CLEAR_ASSIGNEES_MUTATION = getQuery("ClearAssignees");
+export const SET_ASSIGNEE_MUTATION = getQuery("SetAssignee");
+export const SET_MILESTONE_MUTATION = getQuery("SetMilestone");
+
+// ── Comment mutations ──────────────────────────────────────────────────────────
+export const ADD_COMMENT_MUTATION = getQuery("AddComment");
+
+// ── Milestone mutations ────────────────────────────────────────────────────────
+export const CREATE_MILESTONE_MUTATION = getQuery("CreateMilestone");
+
+// ── Field management mutations ─────────────────────────────────────────────────
+export const UPDATE_FIELD_MUTATION = getQuery("UpdateField");
+export const CONVERT_DRAFT_ISSUE_MUTATION = getQuery("ConvertDraftIssue");
+export const ADD_DRAFT_ISSUE_MUTATION = getQuery("AddDraftIssue");

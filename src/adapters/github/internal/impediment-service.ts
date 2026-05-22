@@ -11,10 +11,16 @@
 
 import { GitHubApiError } from "../errors.ts";
 import type { GitHubClient } from "./http-client.ts";
-import { resolveSprint } from "./resolver.ts";
+import { resolveSprint, resolveStory } from "./resolver.ts";
 import { LabelResolver } from "./label-resolver.ts";
-import { FieldValueMutator } from "./field-value-mutator.ts";
-import { GET_IMPEDIMENT_ISSUES_QUERY } from "../queries.ts";
+import { StoryMutationService } from "./story-mutation-service.ts";
+import {
+  ADD_COMMENT_MUTATION,
+  CLOSE_ISSUE_MUTATION,
+  GET_IMPEDIMENT_ISSUES_QUERY,
+  GET_ISSUE_BY_ID_QUERY,
+  REPLACE_ISSUE_LABELS_MUTATION,
+} from "../queries.ts";
 import { PaginatedProjectItemFetcher } from "./pagination.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { ProjectItemIssueContent } from "../types.ts";
@@ -59,73 +65,30 @@ export class ImpedimentService {
     private readonly owner: string,
     private readonly repo: string,
     private readonly labelResolver: LabelResolver,
-    private readonly fieldValueMutator: FieldValueMutator,
+    private readonly storyMutationService: StoryMutationService,
   ) {}
 
+  /**
+   * Create an impediment by delegating story creation to StoryMutationService.
+   *
+   * The StoryMutationService handles the full Draft Issue → Type field → optional
+   * conversion flow. After creation, we resolve the item to get the underlying
+   * issue node ID for the ImpedimentListing.ref.id field.
+   */
   async createImpediment(
     input: CreateStoryInput,
   ): Promise<{ listing: ImpedimentListing; itemRef: StoryRef }> {
-    const labelNames: string[] = [`type_${input.type}`];
-    if (input.labels) labelNames.push(...input.labels);
+    // Delegate story creation to the canonical path — Draft Issue + Type board field
+    const storyRef = await this.storyMutationService.createStory(input);
 
-    const [labelIds, repositoryId] = await Promise.all([
-      this.labelResolver.resolveOrCreateLabelNodeIds(labelNames),
-      this.labelResolver.fetchRepoNodeId(),
-    ]);
-
-    const createResult = await this.gh.graphql<{
-      createIssue?: { issue?: { id: string; number: number } };
-    }>(
-      `mutation CreateImpedimentIssue(
-        $repositoryId: ID!, $title: String!, $body: String, $labelIds: [ID!]
-      ) {
-        createIssue(input: {
-          repositoryId: $repositoryId, title: $title, body: $body, labelIds: $labelIds
-        }) { issue { id number } }
-      }`,
-      {
-        repositoryId,
-        title: input.title,
-        body: input.body,
-        ...(labelIds.length > 0 ? { labelIds } : {}),
-      },
-    );
-
-    const issue = createResult.createIssue?.issue;
-    if (!issue) {
-      throw new GitHubApiError("createIssue mutation returned no issue.", {
-        code: "MUTATION_FAILED",
-        recovery: "Check that your token has Issues (read/write) permission, then retry.",
-      });
-    }
-
-    const addItemResult = await this.gh.graphql<{
-      addProjectV2ItemById: { item: { id: string } };
-    }>(
-      `mutation AddImpedimentToProject($projectId: ID!, $contentId: ID!) {
-        addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
-          item { id }
-        }
-      }`,
-      { projectId: this.config.projectId, contentId: issue.id },
-    );
-
-    const itemId = addItemResult.addProjectV2ItemById?.item?.id;
-    if (!itemId) {
-      throw new GitHubApiError("addProjectV2ItemById returned no item ID.", {
-        code: "MUTATION_FAILED",
-        recovery: "Check that your token has Projects (read/write) permission and the project " +
-          "number in configuration is correct, then retry.",
-        context: { issueId: issue.id },
-      });
-    }
-
-    if (input.priority) {
-      await this.fieldValueMutator.setFieldPriority(itemId, input.priority);
-    }
+    // Resolve the project item to get the underlying issue node ID.
+    // Draft Issues have issueId=null, but storyMutationService.createStory()
+    // converts Draft → Issue when labels are present, so issueId will be set
+    // since the handler passes labels: ["impediment"].
+    const resolved = await resolveStory(storyRef, this.gh);
 
     const listing: ImpedimentListing = {
-      ref: { id: issue.id },
+      ref: { id: resolved.issueId ?? storyRef.id },
       description: input.body ?? "",
       status: "open",
       raised_by: null,
@@ -133,7 +96,7 @@ export class ImpedimentService {
       resolved_at: null,
     };
 
-    return { listing, itemRef: { id: itemId } };
+    return { listing, itemRef: storyRef };
   }
 
   async getOrphanImpediments(): Promise<ImpedimentListing[]> {
@@ -169,7 +132,6 @@ export class ImpedimentService {
     if (!iterationId) return [];
 
     const fetcher = new PaginatedProjectItemFetcher(this.config, this.gh, {
-      sprintFieldIds: [this.config.fields.sprintFieldId],
       includeIssueContent: true,
       includePRContent: false,
       includeDraftIssueContent: false,
@@ -222,16 +184,7 @@ export class ImpedimentService {
         closedAt: string | null;
       };
     }>(
-      `query GetIssue($issueId: ID!) {
-        node(id: $issueId) {
-          __typename
-          ... on Issue {
-            number body createdAt
-            labels(first: 20) { nodes { name id } }
-            closed closedAt
-          }
-        }
-      }`,
+      GET_ISSUE_BY_ID_QUERY,
       { issueId: ref.id },
     );
 
@@ -261,21 +214,13 @@ export class ImpedimentService {
       .concat(newLabelId ?? []);
 
     await this.gh.graphql(
-      `mutation ReplaceIssueLabels($issueId: ID!, $labelIds: [ID!]!) {
-        updateIssue(input: { id: $issueId, labelIds: $labelIds }) {
-          issue { id }
-        }
-      }`,
+      REPLACE_ISSUE_LABELS_MUTATION,
       { issueId: ref.id, labelIds: updatedLabelIds },
     );
 
     if (status === "resolved" && resolutionNotes) {
       await this.gh.graphql(
-        `mutation AddComment($subjectId: ID!, $body: String!) {
-          addComment(input: { subjectId: $subjectId, body: $body }) {
-            commentEdge { node { id } }
-          }
-        }`,
+        ADD_COMMENT_MUTATION,
         { subjectId: ref.id, body: resolutionNotes },
       );
     }
@@ -286,11 +231,7 @@ export class ImpedimentService {
       const closeResult = await this.gh.graphql<{
         closeIssue: { issue: { closedAt: string } };
       }>(
-        `mutation CloseIssue($issueId: ID!) {
-          closeIssue(input: { issueId: $issueId }) {
-            issue { closedAt }
-          }
-        }`,
+        CLOSE_ISSUE_MUTATION,
         { issueId: ref.id },
       );
       resolvedAt = closeResult.closeIssue?.issue?.closedAt ?? null;

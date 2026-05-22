@@ -11,6 +11,14 @@ import { resolveStory } from "./resolver.ts";
 import { LabelResolver } from "./label-resolver.ts";
 import { UserMilestoneResolver } from "./user-milestone-resolver.ts";
 import { FieldValueMutator } from "./field-value-mutator.ts";
+import {
+  ADD_COMMENT_MUTATION,
+  ADD_DRAFT_ISSUE_MUTATION,
+  CONVERT_DRAFT_ISSUE_MUTATION,
+  GET_BLOCKED_BY_QUERY,
+  SET_LABELS_MUTATION,
+  SET_MILESTONE_MUTATION,
+} from "../queries.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { CreateStoryInput, StoryUpdates } from "../../../scrum/ports.ts";
 import type { SprintRef, StoryRef } from "../../../domain/types.ts";
@@ -34,13 +42,7 @@ const applyDependencyMutations = async (
   const current = await gh.graphql<{
     node?: { blockedBy?: { nodes: Array<{ id: string }> } } | null;
   }>(
-    `query($issueId: ID!) {
-      node(id: $issueId) {
-        ... on Issue {
-          blockedBy(first: 50) { nodes { id } }
-        }
-      }
-    }`,
+    GET_BLOCKED_BY_QUERY,
     { issueId },
   );
   const currentBlockedByIds = new Set(
@@ -140,19 +142,14 @@ export class StoryMutationService {
     const draftResult = await this.gh.graphql<{
       addProjectV2DraftIssue?: { projectItem?: { id: string } };
     }>(
-      `mutation AddDraftIssue(
-        $projectId: ID!, $title: String!, $body: String, $assigneeIds: [ID!]
-      ) {
-        addProjectV2DraftIssue(input: {
-          projectId: $projectId, title: $title, body: $body,
-          assigneeIds: $assigneeIds
-        }) { projectItem { id } }
-      }`,
+      ADD_DRAFT_ISSUE_MUTATION,
       {
-        projectId: this.config.projectId,
-        title: input.title,
-        body: input.body,
-        ...(assigneeIds.length > 0 ? { assigneeIds } : {}),
+        input: {
+          projectId: this.config.projectId,
+          title: input.title,
+          body: input.body,
+          ...(assigneeIds.length > 0 ? { assigneeIds } : {}),
+        },
       },
     );
 
@@ -201,9 +198,7 @@ export class StoryMutationService {
         const labelIds = await this.labelResolver.resolveExistingLabelNodeIds(input.labels!);
         if (labelIds.length > 0) {
           await this.gh.graphql(
-            `mutation SetLabels($issueId: ID!, $labelIds: [ID!]!) {
-              updateIssue(input: { id: $issueId, labelIds: $labelIds }) { issue { id } }
-            }`,
+            SET_LABELS_MUTATION,
             { issueId, labelIds },
           );
         }
@@ -212,9 +207,7 @@ export class StoryMutationService {
       if (hasEpic) {
         // EpicRef.id is the GitHub Milestone node ID (MI_...) — no resolution needed.
         await this.gh.graphql(
-          `mutation SetMilestone($issueId: ID!, $milestoneId: ID!) {
-            updateIssue(input: { id: $issueId, milestoneId: $milestoneId }) { issue { id } }
-          }`,
+          SET_MILESTONE_MUTATION,
           { issueId, milestoneId: input.epic!.id },
         );
       }
@@ -355,11 +348,7 @@ export class StoryMutationService {
     // Draft Issue — auto-convert then post via GraphQL (issue number not yet known).
     const issueId = await this.convertDraftToIssue(resolved.itemId);
     await this.gh.graphql(
-      `mutation AddComment($subjectId: ID!, $body: String!) {
-        addComment(input: { subjectId: $subjectId, body: $body }) {
-          commentEdge { node { id } }
-        }
-      }`,
+      ADD_COMMENT_MUTATION,
       { subjectId: issueId, body },
     );
   }
@@ -371,11 +360,7 @@ export class StoryMutationService {
         item?: { content?: { __typename: string; id: string } };
       };
     }>(
-      `mutation ConvertDraftIssue($itemId: ID!, $repositoryId: ID!) {
-        convertProjectV2DraftIssueItemToIssue(input: {
-          itemId: $itemId, repositoryId: $repositoryId
-        }) { item { content { __typename ... on Issue { id } } } }
-      }`,
+      CONVERT_DRAFT_ISSUE_MUTATION,
       { itemId, repositoryId },
     );
     const content = result.convertProjectV2DraftIssueItemToIssue?.item?.content;
