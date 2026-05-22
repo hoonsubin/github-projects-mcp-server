@@ -11,7 +11,7 @@ import type { EpicListing, Story } from "../domain/types.ts";
 import { computeReadinessSummary } from "../domain/rules/readiness.ts";
 import { isTerminalStatus } from "../domain/rules/status.ts";
 import { resolveTerminalDisplay } from "./config-helpers.ts";
-// todo: the params should be a composition of the types declared in `ports.ts`
+
 interface GetBacklogParams {
   search?: string;
   labels?: string[];
@@ -19,7 +19,7 @@ interface GetBacklogParams {
   epic?: string;
   limit?: number;
 }
-// todo: the results should be a composition of the types declared in `ports.ts`
+
 interface GetBacklogResult {
   stories: StoryListing[];
   total_count: number;
@@ -27,7 +27,7 @@ interface GetBacklogResult {
   orphan_impediments: ImpedimentListing[];
   epics: EpicListing[];
 }
-// todo: the type should be a composition of the types declared in `ports.ts`
+
 /** Project a full Story down to its lightweight StoryListing entry. */
 const storyToListing = (story: Story): StoryListing => ({
   ref: { id: story.ref.id, key: story.key },
@@ -37,7 +37,7 @@ const storyToListing = (story: Story): StoryListing => ({
   priority: story.priority,
   sprint: story.sprint,
   writable: true,
-  has_dependencies: story.blocked_by.length > 0,
+  has_dependencies: story.blocked_by,
 });
 
 /**

@@ -120,7 +120,6 @@ export class StoryQueryService {
 
   async getBacklogStories(): Promise<Story[]> {
     const fetcher = new PaginatedProjectItemFetcher(this.config, this.gh, {
-      sprintFieldIds: [this.config.fields.sprintFieldId],
       includeIssueContent: true,
       includePRContent: false,
       includeDraftIssueContent: true,

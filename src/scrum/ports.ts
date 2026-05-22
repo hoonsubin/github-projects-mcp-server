@@ -10,7 +10,14 @@
 
 // =============================================================================
 
-import type { EpicListing, EpicRef, SprintRef, Story, StoryRef } from "../domain/types.ts";
+import type {
+  DependencyEntry,
+  EpicListing,
+  EpicRef,
+  SprintRef,
+  Story,
+  StoryRef,
+} from "../domain/types.ts";
 
 // ── Supporting types that cross the boundary ──────────────────────────────────
 
@@ -153,7 +160,7 @@ export interface StoryListing {
   priority: string | null;
   sprint: string | null;
   writable: boolean; // true for active items, false for history/read-only
-  has_dependencies: boolean; // true when the story body contains a ## Dependencies section
+  has_dependencies: DependencyEntry[];
 }
 
 /**

@@ -437,7 +437,7 @@ Deno.test({
     });
     const result = await getSprintUseCase(backend, "current");
     const snapshot = assertIsSingleResult(result);
-    assertEquals(snapshot.items[0].has_dependencies, true);
+    assertEquals(snapshot.items[0].has_dependencies.length > 0, true);
   },
 });
 
@@ -453,7 +453,7 @@ Deno.test({
     });
     const result = await getSprintUseCase(backend, "current");
     const snapshot = assertIsSingleResult(result);
-    assertEquals(snapshot.items[0].has_dependencies, false);
+    assertEquals(snapshot.items[0].has_dependencies.length > 0, false);
   },
 });
 

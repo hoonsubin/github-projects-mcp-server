@@ -407,10 +407,23 @@ export function registerScrumWriteTools(
     },
     async (params: z.infer<typeof LogImpedimentSchema>) => {
       try {
-        // Step 1: Build impediment story input
+        // Step 1: Compose body with description + optional "Affects" section
+        const bodyParts = [params.description];
+        if (params.affects) {
+          bodyParts.push("", "## Affects");
+          if ("story" in params.affects) {
+            bodyParts.push(
+              `This impediment affects story with item ID: ${params.affects.story.id}`,
+            );
+          } else if ("sprint" in params.affects) {
+            bodyParts.push(`This impediment affects sprint: ${params.affects.sprint}`);
+          }
+        }
+
+        // Step 2: Build impediment story input
         const impedimentInput: CreateStoryInput = {
           title: `Impediment: ${params.description.slice(0, 80)}`,
-          body: params.description,
+          body: bodyParts.join("\n"),
           type: "impediment",
           priority: params.priority ?? p0PriorityDisplay,
           labels: ["impediment"],

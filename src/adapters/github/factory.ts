@@ -98,7 +98,7 @@ export const createGitHubProjectBackend = async (): Promise<GitHubBackendResult>
     owner,
     primaryRepo,
     labelResolver,
-    fieldValueMutator,
+    storyMutationService,
   );
 
   const configReloader = new ConfigReloader(config, ghClient);
