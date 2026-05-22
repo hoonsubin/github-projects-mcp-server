@@ -4,7 +4,7 @@
     "start": "deno run --env-file --allow-env --allow-net --allow-read src/index.ts",
     "inspector": "deno run --allow-env --allow-net --allow-read --allow-run src/index.ts",
     "diagram-gen": "deno run --allow-read --allow-env --allow-write scripts/generate-project-diagram.ts --output ./docs/proj-diagram.md --src ./src --include-external",
-    "test": "GITHUB_TOKEN=test-token deno test --allow-env=DEBUG,GITHUB_TOKEN --allow-net src/"
+    "test": "GITHUB_TOKEN=test-token deno test --allow-env=DEBUG,GITHUB_TOKEN,NODE_ENV --allow-net --allow-read src/"
   },
   "imports": {
     "@modelcontextprotocol/inspector": "npm:@modelcontextprotocol/inspector@^0.21.2",

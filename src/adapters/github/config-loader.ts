@@ -13,6 +13,10 @@ import { parse } from "@std/yaml";
 import type { GitHubBackendConfig } from "./types.ts";
 import type { ScrumConfig } from "../../domain/config.ts";
 import type { IterationEntry } from "../../domain/types.ts";
+import {
+  GET_ORG_PROJECT_FIELDS_BOOTSTRAP_QUERY,
+  GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY,
+} from "./queries.ts";
 
 // ── Runtime types ─────────────────────────────────────────────────────────────
 
@@ -79,59 +83,6 @@ const resolveEnvRef = (value: string, context: string): string => {
   }
   return resolved;
 };
-
-// ── GraphQL query ─────────────────────────────────────────────────────────────
-
-// $isUser / $isOrg are mutually exclusive booleans derived from owner_type.
-// Using @include so GitHub only resolves the relevant root field — querying
-// both simultaneously causes a hard GraphQL error when the login doesn't
-// match one of the account types (e.g. a user login passed to organization()).
-const GET_PROJECT_FIELDS_QUERY = `
-  query GetProjectFields($login: String!, $number: Int!, $isUser: Boolean!, $isOrg: Boolean!) {
-    user(login: $login) @include(if: $isUser) {
-      projectV2(number: $number) {
-        id
-        fields(first: 50) {
-          nodes {
-            ... on ProjectV2Field { id name dataType }
-            ... on ProjectV2SingleSelectField {
-              id name dataType
-              options { id name color description }
-            }
-            ... on ProjectV2IterationField {
-              id name dataType
-              configuration {
-                iterations { id title startDate duration }
-                completedIterations { id title startDate duration }
-              }
-            }
-          }
-        }
-      }
-    }
-    organization(login: $login) @include(if: $isOrg) {
-      projectV2(number: $number) {
-        id
-        fields(first: 50) {
-          nodes {
-            ... on ProjectV2Field { id name dataType }
-            ... on ProjectV2SingleSelectField {
-              id name dataType
-              options { id name color description }
-            }
-            ... on ProjectV2IterationField {
-              id name dataType
-              configuration {
-                iterations { id title startDate duration }
-                completedIterations { id title startDate duration }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-`;
 
 // ── Helper types ──────────────────────────────────────────────────────────────
 
@@ -482,11 +433,13 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
   // Fetch live GitHub project fields.
   const { owner, owner_type: ownerType, project_number: projectNumber } = patchedGhConfig;
 
-  const fieldsResult = await github.graphql<ProjectFieldsResponse>(GET_PROJECT_FIELDS_QUERY, {
+  const bootstrapQuery = ownerType === "user"
+    ? GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY
+    : GET_ORG_PROJECT_FIELDS_BOOTSTRAP_QUERY;
+
+  const fieldsResult = await github.graphql<ProjectFieldsResponse>(bootstrapQuery, {
     login: owner,
     number: projectNumber,
-    isUser: ownerType === "user",
-    isOrg: ownerType === "org",
   });
 
   const projectNode = ownerType === "user"

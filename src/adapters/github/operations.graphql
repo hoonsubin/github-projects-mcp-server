@@ -643,3 +643,245 @@ query GetImpedimentIssues($owner: String!, $repo: String!, $states: [IssueState!
     }
   }
 }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# QUERIES — Item lookups (internal services)
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── GetProjectItemById ─────────────────────────────────────────────────────────
+# Resolve a project item (PVTI_...) to its underlying content node.
+# Used by resolveStory in resolver.ts for story ID resolution before mutations.
+
+query GetProjectItemById($itemId: ID!) {
+  node(id: $itemId) {
+    ... on ProjectV2Item {
+      id
+      content {
+        __typename
+        ... on Issue { id number }
+        ... on DraftIssue { id }
+      }
+    }
+  }
+}
+
+# ── GetIssueById ───────────────────────────────────────────────────────────────
+# Fetch issue metadata by its node ID (I_...).
+# Used by impediment-service.ts for impediment status reads and label inspection.
+
+query GetIssueById($issueId: ID!) {
+  node(id: $issueId) {
+    __typename
+    ... on Issue {
+      number body createdAt
+      labels(first: 20) { nodes { name id } }
+      closed closedAt
+    }
+  }
+}
+
+# ── GetBlockedBy ───────────────────────────────────────────────────────────────
+# Fetch current blocked_by relationships for an issue.
+# Used by story-mutation-service.ts to compute dependency diffs before mutation.
+
+query GetBlockedBy($issueId: ID!) {
+  node(id: $issueId) {
+    ... on Issue {
+      blockedBy(first: 50) { nodes { id } }
+    }
+  }
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# QUERIES — Repository and user lookups
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── GetRepo ────────────────────────────────────────────────────────────────────
+# Fetch the repository node ID for label and draft-issue operations.
+
+query GetRepo($owner: String!, $repo: String!) {
+  repository(owner: $owner, name: $repo) { id }
+}
+
+# ── GetUserMilestones ──────────────────────────────────────────────────────────
+# Fetch open milestones for a repository.
+# Used by user-milestone-resolver.ts for milestone title-to-ID resolution.
+
+query GetUserMilestones($owner: String!, $repo: String!) {
+  repository(owner: $owner, name: $repo) {
+    milestones(first: 100, states: [OPEN]) {
+      nodes { id title }
+    }
+  }
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# QUERIES — Field management
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── GetFieldOptions ────────────────────────────────────────────────────────────
+# Fetch current options for a single-select field.
+# Used by vocabulary-manager.ts to check for existing options before adding.
+
+query GetFieldOptions($fieldId: ID!) {
+  node(id: $fieldId) {
+    ... on ProjectV2SingleSelectField {
+      options { id name color description }
+    }
+  }
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# QUERIES — Bootstrap (config-loader)
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── GetUserProjectFieldsBootstrap ──────────────────────────────────────────────
+# Bootstrap query for user-owned projects: fetches field metadata including
+# single-select options and iteration config. Used by config-loader.ts.
+
+query GetUserProjectFieldsBootstrap($login: String!, $number: Int!) {
+  user(login: $login) {
+    projectV2(number: $number) {
+      id
+      fields(first: 50) {
+        nodes {
+          ... on ProjectV2Field { id name dataType }
+          ... on ProjectV2SingleSelectField {
+            id name dataType
+            options { id name color description }
+          }
+          ... on ProjectV2IterationField {
+            id name dataType
+            configuration {
+              iterations { id title startDate duration }
+              completedIterations { id title startDate duration }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# ── GetOrgProjectFieldsBootstrap ───────────────────────────────────────────────
+# Bootstrap query for org-owned projects: fetches field metadata including
+# single-select options and iteration config. Used by config-loader.ts.
+
+query GetOrgProjectFieldsBootstrap($login: String!, $number: Int!) {
+  organization(login: $login) {
+    projectV2(number: $number) {
+      id
+      fields(first: 50) {
+        nodes {
+          ... on ProjectV2Field { id name dataType }
+          ... on ProjectV2SingleSelectField {
+            id name dataType
+            options { id name color description }
+          }
+          ... on ProjectV2IterationField {
+            id name dataType
+            configuration {
+              iterations { id title startDate duration }
+              completedIterations { id title startDate duration }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MUTATIONS — Label management
+# ══════════════════════════════════════════════════════════════════════════════
+
+mutation CreateLabel($repositoryId: ID!, $name: String!, $color: String!) {
+  createLabel(input: { repositoryId: $repositoryId, name: $name, color: $color }) {
+    label { id }
+  }
+}
+
+mutation ReplaceIssueLabels($issueId: ID!, $labelIds: [ID!]!) {
+  updateIssue(input: { id: $issueId, labelIds: $labelIds }) { issue { id } }
+}
+
+mutation SetLabels($issueId: ID!, $labelIds: [ID!]!) {
+  updateIssue(input: { id: $issueId, labelIds: $labelIds }) { issue { id } }
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MUTATIONS — Issue management
+# ══════════════════════════════════════════════════════════════════════════════
+
+mutation CreateIssue(
+  $repositoryId: ID!, $title: String!, $body: String, $labelIds: [ID!]
+) {
+  createIssue(input: {
+    repositoryId: $repositoryId, title: $title, body: $body, labelIds: $labelIds
+  }) { issue { id number } }
+}
+
+mutation CloseIssue($issueId: ID!) {
+  closeIssue(input: { issueId: $issueId }) {
+    issue { closedAt }
+  }
+}
+
+mutation ClearAssignees($issueId: ID!) {
+  updateIssue(input: { id: $issueId, assigneeIds: [] }) { issue { id } }
+}
+
+mutation SetAssignee($issueId: ID!, $userId: ID!) {
+  updateIssue(input: { id: $issueId, assigneeIds: [$userId] }) { issue { id } }
+}
+
+mutation SetMilestone($issueId: ID!, $milestoneId: ID!) {
+  updateIssue(input: { id: $issueId, milestoneId: $milestoneId }) { issue { id } }
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MUTATIONS — Comment management
+# ══════════════════════════════════════════════════════════════════════════════
+
+mutation AddComment($subjectId: ID!, $body: String!) {
+  addComment(input: { subjectId: $subjectId, body: $body }) {
+    commentEdge { node { id } }
+  }
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MUTATIONS — Milestone management
+# ══════════════════════════════════════════════════════════════════════════════
+
+mutation CreateMilestone($repositoryId: ID!, $title: String!) {
+  createMilestone(input: { repositoryId: $repositoryId, title: $title }) {
+    milestone { id }
+  }
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MUTATIONS — Field management
+# ══════════════════════════════════════════════════════════════════════════════
+
+mutation UpdateField($projectId: ID!, $fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) {
+  updateProjectV2Field(input: {
+    projectId: $projectId
+    fieldId: $fieldId
+    singleSelectOptions: $options
+  }) { projectV2Field { id } }
+}
+
+mutation ConvertDraftIssue($itemId: ID!, $repositoryId: ID!) {
+  convertProjectV2DraftIssueItemToIssue(input: {
+    itemId: $itemId, repositoryId: $repositoryId
+  }) { item { content { __typename ... on Issue { id } } } }
+}

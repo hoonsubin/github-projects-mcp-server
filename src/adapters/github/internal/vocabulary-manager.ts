@@ -12,6 +12,7 @@ import { type GitHubClient } from "./http-client.ts";
 import { LabelResolver } from "./label-resolver.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { VocabularyKind } from "../../../scrum/ports.ts";
+import { GET_FIELD_OPTIONS_QUERY, UPDATE_FIELD_MUTATION } from "../queries.ts";
 
 // ── Helper types ─────────────────────────────────────────────────────────────
 
@@ -106,11 +107,7 @@ export class VocabularyManager {
     value: string,
   ): Promise<{ created: boolean }> {
     const fieldData = await this.gh.graphql<GetFieldOptionsResponse>(
-      `query GetFieldOptions($fieldId: ID!) {
-        node(id: $fieldId) {
-          ... on ProjectV2SingleSelectField { options { id name color description } }
-        }
-      }`,
+      GET_FIELD_OPTIONS_QUERY,
       { fieldId },
     );
     const currentOptions = fieldData.node?.options ?? [];
@@ -122,15 +119,7 @@ export class VocabularyManager {
       { name: value, color: "GRAY", description: "" },
     ];
     await this.gh.graphql(
-      `mutation UpdateField($projectId: ID!, $fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) {
-        updateProjectV2Field(input: {
-          projectId: $projectId
-          fieldId: $fieldId
-          singleSelectOptions: $options
-        }) {
-          projectV2Field { id }
-        }
-      }`,
+      UPDATE_FIELD_MUTATION,
       { projectId: this.config.projectId, fieldId, options: updatedOptions },
     );
     return { created: true };

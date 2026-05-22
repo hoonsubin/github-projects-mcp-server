@@ -14,7 +14,15 @@ import type { GitHubClient } from "./http-client.ts";
 import { resolveSprint } from "./resolver.ts";
 import { LabelResolver } from "./label-resolver.ts";
 import { FieldValueMutator } from "./field-value-mutator.ts";
-import { GET_IMPEDIMENT_ISSUES_QUERY } from "../queries.ts";
+import {
+  ADD_COMMENT_MUTATION,
+  ADD_PROJECT_ITEM_MUTATION,
+  CLOSE_ISSUE_MUTATION,
+  CREATE_ISSUE_MUTATION,
+  GET_IMPEDIMENT_ISSUES_QUERY,
+  GET_ISSUE_BY_ID_QUERY,
+  REPLACE_ISSUE_LABELS_MUTATION,
+} from "../queries.ts";
 import { PaginatedProjectItemFetcher } from "./pagination.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { ProjectItemIssueContent } from "../types.ts";
@@ -76,13 +84,7 @@ export class ImpedimentService {
     const createResult = await this.gh.graphql<{
       createIssue?: { issue?: { id: string; number: number } };
     }>(
-      `mutation CreateImpedimentIssue(
-        $repositoryId: ID!, $title: String!, $body: String, $labelIds: [ID!]
-      ) {
-        createIssue(input: {
-          repositoryId: $repositoryId, title: $title, body: $body, labelIds: $labelIds
-        }) { issue { id number } }
-      }`,
+      CREATE_ISSUE_MUTATION,
       {
         repositoryId,
         title: input.title,
@@ -102,11 +104,7 @@ export class ImpedimentService {
     const addItemResult = await this.gh.graphql<{
       addProjectV2ItemById: { item: { id: string } };
     }>(
-      `mutation AddImpedimentToProject($projectId: ID!, $contentId: ID!) {
-        addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
-          item { id }
-        }
-      }`,
+      ADD_PROJECT_ITEM_MUTATION,
       { projectId: this.config.projectId, contentId: issue.id },
     );
 
@@ -222,16 +220,7 @@ export class ImpedimentService {
         closedAt: string | null;
       };
     }>(
-      `query GetIssue($issueId: ID!) {
-        node(id: $issueId) {
-          __typename
-          ... on Issue {
-            number body createdAt
-            labels(first: 20) { nodes { name id } }
-            closed closedAt
-          }
-        }
-      }`,
+      GET_ISSUE_BY_ID_QUERY,
       { issueId: ref.id },
     );
 
@@ -261,21 +250,13 @@ export class ImpedimentService {
       .concat(newLabelId ?? []);
 
     await this.gh.graphql(
-      `mutation ReplaceIssueLabels($issueId: ID!, $labelIds: [ID!]!) {
-        updateIssue(input: { id: $issueId, labelIds: $labelIds }) {
-          issue { id }
-        }
-      }`,
+      REPLACE_ISSUE_LABELS_MUTATION,
       { issueId: ref.id, labelIds: updatedLabelIds },
     );
 
     if (status === "resolved" && resolutionNotes) {
       await this.gh.graphql(
-        `mutation AddComment($subjectId: ID!, $body: String!) {
-          addComment(input: { subjectId: $subjectId, body: $body }) {
-            commentEdge { node { id } }
-          }
-        }`,
+        ADD_COMMENT_MUTATION,
         { subjectId: ref.id, body: resolutionNotes },
       );
     }
@@ -286,11 +267,7 @@ export class ImpedimentService {
       const closeResult = await this.gh.graphql<{
         closeIssue: { issue: { closedAt: string } };
       }>(
-        `mutation CloseIssue($issueId: ID!) {
-          closeIssue(input: { issueId: $issueId }) {
-            issue { closedAt }
-          }
-        }`,
+        CLOSE_ISSUE_MUTATION,
         { issueId: ref.id },
       );
       resolvedAt = closeResult.closeIssue?.issue?.closedAt ?? null;
