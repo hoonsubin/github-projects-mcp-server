@@ -1,14 +1,17 @@
 // =============================================================================
-// src/adapters/github/factory.ts — GitHub backend factory
+// src/adapters/github/factory.ts — GitHub adapter factory
 //
 // Single responsibility: construct and wire all GitHub adapter services,
-// returning a platform-agnostic ProjectBackend to the composition root.
+// returning a platform-agnostic BackendResult to the composition root via
+// the AdapterFactory interface.
 //
 // Keeping this logic inside the adapter package means index.ts only needs
-// one import — it calls createGitHubProjectBackend() without knowing which
-// internal services exist or how they depend on each other.
+// one import — it calls createBackend([new GitHubAdapterFactory()]) without
+// knowing which internal services exist or how they depend on each other.
 // =============================================================================
 
+import { GITHUB_CAPABILITIES } from "../capabilities.ts";
+import type { AdapterFactory, BackendResult } from "../factory.ts";
 import { loadConfig } from "./config-loader.ts";
 import { GitHubProjectBackend } from "./backend.ts";
 import type { GitHubBackendDependencies } from "./backend.ts";
@@ -24,123 +27,134 @@ import { StoryQueryService } from "./internal/story-query-service.ts";
 import { UserMilestoneResolver } from "./internal/user-milestone-resolver.ts";
 import { EpicService } from "./internal/epic-service.ts";
 import { VocabularyManager } from "./internal/vocabulary-manager.ts";
+import { AnalyticsService } from "./internal/analytics-service.ts";
+import { BoardHealthService } from "./internal/board-health-service.ts";
 import { GitHubFileReader } from "./internal/file-reader.ts";
 import type { GitHubBackendConfig } from "./types.ts";
-import type { FileReaderPort, ProjectBackend } from "../../scrum/ports.ts";
-import type { ScrumConfig } from "../../domain/config.ts";
 
-// ── Return type ───────────────────────────────────────────────────────────────
-
-/** The three values the composition root needs after backend construction. */
-export interface GitHubBackendResult {
-  backend: ProjectBackend;
-  fileReader: FileReaderPort;
-  scrumConfig: ScrumConfig;
-}
-
-// ── Factory ───────────────────────────────────────────────────────────────────
+// ── GitHubAdapterFactory ─────────────────────────────────────────────────────
 
 /**
- * Load config, construct all internal services in dependency order, assemble
- * the GitHubProjectBackend facade, and return the platform-agnostic result.
- *
- * Display config (status_display, priority_display, type_display) is resolved
- * from GitHubBackendConfig at construction time and packaged into the
- * GitHubBackendDependencies parameter object — getPlatformState never casts
- * the opaque `backends` map at call time.
- *
- * Called once at startup from src/index.ts (the composition root). All wiring
- * knowledge stays here — callers receive only the ProjectBackend interface.
+ * GitHub Projects adapter factory.
+ * Implements AdapterFactory so the composition root can construct the
+ * backend through the registry without importing adapter internals directly.
  */
-export const createGitHubProjectBackend = async (): Promise<GitHubBackendResult> => {
-  const config = await loadConfig({ github: { graphql } });
-  const gh = config.scrumConfig.backends.github as GitHubBackendConfig;
-  const ghClient = { graphql, rest };
-  const { owner } = gh;
-  const primaryRepo = gh.tracked_repos[0]; // multi-repo support is future work
+export class GitHubAdapterFactory implements AdapterFactory {
+  readonly platform = "github";
 
-  // ── Resolve display config at construction time (resolves GitHubBackendConfig cast) ──
+  async create(): Promise<BackendResult> {
+    const config = await loadConfig({ github: { graphql } });
+    const gh = config.scrumConfig.backends.github as GitHubBackendConfig;
+    const ghClient = { graphql, rest };
+    const { owner } = gh;
+    const primaryRepo = gh.tracked_repos[0]; // multi-repo support is future work
 
-  const displayConfig: GitHubBackendDependencies["displayConfig"] = {
-    statusDisplay: gh.status_display ?? {},
-    priorityDisplay: gh.priority_display ?? {},
-    typeDisplay: gh.type_display ?? null,
-  };
+    // ── Resolve display config at construction time ──────────────────────
 
-  // ── Service construction — each service receives only what it needs ─────────
+    const displayConfig: GitHubBackendDependencies["displayConfig"] = {
+      statusDisplay: gh.status_display ?? {},
+      priorityDisplay: gh.priority_display ?? {},
+      typeDisplay: gh.type_display ?? null,
+    };
 
-  const labelResolver = new LabelResolver(config, ghClient, owner, primaryRepo);
+    // ── Service construction — each service receives only what it needs ──
 
-  const userMilestoneResolver = new UserMilestoneResolver(
-    ghClient,
-    owner,
-    primaryRepo,
-    labelResolver,
-  );
+    const labelResolver = new LabelResolver(config, ghClient, owner, primaryRepo);
 
-  const fieldValueMutator = new FieldValueMutator(config, ghClient, userMilestoneResolver);
+    const userMilestoneResolver = new UserMilestoneResolver(
+      ghClient,
+      owner,
+      primaryRepo,
+      labelResolver,
+    );
 
-  const burndownCalculator = new BurndownCalculator(config, ghClient, owner, primaryRepo);
+    const fieldValueMutator = new FieldValueMutator(
+      config,
+      ghClient,
+      userMilestoneResolver,
+    );
 
-  const sprintHistoryService = new SprintHistoryService(config, ghClient, owner, primaryRepo);
+    const burndownCalculator = new BurndownCalculator(config, ghClient, owner, primaryRepo);
 
-  const vocabularyManager = new VocabularyManager(
-    config,
-    ghClient,
-    labelResolver,
-    owner,
-    primaryRepo,
-  );
+    const sprintHistoryService = new SprintHistoryService(config, ghClient, owner, primaryRepo);
 
-  const storyQueryService = new StoryQueryService(config, ghClient, owner, primaryRepo);
+    const vocabularyManager = new VocabularyManager(
+      config,
+      ghClient,
+      labelResolver,
+      owner,
+      primaryRepo,
+    );
 
-  const epicService = new EpicService(ghClient, owner, gh.tracked_repos);
+    const storyQueryService = new StoryQueryService(config, ghClient, owner, primaryRepo);
 
-  const storyMutationService = new StoryMutationService(
-    config,
-    ghClient,
-    owner,
-    primaryRepo,
-    labelResolver,
-    userMilestoneResolver,
-    fieldValueMutator,
-  );
+    const epicService = new EpicService(ghClient, owner, gh.tracked_repos);
 
-  const impedimentService = new ImpedimentService(
-    config,
-    ghClient,
-    owner,
-    primaryRepo,
-    labelResolver,
-    storyMutationService,
-  );
+    const storyMutationService = new StoryMutationService(
+      config,
+      ghClient,
+      owner,
+      primaryRepo,
+      labelResolver,
+      userMilestoneResolver,
+      fieldValueMutator,
+    );
 
-  const configReloader = new ConfigReloader(config, ghClient);
+    const impedimentService = new ImpedimentService(
+      config,
+      ghClient,
+      owner,
+      primaryRepo,
+      labelResolver,
+      storyMutationService,
+    );
 
-  // ── Platform-agnostic file reader (not part of ProjectBackend) ────────────
+    const configReloader = new ConfigReloader(config, ghClient);
 
-  const fileReader = new GitHubFileReader(owner, primaryRepo);
+    // ── New unified services (P7) ───────────────────────────────────────
 
-  // ── Facade assembly — single parameter object, no positional args ──────────
+    const analyticsService = new AnalyticsService(
+      config,
+      sprintHistoryService,
+      burndownCalculator,
+    );
 
-  const deps: GitHubBackendDependencies = {
-    labelResolver,
-    fieldValueMutator,
-    burndownCalculator,
-    sprintHistoryService,
-    vocabularyManager,
-    storyQueryService,
-    storyMutationService,
-    impedimentService,
-    epicService,
-    config,
-    owner,
-    repo: primaryRepo,
-    configReloader,
-    displayConfig,
-  };
+    const boardHealthService = new BoardHealthService(
+      config,
+      storyQueryService,
+      impedimentService,
+    );
 
-  const backend = new GitHubProjectBackend(deps);
+    // ── File reader ──────────────────────────────────────────────────────
 
-  return { backend, fileReader, scrumConfig: config.scrumConfig };
-};
+    const fileReader = new GitHubFileReader(owner, primaryRepo);
+
+    // ── Facade assembly — single parameter object, no positional args ────
+
+    const deps: GitHubBackendDependencies = {
+      labelResolver,
+      fieldValueMutator,
+      vocabularyManager,
+      storyQueryService,
+      storyMutationService,
+      impedimentService,
+      epicService,
+      config,
+      owner,
+      repo: primaryRepo,
+      configReloader,
+      displayConfig,
+      analyticsService,
+      boardHealthService,
+    };
+
+    const backend = new GitHubProjectBackend(deps);
+
+    return {
+      backend,
+      capabilities: GITHUB_CAPABILITIES,
+      fileReader,
+      scrumConfig: config.scrumConfig,
+    };
+  }
+}

@@ -15,7 +15,8 @@ import type {
 import type { BurndownStoryInput, SprintInfo } from "../../scrum/ports.ts";
 // classifyLabels / StoryTypeLabel removed — type is now read from the Type board field,
 // not from repo labels. See extractBoardFields → typeFieldId branch below.
-import type { BoardFields, Comment, FieldValueNode, LinkedPr, ProjectItem } from "./types.ts";
+import type { BoardFields, FieldValueNode, LinkedPr, ProjectItem } from "./types.ts";
+import type { StoryComment } from "../../domain/types.ts";
 
 // ── Local input shapes (private — only for function parameter types) ───────────
 
@@ -246,7 +247,7 @@ export const buildEnrichedStory = (
 /**
  * Build a comment list from GraphQL comment nodes.
  */
-export const buildCommentList = (nodes: CommentInput[]): Comment[] =>
+export const buildCommentList = (nodes: CommentInput[]): StoryComment[] =>
   nodes.map((c) => ({
     author: c.author?.login ?? "(ghost)",
     body: c.body,

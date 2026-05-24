@@ -23,6 +23,7 @@ const resolveFilter = (filter: ItemFilter): ResolvedItemFilter => ({
   epic_id: filter.epic_id ?? "",
   labels: filter.labels ?? [],
   assignee: filter.assignee ?? "",
+  estimated: filter.estimated,
   sprint_ref: filter.sprint_ref ?? null,
   include_dependencies: filter.include_dependencies ?? false,
   limit: filter.limit ?? 50,

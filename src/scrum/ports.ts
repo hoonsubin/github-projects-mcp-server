@@ -41,6 +41,7 @@ export interface ItemFilter {
   epic_id?: string;
   labels?: string[];
   assignee?: string;
+  estimated?: boolean;
   sprint_ref?: string | null;
   include_dependencies?: boolean;
   limit?: number;
@@ -61,6 +62,7 @@ export interface ResolvedItemFilter {
   epic_id: string;
   labels: string[];
   assignee: string;
+  estimated: boolean | undefined;
   sprint_ref: string | null;
   include_dependencies: boolean;
   limit: number;
@@ -115,27 +117,17 @@ export interface PlatformState {
   templateUris: TemplateUriMap | null;
 }
 
-interface StoryComment {
-  author: string;
-  body: string;
-  created_at: string;
-  url: string;
-}
-
-/** Full story payload with associated data, returned by getStoryDetail. */
+/**
+ * Full story payload with associated data, returned by getStoryDetail.
+ *
+ * @deprecated Use ItemDetailResult from ../domain/types.ts instead.
+ *   ItemDetailResult is a superset — it adds acceptance_criteria.
+ *   StoryDetail will be removed in P2 (port type consolidation).
+ */
 export interface StoryDetail {
   story: Story;
-  comments: StoryComment[];
-  // todo: instead of linked PRs (a GitHub term), it should be a generalized type of `LinkedStory`
-  // and extend the type with the nature of the link.
-  // Ideally, this should be reused as dependency resolution too
-  linkedPrs: Array<{
-    number: number;
-    title: string;
-    url: string;
-    state: string;
-    is_draft: boolean;
-  }>;
+  comments: import("../domain/types.ts").StoryComment[];
+  linked_artifacts: import("../domain/types.ts").LinkedArtifact[];
 }
 
 /**
@@ -242,44 +234,19 @@ export interface ImpedimentListing {
 }
 
 /**
- * Totals for a sprint snapshot.
- * Discriminated union — narrow on `kind` to access variant-specific fields.
- * - "active": totals for an in-progress sprint
- * - "completed": totals for a completed sprint (adds velocity metrics)
+ * Totals for a sprint snapshot (re-exported from domain/types.ts).
+ * @deprecated Import from "../domain/types.ts" directly.
  */
-export type SprintTotals =
-  | {
-    kind: "active";
-    by_status: Record<string, number>;
-    story_points: number;
-  }
-  | {
-    kind: "completed";
-    by_status: Record<string, number>;
-    story_points: number;
-    committed_points: number;
-    completed_points: number;
-  };
+export type { SprintTotals } from "../domain/types.ts";
 
 /**
- * Sprint + item listing — canonical shape for both active and historical sprints.
+ * Sprint + item listing (re-exported from domain/types.ts).
+ * @deprecated Import from "../domain/types.ts" directly.
  *
- * totals is a SprintTotals discriminated union — narrow on totals.kind
- * instead of checking for committed_points presence.
+ * NOTE: items is now ItemListing[] (not StoryListing[]).
+ * impediments has been removed — use BacklogHealth for impediment counts.
  */
-export interface SprintSnapshot {
-  sprint: {
-    name: string;
-    start_date: string;
-    end_date: string;
-    duration_days: number;
-    days_remaining: number;
-  };
-  items: StoryListing[];
-  total_count: number;
-  totals: SprintTotals;
-  impediments: ImpedimentListing[];
-}
+export type { SprintSnapshot } from "../domain/types.ts";
 
 // ── Focused port interfaces (Interface Segregation) ─────────────────────────────
 

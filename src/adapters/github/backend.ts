@@ -3,34 +3,33 @@
 //
 // Thin facade: delegates to injected service objects.
 // No business logic lives here — services own their domain.
-// Constructor receives a single GitHubBackendDependencies parameter object
-// (built by the factory) — no positional-arg proliferation.
+// Extends AbstractProjectBackend for shared infrastructure (resolveRef, capability
+// checks, optional method defaults). Constructor receives a single
+// GitHubBackendDependencies parameter object (built by the factory).
 // =============================================================================
 
+import { GITHUB_CAPABILITIES } from "../capabilities.ts";
+import { AbstractProjectBackend } from "../abstract-backend.ts";
+import { StoryNotFoundError } from "../../domain/errors.ts";
 import { type RuntimeConfig } from "./config-loader.ts";
 import { LabelResolver } from "./internal/label-resolver.ts";
 import { FieldValueMutator } from "./internal/field-value-mutator.ts";
-import { BurndownCalculator } from "./internal/burndown-calculator.ts";
-import { SprintHistoryService } from "./internal/sprint-history-service.ts";
 import { VocabularyManager } from "./internal/vocabulary-manager.ts";
 import { StoryQueryService } from "./internal/story-query-service.ts";
 import { StoryMutationService } from "./internal/story-mutation-service.ts";
 import { ImpedimentService } from "./internal/impediment-service.ts";
 import { EpicService } from "./internal/epic-service.ts";
 import { ConfigReloader } from "./internal/config-reloader.ts";
+import { AnalyticsService } from "./internal/analytics-service.ts";
+import { BoardHealthService } from "./internal/board-health-service.ts";
 import { toSprintInfo } from "./mappers.ts";
 import type {
   AnalyticsQuery,
-  BurndownInput,
-  CompletionMap,
   CreateStoryInput,
   ImpedimentListing,
   PlatformState,
-  ProjectBackend,
   Ref,
   ResolvedItemFilter,
-  SprintHistoryEntry,
-  SprintInfo,
   StoryDetail,
   StoryUpdates,
   VocabularyKind,
@@ -41,7 +40,6 @@ import type {
   EpicListing,
   ItemSearchResult,
   SprintRef,
-  Story,
   StoryRef,
 } from "../../domain/types.ts";
 
@@ -49,18 +47,12 @@ import type {
 
 /**
  * All dependencies needed to construct a GitHubProjectBackend.
- * Replaces the 13-positional-arg constructor with a single parameter object,
- * eliminating ordering errors and making call sites self-documenting.
- *
- * displayConfig contains status_display, priority_display, and type_display
- * pre-resolved from GitHubBackendConfig at factory time — getPlatformState
- * never casts via the opaque `backends` map.
+ * AnalyticsService and BoardHealthService wrap the lower-level services
+ * (BurndownCalculator, SprintHistoryService) behind the new port interfaces.
  */
 export interface GitHubBackendDependencies {
   readonly labelResolver: LabelResolver;
   readonly fieldValueMutator: FieldValueMutator;
-  readonly burndownCalculator: BurndownCalculator;
-  readonly sprintHistoryService: SprintHistoryService;
   readonly vocabularyManager: VocabularyManager;
   readonly storyQueryService: StoryQueryService;
   readonly storyMutationService: StoryMutationService;
@@ -70,6 +62,8 @@ export interface GitHubBackendDependencies {
   readonly owner: string;
   readonly repo: string;
   readonly configReloader: ConfigReloader;
+  readonly analyticsService: AnalyticsService;
+  readonly boardHealthService: BoardHealthService;
   /** Pre-resolved display name maps (from GitHubBackendConfig) — no cast needed at call time. */
   readonly displayConfig: {
     readonly statusDisplay: Record<string, string>;
@@ -80,28 +74,44 @@ export interface GitHubBackendDependencies {
 
 // ── GitHubProjectBackend ──────────────────────────────────────────────────────
 
-export class GitHubProjectBackend implements ProjectBackend {
-  constructor(private readonly deps: GitHubBackendDependencies) {}
+export class GitHubProjectBackend extends AbstractProjectBackend {
+  override readonly capabilities = GITHUB_CAPABILITIES;
 
-  // ── Vocabulary & history delegations ─────────────────────────────────────
-  // Kept as internal methods — not part of the port interface after P2.
-  // The port interface now exposes findItems/getAnalytics/getBoardHealth.
-  // These remain until adapter services are migrated in P7.
-
-  getCompletedSprintHistory(window: number): Promise<SprintHistoryEntry[]> {
-    return this.deps.sprintHistoryService.getCompletedSprintHistory(window);
+  constructor(private readonly deps: GitHubBackendDependencies) {
+    super();
   }
 
-  getBurndownInput(sprint: SprintRef): Promise<BurndownInput> {
-    return this.deps.burndownCalculator.getBurndownInput(sprint);
-  }
+  // ── resolveRef (override AbstractProjectBackend default) ──────────────────
 
-  resolveCompletionTimestamps(input: BurndownInput): Promise<CompletionMap> {
-    return this.deps.burndownCalculator.resolveCompletionTimestamps(input);
-  }
-
-  addVocabulary(kind: VocabularyKind, value: string): Promise<{ created: boolean }> {
-    return this.deps.vocabularyManager.addVocabulary(kind, value);
+  /**
+   * Resolve a { number } StoryRef by looking up the issue number via findItems.
+   * { id } refs pass through unchanged (already resolved).
+   */
+  protected override async resolveRef(ref: StoryRef): Promise<StoryRef> {
+    if ("id" in ref && !("number" in ref)) return ref;
+    const result = await this.findItems({
+      scope: "all",
+      keys: [String(ref.number)],
+      search: "",
+      types: [],
+      statuses: [],
+      priority: "",
+      epic_id: "",
+      labels: [],
+      assignee: "",
+      estimated: undefined,
+      sprint_ref: null,
+      include_dependencies: false,
+      limit: 1,
+    });
+    if (result.items.length === 0) {
+      throw new StoryNotFoundError(
+        String(ref.number),
+        `Story #${ref.number} not found on the project board. ` +
+          "Verify the issue number and ensure it appears in the project.",
+      );
+    }
+    return { id: result.items[0].ref.id };
   }
 
   // ── Platform state ────────────────────────────────────────────────────────
@@ -110,8 +120,6 @@ export class GitHubProjectBackend implements ProjectBackend {
     canonicalStatusKeys: string[];
     canonicalPriorityKeys: string[];
   }): Promise<PlatformState> {
-    // Filter the pre-resolved display maps to only the canonical keys declared
-    // by the use-case layer — no need to cast or reach into GitHubBackendConfig.
     const { statusDisplay, priorityDisplay, typeDisplay } = this.deps.displayConfig;
 
     const statusDisplayMap: Record<string, string> = {};
@@ -123,7 +131,6 @@ export class GitHubProjectBackend implements ProjectBackend {
       if (priorityDisplay[key]) priorityDisplayMap[key] = priorityDisplay[key];
     }
 
-    // Diff display names against live platform options (keys are display names)
     const liveStatusOptions = Object.keys(this.deps.config.statusOptions);
     const livePriorityOptions = Object.keys(this.deps.config.priorityOptions);
     const declaredStatusValues = Object.values(statusDisplayMap);
@@ -174,8 +181,6 @@ export class GitHubProjectBackend implements ProjectBackend {
         priorityDisplay: Object.keys(priorityDisplayMap).length > 0 ? priorityDisplayMap : null,
         typeDisplay: typeDisplay,
       },
-      // P2: epics and templateUris are populated by orientUseCase (P5).
-      // The adapter returns empty defaults for now.
       epics: { active: [], totalCount: 0 },
       templateUris: null,
     };
@@ -185,17 +190,21 @@ export class GitHubProjectBackend implements ProjectBackend {
     return this.deps.configReloader.reload();
   }
 
+  // ── Port methods (P7 — real implementations) ──────────────────────────────
+
+  findItems(filter: ResolvedItemFilter): Promise<ItemSearchResult> {
+    return this.deps.storyQueryService.findItems(filter);
+  }
+
+  getAnalytics(query: AnalyticsQuery): Promise<AnalyticsResult> {
+    return this.deps.analyticsService.getAnalytics(query);
+  }
+
+  getBoardHealth(sprintScope: string): Promise<BacklogHealth> {
+    return this.deps.boardHealthService.getBoardHealth(sprintScope);
+  }
+
   // ── Story read delegations ────────────────────────────────────────────────
-
-  getSprintStories(
-    sprint: SprintRef,
-  ): Promise<{ stories: Story[]; sprintInfo: SprintInfo }> {
-    return this.deps.storyQueryService.getSprintStories(sprint);
-  }
-
-  getBacklogStories(): Promise<Story[]> {
-    return this.deps.storyQueryService.getBacklogStories();
-  }
 
   getStoryDetail(ref: StoryRef): Promise<StoryDetail> {
     return this.deps.storyQueryService.getStoryDetail(ref);
@@ -205,51 +214,13 @@ export class GitHubProjectBackend implements ProjectBackend {
     return this.deps.epicService.getEpics();
   }
 
-  // ── New port methods (P2) — stub implementations, full impl in P7 ─────────
-
-  /**
-   * Unified item search across all PBIs.
-   * @throws {Error} Always — not yet implemented. Full impl in P7.
-   */
-  findItems(_filter: ResolvedItemFilter): Promise<ItemSearchResult> {
-    throw new Error(
-      "findItems not yet implemented — " +
-        "this stub exists so the port interface compiles. " +
-        "Full implementation coming in P7 (GitHub Adapter Migration).",
-    );
-  }
-
-  /**
-   * Unified sprint analytics (burndown + history).
-   * @throws {Error} Always — not yet implemented. Full impl in P7.
-   */
-  getAnalytics(_query: AnalyticsQuery): Promise<AnalyticsResult> {
-    throw new Error(
-      "getAnalytics not yet implemented — " +
-        "this stub exists so the port interface compiles. " +
-        "Full implementation coming in P7 (GitHub Adapter Migration).",
-    );
-  }
-
-  /**
-   * Board health dashboard — aggregated metrics without item lists.
-   * @throws {Error} Always — not yet implemented. Full impl in P7.
-   */
-  getBoardHealth(_sprintScope: string): Promise<BacklogHealth> {
-    throw new Error(
-      "getBoardHealth not yet implemented — " +
-        "this stub exists so the port interface compiles. " +
-        "Full implementation coming in P7 (GitHub Adapter Migration).",
-    );
-  }
-
   // ── Story write delegations ───────────────────────────────────────────────
 
   createStory(input: CreateStoryInput): Promise<StoryRef> {
     return this.deps.storyMutationService.createStory(input);
   }
 
-  createImpediment(
+  override createImpediment(
     input: CreateStoryInput,
   ): Promise<{ listing: ImpedimentListing; itemRef: StoryRef }> {
     return this.deps.impedimentService.createImpediment(input);
@@ -271,6 +242,10 @@ export class GitHubProjectBackend implements ProjectBackend {
     return this.deps.storyMutationService.addComment(ref, body);
   }
 
+  addVocabulary(kind: VocabularyKind, value: string): Promise<{ created: boolean }> {
+    return this.deps.vocabularyManager.addVocabulary(kind, value);
+  }
+
   // ── Impediment delegations ────────────────────────────────────────────────
 
   getOrphanImpediments(): Promise<ImpedimentListing[]> {
@@ -281,7 +256,7 @@ export class GitHubProjectBackend implements ProjectBackend {
     return this.deps.impedimentService.getSprintImpediments(sprint);
   }
 
-  updateImpediment(
+  override updateImpediment(
     ref: Ref,
     status: "open" | "in_progress" | "resolved",
     resolutionNotes?: string,

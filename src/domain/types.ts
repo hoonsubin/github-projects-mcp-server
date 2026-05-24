@@ -427,41 +427,94 @@ export interface ItemSearchResult {
   dependency_map?: DependencyMap; // present only if include_dependencies: true
 }
 
+// ── Sprint snapshot (analytics / history) ──────────────────────────────────────
+
+/**
+ * Totals for a sprint snapshot.
+ * Discriminated union — narrow on `kind` to access variant-specific fields.
+ * - "active": totals for an in-progress sprint
+ * - "completed": totals for a completed sprint (adds velocity metrics)
+ */
+export type SprintTotals =
+  | {
+    kind: "active";
+    by_status: Record<string, number>;
+    story_points: number;
+  }
+  | {
+    kind: "completed";
+    by_status: Record<string, number>;
+    story_points: number;
+    committed_points: number;
+    completed_points: number;
+  };
+
+/**
+ * Sprint + item listing — canonical shape for both active and historical sprints.
+ *
+ * totals is a SprintTotals discriminated union — narrow on totals.kind
+ * instead of checking for committed_points presence.
+ */
+export interface SprintSnapshot {
+  sprint: {
+    name: string;
+    start_date: string;
+    end_date: string;
+    duration_days: number;
+    days_remaining: number;
+  };
+  items: ItemListing[];
+  total_count: number;
+  totals: SprintTotals;
+}
+
 // ── Analytics output ───────────────────────────────────────────────────────────
 
 /**
  * Output for scrum_get_analytics.
  * Merges burndown data + sprint history into a single type.
- *
- * imports SprintSnapshot from ports.ts — resolve at P2 boundary
  */
 export interface AnalyticsResult {
-  burndown: BurndownResponse | null; // null if burndown unavailable
-  history: null; // null in P1 — SprintSnapshot imported from ports in P2
+  burndown: BurndownResponse | null; // null if burndown unavailable (view === "history")
+  history: SprintSnapshot[] | null; // null if history unavailable (view === "burndown")
   window: number;
 }
 
 // ── Story detail output ────────────────────────────────────────────────────────
 
 /**
+ * A comment on a story. Shared across domain, port, and adapter layers.
+ * Single source of truth — duplicates in ports.ts and adapter/types.ts
+ * should import this type instead of defining their own.
+ */
+export interface StoryComment {
+  author: string;
+  body: string;
+  created_at: string; // ISO-8601
+  url: string;
+}
+
+/**
+ * A linked artifact (pull request, merge request, patch, etc.) associated
+ * with a story. Platform-agnostic — replaces GitHub-specific "linkedPrs"
+ * terminology in domain and port types.
+ */
+export interface LinkedArtifact {
+  number: number;
+  title: string;
+  url: string;
+  state: string;
+  is_draft: boolean;
+}
+
+/**
  * Output for scrum_get_story_detail.
- * Wraps Story detail with comments, linked PRs, and parsed acceptance criteria.
+ * Wraps Story detail with comments, linked artifacts, and parsed acceptance criteria.
  */
 export interface ItemDetailResult {
   story: Story;
-  comments: {
-    author: string;
-    body: string;
-    created_at: string;
-    url: string;
-  }[];
-  linkedPrs: Array<{
-    number: number;
-    title: string;
-    url: string;
-    state: string;
-    is_draft: boolean;
-  }>;
+  comments: StoryComment[];
+  linked_artifacts: LinkedArtifact[];
   acceptance_criteria: string[]; // parsed from story body
 }
 

@@ -197,14 +197,6 @@ export interface BoardFields { // todo: this should be semi-dynamically created 
 
 // ── Issue detail output types (absorbed from raw-types.ts) ───────────────────
 
-/** Comment extracted from issue timeline. Returned by buildCommentList. */
-export interface Comment {
-  author: string;
-  body: string;
-  created_at: string;
-  url: string;
-}
-
 /** Linked pull request extracted from cross-references. Returned by buildLinkedPrList. */
 export interface LinkedPr {
   number: number;

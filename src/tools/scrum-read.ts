@@ -29,7 +29,7 @@ export const registerScrumReadTools = (
   server: McpServer,
   backend: ProjectBackend,
   scrumConfig: ScrumConfig,
-  _fileReader: FileReaderPort,
+  _fileReader: FileReaderPort | null,
 ): void => {
   // ── scrum_orient ───────────────────────────────────────────────────────────
 

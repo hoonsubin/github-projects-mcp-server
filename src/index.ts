@@ -2,13 +2,13 @@
 // src/index.ts — Composition root and transport entry point
 //
 // Responsibilities:
-//   - Choose which backend to build and call its factory
+//   - Select which backend to build via the adapter factory registry
 //   - Wire the backend to tool registration
 //   - Set up MCP transports (stdio and HTTP)
 //   - Install cross-cutting observability (tool logging, transport tracing)
 //
-// This file imports no adapter internals — backend construction lives in
-// src/adapters/github/factory.ts, behind a single factory call.
+// This file imports no adapter internals — backend construction is delegated to
+// src/adapters/factory.ts, which selects the correct AdapterFactory by platform key.
 // =============================================================================
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -23,7 +23,8 @@ import type { JSONRPCMessage, MessageExtraInfo } from "@modelcontextprotocol/sdk
 import express, { type Request, type Response } from "express";
 import { registerScrumReadTools } from "./tools/scrum-read.ts";
 import { registerScrumWriteTools } from "./tools/scrum-write.ts";
-import { createGitHubProjectBackend } from "./adapters/github/factory.ts";
+import { type AdapterFactory, createBackend } from "./adapters/factory.ts";
+import { GitHubAdapterFactory } from "./adapters/github/factory.ts";
 import { log } from "./services/logger.ts";
 import type { Socket } from "node:net";
 
@@ -115,7 +116,11 @@ const createMcpServer = async (): Promise<McpServer> => {
 
   patchToolLogging(server);
 
-  const { backend, fileReader, scrumConfig } = await createGitHubProjectBackend();
+  // Use the adapter factory registry to construct the backend.
+  // SCRUM_PLATFORM env var controls which platform is selected (default: "github").
+  const factories: AdapterFactory[] = [new GitHubAdapterFactory()];
+  const { backend, fileReader, scrumConfig } = await createBackend(factories);
+
   registerScrumReadTools(server, backend, scrumConfig, fileReader);
   registerScrumWriteTools(server, backend, scrumConfig);
 

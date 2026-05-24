@@ -21,7 +21,7 @@ export const getStoryUseCase = async (
   return {
     story: detail.story,
     comments: detail.comments,
-    linkedPrs: detail.linkedPrs,
+    linked_artifacts: detail.linked_artifacts,
     acceptance_criteria: acceptance_criteria.map((ac) => ac.text),
   };
 };
