@@ -282,6 +282,7 @@ export const toSprintInfo = (iter: IterationEntry | null): SprintInfo | null => 
   const endDate = new Date(iter.startDate);
   endDate.setDate(endDate.getDate() + iter.duration);
   return {
+    id: iter.id,
     name: iter.title,
     startDate: iter.startDate,
     durationDays: iter.duration,
@@ -318,12 +319,12 @@ export const resolveDependencyRefs = (
 
   const resolve = (entries: DependencyEntry[]): DependencyEntry[] =>
     entries.map((e) => {
-      // First try: issue node ID → project item ID (from native API mapping)
-      if (e.ref.id !== null && issueIdToItemId.has(e.ref.id)) {
+      // Try issue node ID → project item ID (from native API mapping)
+      if (issueIdToItemId.has(e.ref.id)) {
         return { ...e, ref: { id: issueIdToItemId.get(e.ref.id)! } };
       }
       // Fallback: issue number string → project item ID (legacy path)
-      if (e.ref.id === null && keyToId.has(e.key)) {
+      if (keyToId.has(e.key)) {
         return { ...e, ref: { id: keyToId.get(e.key)! } };
       }
       return e;

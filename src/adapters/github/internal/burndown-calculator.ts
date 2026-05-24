@@ -10,6 +10,7 @@ import { GitHubClient } from "./http-client.ts";
 import { PaginatedProjectItemFetcher } from "./pagination.ts";
 import { buildBurndownStoryInput } from "../mappers.ts";
 import { resolveSprint } from "./resolver.ts"; // standalone function — not a class method
+import { computeSprintEndDate } from "../../../scrum/sprint-math.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { BurndownInput, BurndownStoryInput, CompletionMap } from "../../../scrum/ports.ts";
 import type { SprintRef } from "../../../domain/types.ts";
@@ -60,14 +61,14 @@ export class BurndownCalculator {
       .map((item) => buildBurndownStoryInput(item, this.config))
       .filter((s): s is BurndownStoryInput => s !== null);
 
-    const endDate = new Date(iterEntry.startDate);
-    endDate.setDate(endDate.getDate() + iterEntry.duration);
+    const endDate = computeSprintEndDate(iterEntry.startDate, iterEntry.duration);
 
     return {
       sprint: {
+        id: iterEntry.id,
         name: iterEntry.title,
         startDate: iterEntry.startDate,
-        endDate: endDate.toISOString(),
+        endDate: endDate,
         durationDays: iterEntry.duration,
       },
       stories,

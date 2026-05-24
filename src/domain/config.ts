@@ -8,7 +8,19 @@
 // with platform-specific details.
 // =============================================================================
 
-import type { ArtifactType } from "./types.ts";
+// ── Ceremony artifact type ────────────────────────────────────────────────────
+
+/**
+ * Ceremony artifact types for which custom templates can be declared.
+ * Moved from types.ts to break the circular import (config.ts imported types.ts).
+ * Template URIs for PBI types use ScrumTemplateUri instead.
+ */
+export type ArtifactType =
+  | "sprint_review"
+  | "retrospective"
+  | "standup"
+  | "sprint_planning"
+  | "refinement";
 
 // ── Support types ─────────────────────────────────────────────────────────────
 

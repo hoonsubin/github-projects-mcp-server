@@ -88,7 +88,7 @@ export class ImpedimentService {
     const resolved = await resolveStory(storyRef, this.gh);
 
     const listing: ImpedimentListing = {
-      ref: { id: resolved.issueId ?? storyRef.id },
+      ref: { id: resolved.issueId ?? ("id" in storyRef ? storyRef.id : String(storyRef.number)) },
       description: input.body ?? "",
       status: "open",
       raised_by: null,

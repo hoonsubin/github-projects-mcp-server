@@ -74,8 +74,8 @@ const isExcluded = (relPath: string, patterns: string[]): boolean => {
   // Check if any path segment is an excluded directory (handles **/dir/** matching "foo/bar/dir")
   const segments = relPath.split("/");
   const hasExcludedDir = patterns.some((p) => {
-    const m = p.match(/^(\*\*\/)?([^*]+)(\/\*\*)?$/);
-    return m && segments.includes(m[2]);
+    const regexCheck = p.match(/^(\*\*\/)?([^*]+)(\/\*\*)?$/);
+    return regexCheck && segments.includes(regexCheck[2]);
   });
   if (hasExcludedDir) return true;
 

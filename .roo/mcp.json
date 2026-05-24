@@ -56,7 +56,9 @@
 			"command": "mempalace-mcp",
 			"args": [],
 			"disabled": false,
-			"alwaysAllow": []
+			"alwaysAllow": [
+				"mempalace_search"
+			]
 		},
 		"sequentialthinking": {
 			"command": "npx",

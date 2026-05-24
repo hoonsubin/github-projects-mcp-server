@@ -115,6 +115,13 @@ export const resolveStory = async (
   ref: StoryRef,
   github: GitHubClient,
 ): Promise<ResolvedStory> => {
+  // resolveStory requires a resolved { id } ref — throw early if only { number } is given.
+  if (!("id" in ref)) {
+    throw new Error(
+      `resolveStory requires a resolved StoryRef with 'id', but received '{ number: ${ref.number} }'. ` +
+        "Call resolveRef() first to convert issue numbers to opaque IDs.",
+    );
+  }
   const data = await github.graphql<ItemByIdResponse>(GET_PROJECT_ITEM_BY_ID_QUERY, {
     itemId: ref.id,
   });

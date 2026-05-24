@@ -278,7 +278,7 @@ Deno.test({
 
     const ref = await service.createStory(input);
 
-    assertEquals(ref.id, "PVTI_new1");
+    assertEquals("id" in ref && ref.id, "PVTI_new1");
     assertEquals(gh.graphqlCalls.length, 1);
     assertEquals(gh.remaining(), 0);
     // exactly one field mutation: setFieldType
@@ -352,7 +352,7 @@ Deno.test({
     const input = makeCreateInput({ labels: ["bug"], epic: undefined });
 
     const ref = await service.createStory(input);
-    assertEquals(ref.id, "PVTI_new1");
+    assertEquals("id" in ref && ref.id, "PVTI_new1");
     assertEquals(gh.graphqlCalls.length, 3);
   },
 });
@@ -396,7 +396,7 @@ Deno.test({
     const input = makeCreateInput({ labels: undefined, epic: { id: "MI_epic1" } });
 
     const ref = await service.createStory(input);
-    assertEquals(ref.id, "PVTI_new1");
+    assertEquals("id" in ref && ref.id, "PVTI_new1");
     assertEquals(gh.graphqlCalls.length, 3);
   },
 });
