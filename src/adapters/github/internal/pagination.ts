@@ -13,15 +13,17 @@
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
-import type * as GH from "../generated/github-types.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type {
   GitHubBackendConfig,
   ItemFieldValue,
+  PageInfoRef,
   ProjectItem,
   ProjectItemDraftContent,
   ProjectItemIssueContent,
   ProjectItemPRContent,
+  ProjectV2ItemRef,
+  ProjectV2Ref,
 } from "../types.ts";
 
 // ---------------------------------------------------------------------------
@@ -48,12 +50,12 @@ interface ItemFetchConfig {
 /** Internal GraphQL response shape for project items. */
 interface ProjectItemsConnection {
   totalCount: number;
-  pageInfo: Required<Pick<GH.PageInfo, "hasNextPage" | "endCursor">>;
+  pageInfo: PageInfoRef;
   nodes: RawProjectItem[];
 }
 
 /** Query projection of GH.ProjectV2 for paginated items query. */
-interface ProjectV2QueryNode extends Required<Pick<GH.ProjectV2, "id">> {
+interface ProjectV2QueryNode extends ProjectV2Ref {
   items: ProjectItemsConnection;
 }
 
@@ -67,9 +69,7 @@ interface ProjectItemsResponse {
 }
 
 /** Raw item from GraphQL — mapped to ProjectItem by the fetcher. */
-interface RawProjectItem
-  extends
-    Required<Pick<GH.ProjectV2Item, "id" | "type" | "createdAt" | "updatedAt" | "isArchived">> {
+interface RawProjectItem extends ProjectV2ItemRef {
   content: RawContent;
   fieldValues: {
     nodes: ItemFieldValue[];

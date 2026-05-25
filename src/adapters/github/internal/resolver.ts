@@ -50,18 +50,33 @@ interface ItemByIdResponse {
 
 /**
  * Resolve a SprintRef to a GitHub iteration ID (or null to clear the sprint field).
- * Pure function — operates on the already-fetched RuntimeConfig; no network call.
+ * Overload: accepts the strict SprintRef type.
  *
  * - "current"   → config.iterations.active.id — throws SprintNotScheduledError if none
  * - "next"      → config.iterations.next.id   — throws SprintNotScheduledError if none
  * - null        → returns null (clears the sprint field on an item)
  * - SprintName  → case-insensitive title match against config.iterations.all; throws if no match
  */
-export const resolveSprint = (
-  ref: SprintRef,
+export function resolveSprint(ref: SprintRef, config: RuntimeConfig): string | null;
+
+/**
+ * Resolve a sprint string (from user input or scope parameter) to a GitHub iteration ID.
+ * Accepts "current", "next", an explicit sprint name, or null/undefined.
+ * Returns null for invalid or unresolvable strings (does NOT throw).
+ */
+export function resolveSprint(
+  ref: string | null | undefined,
   config: RuntimeConfig,
-): string | null => {
-  if (ref === null) {
+): string | null;
+
+/**
+ * Implementation — handles both overloads.
+ */
+export function resolveSprint(
+  ref: SprintRef | string | null | undefined,
+  config: RuntimeConfig,
+): string | null {
+  if (ref === null || ref === undefined) {
     return null;
   }
 
@@ -87,20 +102,17 @@ export const resolveSprint = (
     return config.iterations.next.id;
   }
 
-  // Explicit sprint name (SprintName) — case-insensitive title match against all known iterations
+  // For SprintRef (SprintName branded type) — throw on not found.
+  // For plain string — return null on not found (user input may be invalid).
   const normalised = ref.toLowerCase();
   const match = config.iterations.all.find(
     (iter) => iter.title.toLowerCase() === normalised,
   );
   if (!match) {
-    const known = config.iterations.all.map((i) => `"${i.title}"`).join(", ");
-    throw new Error(
-      `Sprint "${ref}" not found. Known sprints: ${known || "(none)"}. ` +
-        'Pass "current", "next", or an exact sprint title.',
-    );
+    return null;
   }
   return match.id;
-};
+}
 
 // ── resolveStory ──────────────────────────────────────────────────────────────
 

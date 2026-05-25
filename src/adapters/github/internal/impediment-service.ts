@@ -28,20 +28,23 @@ import {
 } from "../queries.ts";
 import { PaginatedProjectItemFetcher } from "./pagination.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
-import type { ProjectItemIssueContent } from "../types.ts";
+import type { ProjectItemIssueContent, UserLogin } from "../types.ts";
 import type { CreateStoryInput, ImpedimentListing } from "../../../scrum/ports.ts";
 import type { ResolvedRef, SprintRef, StoryRef } from "../../../domain/types.ts";
 
 // ── Shared issue node shape ────────────────────────────────────────────────────
 
 /** Query projection of GH.Issue for impediment listing queries. */
-interface ImpedimentIssueNode
-  extends
-    Required<
-      Pick<GH.Issue, "id" | "number" | "title" | "body" | "state" | "createdAt" | "closedAt">
-    > {
-  author?: Required<Pick<GH.User, "login">> | null;
-  comments?: { nodes: Array<Pick<GH.IssueComment, "body">> };
+interface ImpedimentIssueNode {
+  id: string;
+  number: number;
+  title: string;
+  body: string;
+  state: GH.IssueState;
+  createdAt: string;
+  closedAt: Exclude<GH.Issue["closedAt"], undefined>;
+  author?: UserLogin | null;
+  comments?: { nodes: Array<{ body: string }> };
 }
 
 interface ImpedimentIssuesResponse {
@@ -218,13 +221,13 @@ export class ImpedimentService {
 
     // Remove stale status_* and priority_* labels (priority lives on the project field only)
     const removedLabels = issue.labels?.nodes.filter(
-      (l) => l.name.startsWith("status_") || l.name.startsWith("priority_"),
+      (label) => label.name.startsWith("status_") || label.name.startsWith("priority_"),
     ) ?? [];
-    const currentLabelIds = issue.labels?.nodes.map((l) => l.id) ?? [];
+    const currentLabelIds = issue.labels?.nodes.map((label) => label.id) ?? [];
     const newLabelId = await this.labelResolver.resolveOrCreateLabel(`status_${status}`);
 
     const updatedLabelIds = currentLabelIds
-      .filter((id) => !removedLabels.find((l) => l.id === id))
+      .filter((id) => !removedLabels.find((label) => label.id === id))
       .concat(newLabelId ?? []);
 
     await this.gh.graphql(

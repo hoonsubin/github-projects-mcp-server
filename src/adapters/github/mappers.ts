@@ -6,7 +6,6 @@
 // in the generated schema break at compile time rather than silently desyncing.
 // =============================================================================
 
-import type * as GH from "./generated/github-types.ts";
 import type { RuntimeConfig } from "./config-loader.ts";
 import type {
   DependencyEntry,
@@ -17,7 +16,19 @@ import type {
   Story,
 } from "../../domain/types.ts";
 import type { BurndownStoryInput, SprintInfo } from "../../scrum/ports.ts";
-import type { BoardFields, FieldValueNode, LinkedPr, ProjectItem } from "./types.ts";
+import type {
+  AssigneeNodes,
+  BoardFields,
+  CommentProjection,
+  FieldValueNode,
+  IssueRefNode,
+  LabelNameOnly,
+  LinkedPr,
+  MilestoneRefNode,
+  ProjectItem,
+  TimelinePrSource,
+  UserLogin,
+} from "./types.ts";
 import type { StoryComment } from "../../domain/types.ts";
 
 // ── Local input shapes (private — only for function parameter types) ───────────
@@ -26,8 +37,8 @@ import type { StoryComment } from "../../domain/types.ts";
  * Query projection of GH.IssueComment for buildCommentList.
  * Grounded in GH types so field renames in the generated schema break at compile time.
  */
-interface CommentInput extends Required<Pick<GH.IssueComment, "body" | "createdAt" | "url">> {
-  author?: Required<Pick<GH.User, "login">> | null;
+interface CommentInput extends CommentProjection {
+  author?: UserLogin | null;
 }
 
 /**
@@ -36,7 +47,7 @@ interface CommentInput extends Required<Pick<GH.IssueComment, "body" | "createdA
  * in practice only PullRequests appear as linked artifacts).
  */
 interface TimelineItemInput {
-  source?: Required<Pick<GH.PullRequest, "number" | "title" | "url" | "state" | "isDraft">> | null;
+  source?: TimelinePrSource | null;
 }
 
 // ── Dependency mapping ─────────────────────────────────────────────────────────
@@ -46,11 +57,9 @@ interface TimelineItemInput {
  * Used by buildStoryFromRaw (project items) and buildEnrichedStory (detail query).
  */
 const mapIssueDependencies = (
-  issueContent: {
-    blockedBy?: { nodes: Array<{ id: string; number: number; title: string }> };
-  },
+  issueContent: { blockedBy?: { nodes: IssueRefNode[] } },
 ): DependencyEntry[] => {
-  const toEntry = (n: { id: string; number: number; title: string }): DependencyEntry => ({
+  const toEntry = (n: IssueRefNode): DependencyEntry => ({
     key: String(n.number),
     title: n.title,
     ref: { id: n.id }, // issue node ID — resolveDependencyRefs() maps to project item IDs
@@ -69,16 +78,19 @@ const mapIssueDependencies = (
  * (assignees, labels, milestone, comments, timelineItems) are query-projection
  * shapes narrower than the full schema connection types.
  */
-export interface IssueDetailsInput
-  extends Required<Pick<GH.Issue, "id" | "number" | "createdAt" | "updatedAt">> {
+export interface IssueDetailsInput {
+  id: string;
+  number: number;
+  createdAt: string;
+  updatedAt: string;
   title: string | null;
   body: string | null;
   url: string | null;
-  assignees?: { nodes: Array<Required<Pick<GH.User, "login">>> };
-  labels?: { nodes: Array<Required<Pick<GH.Label, "name">>> };
-  milestone?: Required<Pick<GH.Milestone, "id" | "title">> | null;
-  blockedBy?: { nodes: Array<{ id: string; number: number; title: string }> };
-  blocking?: { nodes: Array<{ id: string; number: number; title: string }> };
+  assignees?: AssigneeNodes;
+  labels?: { nodes: Array<LabelNameOnly> };
+  milestone?: MilestoneRefNode | null;
+  blockedBy?: { nodes: IssueRefNode[] };
+  blocking?: { nodes: IssueRefNode[] };
   comments?: { nodes: CommentInput[] };
   timelineItems?: { nodes: TimelineItemInput[] };
 }
@@ -174,7 +186,7 @@ export const buildStoryFromRaw = (
   if (!content.labels || !content.assignees) return null;
   // Type comes from the Type board field — not from labels.
   // All repo labels are passed through unfiltered.
-  const labels = content.labels.nodes.map((l) => l.name);
+  const labels: string[] = content.labels.nodes.map((l: { name: string }) => l.name);
   const epic = content.__typename === "Issue" && content.milestone
     ? { ref: { id: content.milestone.id }, name: content.milestone.title }
     : null;
@@ -218,7 +230,7 @@ export const buildEnrichedStory = (
   const boardFields = extractBoardFields(fieldValueNodes, config.fields);
   // Type comes from the Type board field — not from labels.
   // All repo labels are passed through unfiltered.
-  const labels = issueNode.labels?.nodes.map((l) => l.name) ?? [];
+  const labels: string[] = issueNode.labels?.nodes.map((l: { name: string }) => l.name) ?? [];
 
   // Dependencies come from native Issue.blockedBy GraphQL field
   return {

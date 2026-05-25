@@ -79,7 +79,7 @@ export interface ResolvedItemFilter {
  * Defined at the port boundary because it's an input type, not a domain type.
  */
 export interface AnalyticsQuery {
-  readonly view: "burndown" | "history" | "comprehensive";
+  readonly view: "burndown" | "history" | "both";
   readonly sprint_ref?: string | null;
   readonly history_window?: number; // 1-10, used when view includes history
 }

@@ -28,14 +28,13 @@ import {
 } from "../queries.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { ResolvedItemFilter, SprintInfo, StoryDetail } from "../../../scrum/ports.ts";
-import type { ItemFieldValue, ProjectItem } from "../types.ts";
+import type { ItemFieldValue, ProjectItem, ProjectV2ItemRef } from "../types.ts";
 import type {
+  BacklogItemListing,
   DependencyMap,
   DependencyNode,
   IssueKey,
-  ItemListing as _ItemListing,
   ItemSearchResult,
-  ItemType,
   SprintRef,
   Story,
   StoryRef,
@@ -45,38 +44,8 @@ import { toIssueKey } from "../../../domain/types.ts";
 
 // ── Response types ─────────────────────────────────────────────────────────────
 
-/**
- * Query projection of GH.Issue + nested connections for getStoryDetail.
- * Flat scalar fields grounded in GH.Issue via Pick; nested connections
- * (assignees, labels, milestone, comments, timelineItems) are query-projection
- * shapes narrower than the full schema types.
- */
-interface GetIssueDetailsQueryNode extends
-  Required<
-    Pick<GH.Issue, "id" | "number" | "title" | "body" | "url" | "createdAt" | "updatedAt">
-  > {
-  assignees?: { nodes: Array<Required<Pick<GH.User, "login">>> };
-  labels?: { nodes: Array<Required<Pick<GH.Label, "name">>> };
-  milestone?: Required<Pick<GH.Milestone, "id" | "title">> | null;
-  comments?: {
-    nodes: Array<
-      Required<Pick<GH.IssueComment, "id" | "body" | "createdAt" | "url">> & {
-        author?: Required<Pick<GH.User, "login">> | null;
-      }
-    >;
-  };
-  timelineItems?: {
-    nodes: Array<{
-      /** Query projection of GH.PullRequest via CrossReferencedEvent.source. */
-      source?:
-        | Required<Pick<GH.PullRequest, "number" | "title" | "url" | "state" | "isDraft">>
-        | null;
-    }>;
-  };
-}
-
 interface GetIssueDetailsResponse {
-  node?: GetIssueDetailsQueryNode | null;
+  node?: IssueDetailsInput | null;
 }
 
 /** Query projection of GH.ProjectV2Item.fieldValues — item fields only. */
@@ -181,7 +150,7 @@ export class StoryQueryService {
       );
     }
     const story = buildEnrichedStory(
-      issue as IssueDetailsInput,
+      issue,
       resolved.itemId,
       itemData.node?.fieldValues?.nodes ?? [],
       this.config,
@@ -193,9 +162,7 @@ export class StoryQueryService {
 
   private async _getDraftIssueDetail(itemId: string): Promise<StoryDetail> {
     /** Query projection of GH.ProjectV2Item for draft issue details. */
-    interface GetDraftIssueDetailsQueryNode
-      extends
-        Required<Pick<GH.ProjectV2Item, "id" | "type" | "createdAt" | "updatedAt" | "isArchived">> {
+    interface GetDraftIssueDetailsQueryNode extends ProjectV2ItemRef {
       content?: unknown;
       fieldValues?: { nodes: ItemFieldValue[] };
     }
@@ -277,95 +244,28 @@ export class StoryQueryService {
       .map((item) => buildStoryFromRaw(item, this.config))
       .filter((s): s is Story => s !== null);
 
-    // ── Scope filter ──────────────────────────────────────────────────────
-    if (filter.scope === "sprint") {
-      stories = stories.filter((s) => s.sprint !== null);
-    } else if (filter.scope === "backlog") {
-      stories = stories.filter((s) => s.sprint === null);
-    }
-    // "all" → no scope filter
-
-    // ── Keys filter ───────────────────────────────────────────────────────
-    if (filter.keys.length > 0) {
-      const keySet = new Set(filter.keys);
-      stories = stories.filter((s) => s.kind === "issue" && keySet.has(s.key));
-    }
-
-    // ── Sprint ref filter ─────────────────────────────────────────────────
-    if (filter.sprint_ref !== null) {
-      const iterationId = resolveSprint(filter.sprint_ref as SprintRef, this.config);
-      if (iterationId === null) {
-        stories = [];
-      } else {
-        // Filter by items that have the sprint field with matching iteration ID
-        const sprintItemIds = new Set(
-          allItems
-            .filter((item) => {
-              const fv = item.fieldValues.nodes.find(
-                (v) => v.field?.id === this.config.fields.sprintFieldId,
-              );
-              return fv?.iterationId === iterationId;
-            })
-            .map((item) => item.id),
-        );
-        stories = stories.filter((s) => sprintItemIds.has(s.ref.id));
-      }
-    }
-
-    // ── Epic ID filter ────────────────────────────────────────────────────
-    if (filter.epic_id) {
-      stories = stories.filter((s) => s.kind === "issue" && s.epic?.ref.id === filter.epic_id);
-    }
-
-    // ── Assignee filter ───────────────────────────────────────────────────
-    if (filter.assignee) {
-      stories = stories.filter((s) => s.assignees.includes(filter.assignee));
-    }
-
-    // ── Labels filter (ALL must match) ────────────────────────────────────
-    if (filter.labels.length > 0) {
-      stories = stories.filter((s) => filter.labels.every((label) => s.labels.includes(label)));
-    }
-
-    // ── Types filter ──────────────────────────────────────────────────────
-    if (filter.types.length > 0) {
-      const typeSet = new Set(filter.types);
-      stories = stories.filter((s) => s.type !== null && typeSet.has(s.type));
-    }
-
-    // ── Statuses filter ───────────────────────────────────────────────────
-    if (filter.statuses.length > 0) {
-      const statusSet = new Set(filter.statuses);
-      stories = stories.filter((s) => s.status !== null && statusSet.has(s.status));
-    }
-
-    // ── Priority filter ───────────────────────────────────────────────────
-    if (filter.priority) {
-      stories = stories.filter((s) => s.priority === filter.priority);
-    }
-
-    // ── Search filter (case-insensitive substring on title + body) ────────
-    if (filter.search) {
-      const q = filter.search.toLowerCase();
-      stories = stories.filter((s) =>
-        s.title.toLowerCase().includes(q) || s.body.toLowerCase().includes(q)
-      );
-    }
-
-    // ── Estimated filter ──────────────────────────────────────────────────
-    if (filter.estimated !== undefined) {
-      if (filter.estimated) {
-        stories = stories.filter((s) => (s.story_points ?? 0) > 0);
-      } else {
-        stories = stories.filter((s) => (s.story_points ?? 0) === 0);
-      }
-    }
+    // Apply filters in order of selectivity
+    stories = this.filterByScope(stories, filter.scope);
+    stories = this.filterByKeys(stories, filter.keys);
+    stories = this.filterBySprintRef(stories, allItems, filter.sprint_ref);
+    stories = this.filterByEpicId(stories, filter.epic_id);
+    stories = this.filterByAssignee(stories, filter.assignee);
+    stories = this.filterByLabels(stories, filter.labels);
+    stories = this.filterByTypes(stories, filter.types);
+    stories = this.filterByStatuses(stories, filter.statuses);
+    stories = this.filterByPriority(stories, filter.priority);
+    stories = this.filterBySearch(stories, filter.search);
+    stories = this.filterByEstimated(stories, filter.estimated);
 
     // ── Scope summary (before limit) ──────────────────────────────────────
     const totalCount = stories.length;
 
-    // ── Map to ItemListing[] ──────────────────────────────────────────────
-    let items = stories.map((story) => toItemListing(story));
+    // ── Scope counts ──────────────────────────────────────────────────────
+    const sprintCount = stories.filter((s) => s.sprint !== null).length;
+    const backlogCount = stories.filter((s) => s.sprint === null).length;
+
+    // ── Map to BacklogItemListing[] ───────────────────────────────────────
+    let items: BacklogItemListing[] = stories.map((story) => toItemListing(story));
 
     // Fix sprint.ref.id from hardcoded "" to actual iteration ID
     items = items.map((item) => {
@@ -384,31 +284,107 @@ export class StoryQueryService {
     items = items.slice(0, filter.limit);
 
     // ── Dependency map (opt-in) ───────────────────────────────────────────
-    let dependencyMap: DependencyMap | undefined;
+    let dependencyMap: DependencyMap | null = null;
     if (filter.include_dependencies) {
       dependencyMap = this.buildDependencyMap(stories, allItems);
     }
 
     return {
       items,
+      total_count: totalCount,
       scope_summary: {
-        total_count: totalCount,
-        limit: filter.limit,
-        scope: filter.scope,
-        filters_applied: {
-          search: filter.search || undefined,
-          keys: filter.keys.length > 0 ? filter.keys : undefined,
-          types: filter.types.length > 0 ? (filter.types as ItemType[]) : undefined,
-          statuses: filter.statuses.length > 0 ? filter.statuses : undefined,
-          priority: filter.priority || undefined,
-          epic_id: filter.epic_id || undefined,
-          labels: filter.labels.length > 0 ? filter.labels : undefined,
-          assignee: filter.assignee || undefined,
-          sprint_ref: filter.sprint_ref ?? undefined,
-        },
+        sprint_count: sprintCount,
+        backlog_count: backlogCount,
       },
       dependency_map: dependencyMap,
     };
+  }
+
+  // ── Filter extraction helpers ────────────────────────────────────────────────
+
+  private filterByScope(stories: Story[], scope: string | undefined): Story[] {
+    if (scope === "sprint") {
+      return stories.filter((s) => s.sprint !== null);
+    }
+    if (scope === "backlog") {
+      return stories.filter((s) => s.sprint === null);
+    }
+    return stories;
+  }
+
+  private filterByKeys(stories: Story[], keys: readonly string[]): Story[] {
+    if (keys.length === 0) return stories;
+    const keySet = new Set(keys);
+    return stories.filter((s) => s.kind === "issue" && keySet.has(s.key));
+  }
+
+  private filterBySprintRef(
+    stories: Story[],
+    allItems: ProjectItem[],
+    sprintRef: string | null,
+  ): Story[] {
+    if (sprintRef === null) return stories;
+    const iterationId = resolveSprint(sprintRef, this.config);
+    if (iterationId === null) return [];
+    const sprintItemIds = new Set(
+      allItems
+        .filter((item) => {
+          const fv = item.fieldValues.nodes.find(
+            (v) => v.field?.id === this.config.fields.sprintFieldId,
+          );
+          return fv?.iterationId === iterationId;
+        })
+        .map((item) => item.id),
+    );
+    return stories.filter((s) => sprintItemIds.has(s.ref.id));
+  }
+
+  private filterByEpicId(stories: Story[], epicId: string | undefined): Story[] {
+    if (!epicId) return stories;
+    return stories.filter((s) => s.kind === "issue" && s.epic?.ref.id === epicId);
+  }
+
+  private filterByAssignee(stories: Story[], assignee: string | undefined): Story[] {
+    if (!assignee) return stories;
+    return stories.filter((s) => s.assignees.includes(assignee));
+  }
+
+  private filterByLabels(stories: Story[], labels: readonly string[]): Story[] {
+    if (labels.length === 0) return stories;
+    return stories.filter((s) => labels.every((label) => s.labels.includes(label)));
+  }
+
+  private filterByTypes(stories: Story[], types: readonly string[]): Story[] {
+    if (types.length === 0) return stories;
+    const typeSet = new Set(types);
+    return stories.filter((s) => s.type !== null && typeSet.has(s.type));
+  }
+
+  private filterByStatuses(stories: Story[], statuses: readonly string[]): Story[] {
+    if (statuses.length === 0) return stories;
+    const statusSet = new Set(statuses);
+    return stories.filter((s) => s.status !== null && statusSet.has(s.status));
+  }
+
+  private filterByPriority(stories: Story[], priority: string | undefined): Story[] {
+    if (!priority) return stories;
+    return stories.filter((s) => s.priority === priority);
+  }
+
+  private filterBySearch(stories: Story[], search: string | undefined): Story[] {
+    if (!search) return stories;
+    const q = search.toLowerCase();
+    return stories.filter((s) =>
+      s.title.toLowerCase().includes(q) || s.body.toLowerCase().includes(q)
+    );
+  }
+
+  private filterByEstimated(stories: Story[], estimated: boolean | undefined): Story[] {
+    if (estimated === undefined) return stories;
+    if (estimated) {
+      return stories.filter((s) => (s.story_points ?? 0) > 0);
+    }
+    return stories.filter((s) => (s.story_points ?? 0) === 0);
   }
 
   // ── Dependency map builder ──────────────────────────────────────────────────
@@ -418,8 +394,8 @@ export class StoryQueryService {
    * Uses IssueKey as node identifier (always present for IssueStory).
    */
   private buildDependencyMap(
-    stories: Story[],
-    _allItems: ProjectItem[],
+    stories: readonly Story[],
+    _allItems: readonly ProjectItem[],
   ): DependencyMap {
     const map: Record<string, DependencyNode> = {};
 
@@ -448,11 +424,27 @@ export class StoryQueryService {
         title: story.title,
         status: story.status,
         sprint: story.sprint,
-        epic: story.epic ? { ref: { id: story.epic.ref.id }, name: story.epic.name } : null,
+        epic_name: story.epic?.name ?? null,
         story_points: story.story_points,
         priority: story.priority,
+        resolved: true,
         blocks,
+        blocked_by: [],
       };
+    }
+
+    // Second pass: build reverse dependency map without mutation during iteration
+    const reverseDeps: Record<string, IssueKey[]> = {};
+    for (const [nodeKey, node] of Object.entries(map)) {
+      for (const blockedKey of node.blocks) {
+        if (!reverseDeps[blockedKey]) reverseDeps[blockedKey] = [];
+        reverseDeps[blockedKey].push(toIssueKey(nodeKey));
+      }
+    }
+
+    // Apply blocked_by without mutation during iteration
+    for (const [nodeKey, node] of Object.entries(map)) {
+      node.blocked_by = reverseDeps[nodeKey] ?? [];
     }
 
     return map;

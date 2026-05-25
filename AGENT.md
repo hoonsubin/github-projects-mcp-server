@@ -50,6 +50,7 @@ flowchart TD
 - **Zod:** Always `.strict()` on object schemas.
 - **Types:** No inline concrete types; define named types. Compose or extend existing ones.
 - **Lint:** `deno lint` must pass before marking any task complete.
+- **Readability:** Code must be clean, maintainable, and beautiful for the humans to read. No type or logic repetition. Keep things modular and extendable.
 
 ## Commands
 

@@ -66,6 +66,7 @@ export const orientUseCase = async (
     name: epic.name,
     description: epic.description,
     status: epic.status,
+    open_item_count: epic.open_item_count,
   }));
 
   // Build SprintContext from SprintInfo via the domain factory (pure, no backend call)
@@ -76,7 +77,9 @@ export const orientUseCase = async (
     if (!info) return null;
     return sprintContextFromSprintInfo(
       {
+        id: info.id,
         name: info.name,
+        goal: null, // P5: source sprint goal from config or backend metadata
         start_date: info.startDate,
         end_date: info.endDate,
         duration_days: info.durationDays,
@@ -146,13 +149,6 @@ export const orientUseCase = async (
             scrumConfig.project.agent.autonomy.require_confirmation_above_n_items ?? null,
         }
         : null,
-      templates: {
-        sprint_review: scrumConfig.templates?.sprint_review ?? null,
-        retrospective: scrumConfig.templates?.retrospective ?? null,
-        standup: scrumConfig.templates?.standup ?? null,
-        sprint_planning: scrumConfig.templates?.sprint_planning ?? null,
-        refinement: scrumConfig.templates?.refinement ?? null,
-      },
     },
   };
 };

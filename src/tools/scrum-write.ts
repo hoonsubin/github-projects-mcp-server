@@ -38,11 +38,11 @@ const resolveP0PriorityDisplay = (scrumConfig: ScrumConfig): string => {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-export function registerScrumWriteTools(
+export const registerScrumWriteTools = (
   server: McpServer,
   backend: ProjectBackend,
   scrumConfig: ScrumConfig,
-): void {
+): void => {
   const p0PriorityDisplay = resolveP0PriorityDisplay(scrumConfig);
 
   server.registerTool(
@@ -529,4 +529,4 @@ export function registerScrumWriteTools(
       }
     },
   );
-}
+};

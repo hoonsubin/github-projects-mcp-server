@@ -10,7 +10,6 @@
 // =============================================================================
 
 import { parse } from "@std/yaml";
-import type * as GH from "./generated/github-types.ts";
 import type { GitHubBackendConfig } from "./types.ts";
 import type { ScrumConfig } from "../../domain/config.ts";
 import type { IterationEntry } from "../../domain/types.ts";
@@ -87,13 +86,10 @@ const resolveEnvRef = (value: string, context: string): string => {
 
 // ── Helper types ──────────────────────────────────────────────────────────────
 
+import type { SelectFieldNode } from "./types.ts";
+
 /** Query projection of GH.ProjectV2SingleSelectField — all mandatory fields. */
-interface SingleSelectFieldNode
-  extends Required<Pick<GH.ProjectV2SingleSelectField, "id" | "name" | "dataType">> {
-  options: Array<
-    Required<Pick<GH.ProjectV2SingleSelectFieldOption, "id" | "name" | "color" | "description">>
-  >;
-}
+interface SingleSelectFieldNode extends SelectFieldNode {}
 
 interface IterationFieldNode {
   id: string;

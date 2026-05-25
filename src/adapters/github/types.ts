@@ -115,41 +115,108 @@ export interface GraphQLResponse<T> {
  */
 export type ItemContentType = GH.ProjectV2ItemType;
 
+// ── Named field sets (avoids repeated Pick expressions) ──────────────────────
+//
+// Each alias names a coherent subset of a generated GH.* type. Interfaces compose
+// these aliases so readers see *what* the shape represents, not *how* it is built.
+// These are exported so mappers.ts and other internal modules can reuse them.
+
+/** Core identity fields shared by Issue, PullRequest, and DraftIssue. */
+export type IssueIdentity = Required<Pick<GH.Issue, "id" | "number" | "title" | "body" | "url">>;
+
+/** Minimal PR identity: same five core fields from GH.PullRequest. */
+export type PrIdentity = Required<Pick<GH.PullRequest, "id" | "number" | "title" | "body" | "url">>;
+
+/** PR discriminator field (isDraft) — compose with PrIdentity for full PR identity. */
+export type PrDiscriminator = Required<Pick<GH.PullRequest, "isDraft">>;
+
+/** PR state enum (OPEN | CLOSED | MERGED). */
+export type PrState = GH.PullRequestState;
+
+/** Issue state enum (OPEN | CLOSED). */
+export type IssueState = GH.IssueState;
+
+/** Minimal milestone reference (id + title). */
+export type MilestoneRef = Required<Pick<GH.Milestone, "id" | "title">>;
+
+/** Issue reference stub (id + number + title) for dependency connections. */
+export type IssueRef = Required<Pick<GH.Issue, "id" | "number" | "title">>;
+
+/** Label stub (name + color) for connection nodes. */
+export type LabelRef = Required<Pick<GH.Label, "name" | "color">>;
+
+/** Label-only stub (name) — used in IssueDetailsInput.labels. */
+export type LabelNameOnly = Required<Pick<GH.Label, "name">>;
+
+/** User login stub — used in author/assignee connections. */
+export type UserLogin = Required<Pick<GH.User, "login">>;
+
+/** IssueComment projection: body + createdAt + url. */
+export type CommentProjection = Required<Pick<GH.IssueComment, "body" | "createdAt" | "url">>;
+
+/** PullRequest projection for timeline cross-reference events. */
+export type TimelinePrSource = Required<
+  Pick<GH.PullRequest, "number" | "title" | "url" | "state" | "isDraft">
+>;
+
+/** ProjectV2SingleSelectFieldOption stub (id + name + color + description). */
+export type SelectFieldOption = Required<
+  Pick<GH.ProjectV2SingleSelectFieldOption, "id" | "name" | "color" | "description">
+>;
+
+/** ProjectV2SingleSelectField projection — id + name + dataType + options. */
+export type SelectFieldNode =
+  & Required<
+    Pick<GH.ProjectV2SingleSelectField, "id" | "name" | "dataType">
+  >
+  & {
+    options: SelectFieldOption[];
+  };
+
+/** PageInfo projection — hasNextPage + endCursor. */
+export type PageInfoRef = Required<Pick<GH.PageInfo, "hasNextPage" | "endCursor">>;
+
+/** ProjectV2 projection — id only. */
+export type ProjectV2Ref = Required<Pick<GH.ProjectV2, "id">>;
+
+/** ProjectV2Item projection — id + type + createdAt + updatedAt + isArchived. */
+export type ProjectV2ItemRef = Required<
+  Pick<GH.ProjectV2Item, "id" | "type" | "createdAt" | "updatedAt" | "isArchived">
+>;
+
 // ── Content projection types ──────────────────────────────────────────────────
 //
 // These replace the hand-rolled ProjectV2IssueContent / ProjectV2PRContent /
 // ProjectV2DraftIssueContent types from src/types.ts.
 //
 // Design: scalar fields that exist on the generated GH.* interfaces are declared
-// via Required<Pick<GH.X, ...>> so the compiler validates them against the schema.
+// via the named aliases above so the compiler validates them against the schema.
 // Nested connection fields (assignees, labels, milestone) are defined as inline
 // query-projection shapes — narrower than the full schema types — matching exactly
 // what our GraphQL fragments fetch.
 
-export interface ProjectItemIssueContent
-  extends Required<Pick<GH.Issue, "id" | "number" | "title" | "body" | "url">> {
+export interface ProjectItemIssueContent extends IssueIdentity {
   __typename: "Issue";
-  state: GH.IssueState; // "OPEN" | "CLOSED" — grounded in generated enum
-  assignees: { nodes: Array<{ login: string }> };
-  labels: { nodes: Array<{ name: string; color: string }> };
-  milestone: { id: string; title: string; dueOn: string | null } | null;
-  repository: { name: string; nameWithOwner: string };
-  blockedBy?: { nodes: Array<{ id: string; number: number; title: string }> };
+  state: GH.IssueState;
+  assignees: AssigneeNodes;
+  labels: LabelColorNodes;
+  milestone: MilestoneRefNode | null;
+  repository: FieldValueRepository;
+  blockedBy?: { nodes: IssueRefNode[] };
 }
 
-export interface ProjectItemPRContent
-  extends Required<Pick<GH.PullRequest, "id" | "number" | "title" | "body" | "url" | "isDraft">> {
+export interface ProjectItemPRContent extends PrIdentity, PrDiscriminator {
   __typename: "PullRequest";
-  state: GH.PullRequestState; // "OPEN" | "CLOSED" | "MERGED" — grounded in generated enum
-  assignees: { nodes: Array<{ login: string }> };
-  labels: { nodes: Array<{ name: string; color: string }> };
-  repository: { name: string; nameWithOwner: string };
+  state: GH.PullRequestState;
+  assignees: AssigneeNodes;
+  labels: LabelColorNodes;
+  repository: FieldValueRepository;
 }
 
 export interface ProjectItemDraftContent
   extends Required<Pick<GH.DraftIssue, "id" | "title" | "body">> {
   __typename: "DraftIssue";
-  assignees: { nodes: Array<{ login: string }> };
+  assignees: AssigneeNodes;
 }
 
 // ── Board item (replaces ProjectV2Item in src/types.ts) ──────────────────────
@@ -203,6 +270,18 @@ export type FieldValueMilestone = Required<Pick<GH.Milestone, "id" | "title">> &
 
 /** Query projection of GH.Repository — we only fetch name + nameWithOwner. */
 export type FieldValueRepository = Required<Pick<GH.Repository, "name" | "nameWithOwner">>;
+
+/** Minimal assignees connection for content projections — login-only, non-nullable nodes. */
+export type AssigneeNodes = { nodes: Array<{ login: string }> };
+
+/** Minimal labels connection for content projections — name + color, non-nullable nodes. */
+export type LabelColorNodes = { nodes: Array<{ name: string; color: string }> };
+
+/** Issue node stub used in blockedBy / blocking connection nodes. */
+export type IssueRefNode = Required<Pick<GH.Issue, "id" | "number" | "title">>;
+
+/** Minimal milestone reference used in issue content projections (no dueOn — use FieldValueMilestone where dueOn is needed). */
+export type MilestoneRefNode = Required<Pick<GH.Milestone, "id" | "title">>;
 
 export interface ItemFieldValue {
   __typename: string;

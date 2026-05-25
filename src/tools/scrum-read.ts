@@ -165,10 +165,10 @@ export const registerScrumReadTools = (
       description: `Unified sprint analytics — burndown + velocity history.
 
         Args:
-          view   "burndown" | "history" | "comprehensive" — default: "comprehensive"
+          view   "burndown" | "history" | "both" — default: "both"
                  "burndown" = burndown chart data for the target sprint
                  "history" = completed sprint velocity snapshots
-                 "comprehensive" = both
+                 "both" = burndown + history
           sprint_ref "current" | "next" | "<name>" — target sprint for burndown
                      defaults to "current"
           history_window number 1-10, default 5 — how many completed sprints
@@ -189,7 +189,7 @@ export const registerScrumReadTools = (
     async (params: z.infer<typeof GetAnalyticsSchema>) => {
       try {
         const result = await getAnalyticsUseCase(backend, {
-          view: params.view ?? "comprehensive",
+          view: params.view ?? "both",
           sprint_ref: params.sprint_ref,
           history_window: params.history_window,
         });
@@ -211,8 +211,9 @@ export const registerScrumReadTools = (
       title: "Get Board Health",
       description: `Board health dashboard — aggregate metrics without item lists.
 
-        Returns readiness breakdown, sprint risk signals, impediment counts,
-        and grooming status. No individual story data — use scrum_find_items
+        Returns readiness breakdown (by PBI type with overall %), sprint risk counts
+        (unestimated/blocked/no-assignee), impediment counts (orphan + open), and
+        ungroomed count. No individual story data — use scrum_find_items
         for item-level queries.
 
         Args:
@@ -220,12 +221,10 @@ export const registerScrumReadTools = (
                         defaults to "current"
 
         Returns: {
-          total_stories: number,
-          by_status: Record<string, number>,
-          by_type: Partial<Record<ItemType, number>>,
-          sprint_risk: SprintRiskStance | null,
-          impediments: { open: number, in_progress: number },
-          readiness: { ready: number, partially_ready: number, not_ready: number }
+          readiness: { by_type: Record<ItemType, { ready, not_ready, total }>, overall_pct: number },
+          sprint_risk: { unestimated_count, blocked_count, no_assignee_count } | null,
+          impediments: { orphan_count, open_count },
+          ungroomed_count: number
         }`,
       inputSchema: GetBoardHealthSchema.shape,
       annotations: {
@@ -413,7 +412,7 @@ export const registerScrumReadTools = (
     {
       title: "Get Ceremony Template",
       description: `[DEPRECATED] Templates are now MCP resources.
-        Template URIs are listed in scrum_orient under vocabulary.templates.
+        Template URIs are listed in scrum_orient under platform_state.template_uris.
         Use the resource URI scrum://template/{type} to read templates directly.`,
       inputSchema: z.object({
         _: z.string().optional().describe("This tool is deprecated."),

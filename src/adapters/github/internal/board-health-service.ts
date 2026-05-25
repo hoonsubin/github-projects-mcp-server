@@ -13,7 +13,7 @@ import { computeReadinessSummary } from "../../../domain/rules/readiness.ts";
 import { ITEM_TYPES } from "../../../domain/types.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { ImpedimentListing } from "../../../scrum/ports.ts";
-import type { BacklogHealth, SprintRef, SprintRiskStance, Story } from "../../../domain/types.ts";
+import type { BacklogHealth, SprintRef, SprintRisk, Story } from "../../../domain/types.ts";
 
 // ── BoardHealthService class ──────────────────────────────────────────────────
 
@@ -37,49 +37,80 @@ export class BoardHealthService {
   async getBoardHealth(sprintScope: string): Promise<BacklogHealth> {
     const stories = await this.fetchStoriesForScope(sprintScope);
 
-    // ── Status breakdown ──────────────────────────────────────────────────
-    const by_status: Record<string, number> = {};
-    for (const story of stories) {
-      const status = story.status ?? "(No Status)";
-      by_status[status] = (by_status[status] ?? 0) + 1;
-    }
+    // ── Readiness by type ─────────────────────────────────────────────────
+    const readiness = this.computeReadinessByType(stories);
 
-    // ── Type breakdown ────────────────────────────────────────────────────
-    const by_type: Partial<Record<typeof ITEM_TYPES[number], number>> = {};
-    for (const story of stories) {
-      const type = story.type;
-      if (type && ITEM_TYPES.includes(type as typeof ITEM_TYPES[number])) {
-        by_type[type as typeof ITEM_TYPES[number]] =
-          (by_type[type as typeof ITEM_TYPES[number]] ?? 0) + 1;
-      }
-    }
-
-    // ── Sprint risk ───────────────────────────────────────────────────────
-    const sprintRisk = this.computeSprintRisk(sprintScope);
+    // ── Sprint risk (count-based) ─────────────────────────────────────────
+    const sprintRisk = this.computeSprintRiskCounts(sprintScope, stories);
 
     // ── Impediments ───────────────────────────────────────────────────────
     const impedimentCounts = await this.computeImpedimentCounts(sprintScope);
 
-    // ── Readiness ─────────────────────────────────────────────────────────
-    const readiness = computeReadinessSummary(
-      stories.map((story) => ({
-        body: story.body,
-        story_points: story.story_points,
-        has_dependencies: story.blocked_by.length > 0,
-      })),
-    );
+    // ── Ungroomed count ───────────────────────────────────────────────────
+    const ungroomedCount = stories.filter((story) => {
+      const missingType = !story.type;
+      const missingEstimate = (story.story_points ?? 0) === 0;
+      const missingAc = !/[-*]\s+\[[\s xX]\]/.test(story.body);
+      return missingType || missingEstimate || missingAc;
+    }).length;
 
     return {
-      total_stories: stories.length,
-      by_status,
-      by_type,
+      readiness: {
+        by_type: readiness.by_type,
+        overall_pct: readiness.overall_pct,
+      },
       sprint_risk: sprintRisk,
       impediments: impedimentCounts,
-      readiness,
+      ungroomed_count: ungroomedCount,
     };
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────
+
+  /**
+   * Compute readiness-by-type breakdown and overall percentage.
+   */
+  private computeReadinessByType(
+    stories: readonly Story[],
+  ): {
+    by_type: Record<string, { ready: number; not_ready: number; total: number }>;
+    overall_pct: number;
+  } {
+    const readinessByType: Record<string, { ready: number; not_ready: number; total: number }> = {};
+    let totalReady = 0;
+    let totalNotReady = 0;
+
+    for (const type of ITEM_TYPES) {
+      readinessByType[type] = { ready: 0, not_ready: 0, total: 0 };
+    }
+
+    for (const story of stories) {
+      const type = story.type ?? "untyped";
+      if (!readinessByType[type]) {
+        readinessByType[type] = { ready: 0, not_ready: 0, total: 0 };
+      }
+      readinessByType[type].total++;
+
+      const { ready } = computeReadinessSummary([{
+        body: story.body,
+        story_points: story.story_points,
+        has_dependencies: story.blocked_by.length > 0,
+      }]);
+      if (ready > 0) {
+        readinessByType[type].ready++;
+        totalReady++;
+      } else {
+        readinessByType[type].not_ready++;
+        totalNotReady++;
+      }
+    }
+
+    const overallPct = (totalReady + totalNotReady) > 0
+      ? Math.round((totalReady / (totalReady + totalNotReady)) * 100)
+      : 0;
+
+    return { by_type: readinessByType, overall_pct: overallPct };
+  }
 
   /**
    * Fetch all items and filter by sprint scope, returning domain Story objects.
@@ -94,10 +125,7 @@ export class BoardHealthService {
     }
 
     // Resolve sprint scope to iteration ID
-    const sprintRef = sprintScope === "current" || sprintScope === "next"
-      ? sprintScope as "current" | "next"
-      : sprintScope as never;
-    const iterationId = resolveSprint(sprintRef, this.config);
+    const iterationId = resolveSprint(sprintScope, this.config);
 
     if (iterationId === null) return [];
 
@@ -113,70 +141,69 @@ export class BoardHealthService {
   }
 
   /**
-   * Compute sprint risk stance based on time elapsed.
+   * Compute sprint risk counts for the given sprint scope.
+   * Returns null when no active/resolved sprint is available.
    */
-  private computeSprintRisk(sprintScope: string): SprintRiskStance | null {
-    const sprint = sprintScope === "current" || sprintScope === "next"
-      ? sprintScope as "current" | "next"
-      : sprintScope as never;
-    const iterationId = resolveSprint(sprint, this.config);
+  private computeSprintRiskCounts(
+    sprintScope: string,
+    stories: readonly Story[],
+  ): SprintRisk | null {
+    const iterationId = resolveSprint(sprintScope, this.config);
     if (iterationId === null) return null;
 
-    const iterEntry = this.config.iterations.all.find((i) => i.id === iterationId);
-    if (!iterEntry) return null;
+    const blockedStatus = this.config.statusOptions["blocked"] ?? "Blocked";
+    const unestimated = stories.filter((s) => (s.story_points ?? 0) === 0).length;
+    const blocked = stories.filter((s) => s.status === blockedStatus).length;
+    const noAssignee = stories.filter((s) => s.assignees.length === 0).length;
 
-    const start = new Date(iterEntry.startDate);
-    start.setUTCHours(0, 0, 0, 0);
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
-
-    const daysTotal = iterEntry.duration;
-    const daysElapsed = Math.max(
-      0,
-      Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)),
-    );
-
-    if (daysTotal <= 0) return null;
-    const pct = daysElapsed / daysTotal;
-
-    if (pct > 0.8) return "elevated";
-    if (pct > 0.5) return "monitor";
-    return "normal";
+    return {
+      unestimated_count: unestimated,
+      blocked_count: blocked,
+      no_assignee_count: noAssignee,
+    };
   }
 
   /**
-   * Count open and in-progress impediments for the sprint scope.
+   * Count orphan and open impediments for the sprint scope.
    */
   private async computeImpedimentCounts(
     sprintScope: string,
-  ): Promise<{ open: number; in_progress: number }> {
-    let impediments: ImpedimentListing[] = [];
+  ): Promise<{ orphan_count: number; open_count: number }> {
+    const orphans = await this.impedimentService.getOrphanImpediments();
+    const orphanCount = orphans.filter(
+      (i) => i.status === "open" || i.status === "in_progress",
+    ).length;
 
-    if (sprintScope === "all") {
-      const sprint = resolveSprint("current", this.config);
-      if (sprint !== null) {
-        impediments = await this.impedimentService.getSprintImpediments("current");
-      }
-      const orphans = await this.impedimentService.getOrphanImpediments();
-      // Merge and deduplicate by ref.id
-      const seen = new Set(impediments.map((i) => i.ref.id));
-      for (const orphan of orphans) {
-        if (!seen.has(orphan.ref.id)) {
-          impediments.push(orphan);
-          seen.add(orphan.ref.id);
-        }
-      }
-    } else {
-      const iterationId = resolveSprint(sprintScope as never, this.config);
+    let sprintImpediments: ImpedimentListing[] = [];
+    if (sprintScope !== "all") {
+      const iterationId = resolveSprint(sprintScope, this.config);
       if (iterationId !== null) {
-        impediments = await this.impedimentService.getSprintImpediments(
+        sprintImpediments = await this.impedimentService.getSprintImpediments(
           sprintScope as SprintRef,
         );
       }
+    } else {
+      const sprint = resolveSprint("current", this.config);
+      if (sprint !== null) {
+        sprintImpediments = await this.impedimentService.getSprintImpediments("current");
+      }
     }
 
-    const open = impediments.filter((i) => i.status === "open").length;
-    const inProgress = impediments.filter((i) => i.status === "in_progress").length;
-    return { open, in_progress: inProgress };
+    // Merge and deduplicate by ref.id using O(n) set lookup
+    const seen = new Set(orphans.map((i) => i.ref.id));
+    const allImpediments = [
+      ...orphans,
+      ...sprintImpediments.filter((i) => {
+        if (seen.has(i.ref.id)) return false;
+        seen.add(i.ref.id);
+        return true;
+      }),
+    ];
+
+    const openCount = allImpediments.filter(
+      (i) => i.status === "open" || i.status === "in_progress",
+    ).length;
+
+    return { orphan_count: orphanCount, open_count: openCount };
   }
 }

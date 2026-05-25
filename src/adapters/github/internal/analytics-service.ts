@@ -20,6 +20,7 @@ import type {
   BurndownSprintMeta,
   BurndownStory,
   IdealDayPoint,
+  SprintRef,
   SprintSnapshot,
   SprintTotals,
 } from "../../../domain/types.ts";
@@ -41,12 +42,12 @@ export class AnalyticsService {
   /**
    * Return unified sprint analytics for the given query.
    *
-   * - view "history"      → sprint velocity snapshots only
-   * - view "burndown"     → burndown chart for target sprint only
-   * - view "comprehensive" → both merged into one response
+   * - view "history"  → sprint velocity snapshots only
+   * - view "burndown" → burndown chart for target sprint only
+   * - view "both"     → burndown + history merged into one response
    */
   async getAnalytics(query: AnalyticsQuery): Promise<AnalyticsResult> {
-    const view = query.view ?? "comprehensive";
+    const view = query.view ?? "both";
     const window = query.history_window ?? 5;
 
     if (view === "history") {
@@ -59,7 +60,7 @@ export class AnalyticsService {
       return { burndown, history: null, window: 0 };
     }
 
-    // comprehensive: run both in parallel
+    // both: run both in parallel
     const [burndown, history] = await Promise.all([
       this.buildBurndown(query.sprint_ref ?? "current"),
       this.buildHistory(window),
@@ -130,11 +131,11 @@ export class AnalyticsService {
   private async buildBurndown(
     sprintRef: string,
   ): Promise<BurndownResponse | null> {
-    const sprint = resolveSprint(sprintRef as never, this.config);
+    const sprint = resolveSprint(sprintRef, this.config);
     if (sprint === null) return null;
 
     const input = await this.burndownCalculator.getBurndownInput(
-      sprintRef as never,
+      sprintRef as SprintRef,
     );
 
     const iterEntry = this.config.iterations.all.find((i) => i.id === sprint);

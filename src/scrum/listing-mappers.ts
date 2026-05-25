@@ -1,21 +1,17 @@
 // =============================================================================
-// src/scrum/listing-mappers.ts — Shared Story → StoryListing / ItemListing mappers
+// src/scrum/listing-mappers.ts — Shared Story → BacklogItemListing mappers
 //
-// Eliminates duplication across get-backlog.ts, get-sprint.ts, and
-// get-history.ts. Each function produces a StoryListing or ItemListing — a
-// lightweight projection used in SprintSnapshot.items and BacklogResult.stories.
+// Eliminates duplication across find-items.ts, analytics-service.ts, and
+// sprint-math.ts. Each function produces a BacklogItemListing — a
+// lightweight projection used in SprintSnapshot.items and ItemSearchResult.items.
 //
-// StoryListing mappers (backward-compat for legacy use-cases removed in P6):
-//   storyToListing — for active sprint / backlog items (Story domain type)
-//   historyEntryToListing — for completed sprint history items (BurndownStoryInput)
-//
-// ItemListing mappers (for new use-cases: find-items.ts):
+// Mappers:
 //   toItemListing — for active sprint / backlog items (Story domain type)
 //   historyEntryToItemListing — for completed sprint history items (BurndownStoryInput)
 // =============================================================================
 
 import type { BurndownStoryInput } from "./ports.ts";
-import type { ItemListing, ResolvedRef, Story } from "../domain/types.ts";
+import type { BacklogItemListing, ResolvedRef, Story } from "../domain/types.ts";
 
 /** Sentinel ref used when an adapter has not yet provided a sprint node ID. */
 const EMPTY_SPRINT_REF: ResolvedRef = { id: "" };
@@ -29,16 +25,20 @@ const EMPTY_SPRINT_REF: ResolvedRef = { id: "" };
  * sprint.ref is hardcoded to { id: "" } — known gap until the adapter
  * provides sprint node IDs (P7).
  */
-export const toItemListing = (story: Story): ItemListing => ({
-  ref: { id: story.ref.id, key: story.key },
+export const toItemListing = (story: Story): BacklogItemListing => ({
+  ref: { id: story.ref.id, key: story.key ?? "" },
   title: story.title,
+  type: story.type,
   status: story.status,
   story_points: story.story_points,
   priority: story.priority,
+  assignees: [...story.assignees],
+  labels: [...story.labels],
   sprint: { name: story.sprint, ref: EMPTY_SPRINT_REF },
   epic: story.kind === "issue" ? story.epic : null,
-  writable: true,
-  has_dependencies: story.blocked_by,
+  blocked_by: story.blocked_by.map((dep) => ({ id: dep.ref.id, key: dep.key })),
+  blocks: [],
+  custom_fields: {},
 });
 
 /**
@@ -52,14 +52,18 @@ export const historyEntryToItemListing = (
   story: BurndownStoryInput,
   sprintName: string,
   refIdFallback: string = "<history>",
-): ItemListing => ({
+): BacklogItemListing => ({
   ref: { id: story.ref?.id ?? refIdFallback, key: String(story.number) },
   title: story.title,
+  type: null,
   status: story.status,
   story_points: story.points,
   priority: null,
+  assignees: [],
+  labels: [],
   sprint: { name: sprintName, ref: EMPTY_SPRINT_REF },
   epic: null,
-  writable: false,
-  has_dependencies: [],
+  blocked_by: [],
+  blocks: [],
+  custom_fields: {},
 });

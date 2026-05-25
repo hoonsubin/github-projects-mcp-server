@@ -8,7 +8,7 @@
 
 import { GitHubApiError } from "../errors.ts";
 import { assertNever } from "../../../domain/errors.ts";
-import type * as GH from "../generated/github-types.ts";
+import { type SelectFieldOption } from "../types.ts";
 import { type GitHubClient } from "./http-client.ts";
 import { LabelResolver } from "./label-resolver.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
@@ -17,14 +17,10 @@ import { GET_FIELD_OPTIONS_QUERY, UPDATE_FIELD_MUTATION } from "../queries.ts";
 
 // ── Helper types ─────────────────────────────────────────────────────────────
 
-/** Query projection of GH.ProjectV2SingleSelectFieldOption — we fetch id, name, color, description. */
-type OptionNode = Required<
-  Pick<GH.ProjectV2SingleSelectFieldOption, "id" | "name" | "color" | "description">
->;
-
+/** GraphQL response shape for GET_FIELD_OPTIONS_QUERY. */
 interface GetFieldOptionsResponse {
   node?: {
-    options: Array<OptionNode>;
+    options: SelectFieldOption[];
   } | null;
 }
 

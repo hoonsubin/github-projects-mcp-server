@@ -14,6 +14,7 @@ import {
   GET_USER_MILESTONES_QUERY,
   GET_USER_NODE_ID,
 } from "../queries.ts";
+import type { MilestoneRef, UserLogin } from "../types.ts";
 
 // ── Response types ─────────────────────────────────────────────────────────────
 
@@ -23,7 +24,8 @@ interface GetUserNodeIdResponse {
 }
 
 /** Query projection of GH.Milestone for GET_USER_MILESTONES_QUERY. */
-interface MilestoneNode extends Required<Pick<GH.Milestone, "id" | "title">> {}
+interface MilestoneNode extends MilestoneRef {}
+
 interface ListMilestonesResponse {
   repository?: {
     milestones?: {
@@ -38,6 +40,9 @@ interface CreateMilestoneResponse {
     milestone: Required<Pick<GH.Milestone, "id">>;
   };
 }
+
+/** Query projection of GH.User for author fields. */
+type AuthorRef = UserLogin;
 
 // ── UserMilestoneResolver class ───────────────────────────────────────────────
 

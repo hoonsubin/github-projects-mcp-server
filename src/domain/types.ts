@@ -57,6 +57,7 @@ export interface EpicListing {
   readonly priority: string | null; // team's vocabulary value, or null
   readonly status: "open" | "in_progress" | "done" | null;
   readonly story_count: number; // total stories under this epic (all statuses)
+  readonly open_item_count: number; // stories with status ≠ "done" / "closed"
 }
 
 /**
@@ -147,7 +148,9 @@ export type SprintRiskStance = "normal" | "monitor" | "elevated";
  * Built by `sprintContextFromSprintInfo()` at the port boundary.
  */
 export interface SprintContext {
+  id: string;
   name: string;
+  goal: string | null;
   start_date: string;
   end_date: string;
   duration_days: number;
@@ -179,7 +182,14 @@ const computeRiskStance = (
  * Called by orientUseCase to populate platform_state.iterations.active/next.
  */
 export const sprintContextFromSprintInfo = (
-  info: { name: string; start_date: string; end_date: string; duration_days: number },
+  info: {
+    id: string;
+    name: string;
+    goal: string | null;
+    start_date: string;
+    end_date: string;
+    duration_days: number;
+  },
   daysElapsed: number,
   workPct: number, // 0-100, percentage of committed points completed
 ): SprintContext => {
@@ -189,7 +199,9 @@ export const sprintContextFromSprintInfo = (
     : 0;
 
   return {
+    id: info.id,
     name: info.name,
+    goal: info.goal,
     start_date: info.start_date,
     end_date: info.end_date,
     duration_days: info.duration_days,
@@ -211,28 +223,42 @@ export interface EpicSummary {
   name: string;
   description: string | null;
   status: "open" | "in_progress" | "done" | null;
+  open_item_count: number;
 }
 
 // ── Board health ───────────────────────────────────────────────────────────────
 
 /**
+ * Sprint risk signals — actionable counts the agent uses for intervention.
+ * Structured as an object (not a string enum) so each signal carries
+ * a concrete count the agent can act on directly.
+ */
+export interface SprintRisk {
+  readonly unestimated_count: number;
+  readonly blocked_count: number; // items whose status = "Blocked" vocabulary option
+  readonly no_assignee_count: number;
+}
+
+/**
  * Board health output for scrum_get_board_health.
- * Replaces StoryListing in contexts where only health metrics are needed.
+ * Aggregated metrics — no individual story data.
  */
 export interface BacklogHealth {
-  readonly total_stories: number;
-  readonly by_status: Record<string, number>;
-  readonly by_type: Partial<Record<ItemType, number>>;
-  readonly sprint_risk: SprintRiskStance | null; // null if no active sprint
-  readonly impediments: {
-    readonly open: number;
-    readonly in_progress: number;
-  };
   readonly readiness: {
-    readonly ready: number;
-    readonly partially_ready: number;
-    readonly not_ready: number;
+    /** Per-PBI-type breakdown of ready vs not-ready items. */
+    /** Per-type breakdown of ready vs not-ready items. Uses `string` key to accommodate untyped items. */
+    readonly by_type: Record<string, { ready: number; not_ready: number; total: number }>;
+    /** Percentage of all items meeting Definition of Ready (0-100). */
+    readonly overall_pct: number;
   };
+  readonly sprint_risk: SprintRisk | null; // null when no active sprint
+  readonly impediments: {
+    /** Impediments not linked to any story (project-level blockers). */
+    readonly orphan_count: number;
+    /** Total open impediments (open + in_progress). */
+    readonly open_count: number;
+  };
+  readonly ungroomed_count: number; // items missing type OR estimate OR AC
 }
 
 // ── Item listing (findItems output) ────────────────────────────────────────────
@@ -241,23 +267,31 @@ export interface BacklogHealth {
  * Enriched listing entry for story collections.
  * Replaces StoryListing from ports.ts.
  *
- * sprint.ref.id is currently hardcoded to "" — known gap until the adapter
- * provides sprint node IDs. Will be fixed when SprintInfo.id is populated.
+ * `key` is always present (non-nullable) — Draft Issues get an empty string.
  */
-export interface ItemListing {
-  readonly ref: ResolvedRef & { readonly key: string | null };
+export interface BacklogItemListing {
+  readonly ref: { readonly id: string; readonly key: string };
   readonly title: string;
+  readonly type: string | null;
   readonly status: string | null;
   readonly story_points: number | null;
-  readonly priority: string | null; // named field (was implicit in StoryListing)
+  readonly priority: string | null;
+  readonly assignees: readonly string[];
+  readonly labels: readonly string[];
   readonly sprint: {
     readonly name: string | null;
-    readonly ref: ResolvedRef; // hardcoded to { id: "" } until adapter provides sprint node IDs
+    readonly ref: ResolvedRef;
   };
   readonly epic: { readonly ref: ResolvedRef; readonly name: string } | null;
-  readonly writable: boolean;
-  readonly has_dependencies: readonly DependencyEntry[];
+  /** Keys of items that block this one (must be Done first). */
+  readonly blocked_by: ReadonlyArray<{ readonly id: string; readonly key: string }>;
+  /** Keys of items this one blocks (reverse dependency). Populated by adapter. */
+  readonly blocks: ReadonlyArray<{ readonly id: string; readonly key: string }>;
+  readonly custom_fields: Record<string, string | number | boolean | null>;
 }
+
+/** @deprecated Use BacklogItemListing instead. */
+export type ItemListing = BacklogItemListing;
 
 // ── Dependency graph ───────────────────────────────────────────────────────────
 
@@ -267,14 +301,18 @@ export interface ItemListing {
  */
 export interface DependencyNode {
   key: IssueKey;
-  title: string;
+  title: string | null; // null for unknown/out-of-project items
   status: string | null;
   sprint: string | null;
-  epic: { ref: ResolvedRef; name: string } | null;
+  epic_name: string | null;
   story_points: number | null;
   priority: string | null;
+  /** True when this node has a full listing in the items[] array. */
+  resolved: boolean;
   /** Stories that this node blocks (reverse dependency). */
   blocks: IssueKey[];
+  /** Keys of items this node depends on. */
+  blocked_by: IssueKey[];
 }
 
 /**
@@ -391,24 +429,13 @@ export interface BurndownStory {
  * Combines item listings with scope metadata and optional dependency graph.
  */
 export interface ItemSearchResult {
-  items: ItemListing[];
+  items: BacklogItemListing[];
+  total_count: number;
   scope_summary: {
-    total_count: number; // before limit
-    limit: number;
-    scope: "backlog" | "sprint" | "all";
-    filters_applied: {
-      readonly search?: string;
-      readonly keys?: readonly string[];
-      readonly types?: readonly ItemType[];
-      readonly statuses?: readonly string[];
-      readonly priority?: string;
-      readonly epic_id?: string;
-      readonly labels?: readonly string[];
-      readonly assignee?: string;
-      readonly sprint_ref?: string | null;
-    };
+    sprint_count: number | null;
+    backlog_count: number | null;
   };
-  dependency_map?: DependencyMap; // present only if include_dependencies: true
+  dependency_map: DependencyMap | null;
 }
 
 // ── Sprint snapshot (analytics / history) ──────────────────────────────────────
@@ -447,7 +474,7 @@ export interface SprintSnapshot {
     readonly duration_days: number;
     readonly days_remaining: number;
   };
-  readonly items: readonly ItemListing[];
+  readonly items: readonly BacklogItemListing[];
   readonly total_count: number;
   readonly totals: SprintTotals;
 }
@@ -565,12 +592,5 @@ export interface OrientResult {
     readonly dor: readonly string[] | null;
     readonly dod: readonly string[] | null;
     readonly autonomy: { readonly require_confirmation_above_n_items: number | null } | null;
-    readonly templates: {
-      readonly sprint_review: string | null;
-      readonly retrospective: string | null;
-      readonly standup: string | null;
-      readonly sprint_planning: string | null;
-      readonly refinement: string | null;
-    };
   };
 }

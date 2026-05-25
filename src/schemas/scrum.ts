@@ -181,13 +181,13 @@ export const FindItemsSchema = z
 export const GetAnalyticsSchema = z
   .object({
     view: z
-      .enum(["burndown", "history", "comprehensive"])
+      .enum(["burndown", "history", "both"])
       .optional()
-      .default("comprehensive")
+      .default("both")
       .describe(
         'Which analytics view to return. "burndown" = burndown chart data; ' +
           '"history" = completed sprint history; ' +
-          '"comprehensive" = both (default).',
+          '"both" = burndown + history (default).',
       ),
     sprint_ref: SprintRefSchema.optional().describe(
       'Target sprint for burndown. Defaults to "current" if omitted.',

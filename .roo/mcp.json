@@ -15,7 +15,9 @@
 				"scrum_get_history",
 				"scrum_get_burndown",
 				"scrum_orient",
-				"scrum_get_story"
+				"scrum_get_story",
+				"scrum_get_board_health",
+				"scrum_find_items"
 			],
 			"timeout": 300,
 			"disabledTools": [
