@@ -94,11 +94,23 @@ export interface GitHubBackendConfig {
   /** Maps canonical priority keys → exact GitHub single-select option names. */
   priority_display: Record<string, string>;
   /**
-   * Maps canonical story type keys → exact GitHub single-select option names
-   * for the item_type field. Only required when field_mapping.item_type is set.
-   * Example: { feature: "Feature", bug: "Bug", tech_debt: "Tech Debt", spike: "Spike" }
+   * Maps canonical type keys to their board display name and an optional repo-relative
+   * template file path. Required when field_mapping.item_type is set.
+   *
+   * Each entry is a contract with the agent: the MCP will expose this type in
+   * vocabulary.type and (when template is declared) in vocabulary.template_uris.
+   * The set of keys is open — teams may add custom types beyond the built-in PBI set.
+   * The server validates each display name against live board options at startup and
+   * surfaces a decorated error for any key whose display name is not found on the board.
+   *
+   * Example:
+   *   feature:
+   *     display: "Feature"
+   *     template: .github/ISSUE_TEMPLATE/feature.md
+   *   bug:
+   *     display: "Bug"
    */
-  type_display?: Record<string, string>;
+  type_mapping?: Record<string, { display: string; template?: string }>;
 }
 
 // ── GraphQL response envelope (moved from src/types.ts) ─────────────────────

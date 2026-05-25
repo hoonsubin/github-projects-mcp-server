@@ -56,6 +56,116 @@ interface GetItemFieldsResponse {
   node?: GetItemFieldsQueryNode | null;
 }
 
+// ── Dependency map builder (standalone pure function) ──────────────────────────
+
+/**
+ * Build a DependencyMap from a filtered story set + all project items.
+ * Uses IssueKey as node identifier (always present for IssueStory).
+ *
+ * Pure function — no I/O, no side effects. Extracted from StoryQueryService
+ * for testability and to follow imperative-shell/functional-core separation.
+ *
+ * Resolves both in-set (resolved) and out-of-scope (unresolved) dependency
+ * nodes. Stories must have been passed through resolveDependencyRefs() first
+ * so that blocked_by[].ref.id contains project item IDs, not issue node IDs.
+ */
+export const buildDependencyMap = (
+  stories: readonly Story[],
+  allItems: readonly ProjectItem[],
+  config: RuntimeConfig,
+): DependencyMap => {
+  const map: Record<string, DependencyNode> = {};
+
+  // ── Lookups ───────────────────────────────────────────────────────────
+  const storyById = new Map<string, Story>();
+  for (const story of stories) {
+    storyById.set(story.ref.id, story);
+  }
+
+  const allItemsById = new Map<string, ProjectItem>();
+  for (const item of allItems) {
+    allItemsById.set(item.id, item);
+  }
+
+  // ── First pass: resolved nodes from filtered stories ───────────────────
+  for (const story of stories) {
+    if (story.kind !== "issue") continue;
+
+    const key = toIssueKey(story.key);
+    const blocked_by_keys: IssueKey[] = [];
+
+    for (const dep of story.blocked_by) {
+      blocked_by_keys.push(toIssueKey(dep.key));
+    }
+
+    map[key] = {
+      key,
+      title: story.title,
+      status: story.status,
+      sprint: story.sprint,
+      epic_name: story.epic?.name ?? null,
+      story_points: story.story_points,
+      priority: story.priority,
+      resolved: true,
+      blocks: [], // populated by third pass
+      blocked_by: blocked_by_keys, // upstream deps — correct direction
+    };
+  }
+
+  // ── Second pass: unresolved nodes from out-of-set dependencies ────────
+  for (const story of stories) {
+    if (story.kind !== "issue") continue;
+    for (const dep of story.blocked_by) {
+      // Already resolved in first pass? Skip.
+      if (map[dep.key]) continue;
+      // Not in filtered set — look up in allItems
+      const item = allItemsById.get(dep.ref.id);
+      if (!item) {
+        // Cross-repo or off-board: emit a stub node with what we know.
+        map[dep.key] = {
+          key: toIssueKey(dep.key),
+          title: dep.title ?? null,
+          status: null,
+          sprint: null,
+          epic_name: null,
+          story_points: null,
+          priority: null,
+          resolved: false,
+          blocks: [],
+          blocked_by: [],
+        };
+        continue;
+      }
+      const depStory = buildStoryFromRaw(item, config);
+      if (!depStory || depStory.kind !== "issue") continue;
+      const key = toIssueKey(depStory.key);
+      map[key] = {
+        key,
+        title: depStory.title,
+        status: depStory.status,
+        sprint: depStory.sprint,
+        epic_name: depStory.epic?.name ?? null,
+        story_points: depStory.story_points,
+        priority: depStory.priority,
+        resolved: false,
+        blocks: [],
+        blocked_by: [],
+      };
+    }
+  }
+
+  // ── Third pass: derive blocks from each node's blocked_by ─────────────
+  for (const [nodeKey, node] of Object.entries(map)) {
+    for (const depKey of node.blocked_by) {
+      if (map[depKey]) {
+        map[depKey].blocks.push(toIssueKey(nodeKey));
+      }
+    }
+  }
+
+  return map;
+};
+
 // ── StoryQueryService class ────────────────────────────────────────────────────
 
 /**
@@ -260,6 +370,10 @@ export class StoryQueryService {
     stories = this.filterBySearch(stories, filter.search);
     stories = this.filterByEstimated(stories, filter.estimated);
 
+    // Resolve dependency refs: map issue node IDs → project item IDs
+    // (called in getSprintStories/getBacklogStories but missing from findItems)
+    stories = resolveDependencyRefs(stories, allItems);
+
     // ── Scope summary (before limit) ──────────────────────────────────────
     const totalCount = stories.length;
 
@@ -286,8 +400,10 @@ export class StoryQueryService {
     // ── Limit ─────────────────────────────────────────────────────────────
     items = items.slice(0, filter.limit);
 
-    // ── Dependency map (always null in this story — wired in a separate ticket) ──
-    const dependencyMap: DependencyMap | null = null;
+    // ── Dependency map (opt-in via include_dependencies filter) ──
+    const dependencyMap: DependencyMap | null = filter.include_dependencies
+      ? this.buildDependencyMap(stories, allItems)
+      : null;
 
     return {
       items,
@@ -392,63 +508,13 @@ export class StoryQueryService {
   // ── Dependency map builder ──────────────────────────────────────────────────
 
   /**
-   * Build a DependencyMap from the filtered story set.
-   * Uses IssueKey as node identifier (always present for IssueStory).
+   * Build a DependencyMap from the filtered story set + all project items.
+   * Thin delegation wrapper — delegates to the standalone pure function below.
    */
   private buildDependencyMap(
     stories: readonly Story[],
-    _allItems: readonly ProjectItem[],
+    allItems: readonly ProjectItem[],
   ): DependencyMap {
-    const map: Record<string, DependencyNode> = {};
-
-    // Build a lookup: ref.id → Story
-    const storyById = new Map<string, Story>();
-    for (const story of stories) {
-      storyById.set(story.ref.id, story);
-    }
-
-    for (const story of stories) {
-      if (story.kind !== "issue") continue;
-
-      const key = toIssueKey(story.key);
-      const blocks: IssueKey[] = [];
-
-      // Find stories that this story blocks via blocked_by references
-      for (const dep of story.blocked_by) {
-        const target = storyById.get(dep.ref.id);
-        if (target && target.kind === "issue") {
-          blocks.push(toIssueKey(target.key));
-        }
-      }
-
-      map[key] = {
-        key,
-        title: story.title,
-        status: story.status,
-        sprint: story.sprint,
-        epic_name: story.epic?.name ?? null,
-        story_points: story.story_points,
-        priority: story.priority,
-        resolved: true,
-        blocks,
-        blocked_by: [],
-      };
-    }
-
-    // Second pass: build reverse dependency map without mutation during iteration
-    const reverseDeps: Record<string, IssueKey[]> = {};
-    for (const [nodeKey, node] of Object.entries(map)) {
-      for (const blockedKey of node.blocks) {
-        if (!reverseDeps[blockedKey]) reverseDeps[blockedKey] = [];
-        reverseDeps[blockedKey].push(toIssueKey(nodeKey));
-      }
-    }
-
-    // Apply blocked_by without mutation during iteration
-    for (const [nodeKey, node] of Object.entries(map)) {
-      node.blocked_by = reverseDeps[nodeKey] ?? [];
-    }
-
-    return map;
+    return buildDependencyMap(stories, allItems, this.config);
   }
 }

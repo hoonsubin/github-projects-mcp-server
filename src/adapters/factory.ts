@@ -51,6 +51,13 @@ export interface BackendResult {
 
   /** Platform-agnostic Scrum configuration (resolved by the adapter factory). */
   readonly scrumConfig: ScrumConfig;
+
+  /**
+   * Maps canonical type keys → repo-relative template file paths.
+   * Only present for types that declare a template in the backend config.
+   * Passed to the MCP template resource at registration time.
+   */
+  readonly typeTemplatePaths: Record<string, string>;
 }
 
 // ── createBackend() ─────────────────────────────────────────────────────────

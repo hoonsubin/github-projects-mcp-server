@@ -143,6 +143,7 @@ const makeConfig = (overrides: Partial<RuntimeConfig> = {}): RuntimeConfig => ({
   statusOptions: { "In Progress": "opt_ip" },
   priorityOptions: { "Must": "opt_must" },
   typeOptions: { feature: "opt_feature", bug: "opt_bug" },
+  typeTemplatePaths: {},
   iterations: {
     active: { id: "IT_active", title: "Sprint 5", startDate: "2026-01-01", duration: 14 },
     next: { id: "IT_next", title: "Sprint 6", startDate: "2026-01-15", duration: 14 },

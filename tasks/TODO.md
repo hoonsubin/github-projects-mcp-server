@@ -1,550 +1,346 @@
-# Type Cleanup & Adapter Abstraction — Implementation Strategy
+# TODO — Remaining Implementation Work
 
-**Role:** This document is the implementation strategy for the _foundational infrastructure_ phase of REFACTORING.md's tool surface redesign. It covers type system cleanup, adapter abstraction, and the new port interfaces — the prerequisites needed before the larger tool-surface changes (unified item search, board health, analytics, agent behavioral patterns) can be implemented.
-
-**Status:** Strategy document. For full type specs and implementation reference, see `tasks/TODO-IMPLEMENTATION.md`.
+Tracks outstanding gaps from the REFACTORING.md tool-surface redesign. Updated after code review of Group A (2026-05-25): wiring is complete but two correctness issues were found. Groups B, C, D are unstarted.
 
 ---
 
-## Traceability to REFACTORING.md Goals
+## Status at a Glance
 
-This strategy supports the following goals from [REFACTORING.md](tasks/REFACTORING.md):
+| Group | Topic                      | Status                     |
+| ----- | -------------------------- | -------------------------- |
+| A     | Dependency graph wiring    | ⚠️ Wired — two bugs remain |
+| B     | MCP resource for templates | 🔲 Not started             |
+| C1    | Sprint-scoped epics        | 🔲 Not started             |
+| C2    | Sprint goal                | 🔲 Not started             |
+| C3    | workPct in orient          | 🔲 Not started             |
+| D1    | Rename tool                | 🔲 Not started             |
+| D2    | Deprecate old tool name    | 🔲 Not started (after D1)  |
 
-| REFACTORING Goal                                             | How this strategy enables it                                                                                                                            |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Goal 1** — Single-call item retrieval (`scrum_find_items`) | New `FindItemsPort`, `ItemFilter`, `ItemSearchResult`, `ItemListing` types provide the contract. Shared `storyToListing` mapper eliminates duplication. |
-| **Goal 2** — Orient as executive summary                     | New `SprintContext` (time-progress), `EpicSummary`, `TemplateUriMap` types added. Extended `PlatformState` with epics + template URIs.                  |
-| **Goal 3** — Health separate from items                      | New `BacklogHealth`, `BoardHealthPort` types. Deprecates `StoryListing` in favor of `ItemListing` (listing-only, no health).                            |
-| **Goal 4** — Unified sprint analytics                        | New `AnalyticsResult`, `AnalyticsQuery`, `AnalyticsPort` types merge burndown + history.                                                                |
-| **Goal 5** — Templates as resources                          | New `TemplateUriMap` type and `scrum://template/{type}` resource spec. Removes `TemplateResponse` dead type.                                            |
-| **Goal 7** — Single-call dependency graph                    | New `DependencyNode` (keyed by `IssueKey`, not nullable `ref.id`), `DependencyMap` types.                                                               |
-| **Goal 8** — Direct lookup by number                         | `StoryRef` extended to `{ id: string }                                                                                                                  |
-
-**Not covered in this strategy:** Goal 6 (scrum theory alignment) and Goal 9 (task-driven health loading) are agent-behavioral concerns that belong in the follow-up tool-surface refactoring.
+**Recommended execution order:** A-bugs → D1 (quick) → B1→B2→B3 → C1→C2→C3 → D2
 
 ---
 
-## Problem Statements
+## Group A — Dependency Graph Bug Fixes (done)
 
-The codebase has two compounding structural problems:
-
-### 1. Type Fragmentation
-
-Types are duplicated across four locations (`src/domain/types.ts`, `src/scrum/ports.ts`, per-file use-case interfaces, `src/schemas/scrum.ts`) with overlapping responsibilities. Use-case functions declare their own return types locally instead of composing domain types. This violates Clean Architecture's Dependency Rule and Interface Segregation Principle.
-
-**Signal:** 13 Known Issues (documented below). Duplicate `storyToListing` mappers in three files. Private local `OrientResult` invisible to tests.
-
-### 2. Hard-Wired Adapter
-
-`src/index.ts` imports `createGitHubProjectBackend` directly. There is no shared abstract base class, no capability declaration, and no factory registry. Adding a second adapter (Trello, Linear, Jira) currently requires modifying the composition root and duplicating the port contract manually.
-
-**Signal:** `FileReaderPort` is returned unconditionally even though future adapters may not have one. No `platform` identifier for adapter selection.
+**Context:** `findItems()` now calls `buildDependencyMap()` when `include_dependencies: true` (A1 ✅), unresolved out-of-scope nodes are looked up in `allItems` (A2 ✅), and draft stories are filtered by the `kind !== "issue"` guard (A3 ✅). However, two correctness issues were found during review.
 
 ---
 
-## Target Architecture
+### A-bug-1 — `blocks` / `blocked_by` direction is inverted
 
-### Layer Dependency Map
+**File:** `src/adapters/github/internal/story-query-service.ts`
 
-The refactored codebase has five layers. Dependencies point inward.
+**Problem:** The first pass of `buildDependencyMap()` (around line 426) iterates over `story.blocked_by` (upstream dependencies — things A is waiting on) and pushes their keys into the **`blocks`** array. This is backwards: it makes node A appear to block its own blockers. The third pass then reverses that relationship, compounding the error.
 
-```mermaid
-flowchart TD
-  subgraph Domain["DOMAIN LAYER — src/domain/types.ts"]
-    DT["Entity + output types
-        Story · EpicRef · DependencyEntry
-        ItemListing · DependencyNode · DependencyMap
-        BacklogHealth · AnalyticsResult · ItemDetailResult
-        ItemSearchResult · OrientResult
-        SprintContext · EpicSummary · TemplateUriMap
-        ItemType · IssueKey · ScrumTemplateUri
-        StoryRef union + isIdRef / isNumberRef guards"]
-  end
+`Story.blocked_by` = "stories that must be done before this one starts" (from type comment in `domain/types.ts`). `DependencyNode.blocks` = "stories that this node blocks" (reverse direction). A story's upstream dependencies must go into `blocked_by`, not `blocks`.
 
-  subgraph Port["PORT LAYER — src/scrum/ports.ts"]
-    PT["Port interfaces + boundary input types
-        ProjectReader · ProjectWriter · ProjectBackend
-        FindItemsPort · AnalyticsPort · BoardHealthPort
-        StoryPort · EpicPort · ImpedimentPort
-        ItemFilter · ResolvedItemFilter · AnalyticsQuery
-        SprintInfo · SprintSnapshot · SprintTotals
-        BurndownStoryInput · CompletionMap
-        CreateStoryInput · StoryUpdates
-        ImpedimentListing · @deprecated StoryListing"]
-  end
+**Broken trace** (story A is blocked by B):
 
-  subgraph Schema["SCHEMA LAYER — src/schemas/scrum.ts"]
-    SC["Zod validation schemas + z.infer types
-        FindItemsSchema · GetAnalyticsSchema
-        GetBoardHealthSchema · GetStorySchema
-        Schema-inferred input types replace all *Params interfaces"]
-  end
+- After first pass: `A.blocks = [B]`, `A.blocked_by = []`
+- After third pass: `A.blocks = [B]` (unchanged — "A blocks B" ❌), `B.blocked_by = [A]` ("B is blocked by A" ❌)
 
-  subgraph UseCase["USE-CASE LAYER — src/scrum/*.ts"]
-    UC["Pure functions
-        Receive schema-inferred inputs
-        Return domain output types
-        No local interface declarations
-        Shared listing-mappers.ts eliminates storyToListing duplication"]
-  end
+**What to change:**
 
-  subgraph AdapterShared["ADAPTER SHARED — src/adapters/"]
-    AS["Platform contract infrastructure
-        capabilities.ts — PlatformCapabilities
-        abstract-backend.ts — AbstractProjectBackend
-        factory.ts — AdapterFactory + createBackend()"]
-  end
+In the first pass, rename the local variable from `blocks` to `blocked_by_keys` and assign it to `blocked_by` in the map entry (not `blocks`). Start `blocks: []` — it will be populated by the third pass.
 
-  subgraph AdapterGitHub["GITHUB ADAPTER — src/adapters/github/"]
-    AG["GitHubProjectBackend extends AbstractProjectBackend
-        GitHubAdapterFactory implements AdapterFactory
-        Internal services: query · mutation · history · burndown · analytics · board-health"]
-  end
+In the third pass, change the reversal to iterate `node.blocked_by` instead of `node.blocks`, and push into the **`blocks`** array of the dependency target.
 
-  subgraph Index["COMPOSITION ROOT — src/index.ts"]
-    IX["Registry-based backend selection — no direct adapter import"]
-  end
+```typescript
+// ── First pass: resolved nodes — CORRECTED ────────────────────────────────
+for (const story of stories) {
+  if (story.kind !== "issue") continue;
+  const key = toIssueKey(story.key);
+  const blocked_by_keys: IssueKey[] = [];
 
-  SC -->|"z.infer<typeof Schema>"| UC
-  UC -->|depends on| PT
-  UC -->|returns| DT
-  AG -->|implements| PT
-  AG -->|produces| DT
-  AG -->|extends| AS
-  AS -->|contract for| Port
-  IX -->|calls| AS
-  IX -->|registers| AG
+  for (const dep of story.blocked_by) {
+    const target = storyById.get(dep.ref.id);
+    if (target && target.kind === "issue") {
+      blocked_by_keys.push(toIssueKey(target.key));
+    }
+  }
+
+  map[key] = {
+    key,
+    title: story.title,
+    status: story.status,
+    sprint: story.sprint,
+    epic_name: story.epic?.name ?? null,
+    story_points: story.story_points,
+    priority: story.priority,
+    resolved: true,
+    blocks: [], // populated by third pass
+    blocked_by: blocked_by_keys, // upstream deps — correct direction
+  };
+}
+
+// ── Third pass: derive `blocks` from each node's `blocked_by` — CORRECTED ──
+for (const [nodeKey, node] of Object.entries(map)) {
+  for (const depKey of node.blocked_by) {
+    if (map[depKey]) {
+      map[depKey].blocks.push(toIssueKey(nodeKey));
+    }
+  }
+}
+// Remove the reverseDeps intermediate and the second loop that overwrites blocked_by.
 ```
 
-### Factory Registry
+**Verification:** With A blocked by B:
 
-```mermaid
-flowchart LR
-  IX["src/index.ts (composition root)"]
-  F["createBackend(factories[]) — src/adapters/factory.ts"]
-  ENV["SCRUM_PLATFORM env var — default: 'github'"]
-  GF["GitHubAdapterFactory — platform = 'github'"]
-  BR["BackendResult — { backend, capabilities, fileReader | null, scrumConfig }"]
+- `A.blocked_by = [B_key]` ✅ — A waits on B
+- `B.blocks = [A_key]` ✅ — B blocks A
+- `A.blocks = []` ✅
+- `B.blocked_by = []` ✅
 
-  IX -->|"registers [GF]"| F
-  ENV --> F
-  F -->|"selects by platform key"| GF
-  GF --> BR
-  BR --> IX
+---
+
+### A-bug-2 — Cross-repo dependency targets are silently dropped
+
+**File:** `src/adapters/github/internal/story-query-service.ts`
+
+**Problem:** In the second pass of `buildDependencyMap()`, when a `blocked_by` ref cannot be found in `allItemsById` (cross-repo or off-board item), the code does `continue` and the dependency disappears from the graph entirely. The spec (REFACTORING.md §A2, step 4) requires these to appear as stub nodes with `status: null, resolved: false`.
+
+The `DependencyEntry` already carries `dep.key` (issue number string) and `dep.title` (may be null) — enough to emit a meaningful stub even without an `allItems` lookup.
+
+**What to change:**
+
+In the second pass, after the `if (!item) continue` block, add a branch that creates a stub node using `dep.key` and `dep.title` from the `DependencyEntry` itself:
+
+```typescript
+// ── Second pass: unresolved nodes — CORRECTED ─────────────────────────────
+for (const story of stories) {
+  if (story.kind !== "issue") continue;
+  for (const dep of story.blocked_by) {
+    if (map[dep.key]) continue; // already in map (resolved in first pass)
+
+    const item = allItemsById.get(dep.ref.id);
+    if (!item) {
+      // Cross-repo or off-board: emit a stub node with what we know.
+      map[dep.key] = {
+        key: toIssueKey(dep.key),
+        title: dep.title ?? null,
+        status: null,
+        sprint: null,
+        epic_name: null,
+        story_points: null,
+        priority: null,
+        resolved: false,
+        blocks: [],
+        blocked_by: [],
+      };
+      continue;
+    }
+
+    const depStory = buildStoryFromRaw(item, this.config);
+    if (!depStory || depStory.kind !== "issue") continue;
+    const key = toIssueKey(depStory.key);
+    map[key] = {
+      key,
+      title: depStory.title,
+      status: depStory.status,
+      sprint: depStory.sprint,
+      epic_name: depStory.epic?.name ?? null,
+      story_points: depStory.story_points,
+      priority: depStory.priority,
+      resolved: false,
+      blocks: [],
+      blocked_by: [],
+    };
+  }
+}
+```
+
+**Verification:** A story blocked by a cross-repo issue still appears in the map with `resolved: false` and `status: null`. The `blocks`/`blocked_by` fields for stub nodes are populated correctly by the third pass the same as any other node.
+
+---
+
+## Group B — MCP Resource for Templates (done)
+
+**Context:** Template URIs (`scrum://template/{type}`) are listed in `scrum_orient`'s `platform_state.template_uris`, but no MCP resource is registered to serve them. The deprecated tool stub `scrum_get_template` in `src/tools/scrum-read.ts` (line 410) exists only to point agents toward the resource that doesn't yet exist. Do B1 → B2 → B3 in order.
+
+---
+
+### B1 — Implement template content provider
+
+**New file:** `src/scrum/template-resource.ts`
+
+Create a use-case function that resolves a template body for a given `ItemType`.
+
+**Logic:**
+
+1. Accept `type: ItemType`, `fileReader: FileReaderPort`, `scrumConfig: ScrumConfig` as inputs.
+2. Check if `scrumConfig` declares a template path for the requested type (via `scrumConfig.templates?.[type]` or equivalent config shape — read `domain/config.ts` for the exact field name).
+3. If a path is declared, call `fileReader.fetchRepoFile(path)` and return the content.
+4. If no template is configured, fall back to the canonical description in `references/item-types.md` (fetch via `fileReader.fetchRepoFile()`).
+5. Return `{ content: string; mimeType: "text/markdown" }`.
+
+**Ports used:** `FileReaderPort` (already defined in `src/scrum/ports.ts`) — check the exact method signature before implementing.
+
+---
+
+### B2 — Register resource in composition root
+
+**File:** `src/index.ts`
+
+After the `registerScrumReadTools(...)` call (line 124), add a `server.resource(...)` call using the MCP SDK's `ResourceTemplate` API.
+
+```typescript
+import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { templateResourceUseCase } from "./scrum/template-resource.ts";
+
+// inside createMcpServer(), after registerScrumReadTools():
+server.resource(
+  "scrum-template",
+  new ResourceTemplate("scrum://template/{type}", { list: undefined }),
+  async (uri, { type }) => {
+    const content = await templateResourceUseCase(
+      type as string,
+      fileReader,
+      scrumConfig,
+    );
+    return {
+      contents: [{ uri: uri.href, mimeType: "text/markdown", text: content }],
+    };
+  },
+);
+```
+
+Check the MCP SDK version (`deno.json` / `package.json`) for the exact `server.resource()` signature before writing this — the SDK is at v1.x and the method name may differ from the snippet above. Consult `ts.sdk.modelcontextprotocol.io`.
+
+---
+
+### B3 — Remove deprecated `scrum_get_template` tool stub
+
+**File:** `src/tools/scrum-read.ts`\
+**Lines:** ~409–445 (the `scrum_get_template` registration block)
+
+Delete the entire `server.registerTool("scrum_get_template", ...)` block once B2 is live and manually verified (read `scrum://template/feature` via the MCP resource protocol and confirm the response contains markdown). Do not remove it before B2 is verified.
+
+---
+
+## Group C — Orient Enhancements
+
+**Context:** `orientUseCase()` in `src/scrum/orient.ts` has three hardcoded stubs: `goal: null` (line 82), `workPct = 0` (line 88), and epics are not sprint-scoped. C1 feeds data that C2 and C3 also need, so implement in order: C1 → C2 → C3.
+
+---
+
+### C1 — Sprint-scoped epic filtering
+
+**Problem:** `orientUseCase()` calls `backend.getEpics()` (line 56) and filters only by `status !== "done"`. Epics with no items in the active sprint are included, which bloats the orient response with irrelevant context.
+
+**Required behavior:** Return only epics that have ≥1 item assigned to the active sprint.
+
+**Files to change:**
+
+1. **`src/adapters/github/internal/epic-service.ts`** — Add `sprintIterationId: string | null` parameter to `getEpics()`. When non-null, after fetching all milestones, filter them to those with at least one open issue in the sprint. This requires a second lookup: query `StoryQueryService.findItems({ scope: "sprint", sprint_ref: sprintIterationId })` and collect the unique `epic.ref.id` values; keep only milestones whose id is in that set. When `sprintIterationId` is null, return all open epics (existing behavior).
+
+2. **`src/adapters/github/backend.ts`** — In `getPlatformState()` or the `getEpics()` call site, pass `config.iterations.active?.id ?? null` to `EpicService.getEpics()`.
+
+3. **`src/scrum/ports.ts`** — If `getEpics()` is declared on the `ProjectReader` port, add the optional `sprintIterationId?: string | null` parameter to its signature there too so the interface stays in sync.
+
+**Edge case:** No active sprint → `sprintIterationId` is null → fall back to all open epics (existing behavior is the fallback, no regression).
+
+---
+
+### C2 — Sprint goal population
+
+**Problem:** `buildSprintContext()` inside `orientUseCase()` (line 74–90) hardcodes `goal: null`. The `SprintInfo` type at `src/scrum/ports.ts:92` has no `goal` field yet.
+
+**Files to change:**
+
+1. **`src/scrum/ports.ts`** — Add `goal: string | null` to the `SprintInfo` interface.
+
+2. **`src/adapters/github/config-loader.ts`** — `IterationEntry` (domain/types.ts line 407) does not carry a `description` field. The GitHub GraphQL bootstrap query (`GET_ORG_PROJECT_FIELDS_BOOTSTRAP_QUERY` / `GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY` in `src/adapters/github/queries.ts`) may not fetch iteration descriptions. Check whether the iteration configuration shape from the API includes a `description` field; if so, add it to `IterationEntry` and surface it in `RuntimeConfig.iterations.active`.
+
+3. **`src/adapters/github/mappers.ts`** — In `toSprintInfo()` (around line 297), populate `goal` from `IterationEntry.description` (or `null` if the API does not provide it).
+
+4. **`src/scrum/orient.ts`** — In `buildSprintContext()` (line 82), replace `goal: null` with `goal: info.goal ?? null` once the `SprintInfo` field exists.
+
+**Note on GitHub API:** GitHub's Projects iteration fields expose `description` per iteration in GraphQL. Verify this by checking the bootstrap query response shape — the field is on `configuration.iterations[].description`. If it's missing from the query, add `description` to the iteration fragment.
+
+---
+
+### C3 — workPct computation
+
+**Problem:** `buildSprintContext()` passes `0` as `workPct` to `sprintContextFromSprintInfo()` (orient.ts line 88), so `riskStance` is always computed against 0% completion regardless of actual sprint progress.
+
+**Files to change:**
+
+1. **`src/adapters/github/internal/story-query-service.ts`** — Add a new method `computeSprintCompletion(iterationId: string): Promise<{ completed: number; total: number }>`. Implementation: call `findItems({ scope: "sprint", sprint_ref: iterationId })`, then sum `story_points` where status is a "done" canonical key vs. total. Return `{ completed, total }`.
+
+2. **`src/scrum/ports.ts`** — Expose this as a port method on `ProjectReader`: `getSprintCompletion(iterationId: string): Promise<{ completed: number; total: number }>`. (Or fold it into an existing analytics method if appropriate — check `get-analytics.ts`.)
+
+3. **`src/scrum/orient.ts`** — Before calling `buildSprintContext()`, call `backend.getSprintCompletion(state.iterations.active.id)`. Compute `workPct = total > 0 ? Math.round((completed / total) * 100) : 0`. Pass it to `sprintContextFromSprintInfo()` instead of the hardcoded `0`.
+
+**Edge case:** No story-points field on the board → `total = 0` → `workPct = 0` (same as current behavior, no regression).
+
+---
+
+## Group D — Tool Rename
+
+**Context:** `scrum_get_story` should be exposed under the name `scrum_get_item_detail` per the redesign proposal. The handler logic and its input contract (supporting both `id` and `number`) are already fully implemented. Only the registration name differs. D1 and D2 are decoupled — D1 can ship immediately; D2 waits for agent retraining.
+
+---
+
+### D1 — Register `scrum_get_item_detail` alongside existing name
+
+**File:** `src/tools/scrum-read.ts`\
+**Lines:** ~70–70 (after the existing `scrum_get_story` registration block)
+
+Extract the existing handler into a named `const getItemDetailHandler = async (...) => ...` before the first `server.registerTool("scrum_get_story", ...)` call. Then register it twice:
+
+```typescript
+server.registerTool("scrum_get_story", { title: "...", /* existing config */ }, getItemDetailHandler);
+
+server.registerTool("scrum_get_item_detail", {
+  title: "Get Item Detail",
+  description: `Return full details for a single backlog item.
+    Prefer \`id\` (from a prior listing) for exact lookup.
+    Use \`number\` only when you have the issue number and no \`id\`.
+    /* ... rest of updated description ... */`,
+  inputSchema: /* same schema as scrum_get_story */,
+}, getItemDetailHandler);
+```
+
+Both tools share the exact same handler. No logic changes.
+
+---
+
+### D2 — Deprecate `scrum_get_story`
+
+**File:** `src/tools/scrum-read.ts`\
+**Timing:** Ship only after D1 has been live long enough for the agent to retrain on `scrum_get_item_detail`.
+
+Replace the `scrum_get_story` handler with an error stub following the same pattern as the existing `scrum_get_template` deprecation (line 409):
+
+```typescript
+server.registerTool("scrum_get_story", {
+  title: "Get Story (deprecated)",
+  description: `[DEPRECATED] Use scrum_get_item_detail instead.`,
+  inputSchema: { type: "object" as const, properties: {} },
+}, async () => ({
+  content: [{
+    type: "text" as const,
+    text: JSON.stringify({
+      error: true,
+      message: "scrum_get_story has been renamed to scrum_get_item_detail.",
+      replacement: "scrum_get_item_detail",
+    }),
+  }],
+}));
 ```
 
 ---
 
-## Known Issues to Fix
-
-These 13 issues are the specific defects this strategy resolves. Each is anchored to a phase below.
-
-| #  | Issue                                                                         | Phase   | Impact                                                |
-| -- | ----------------------------------------------------------------------------- | ------- | ----------------------------------------------------- |
-| 1  | `BacklogHealth` and `BoardHealthResult` planned as duplicate types            | 1h      | Compile error avoided                                 |
-| 2  | `ItemType` referenced before defined                                          | 1a      | `TemplateUriMap` and `BacklogHealth.by_type` fail     |
-| 3  | `ArtifactType` vs `ItemType` confusion — different key sets                   | 1d, 5   | Wrong template keys                                   |
-| 4  | `AnalyticsQuery` and `ItemFilter` belong in `ports.ts`, not `domain/types.ts` | 2a      | Input types crossing port boundary                    |
-| 5  | `EpicPort.getEpics()` has no call site after `getBacklogUseCase` removal      | 5       | `orientUseCase` won't populate `platform_state.epics` |
-| 6  | `StoryRef` union change needs adapter resolution spec                         | 0b, 7a  | Write-tool port methods need `resolveRef()`           |
-| 7  | `SprintTotals` runtime guard is fragile (`"committed_points" in s.totals`)    | 2d      | Compiler can't narrow safely                          |
-| 8  | `storyToListing` duplicated across three files                                | 4a      | Triple maintenance burden                             |
-| 9  | `ItemListing` missing `priority` as named field                               | 1i, 2a  | Priority filter in `FindItemsSchema` breaks           |
-| 10 | `OrientResult` is a private local interface                                   | 1n      | Invisible to tests and type annotations               |
-| 11 | `src/index.ts` imports `createGitHubProjectBackend` directly                  | 0       | No platform abstraction                               |
-| 12 | `StoryNotFoundError` doesn't exist yet                                        | 1 (end) | `resolveRef()` import fails                           |
-| 13 | `ItemListing.sprint` missing `ref.id`                                         | 4a, 7c  | Sprint `ref.id` hardcoded to `""`                     |
-
----
-
-## Implementation Phases
-
-### Phase Dependency Graph
-
-```mermaid
-flowchart LR
-  P0["P0: Adapter Infrastructure"] --> P1["P1: Domain Types"]
-  P1 --> P2["P2: Port Types"]
-  P2 --> P3["P3: Schema Types"]
-  P3 --> P4["P4: Use-Case Migration"]
-  P4 --> P5["P5: Orient Use-Case"]
-  P5 --> P6["P6: Tool Handler Migration"]
-  P6 --> P7["P7: GitHub Adapter Migration"]
-  P7 --> P8["P8: Composition Root"]
-  P8 --> TEST["deno lint + deno test + dependency check"]
-```
-
-**Why this order:** Inner layers (adapter infrastructure, domain types) must compile before outer layers (tool handlers, composition root) can reference them. P0 must come first because `AbstractProjectBackend` is a compile target for P7. P1 (domain types) must precede P2 (port types) because port interfaces import domain types. P4–P6 migrate use-case code to use the new types before the GitHub adapter is refactored in P7.
-
-### Risk Levels
-
-| Level     | Meaning                                                   |
-| --------- | --------------------------------------------------------- |
-| 🟢 Low    | Adding new code, no existing consumers change             |
-| 🟡 Medium | Existing code changes but test surface is small           |
-| 🔴 High   | Existing code changes, tests change, or tools are removed |
-
----
-
-### Verification Gate (run after every phase)
-
-```bash
-deno lint
-deno task test
-deno check src/index.ts
-# Verify no inward adapter leaks:
-grep -r "import.*from.*adapters/github" src/scrum/ src/domain/ src/schemas/
-```
-
-If a phase fails: `git checkout -- <files-modified-in-this-phase>` and reassess.
-
----
-
-### P0: Adapter Infrastructure
-
-🟢 **Low risk** — three new files, no existing code changes.
-
-**Why first:** Every subsequent phase that touches `backend.ts` or `factory.ts` needs `AbstractProjectBackend` as a compile target. Creating it first avoids forward-referencing issues.
-
-**Changes:**
-
-| File                               | Action  | What it provides                                                                                                                                                                                                                       |
-| ---------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/adapters/capabilities.ts`     | **New** | `PlatformCapabilities` interface + `GITHUB_CAPABILITIES` constant. Declares what features an adapter supports (audit-log burndown, native sprints, dependencies, file reader, stable item keys).                                       |
-| `src/adapters/abstract-backend.ts` | **New** | `AbstractProjectBackend` — abstract base extending `ProjectReader & ProjectWriter`. Provides default `resolveRef()` (throws for `{ number }` — subclasses override) and `UnsupportedCapabilityError` defaults for optional operations. |
-| `src/adapters/factory.ts`          | **New** | `AdapterFactory` interface, `BackendResult` type, `createBackend()` registry. Selects adapter by `SCRUM_PLATFORM` env var.                                                                                                             |
-
-**Key design decisions:**
-
-- `UnsupportedCapabilityError` for optional operations (createImpediment, updateImpediment) — capability gaps are loud, not silent.
-- `resolveRef()` is `protected` — it's an internal concern, not part of the port interface.
-
----
-
-### P1: Domain Types
-
-🟡 **Medium risk** — adds ~15 new types to `src/domain/types.ts`, existing types preserved. Tests added for type guards.
-
-**Why here:** Domain types are the single source of truth for output shapes. Every other layer imports from domain. Must be defined before ports (P2) can reference them.
-
-**Changes to `src/domain/types.ts`:**
-
-| Type                        | Category            | Purpose                                                                               |
-| --------------------------- | ------------------- | ------------------------------------------------------------------------------------- |
-| `ITEM_TYPES` / `ItemType`   | Const tuple + union | PBI vocabulary — `z.enum(ITEM_TYPES)` in schemas, no duplication                      |
-| `IssueKey` + `toIssueKey`   | Branded string      | Human-readable issue number, always present vs. nullable `ref.id`                     |
-| `ScrumTemplateUri`          | Template literal    | `scrum://template/{type}` — compile-time format validation                            |
-| `StoryRef` union            | Extended            | `{ id: string } \| { number: number }` + `isIdRef` / `isNumberRef` guards             |
-| `TemplateUriMap`            | New type            | `Partial<Record<ItemType, ScrumTemplateUri>>` — PBI templates only                    |
-| `SprintContext` + factories | New type            | Sprint with time-progress fields + `riskStance` (normal/monitor/elevated)             |
-| `EpicSummary`               | New type            | Lightweight epic for orient response                                                  |
-| `BacklogHealth`             | New type            | Board health output — `by_type` breakdown, sprint risk, impediments                   |
-| `ItemListing`               | New type            | Replaces `StoryListing` — enriched listing with `priority`, `sprint`, `epic`, deps    |
-| `DependencyNode`            | New type            | Graph node keyed by `IssueKey` — includes inline state signals (status, sprint, epic) |
-| `DependencyMap`             | New type            | `Record<string, DependencyNode>` — opt-in, not paid on every list call                |
-| `ItemSearchResult`          | New type            | `findItems` output — `ItemListing[]` + `scope_summary` + optional `dependency_map`    |
-| `AnalyticsResult`           | New type            | Merges `BurndownResponse \| null` + `SprintSnapshot[] \| null`                        |
-| `ItemDetailResult`          | New type            | `getStoryDetail` output — story + comments + linked PRs + AC                          |
-| `OrientResult`              | Exported            | Moved from private interface in `orient.ts` — now importable by tests and handlers    |
-
-**Removed types:**
-
-- `TemplateResponse` — dead code, no consumers after `scrum_get_template` removal in P6
-- `ArtifactType` — moved to `src/domain/config.ts` (still referenced by `ScrumConfig.templates`)
-
-**Key design decisions:**
-
-- `DependencyMap` uses `IssueKey` as node identifier, not `ref.id` — because `DependencyEntry.ref.id` is nullable (acknowledged bug).
-- `SprintContext` is a factory-built interface, not a class — pure data, no inheritance.
-- `ItemListing.sprint.ref.id` is hardcoded to `""` — known gap until the adapter provides sprint node IDs.
-- Template URIs only cover PBI types (`ItemType`). Ceremony templates (sprint_review, retrospective) stay in `vocabulary.templates` under `ArtifactType`.
-
----
-
-### P2: Port Types
-
-🟡 **Medium risk** — consolidates `src/scrum/ports.ts`, removes 6 deprecated types, adds 3 new interfaces. `SprintTotals` changes affect `get-history.ts`.
-
-**Why here:** Port interfaces define the boundary between use-cases and adapters. They import domain types (P1) and are referenced by schemas (P3).
-
-**Changes to `src/scrum/ports.ts`:**
-
-| Change                                                                | Details                                                                                                                              |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| **Add** `ItemFilter`, `ResolvedItemFilter`                            | Input types for `findItems`. Moved from domain — input types cross the port boundary, they don't belong in domain.                   |
-| **Add** `AnalyticsQuery`                                              | Input type for `getAnalytics`. Same rationale — input at the port.                                                                   |
-| **Extend** `SprintInfo` with `id`                                     | Iteration ID from platform, needed for `SprintContext.id`.                                                                           |
-| **Extend** `PlatformState` with `epics` + `templateUris`              | `epics: { active: EpicSummary[]; totalCount: number }` — populated by `orientUseCase` in P5. `templateUris: TemplateUriMap \| null`. |
-| **Replace** `SprintTotalsActive` + `SprintTotalsHistory`              | Single `SprintTotals` discriminated union with `kind: "active" \| "completed"`. Fixes Issue 7 (fragile runtime guard).               |
-| **Add** `FindItemsPort`                                               | 1-method interface (`findItems`).                                                                                                    |
-| **Add** `AnalyticsPort`                                               | 1-method interface (`getAnalytics`).                                                                                                 |
-| **Add** `BoardHealthPort`                                             | 1-method interface (`getBoardHealth`).                                                                                               |
-| **Remove** `SprintPort`, `BacklogPort`, `HistoryPort`, `BurndownPort` | Replaced by the 3 new interfaces above.                                                                                              |
-| **Deprecate** `StoryListing`                                          | Replace with `ItemListing` from domain.                                                                                              |
-
-**Key design decisions:**
-
-- Individual use-case functions depend on narrow ports (`FindItemsPort`, `AnalyticsPort`). `ProjectReader` is a convenience union for composition root.
-- TypeScript structural typing accepts `backend` (which implements `ProjectReader`) wherever a narrow port is expected.
-
----
-
-### P3: Schema Types
-
-🟢 **Low risk** — adds Zod schemas, no test files import schemas directly.
-
-**Why here:** Schemas validate MCP tool input. They must exist before use-cases (P4) can reference `z.infer<>` types.
-
-**Changes to `src/schemas/scrum.ts`:**
-
-| Schema                     | Purpose                                                                                                                                                                |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `FindItemsSchema`          | Validates `scrum_find_items` input — scope, keys[], search, type[], status[], priority, epic_id, label[], assignee, estimated, sprint_ref, include_dependencies, limit |
-| `GetAnalyticsSchema`       | Validates `scrum_get_analytics` input — view, sprint_ref, history_window                                                                                               |
-| `GetBoardHealthSchema`     | Validates `scrum_get_board_health` input — sprint_scope                                                                                                                |
-| `StoryRefSchema` (updated) | Extended union accepting `{ id }` or `{ number }`                                                                                                                      |
-| Remove `GetTemplateSchema` | Templates replaced by MCP resources                                                                                                                                    |
-
-**Key decision:**
-
-- `FindItemsSchema.keys` validates as `z.array(z.string().regex(/^\d+$/))` — numeric strings to avoid type coercion issues.
-
----
-
-### P4: Use-Case Migration
-
-🟡 **Medium risk** — modifies 5 use-case files, removes local interface declarations, adds shared mapper.
-
-**Why here:** Use-cases must use the new types (P1) and ports (P2) before tool handlers (P6) and the adapter (P7) can be migrated.
-
-**Changes:**
-
-| Component                      | Change                                                                                                                                                               |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/scrum/listing-mappers.ts` | **New** — `storyToListing(story): ItemListing` and `historyEntryToListing(story, sprintName): ItemListing` from the 3 copies in get-backlog, get-sprint, get-history |
-| `src/scrum/get-story.ts`       | Remove private `GetStoryResult`; return `ItemDetailResult` from domain                                                                                               |
-| `src/scrum/get-history.ts`     | Remove private `GetHistoryResult`; return `AnalyticsResult` from domain. Fix Issue 7: replace `"committed_points" in s.totals` with `s.totals.kind === "completed"`  |
-| `src/scrum/get-backlog.ts`     | Remove private `GetBacklogResult`, `GetBacklogParams`; import and return `BacklogHealth`                                                                             |
-| `src/scrum/get-sprint.ts`      | Remove private `SprintSingleResult`, `SprintAllResult`; import mapper from `listing-mappers.ts`                                                                      |
-| `src/scrum/get-burndown.ts`    | Remove private `GetBurndownParams`; use `z.infer<typeof GetAnalyticsSchema>`                                                                                         |
-
-**Key design decision:**
-
-- Shared mapper lives in `listing-mappers.ts`, **not** in any single use-case file. This avoids creating a new dependency focal point that other modules would hesitantly import from.
-
----
-
-### P5: Orient Use-Case
-
-🟡 **Medium risk** — modifies `src/scrum/orient.ts`. Local `OrientResult` replaced with exported domain type. Adds `getEpics()` call (one additional backend call).
-
-**Why here:** Orient is the session entry point. It must return the new types (SprintContext, EpicSummary, TemplateUriMap) before tool handlers (P6) can expose them.
-
-**Changes:**
-
-| Before                           | After                                                                                                                      |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Private `OrientResult` interface | Import exported `OrientResult` from `../domain/types.ts`                                                                   |
-| No epics in response             | Calls `backend.getEpics()` → filters open epics → populates `platform_state.epics.active`                                  |
-| Raw sprint date fields           | Uses `sprintContextFromSprintInfo()` factory → computes `days_elapsed`, `days_remaining`, `time_elapsed_pct`, `riskStance` |
-| Static template path map         | Builds `TemplateUriMap` from `ITEM_TYPES` intersection with `scrumConfig.templates`                                        |
-
-**Key design decision:**
-
-- `getEpics()` is called once during orient (acceptable cost — orient is a session-start call, not a mid-workflow call). Fallback: all open epics when no active sprint exists.
-
----
-
-### P6: Tool Handler Migration 🔴
-
-🔴 **High risk** — removes 5 MCP tools, adds 3 new ones. Breaking change for external consumers.
-
-**Why here:** Tool handlers must reference the migrated use-cases (P4) and schemas (P3). Must wait until those are stable.
-
-**Changes to `src/tools/scrum-read.ts`:**
-
-| Action     | Tool                     | Replaced by                                   |
-| ---------- | ------------------------ | --------------------------------------------- |
-| **Remove** | `scrum_get_sprint`       | `scrum_find_items({ scope: "sprint" })`       |
-| **Remove** | `scrum_get_backlog`      | `scrum_find_items` + `scrum_get_board_health` |
-| **Remove** | `scrum_get_burndown`     | `scrum_get_analytics({ view: "burndown" })`   |
-| **Remove** | `scrum_get_history`      | `scrum_get_analytics({ view: "history" })`    |
-| **Remove** | `scrum_get_template`     | `scrum://template/{type}` resource            |
-| **Add**    | `scrum_find_items`       | Unified item search across all PBIs           |
-| **Add**    | `scrum_get_analytics`    | Unified sprint analytics (burndown + history) |
-| **Add**    | `scrum_get_board_health` | Board health dashboard (no item lists)        |
-
-**Risk mitigation:** The 5 removed tool names produce clear error messages pointing to the replacement. External consumers will break — document this as a breaking change.
-
----
-
-### P7: GitHub Adapter Migration 🟡
-
-🟡 **Medium risk** — extends `GitHubProjectBackend` from `AbstractProjectBackend`, adds 3 new port methods. Some internal services (analytics-service, board-health-service) don't exist yet — needs creation.
-
-**Why here:** Adapter migration depends on the abstract base (P0), new port interfaces (P2), and `StoryNotFoundError` (P1). Must happen before the composition root (P8) can use the factory registry.
-
-**Changes:**
-
-| Component                          | Change                                                                                                                                                                                                        |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GitHubProjectBackend`             | Extend `AbstractProjectBackend` instead of raw `implements ProjectBackend`. Override `resolveRef()` — delegates `{ number }` to `findItems()`. Implement `findItems()`, `getAnalytics()`, `getBoardHealth()`. |
-| `GitHubAdapterFactory`             | **New** — wraps existing factory body in `AdapterFactory`, returns `BackendResult` with `GITHUB_CAPABILITIES`.                                                                                                |
-| `internal/analytics-service.ts`    | **New** — merges `SprintHistoryService` + `BurndownCalculator` behind `getAnalytics(query)`.                                                                                                                  |
-| `internal/board-health-service.ts` | **New** — implements `getBoardHealth()` query.                                                                                                                                                                |
-| `internal/story-query-service.ts`  | Add `findItems(filter): ItemSearchResult` — replaces `getSprintStories` + `getBacklogStories`.                                                                                                                |
-
-**Key design decision:**
-
-- `resolveRef()` uses `findItems()` for `{ number }` lookup — this avoids a dedicated `resolveIssueNumber` query and keeps the adapter implementation simple. The cost is one `findItems` call per `{ number }` resolve.
-
----
-
-### P8: Composition Root
-
-🟢 **Low risk** — rewrites `src/index.ts` to use the factory registry.
-
-**Why here:** The composition root wires everything together. It must wait until all components (P0–P7) exist.
-
-**Changes to `src/index.ts`:**
-
-| Before                                       | After                                                                 |
-| -------------------------------------------- | --------------------------------------------------------------------- |
-| Direct `createGitHubProjectBackend()` import | `createBackend([new GitHubAdapterFactory()])`                         |
-| `fileReader` assumed always present          | `fileReader` is `null`-checked — templates fall back to MCP resources |
-| Manual wiring                                | Registry-based, factory declares platform                             |
-
-**Key design decision:**
-
-- `fileReader` being `null` is handled explicitly at the composition root, not silenced with a no-op default. If a future adapter has no file system, template tool registration is simply skipped.
-
----
-
-## Out of Scope
-
-The following are explicitly **not** covered by this implementation strategy. They are either future concerns or belong to the tool-surface refactoring phase that follows.
-
-| Concern                                                                                                        | Where it belongs                                                       |
-| -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Agent behavioral design (session protocol, lookup ladder, dependency graph navigation, temporal anchor stance) | REFACTORING.md §6 — agent layer, not server layer                      |
-| Backend implementation of `scrum_find_items` GraphQL query                                                     | Follow-up tool-surface refactoring                                     |
-| Backend implementation of epic enumeration in `scrum_orient`                                                   | Follow-up tool-surface refactoring                                     |
-| `scrum://template/{type}` MCP resource registration                                                            | Follow-up — `server.registerResourceTemplate()` wiring                 |
-| `scrum_get_board_health` health metric computation backend queries                                             | Follow-up — `board-health-service.ts` implementation detail            |
-| Config-driven `ItemType` vocabulary extension                                                                  | Future extension point — currently hardcoded                           |
-| Stateful orient comparison server                                                                              | Not a function of the MCP server (which is stateless)                  |
-| Ceremony template conversion to MCP resources                                                                  | Templates stay as `ArtifactType`-keyed in `vocabulary.templates`       |
-| Full tool-surface removal/rename of existing tools                                                             | P6 covers tool registration — actual name changes happen in follow-up  |
-| Non-GitHub adapter implementations (Trello, Linear, Jira)                                                      | Future adapter work — infrastructure is ready, implementations are not |
-
----
-
-## File Inventory
-
-### New Files (9)
-
-| File                                                   | Purpose                                                 |
-| ------------------------------------------------------ | ------------------------------------------------------- |
-| `src/adapters/capabilities.ts`                         | `PlatformCapabilities` + `GITHUB_CAPABILITIES`          |
-| `src/adapters/abstract-backend.ts`                     | `AbstractProjectBackend` + `UnsupportedCapabilityError` |
-| `src/adapters/factory.ts`                              | `AdapterFactory` + `BackendResult` + `createBackend()`  |
-| `src/scrum/listing-mappers.ts`                         | Shared `storyToListing` + `historyEntryToListing`       |
-| `src/scrum/find-items.ts`                              | `findItemsUseCase`                                      |
-| `src/scrum/get-analytics.ts`                           | `getAnalyticsUseCase`                                   |
-| `src/scrum/get-board-health.ts`                        | `getBoardHealthUseCase`                                 |
-| `src/adapters/github/internal/analytics-service.ts`    | Merges SprintHistoryService + BurndownCalculator        |
-| `src/adapters/github/internal/board-health-service.ts` | `getBoardHealth()` implementation                       |
-
-### Modified Files (15)
-
-| File                                                  | What changes                                                                                                             |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `src/domain/types.ts`                                 | Add ~15 new types; extend `StoryRef`; delete `TemplateResponse`                                                          |
-| `src/domain/errors.ts`                                | Add `StoryNotFoundError`                                                                                                 |
-| `src/domain/config.ts`                                | Move `ArtifactType` here                                                                                                 |
-| `src/scrum/ports.ts`                                  | Add `ItemFilter`, `AnalyticsQuery`, `SprintTotals`; extend `SprintInfo`, `PlatformState`; add 3 ports; remove 6 ports    |
-| `src/schemas/scrum.ts`                                | Add `FindItemsSchema`, `GetAnalyticsSchema`, `GetBoardHealthSchema`; update `StoryRefSchema`; remove `GetTemplateSchema` |
-| `src/scrum/orient.ts`                                 | Remove local `OrientResult`; add `getEpics()`; use `sprintContextFromSprintInfo()`                                       |
-| `src/scrum/get-story.ts`                              | Remove local `GetStoryResult`                                                                                            |
-| `src/scrum/get-history.ts`                            | Remove local `GetHistoryResult`; fix SprintTotals narrowing                                                              |
-| `src/scrum/get-backlog.ts`                            | Remove local result/params types                                                                                         |
-| `src/scrum/get-sprint.ts`                             | Remove local result types; use shared mapper                                                                             |
-| `src/scrum/get-burndown.ts`                           | Remove local `GetBurndownParams`                                                                                         |
-| `src/adapters/github/backend.ts`                      | Extend `AbstractProjectBackend`; add `resolveRef()`, `findItems`, `getAnalytics`, `getBoardHealth`                       |
-| `src/adapters/github/factory.ts`                      | Wrap in `GitHubAdapterFactory`                                                                                           |
-| `src/adapters/github/internal/story-query-service.ts` | Add `findItems(filter)`                                                                                                  |
-| `src/tools/scrum-read.ts`                             | Add 3 tools; remove 5 tools                                                                                              |
-
-### Deleted Files (5)
-
-| File                        | Reason                                              |
-| --------------------------- | --------------------------------------------------- |
-| `src/scrum/get-template.ts` | Templates replaced by MCP resources                 |
-| `src/scrum/get-sprint.ts`   | Replaced by `find-items.ts`                         |
-| `src/scrum/get-backlog.ts`  | Replaced by `find-items.ts` + `get-board-health.ts` |
-| `src/scrum/get-history.ts`  | Replaced by `get-analytics.ts`                      |
-| `src/scrum/get-burndown.ts` | Replaced by `get-analytics.ts`                      |
-
----
-
-## Type Migration Summary
-
-### New Types (29)
-
-| Type                        | Layer    | Purpose                         |
-| --------------------------- | -------- | ------------------------------- |
-| `ITEM_TYPES` / `ItemType`   | Domain   | Const tuple + union             |
-| `IssueKey` + `toIssueKey`   | Domain   | Branded issue-number string     |
-| `ScrumTemplateUri`          | Domain   | Template literal URI            |
-| `isIdRef` / `isNumberRef`   | Domain   | `StoryRef` union type guards    |
-| `SprintContext` + factories | Domain   | Sprint with time-progress       |
-| `EpicSummary`               | Domain   | Lightweight epic for orient     |
-| `TemplateUriMap`            | Domain   | PBI template URI discovery      |
-| `BacklogHealth`             | Domain   | Board health output             |
-| `ItemListing`               | Domain   | Enriched listing entry          |
-| `DependencyNode`            | Domain   | Graph node by `IssueKey`        |
-| `DependencyMap`             | Domain   | Full dependency graph           |
-| `ItemSearchResult`          | Domain   | `findItems` output              |
-| `AnalyticsResult`           | Domain   | `getAnalytics` output           |
-| `ItemDetailResult`          | Domain   | `getStoryDetail` output         |
-| `OrientResult`              | Domain   | Exported orient output          |
-| `StoryNotFoundError`        | Domain   | Error for unresolved references |
-| `ItemFilter`                | Ports    | `findItems` input               |
-| `ResolvedItemFilter`        | Ports    | Filter with defaults            |
-| `AnalyticsQuery`            | Ports    | `getAnalytics` input            |
-| `SprintTotals`              | Ports    | Discriminated union             |
-| `FindItemsPort`             | Ports    | Unified item search             |
-| `AnalyticsPort`             | Ports    | Unified analytics               |
-| `BoardHealthPort`           | Ports    | Board health                    |
-| `PlatformCapabilities`      | Adapters | Feature declaration             |
-| `AdapterFactory`            | Adapters | Factory contract                |
-| `BackendResult`             | Adapters | Composition root type           |
-| `SprintInfo.id`             | Ports    | Iteration ID (field addition)   |
-
-### Removed Types (16)
-
-| Type                  | Was in                 | Replacement                                          |
-| --------------------- | ---------------------- | ---------------------------------------------------- |
-| `GetStoryResult`      | `get-story.ts:12`      | `ItemDetailResult`                                   |
-| `GetHistoryResult`    | `get-history.ts:20`    | `AnalyticsResult`                                    |
-| `GetBacklogResult`    | `get-backlog.ts:23`    | `BacklogHealth`                                      |
-| `GetBacklogParams`    | `get-backlog.ts:16`    | `z.infer<typeof FindItemsSchema>`                    |
-| `SprintSingleResult`  | `get-sprint.ts:112`    | `SprintSnapshot`                                     |
-| `SprintAllResult`     | `get-sprint.ts:116`    | `{ sprints: SprintSnapshot[]; total_count: number }` |
-| `GetBurndownParams`   | `get-burndown.ts:17`   | `z.infer<typeof GetAnalyticsSchema>`                 |
-| `SprintTotalsActive`  | `ports.ts:182`         | `SprintTotals` (discriminated union)                 |
-| `SprintTotalsHistory` | `ports.ts:192`         | `SprintTotals` (discriminated union)                 |
-| `SprintPort`          | `ports.ts:241`         | `FindItemsPort`                                      |
-| `BacklogPort`         | `ports.ts:230`         | `FindItemsPort`                                      |
-| `HistoryPort`         | `ports.ts:260`         | `AnalyticsPort`                                      |
-| `BurndownPort`        | `ports.ts:268`         | `AnalyticsPort`                                      |
-| `TemplateResponse`    | `domain/types.ts:214`  | Deleted — dead code                                  |
-| `GetTemplateSchema`   | `schemas/scrum.ts:418` | N/A — templates are MCP resources                    |
-
-### Duplicated Code Eliminated
-
-| Pattern                                    | Files affected                       | Fix                                                   |
-| ------------------------------------------ | ------------------------------------ | ----------------------------------------------------- |
-| `storyToListing` / `historyEntryToListing` | get-backlog, get-sprint, get-history | Shared `src/scrum/listing-mappers.ts`                 |
-| `"committed_points" in s.totals` guard     | get-history.ts:128                   | `totals.kind === "completed"` via discriminated union |
-| Ad-hoc port intersections `A & B & C`      | get-sprint.ts, get-history.ts        | Narrow port interfaces — no intersections needed      |
+## Verification Checklist
+
+| Item    | How to verify                                                                                            |
+| ------- | -------------------------------------------------------------------------------------------------------- |
+| A-bug-1 | Unit test: A blocked by B → `A.blocked_by = [B]`, `B.blocks = [A]`, `A.blocks = []`, `B.blocked_by = []` |
+| A-bug-2 | Unit test: `blocked_by` ref not in `allItems` → stub node in map with `status: null, resolved: false`    |
+| B1–B2   | MCP client: read `scrum://template/feature` → response contains markdown, `mimeType: "text/markdown"`    |
+| B3      | After B2 verified: confirm `scrum_get_template` is absent from tool list before deleting                 |
+| C1      | Orient with active sprint → epics count ≤ total epic count; epics without sprint items are absent        |
+| C2      | Orient with goal configured in sprint → `iterations.active.goal` is non-null string                      |
+| C3      | Orient mid-sprint with 5/10 sp done → `riskStance` reflects ~50% completion, not 0%                      |
+| D1      | `scrum_get_item_detail({ number: 42 })` returns same payload as `scrum_get_story({ number: 42 })`        |
+| D2      | `scrum_get_story(...)` returns error JSON pointing to `scrum_get_item_detail`                            |

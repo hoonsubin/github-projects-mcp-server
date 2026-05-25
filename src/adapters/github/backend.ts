@@ -180,6 +180,7 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
         statusDisplay: Object.keys(statusDisplayMap).length > 0 ? statusDisplayMap : null,
         priorityDisplay: Object.keys(priorityDisplayMap).length > 0 ? priorityDisplayMap : null,
         typeDisplay: typeDisplay,
+        typeTemplatePaths: this.deps.config.typeTemplatePaths,
       },
       epics: { active: [], totalCount: 0 },
       templateUris: null,

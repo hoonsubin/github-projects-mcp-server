@@ -22,14 +22,16 @@ const daysSince = (startDate: string): number => {
 };
 
 /**
- * Build a TemplateUriMap from ITEM_TYPES.
- * Every PBI type gets a template URI scrum://template/{type}.
- * The map is built at call time — no adapter config needed.
+ * Build a TemplateUriMap from the backend's declared template paths.
+ * Only types with a declared template path get a URI — the agent falls back
+ * to its own defaults for absent types.
  */
-const buildTemplateUriMap = (): TemplateUriMap | null => {
+const buildTemplateUriMap = (typeTemplatePaths: Record<string, string>): TemplateUriMap | null => {
   const map: TemplateUriMap = {};
   for (const type of ITEM_TYPES) {
-    map[type] = `scrum://template/${type}`;
+    if (typeTemplatePaths[type]) {
+      map[type] = `scrum://template/${type}`;
+    }
   }
   return Object.keys(map).length > 0 ? map : null;
 };
@@ -123,7 +125,7 @@ export const orientUseCase = async (
         active: epicsSummary,
         total_count: allEpics.length,
       },
-      template_uris: buildTemplateUriMap(),
+      template_uris: buildTemplateUriMap(state.vocabulary.typeTemplatePaths),
     },
     vocabulary: {
       status: state.vocabulary.statusDisplay,
