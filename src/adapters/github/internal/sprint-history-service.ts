@@ -64,6 +64,7 @@ export class SprintHistoryService {
         info: {
           id: iter.id,
           name: iter.title,
+          goal: null, // GitHub API does not expose iteration descriptions
           startDate: iter.startDate,
           durationDays: iter.duration,
           endDate: endDate.toISOString().slice(0, 10),
