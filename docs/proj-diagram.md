@@ -79,13 +79,16 @@ classDiagram
                 %% Unused: updateImpedimentUseCase
             }
             class config-helpers.ts:::scrum {
+                +resolveP0PriorityDisplay()
                 +resolveTerminalDisplay()
                 %% Unused: resolveTerminalDisplay
             }
+            class template-resource.ts:::scrum {
+                +templateResourceUseCase() Promise<{ content: string; mimeType: "text/markdown" }>
+            }
             class errors.ts:::domain {
                 +assertNever()
-                class SprintNotScheduledError
-                class StoryNotFoundError
+                class AdapterError
             }
             class types.ts:::domain {
                 type EntityRef
@@ -114,8 +117,10 @@ classDiagram
                 type ItemListing
                 interface DependencyNode
                 type DependencyMap
-                interface DraftStory
-                interface IssueStory
+                interface StoryBase
+                +var SUPPORTED_BACKENDS
+                type SupportedBackend
+                type AdapterBackend
                 type Story
                 interface IterationEntry
                 interface BurndownResponse
@@ -130,15 +135,12 @@ classDiagram
                 interface StoryComment
                 interface LinkedArtifact
                 interface ItemDetailResult
+                interface PartialResult
                 interface OrientResult
-                %% Unused: SprintName, ScrumTemplateUri, SprintRiskStance, SprintContext, ItemListing
+                %% Unused: SprintName, ScrumTemplateUri, SprintRiskStance, SprintContext, ItemListing, SUPPORTED_BACKENDS, PartialResult
             }
             class acceptance-criteria.ts:::rules {
                 +parseAcceptanceCriteria()
-            }
-            class status.ts:::rules {
-                +isTerminalStatus()
-                %% Unused: isTerminalStatus
             }
             class readiness.ts:::rules {
                 +computeReadinessSummary()
@@ -146,7 +148,6 @@ classDiagram
             class config.ts:::domain {
                 type ArtifactType
                 interface ScrumConfig
-                interface CommitBackendDisplayConfig
                 %% Unused: ArtifactType
             }
             class mutation-validator.ts:::services {
@@ -155,6 +156,9 @@ classDiagram
             }
             class error-enrichment.ts:::services {
                 +enrichError()
+                interface BackendCallResult
+                +catchBackend()
+                %% Unused: BackendCallResult
             }
             class logger.ts:::services {
                 +var log
@@ -201,9 +205,8 @@ classDiagram
             class errors.ts:::github {
                 type GitHubErrorCode
                 +assertNever()
-                interface GitHubApiErrorParams
                 class GitHubApiError
-                %% Unused: GitHubErrorCode, assertNever, GitHubApiErrorParams
+                %% Unused: GitHubErrorCode, assertNever
             }
             class queries.ts:::github {
                 +var GET_ISSUE_DETAILS_QUERY
@@ -302,7 +305,9 @@ classDiagram
                 +fetchRepoFile()
             }
             class story-query-service.ts:::internal {
+                +buildDependencyMap()
                 class StoryQueryService
+                %% Unused: buildDependencyMap
             }
             class http-client.ts:::internal {
                 interface RestResponse
@@ -361,6 +366,8 @@ classDiagram
                 interface FieldValueNode
                 interface BoardFields
                 interface LinkedPr
+                interface DraftStory
+                interface IssueStory
                 %% Unused: GitHubMilestoneId, toEntityRef, ItemContentType, IssueIdentity, PrIdentity, PrDiscriminator, PrState, IssueState, IssueRef, LabelRef, FieldValueField, FieldValueUser, FieldValueUserNodes, FieldValueLabel, FieldValueLabelNodes, FieldValueMilestone, FieldValueRepository, LabelColorNodes
             }
             class config-loader.ts:::github {
@@ -385,6 +392,7 @@ classDiagram
     orient.ts --> ports.ts : "imports"
     orient.ts --> config.ts : "imports"
     orient.ts --> types.ts : "imports"
+    orient.ts --> error-enrichment.ts : "imports"
     get-analytics.ts --> ports.ts : "imports"
     get-analytics.ts --> types.ts : "imports"
     find-items.ts --> ports.ts : "imports"
@@ -402,7 +410,10 @@ classDiagram
     update-impediment.ts --> ports.ts : "imports"
     update-impediment.ts --> types.ts : "imports"
     config-helpers.ts --> config.ts : "imports"
+    template-resource.ts --> ports.ts : "imports"
+    errors.ts --> types.ts : "imports"
     types.ts --> github-types.ts : "imports"
+    config.ts --> types.ts : "imports"
     error-enrichment.ts --> errors.ts : "imports"
     scrum-read.ts --> ports.ts : "imports"
     scrum-read.ts --> config.ts : "imports"
@@ -416,6 +427,7 @@ classDiagram
     scrum-write.ts --> ports.ts : "imports"
     scrum-write.ts --> types.ts : "imports"
     scrum-write.ts --> config.ts : "imports"
+    scrum-write.ts --> config-helpers.ts : "imports"
     scrum-write.ts --> scrum.ts : "imports"
     scrum-write.ts --> error-enrichment.ts : "imports"
     scrum-write.ts --> pick-defined.ts : "imports"
@@ -444,6 +456,7 @@ classDiagram
     mappers.ts --> ports.ts : "imports"
     config-reloader.ts --> config-loader.ts : "imports"
     config-reloader.ts --> http-client.ts : "imports"
+    burndown-calculator.ts --> errors.ts : "imports"
     burndown-calculator.ts --> http-client.ts : "imports"
     burndown-calculator.ts --> pagination.ts : "imports"
     burndown-calculator.ts --> mappers.ts : "imports"
@@ -452,10 +465,12 @@ classDiagram
     burndown-calculator.ts --> config-loader.ts : "imports"
     burndown-calculator.ts --> ports.ts : "imports"
     burndown-calculator.ts --> types.ts : "imports"
+    burndown-calculator.ts --> logger.ts : "imports"
     epic-service.ts --> github-types.ts : "imports"
     epic-service.ts --> http-client.ts : "imports"
     epic-service.ts --> queries.ts : "imports"
     epic-service.ts --> types.ts : "imports"
+    epic-service.ts --> story-query-service.ts : "imports"
     analytics-service.ts --> sprint-history-service.ts : "imports"
     analytics-service.ts --> burndown-calculator.ts : "imports"
     analytics-service.ts --> resolver.ts : "imports"
@@ -571,8 +586,10 @@ classDiagram
     abstract-backend.ts --> capabilities.ts : "imports"
     abstract-backend.ts --> ports.ts : "imports"
     abstract-backend.ts --> types.ts : "imports"
+    abstract-backend.ts --> errors.ts : "imports"
     index.ts --> scrum-read.ts : "imports"
     index.ts --> scrum-write.ts : "imports"
+    index.ts --> template-resource.ts : "imports"
     index.ts --> factory.ts : "imports"
     index.ts --> logger.ts : "imports"
 
@@ -592,54 +609,56 @@ classDiagram
 
 The following exports are never imported by any other module in the codebase:
 
-| Module                                                                                                  | Export                       | Kind        |
-| ------------------------------------------------------------------------------------------------------- | ---------------------------- | ----------- |
-| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                                             | `buildSprintMeta`            | `function`  |
-| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                                             | `groupStoriesByStatus`       | `function`  |
-| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                                             | `computeSprintTotals`        | `function`  |
-| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `SearchScope`                | `type`      |
-| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `FieldPresence`              | `interface` |
-| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `FieldWithOptions`           | `interface` |
-| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `DisplayMap`                 | `type`      |
-| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `StoryListing`               | `interface` |
-| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                         | `EpicPort`                   | `interface` |
-| [`./src/scrum/update-impediment.ts`](../src/scrum/update-impediment.ts)                                 | `updateImpedimentUseCase`    | `function`  |
-| [`./src/scrum/config-helpers.ts`](../src/scrum/config-helpers.ts)                                       | `resolveTerminalDisplay`     | `function`  |
-| [`./src/schemas/inputs.ts`](../src/schemas/inputs.ts)                                                   | `GraphQLQuerySchema`         | `var`       |
-| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `GitHubErrorCode`            | `type`      |
-| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `assertNever`                | `function`  |
-| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                   | `GitHubApiErrorParams`       | `interface` |
-| [`./src/adapters/github/queries.ts`](../src/adapters/github/queries.ts)                                 | `ADD_PROJECT_ITEM_MUTATION`  | `var`       |
-| [`./src/adapters/github/queries.ts`](../src/adapters/github/queries.ts)                                 | `CREATE_ISSUE_MUTATION`      | `var`       |
-| [`./src/adapters/github/internal/label-resolver.ts`](../src/adapters/github/internal/label-resolver.ts) | `GitHubLabel`                | `interface` |
-| [`./src/adapters/github/internal/http-client.ts`](../src/adapters/github/internal/http-client.ts)       | `RestResponse`               | `interface` |
-| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `GitHubMilestoneId`          | `type`      |
-| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `toEntityRef`                | `function`  |
-| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `ItemContentType`            | `type`      |
-| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `IssueIdentity`              | `type`      |
-| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `PrIdentity`                 | `type`      |
-| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `PrDiscriminator`            | `type`      |
-| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `PrState`                    | `type`      |
-| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `IssueState`                 | `type`      |
-| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `IssueRef`                   | `type`      |
-| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `LabelRef`                   | `type`      |
-| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `FieldValueField`            | `type`      |
-| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `FieldValueUser`             | `type`      |
-| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `FieldValueUserNodes`        | `type`      |
-| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `FieldValueLabel`            | `type`      |
-| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `FieldValueLabelNodes`       | `type`      |
-| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `FieldValueMilestone`        | `type`      |
-| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `FieldValueRepository`       | `type`      |
-| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `LabelColorNodes`            | `type`      |
-| [`./src/adapters/abstract-backend.ts`](../src/adapters/abstract-backend.ts)                             | `UnsupportedCapabilityError` | `class`     |
-| [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `SprintName`                 | `type`      |
-| [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `ScrumTemplateUri`           | `type`      |
-| [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `SprintRiskStance`           | `type`      |
-| [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `SprintContext`              | `interface` |
-| [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `ItemListing`                | `type`      |
-| [`./src/domain/rules/status.ts`](../src/domain/rules/status.ts)                                         | `isTerminalStatus`           | `function`  |
-| [`./src/domain/config.ts`](../src/domain/config.ts)                                                     | `ArtifactType`               | `type`      |
-| [`./src/services/mutation-validator.ts`](../src/services/mutation-validator.ts)                         | `isMutationQuery`            | `function`  |
+| Module                                                                                                            | Export                       | Kind        |
+| ----------------------------------------------------------------------------------------------------------------- | ---------------------------- | ----------- |
+| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                                                       | `buildSprintMeta`            | `function`  |
+| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                                                       | `groupStoriesByStatus`       | `function`  |
+| [`./src/scrum/sprint-math.ts`](../src/scrum/sprint-math.ts)                                                       | `computeSprintTotals`        | `function`  |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                                   | `SearchScope`                | `type`      |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                                   | `FieldPresence`              | `interface` |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                                   | `FieldWithOptions`           | `interface` |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                                   | `DisplayMap`                 | `type`      |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                                   | `StoryListing`               | `interface` |
+| [`./src/scrum/ports.ts`](../src/scrum/ports.ts)                                                                   | `EpicPort`                   | `interface` |
+| [`./src/scrum/update-impediment.ts`](../src/scrum/update-impediment.ts)                                           | `updateImpedimentUseCase`    | `function`  |
+| [`./src/scrum/config-helpers.ts`](../src/scrum/config-helpers.ts)                                                 | `resolveTerminalDisplay`     | `function`  |
+| [`./src/schemas/inputs.ts`](../src/schemas/inputs.ts)                                                             | `GraphQLQuerySchema`         | `var`       |
+| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                             | `GitHubErrorCode`            | `type`      |
+| [`./src/adapters/github/errors.ts`](../src/adapters/github/errors.ts)                                             | `assertNever`                | `function`  |
+| [`./src/adapters/github/queries.ts`](../src/adapters/github/queries.ts)                                           | `ADD_PROJECT_ITEM_MUTATION`  | `var`       |
+| [`./src/adapters/github/queries.ts`](../src/adapters/github/queries.ts)                                           | `CREATE_ISSUE_MUTATION`      | `var`       |
+| [`./src/adapters/github/internal/label-resolver.ts`](../src/adapters/github/internal/label-resolver.ts)           | `GitHubLabel`                | `interface` |
+| [`./src/adapters/github/internal/story-query-service.ts`](../src/adapters/github/internal/story-query-service.ts) | `buildDependencyMap`         | `function`  |
+| [`./src/adapters/github/internal/http-client.ts`](../src/adapters/github/internal/http-client.ts)                 | `RestResponse`               | `interface` |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                               | `GitHubMilestoneId`          | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                               | `toEntityRef`                | `function`  |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                               | `ItemContentType`            | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                               | `IssueIdentity`              | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                               | `PrIdentity`                 | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                               | `PrDiscriminator`            | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                               | `PrState`                    | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                               | `IssueState`                 | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                               | `IssueRef`                   | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                               | `LabelRef`                   | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                               | `FieldValueField`            | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                               | `FieldValueUser`             | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                               | `FieldValueUserNodes`        | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                               | `FieldValueLabel`            | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                               | `FieldValueLabelNodes`       | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                               | `FieldValueMilestone`        | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                               | `FieldValueRepository`       | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                               | `LabelColorNodes`            | `type`      |
+| [`./src/adapters/abstract-backend.ts`](../src/adapters/abstract-backend.ts)                                       | `UnsupportedCapabilityError` | `class`     |
+| [`./src/domain/types.ts`](../src/domain/types.ts)                                                                 | `SprintName`                 | `type`      |
+| [`./src/domain/types.ts`](../src/domain/types.ts)                                                                 | `ScrumTemplateUri`           | `type`      |
+| [`./src/domain/types.ts`](../src/domain/types.ts)                                                                 | `SprintRiskStance`           | `type`      |
+| [`./src/domain/types.ts`](../src/domain/types.ts)                                                                 | `SprintContext`              | `interface` |
+| [`./src/domain/types.ts`](../src/domain/types.ts)                                                                 | `ItemListing`                | `type`      |
+| [`./src/domain/types.ts`](../src/domain/types.ts)                                                                 | `SUPPORTED_BACKENDS`         | `var`       |
+| [`./src/domain/types.ts`](../src/domain/types.ts)                                                                 | `PartialResult`              | `interface` |
+| [`./src/domain/config.ts`](../src/domain/config.ts)                                                               | `ArtifactType`               | `type`      |
+| [`./src/services/mutation-validator.ts`](../src/services/mutation-validator.ts)                                   | `isMutationQuery`            | `function`  |
+| [`./src/services/error-enrichment.ts`](../src/services/error-enrichment.ts)                                       | `BackendCallResult`          | `interface` |
 
 ## Notes
 
