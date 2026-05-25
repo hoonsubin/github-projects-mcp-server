@@ -4,7 +4,8 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CreateStoryInput, ProjectBackend, StoryUpdates } from "../scrum/ports.ts";
 import type { Story, StoryRef } from "../domain/types.ts";
-import type { CommitBackendDisplayConfig, ScrumConfig } from "../domain/config.ts";
+import type { ScrumConfig } from "../domain/config.ts";
+import { resolveP0PriorityDisplay } from "../scrum/config-helpers.ts";
 import {
   AddVocabularySchema,
   CreateStorySchema,
@@ -14,7 +15,7 @@ import {
   UpdateImpedimentSchema,
   UpdateStorySchema,
 } from "../schemas/scrum.ts";
-import { enrichError } from "../services/error-enrichment.ts";
+import { catchBackend, enrichError } from "../services/error-enrichment.ts";
 import { pickDefined } from "../services/pick-defined.ts";
 import { z } from "zod";
 
@@ -25,16 +26,6 @@ interface PartialFailureResult {
   partialFailure: true;
   failedFields: Array<{ field: string; reason: string }>;
 }
-
-// ── Derived constants ─────────────────────────────────────────────────────────
-
-/** Resolve the p0 (highest-tier) priority display label from config. */
-const resolveP0PriorityDisplay = (scrumConfig: ScrumConfig): string => {
-  const p0Key = scrumConfig.scrum.priority?.[0]?.key ?? "p0";
-  const ghConfig = scrumConfig.backends.github as CommitBackendDisplayConfig;
-  const priorityDisplay = ghConfig.priority_display ?? {};
-  return priorityDisplay[p0Key] ?? "Must";
-};
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -232,50 +223,40 @@ export const registerScrumWriteTools = (
         const failedFields: PartialFailureResult["failedFields"] = [];
 
         if (params.sprint !== undefined) {
-          try {
-            await backend.setField(storyRef, "sprint", params.sprint);
-          } catch (err) {
-            failedFields.push({
-              field: "sprint",
-              reason: enrichError(err),
-            });
-          }
+          const sprintVal = params.sprint; // narrowed before closure
+          const { warnings: w } = await catchBackend(
+            () => backend.setField(storyRef, "sprint", sprintVal),
+          );
+          for (const reason of w) failedFields.push({ field: "sprint", reason });
         }
 
         if (params.story_points !== undefined) {
-          try {
-            await backend.setField(storyRef, "story_points", params.story_points);
-          } catch (err) {
-            failedFields.push({
-              field: "story_points",
-              reason: enrichError(err),
-            });
-          }
+          const pointsVal = params.story_points; // narrowed before closure
+          const { warnings: w } = await catchBackend(
+            () => backend.setField(storyRef, "story_points", pointsVal),
+          );
+          for (const reason of w) failedFields.push({ field: "story_points", reason });
         }
 
         if (params.priority !== undefined) {
-          try {
-            await backend.setField(storyRef, "priority", params.priority);
-          } catch (err) {
-            failedFields.push({
-              field: "priority",
-              reason: enrichError(err),
-            });
-          }
+          const priorityVal = params.priority; // narrowed before closure
+          const { warnings: w } = await catchBackend(
+            () => backend.setField(storyRef, "priority", priorityVal),
+          );
+          for (const reason of w) failedFields.push({ field: "priority", reason });
         }
 
         // Step 3: Fetch updated story (wrap so a read failure after successful
         //         creation returns partial-success, not a full failure)
         let storyDetail: Story | Partial<StoryRef>;
-        try {
-          const fetchedDetail = await backend.getStoryDetail(storyRef);
+        const { value: fetchedDetail, warnings: readWarnings } = await catchBackend(
+          () => backend.getStoryDetail(storyRef),
+        );
+        for (const reason of readWarnings) failedFields.push({ field: "read", reason });
+        if (fetchedDetail) {
           storyDetail = fetchedDetail.story;
-        } catch (readErr) {
+        } else {
           // Story was created successfully — return partial success with issue ref
-          failedFields.push({
-            field: "read",
-            reason: enrichError(readErr),
-          });
           storyDetail = { id: "id" in storyRef ? storyRef.id : String(storyRef.number) }; // minimal shape — full Story unavailable
         }
 
@@ -347,25 +328,26 @@ export const registerScrumWriteTools = (
           const { stories: currentStories } = await (backend as unknown as BackendWithSprintStories)
             .getSprintStories(params.sprint);
           for (const story of currentStories) {
-            try {
-              await backend.setField(story.ref, "sprint", null);
+            const { warnings: w } = await catchBackend(
+              () => backend.setField(story.ref, "sprint", null),
+            );
+            if (w.length > 0) {
+              for (const reason of w) skipped.push({ ref: story.ref, reason });
+            } else {
               assigned.push(story.ref);
-            } catch (err) {
-              skipped.push({
-                ref: story.ref,
-                reason: enrichError(err),
-              });
             }
           }
         }
 
         // Step 2: Assign each requested story
         for (const ref of params.stories) {
-          try {
-            await backend.setField(ref, "sprint", params.sprint);
+          const { warnings: w } = await catchBackend(
+            () => backend.setField(ref, "sprint", params.sprint),
+          );
+          if (w.length > 0) {
+            for (const reason of w) skipped.push({ ref, reason });
+          } else {
             assigned.push(ref);
-          } catch (err) {
-            skipped.push({ ref, reason: enrichError(err) });
           }
         }
 

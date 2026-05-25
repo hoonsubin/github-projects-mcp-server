@@ -330,7 +330,15 @@ export class StoryMutationService {
         return this.fieldValueMutator.setFieldAssignee(assigneeIssueId, value as string | null);
       }
       default:
-        throw new Error(`Unknown field: ${field}`);
+        throw new GitHubApiError(
+          `Unknown field: ${field}`,
+          {
+            code: "MUTATION_FAILED",
+            recovery: "This is a programming error — the field enum should be exhaustive. " +
+              "Report this issue with the field name.",
+            context: { field },
+          },
+        );
     }
   }
 

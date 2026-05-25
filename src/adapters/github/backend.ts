@@ -10,7 +10,7 @@
 
 import { GITHUB_CAPABILITIES } from "../capabilities.ts";
 import { AbstractProjectBackend } from "../abstract-backend.ts";
-import { StoryNotFoundError } from "../../domain/errors.ts";
+import { GitHubApiError } from "./errors.ts";
 import { type RuntimeConfig } from "./config-loader.ts";
 import { LabelResolver } from "./internal/label-resolver.ts";
 import { FieldValueMutator } from "./internal/field-value-mutator.ts";
@@ -105,10 +105,14 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
       limit: 1,
     });
     if (result.items.length === 0) {
-      throw new StoryNotFoundError(
-        String(ref.number),
-        `Story #${ref.number} not found on the project board. ` +
-          "Verify the issue number and ensure it appears in the project.",
+      throw new GitHubApiError(
+        `Story #${ref.number} not found on the project board.`,
+        {
+          code: "NOT_FOUND",
+          recovery: "Verify the issue number and ensure it appears in the project. " +
+            "Use scrum_find_items to search for stories by keyword if the number may be incorrect.",
+          context: { storyNumber: ref.number },
+        },
       );
     }
     return { id: result.items[0].ref.id };

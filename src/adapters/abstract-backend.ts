@@ -26,7 +26,9 @@ import type {
   ItemSearchResult,
   SprintRef,
   StoryRef,
+  SupportedBackend,
 } from "../domain/types.ts";
+import { AdapterError } from "../domain/errors.ts";
 
 // ── UnsupportedCapabilityError ───────────────────────────────────────────────
 
@@ -35,24 +37,28 @@ import type {
  * implement it. Carries the adapter's platform name so error messages can
  * guide the agent toward a platform-appropriate alternative.
  *
+ * Extends AdapterError so catchBackend() and enrichError() can both produce
+ * structured "[platform] CODE: ..." output.
+ *
  * Example: calling updateImpediment() on a mock adapter used in tests.
  * The agent reads the message and knows the feature is unavailable.
  */
-export class UnsupportedCapabilityError extends Error {
+export class UnsupportedCapabilityError extends AdapterError {
   override readonly name = "UnsupportedCapabilityError";
-
-  /** The platform that lacks this capability (e.g. "mock", "linear"). */
-  readonly platform: string;
+  override readonly backendName: SupportedBackend;
+  override readonly code = "UNSUPPORTED_CAPABILITY";
+  override readonly recovery: string;
 
   /** The method that was called but is unsupported. */
   readonly method: string;
 
   constructor(platform: string, method: string) {
-    super(
-      `Platform "${platform}" does not support the "${method}" operation. ` +
-        `Check the platform's capabilities before calling this method.`,
-    );
-    this.platform = platform;
+    const message = `Platform "${platform}" does not support the "${method}" operation. ` +
+      `Check the platform's capabilities before calling this method.`;
+    super(message);
+    this.backendName = platform as SupportedBackend;
+    this.recovery = `Use a different adapter that supports "${method}", ` +
+      `or check PlatformCapabilities before calling this method.`;
     this.method = method;
   }
 }

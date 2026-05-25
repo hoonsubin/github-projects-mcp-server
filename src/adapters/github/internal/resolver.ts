@@ -6,7 +6,6 @@
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
-import { SprintNotScheduledError } from "../../../domain/errors.ts";
 import type * as GH from "../generated/github-types.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { SprintRef, StoryRef } from "../../../domain/types.ts";
@@ -82,10 +81,14 @@ export function resolveSprint(
 
   if (ref === "current") {
     if (!config.iterations.active) {
-      throw new SprintNotScheduledError(
-        "current",
-        "No active sprint found. There is no sprint currently running in this project. " +
-          "Check the Sprint field in GitHub Projects to ensure a sprint iteration is configured.",
+      throw new GitHubApiError(
+        "No active sprint iteration configured in this project.",
+        {
+          code: "NOT_FOUND",
+          recovery: "There is no sprint currently running. " +
+            "Check the Sprint field in GitHub Projects to ensure a sprint iteration is configured.",
+          context: { ref: "current" },
+        },
       );
     }
     return config.iterations.active.id;
@@ -93,10 +96,14 @@ export function resolveSprint(
 
   if (ref === "next") {
     if (!config.iterations.next) {
-      throw new SprintNotScheduledError(
-        "next",
-        "No next sprint is scheduled. " +
-          "Create a new sprint iteration in the GitHub Projects UI before assigning stories to it.",
+      throw new GitHubApiError(
+        "No next sprint is scheduled in this project.",
+        {
+          code: "NOT_FOUND",
+          recovery:
+            "Create a new sprint iteration in the GitHub Projects UI before assigning stories to it.",
+          context: { ref: "next" },
+        },
       );
     }
     return config.iterations.next.id;
@@ -133,9 +140,13 @@ export const resolveStory = async (
 ): Promise<ResolvedStory> => {
   // resolveStory requires a resolved { id } ref — throw early if only { number } is given.
   if (!("id" in ref)) {
-    throw new Error(
-      `resolveStory requires a resolved StoryRef with 'id', but received '{ number: ${ref.number} }'. ` +
-        "Call resolveRef() first to convert issue numbers to opaque IDs.",
+    throw new GitHubApiError(
+      `resolveStory requires a resolved StoryRef with 'id', but received '{ number: ${ref.number} }'.`,
+      {
+        code: "RESOLUTION_FAILED",
+        recovery: "Call resolveRef() first to convert issue numbers to opaque IDs.",
+        context: { storyNumber: ref.number },
+      },
     );
   }
   const data = await github.graphql<ItemByIdResponse>(GET_PROJECT_ITEM_BY_ID_QUERY, {

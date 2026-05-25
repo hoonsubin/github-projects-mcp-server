@@ -97,5 +97,10 @@ export interface ScrumConfig {
     file_path?: string;
   };
 
+  /** Canonical status key → platform display name (e.g. "done" → "Done"). */
+  status_display?: Record<string, string>;
+  /** Canonical priority key → platform display name (e.g. "p0" → "Must"). */
+  priority_display?: Record<string, string>;
+
   backends: AdapterBackend;
 }

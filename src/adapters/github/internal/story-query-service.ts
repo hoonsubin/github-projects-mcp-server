@@ -7,7 +7,6 @@
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
-import { SprintNotScheduledError } from "../../../domain/errors.ts";
 import type * as GH from "../generated/github-types.ts";
 import type { GitHubClient } from "./http-client.ts";
 import { isBacklogItem, PaginatedProjectItemFetcher } from "./pagination.ts";
@@ -91,7 +90,7 @@ export const buildDependencyMap = (
   for (const story of stories) {
     if (story.kind !== "issue") continue;
 
-    const key = toIssueKey(story.key);
+    const key = toIssueKey(story.key!); // kind guard ensures key is string
     const blocked_by_keys: IssueKey[] = [];
 
     for (const dep of story.blocked_by) {
@@ -138,7 +137,7 @@ export const buildDependencyMap = (
       }
       const depStory = buildStoryFromRaw(item, config);
       if (!depStory || depStory.kind !== "issue") continue;
-      const key = toIssueKey(depStory.key);
+      const key = toIssueKey(depStory.key!); // kind guard ensures key is string
       map[key] = {
         key,
         title: depStory.title,
@@ -185,17 +184,26 @@ export class StoryQueryService {
   ): Promise<{ stories: Story[]; sprintInfo: SprintInfo }> {
     const iterationId = resolveSprint(sprint, this.config);
     if (iterationId === null) {
-      throw new SprintNotScheduledError(
-        "current",
+      throw new GitHubApiError(
         "getSprintStories called with a null sprint ref — guard the null case before calling this method.",
+        {
+          code: "NOT_FOUND",
+          recovery: "Call scrum_orient to find active sprints before calling getSprintStories.",
+          context: { sprint },
+        },
       );
     }
     const iterEntry = this.config.iterations.all.find((i) => i.id === iterationId);
     const sprintInfo = toSprintInfo(iterEntry ?? null);
     if (!sprintInfo) {
-      throw new SprintNotScheduledError(
-        "current",
+      throw new GitHubApiError(
         `Iteration ${iterationId} resolved from config but not found in iterations list.`,
+        {
+          code: "NOT_FOUND",
+          recovery: "The iteration may have been deleted or the config is stale. " +
+            "Call scrum_orient to refresh platform state.",
+          context: { iterationId },
+        },
       );
     }
     const allItems = await this.fetchAllItems();
@@ -484,7 +492,7 @@ export class StoryQueryService {
   private filterByKeys(stories: Story[], keys: readonly string[]): Story[] {
     if (keys.length === 0) return stories;
     const keySet = new Set(keys);
-    return stories.filter((s) => s.kind === "issue" && keySet.has(s.key));
+    return stories.filter((s) => s.kind === "issue" && keySet.has(s.key!));
   }
 
   private filterBySprintRef(

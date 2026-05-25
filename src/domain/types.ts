@@ -373,6 +373,11 @@ export interface StoryBase {
   readonly created_at: string; // ISO-8601
   readonly updated_at: string; // ISO-8601
   readonly blocked_by: readonly DependencyEntry[]; // stories that must be Done before this one starts
+  // ── Bridging fields ── populated by backends; nullable when the concept is absent ──
+  readonly kind: string | null; // content type discriminator (e.g. "issue", "draft", "pr")
+  readonly key: string | null; // human-readable issue number; null for draft items
+  readonly url: string | null; // canonical URL in the backend UI; null for draft items
+  readonly epic: { readonly ref: EpicRef; readonly name: string } | null;
 }
 
 export const SUPPORTED_BACKENDS = {
@@ -559,14 +564,28 @@ export interface ItemDetailResult {
   readonly acceptance_criteria: readonly string[]; // parsed from story body
 }
 
+// ── Partial-result marker ──────────────────────────────────────────────────────
+
+/**
+ * Marker interface for use-case response types that can carry per-field
+ * warning messages alongside their primary data.
+ *
+ * Warnings follow the AdapterError format: "[backendName] CODE: message\n  → Recovery: instruction"
+ * Use-case code accumulates warnings via catchBackend() for fallible backend calls.
+ */
+export interface PartialResult {
+  readonly warnings: readonly string[];
+}
+
 // ── Orient output ──────────────────────────────────────────────────────────────
 
 /**
  * Exported output type for scrum_orient.
- * Moved from private interface in orient.ts to domain so tests and handlers
- * can import and annotate it.
+ * Extends PartialResult because orientUseCase wraps fallible backend calls
+ * (getEpics, getSprintCompletion) via catchBackend() and accumulates their
+ * warnings here.
  */
-export interface OrientResult {
+export interface OrientResult extends PartialResult {
   readonly platform_state: {
     readonly fields: {
       readonly status: {

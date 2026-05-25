@@ -7,8 +7,9 @@
 
 import type { ProjectReader } from "./ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
-import type { EpicListing, EpicSummary, OrientResult, TemplateUriMap } from "../domain/types.ts";
+import type { EpicSummary, OrientResult, TemplateUriMap } from "../domain/types.ts";
 import { ITEM_TYPES, sprintContextFromSprintInfo } from "../domain/types.ts";
+import { catchBackend } from "../services/error-enrichment.ts";
 
 /**
  * Compute days elapsed since the sprint start date (UTC midnight).
@@ -43,10 +44,13 @@ export const orientUseCase = async (
   backend: ProjectReader,
   scrumConfig: ScrumConfig,
 ): Promise<OrientResult> => {
+  const warnings: string[] = [];
+
   // Extract canonical keys from domain-level config (no adapter-specific types)
   const canonicalStatusKeys = Object.keys(scrumConfig.scrum.status);
   const canonicalPriorityKeys = scrumConfig.scrum.priority.map((p) => p.key);
 
+  // ── Hard prerequisites (no catch — let failures propagate) ────────────
   await backend.reload();
 
   const state = await backend.getPlatformState({
@@ -54,12 +58,15 @@ export const orientUseCase = async (
     canonicalPriorityKeys,
   });
 
-  // Fetch epics via dedicated port method (not from PlatformState)
+  // ── Optional: epic enumeration ────────────────────────────────────────
   const sprintIterationId = state.iterations.active?.id ?? null;
-  const allEpics: EpicListing[] = await backend.getEpics(sprintIterationId);
+  const { value: allEpics, warnings: epicWarnings } = await catchBackend(
+    () => backend.getEpics(sprintIterationId),
+  );
+  warnings.push(...epicWarnings);
 
   // Filter: active (open or in-progress) epics only; null status = active
-  const activeEpics = allEpics.filter(
+  const activeEpics = (allEpics ?? []).filter(
     (epic) => epic.status !== "done",
   );
 
@@ -72,13 +79,18 @@ export const orientUseCase = async (
     open_item_count: epic.open_item_count,
   }));
 
-  // Compute work completion percentage for the active sprint
+  // ── Optional: work completion percentage ──────────────────────────────
   let workPct = 0;
   if (state.iterations.active) {
-    const { completed, total } = await backend.getSprintCompletion(
-      state.iterations.active.id,
+    const activeId = state.iterations.active.id; // narrowed before closure
+    const { value: completion, warnings: compWarnings } = await catchBackend(
+      () => backend.getSprintCompletion(activeId),
     );
-    workPct = total > 0 ? Math.round((completed / total) * 100) : 0;
+    warnings.push(...compWarnings);
+    if (completion) {
+      const { completed, total } = completion;
+      workPct = total > 0 ? Math.round((completed / total) * 100) : 0;
+    }
   }
 
   // Build SprintContext from SprintInfo via the domain factory (pure, no backend call)
@@ -101,6 +113,7 @@ export const orientUseCase = async (
   };
 
   return {
+    warnings,
     platform_state: {
       fields: {
         status: {
@@ -132,7 +145,7 @@ export const orientUseCase = async (
       },
       epics: {
         active: epicsSummary,
-        total_count: allEpics.length,
+        total_count: allEpics?.length ?? 0,
       },
       template_uris: buildTemplateUriMap(state.vocabulary.typeTemplatePaths),
     },

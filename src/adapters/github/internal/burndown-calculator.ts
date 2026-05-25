@@ -6,6 +6,7 @@
 // for completion event detection.
 // =============================================================================
 
+import { GitHubApiError } from "../errors.ts";
 import { GitHubClient } from "./http-client.ts";
 import { PaginatedProjectItemFetcher } from "./pagination.ts";
 import { buildBurndownStoryInput } from "../mappers.ts";
@@ -14,6 +15,7 @@ import { computeSprintEndDate } from "../../../scrum/sprint-math.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { BurndownInput, BurndownStoryInput, CompletionMap } from "../../../scrum/ports.ts";
 import type { SprintRef } from "../../../domain/types.ts";
+import { log } from "../../../services/logger.ts";
 
 export class BurndownCalculator {
   constructor(
@@ -31,12 +33,28 @@ export class BurndownCalculator {
     const iterationId = resolveSprint(sprint, this.config);
 
     if (iterationId === null) {
-      throw new Error("Burndown does not apply to the backlog.");
+      throw new GitHubApiError(
+        "Burndown does not apply to the backlog.",
+        {
+          code: "NOT_FOUND",
+          recovery: "Burndown requires an active sprint. " +
+            "Use a specific sprint ref ('current', 'next', or sprint name) instead of null.",
+          context: { sprint },
+        },
+      );
     }
 
     const iterEntry = this.config.iterations.all.find((i) => i.id === iterationId);
     if (!iterEntry) {
-      throw new Error(`Iteration with ID ${iterationId} not found in configuration.`);
+      throw new GitHubApiError(
+        `Iteration with ID ${iterationId} not found in configuration.`,
+        {
+          code: "NOT_FOUND",
+          recovery: "The iteration may have been deleted or the config is stale. " +
+            "Call scrum_orient to refresh platform state.",
+          context: { iterationId },
+        },
+      );
     }
 
     // No sprintFieldIds — use the full field values query so extractBoardFields
@@ -103,9 +121,9 @@ export class BurndownCalculator {
         if (lastClosedAt) {
           completions.set(story.number, new Date(lastClosedAt).toISOString());
         }
-      } catch (_err) {
+      } catch (err) {
         // Individual timeline fetch errors should not abort the whole burndown.
-        // We log at debug level to avoid cluttering error logs for non-critical failures.
+        log.debug(`burndown: timeline fetch failed for #${story.number}`, err);
         continue;
       }
     }

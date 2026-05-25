@@ -68,20 +68,18 @@ interface GitHubApiErrorParams {
 // ── GitHubApiError class ───────────────────────────────────────────────────────
 
 export class GitHubApiError extends AdapterError {
-  override backendName: SupportedBackend = "github";
+  override readonly backendName: SupportedBackend = "github";
   override readonly name = "GitHubApiError";
-  readonly code: GitHubErrorCode;
-  readonly recovery: string;
+  override readonly code: GitHubErrorCode;
+  override readonly recovery: string;
   readonly statusCode?: number;
-  override readonly context?: Record<string, unknown>;
   readonly graphqlErrors?: string[];
 
   constructor(message: string, params: GitHubApiErrorParams) {
-    super(message);
+    super(message, params.context);
     this.code = params.code;
     this.recovery = params.recovery;
     this.statusCode = params.statusCode;
-    this.context = params.context;
     this.graphqlErrors = params.graphqlErrors;
   }
 }
