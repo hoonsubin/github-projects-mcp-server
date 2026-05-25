@@ -37,8 +37,8 @@ import type {
   AnalyticsResult,
   BacklogHealth,
   EpicListing,
+  ImpedimentRef,
   ItemSearchResult,
-  ResolvedRef,
   SprintRef,
   StoryRef,
 } from "../../domain/types.ts";
@@ -257,7 +257,7 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
   }
 
   override updateImpediment(
-    ref: ResolvedRef,
+    ref: ImpedimentRef,
     status: "open" | "in_progress" | "resolved",
     resolutionNotes?: string,
   ): Promise<ImpedimentListing> {

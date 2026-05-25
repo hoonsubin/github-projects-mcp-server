@@ -11,10 +11,10 @@
 // =============================================================================
 
 import type { BurndownStoryInput } from "./ports.ts";
-import type { BacklogItemListing, ResolvedRef, Story } from "../domain/types.ts";
+import type { BacklogItemListing, EntityRef, Story } from "../domain/types.ts";
 
 /** Sentinel ref used when an adapter has not yet provided a sprint node ID. */
-const EMPTY_SPRINT_REF: ResolvedRef = { id: "" };
+const EMPTY_SPRINT_REF: EntityRef = { id: "" };
 
 // ── ItemListing mappers — for find-items use-case ─────────────────────────────
 

@@ -17,13 +17,13 @@
 // =============================================================================
 
 import type * as GH from "./generated/github-types.ts";
-import type { ItemType, ResolvedRef } from "../../domain/types.ts";
+import type { EntityRef, ItemType } from "../../domain/types.ts";
 
 // ── Adapter-internal branded node ID types ───────────────────────────────────
 //
 // These branded string types distinguish GitHub's three node ID formats at
-// compile time. The domain layer sees only opaque ResolvedRef { id: string }.
-// These brands never cross the port boundary — use toResolvedRef() to erase
+// compile time. The domain layer sees only opaque EntityRef { id: string }.
+// These brands never cross the port boundary — use toEntityRef() to erase
 // the brand when returning to the domain/port layers.
 
 /**
@@ -48,11 +48,16 @@ export type GitHubIssueId = string & { readonly _brand: "GitHubIssueId" };
 export type GitHubMilestoneId = string & { readonly _brand: "GitHubMilestoneId" };
 
 /**
- * Erase the GitHub node ID brand and produce a domain-safe ResolvedRef.
- * Use this at every adapter boundary where a branded ID crosses to the
+ * Erase the GitHub node ID brand and produce a domain-safe EntityRef.
+ *
+ * This is the port-boundary crossing point for item IDs: everything on the
+ * left is GitHub-specific; everything on the right is universal domain vocabulary.
+ * Call this at every adapter boundary where a GitHubItemId returns to the
  * port or domain layer.
+ *
+ * Renamed from: toResolvedRef
  */
-export const toResolvedRef = (itemId: GitHubItemId): ResolvedRef => ({ id: itemId });
+export const toEntityRef = (itemId: GitHubItemId): EntityRef => ({ id: itemId });
 
 // ── GitHub backend connection config (moved from src/types.ts) ───────────────
 

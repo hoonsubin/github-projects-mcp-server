@@ -22,8 +22,8 @@ import type {
   AnalyticsResult,
   BacklogHealth,
   EpicListing,
+  ImpedimentRef,
   ItemSearchResult,
-  ResolvedRef,
   SprintRef,
   StoryRef,
 } from "../domain/types.ts";
@@ -165,7 +165,7 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
    * Override in adapters that support impediment resolution.
    */
   updateImpediment(
-    _ref: ResolvedRef,
+    _ref: ImpedimentRef,
     _status: "open" | "in_progress" | "resolved",
     _resolutionNotes?: string,
   ): Promise<ImpedimentListing> {

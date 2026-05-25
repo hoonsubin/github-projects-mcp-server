@@ -14,12 +14,14 @@ import type {
   AnalyticsResult,
   BacklogHealth,
   DependencyEntry,
+  EntityRef,
   EpicListing,
   EpicRef,
   EpicSummary,
+  ImpedimentRef,
+  ItemListingRef,
   ItemSearchResult,
   LinkedArtifact,
-  ResolvedRef,
   SprintRef,
   Story,
   StoryComment,
@@ -164,7 +166,7 @@ export interface BurndownStoryInput {
   readonly title: string;
   readonly points: number;
   readonly status: string | null;
-  readonly ref?: ResolvedRef;
+  readonly ref?: EntityRef;
 }
 
 /** One completed sprint's worth of data for history. */
@@ -227,7 +229,7 @@ export type VocabularyKind = "status_option" | "priority_option" | "label";
  * Scheduled for removal in the next major refactor phase.
  */
 export interface StoryListing {
-  ref: { id: string; key: string | null };
+  ref: ItemListingRef;
   title: string;
   status: string | null;
   story_points: number | null;
@@ -241,7 +243,7 @@ export interface StoryListing {
  * Lightweight impediment entry for collections.
  */
 export interface ImpedimentListing {
-  readonly ref: ResolvedRef;
+  readonly ref: ImpedimentRef;
   readonly description: string;
   readonly status: "open" | "in_progress" | "resolved";
   readonly raised_by: string | null;
@@ -299,7 +301,7 @@ export interface ImpedimentPort {
   getSprintImpediments(sprint: SprintRef): Promise<ImpedimentListing[]>;
   getOrphanImpediments(): Promise<ImpedimentListing[]>;
   updateImpediment(
-    ref: ResolvedRef,
+    ref: ImpedimentRef,
     status: "open" | "in_progress" | "resolved",
     resolutionNotes?: string,
   ): Promise<ImpedimentListing>;

@@ -88,9 +88,11 @@ classDiagram
                 class StoryNotFoundError
             }
             class types.ts:::domain {
-                type ResolvedRef
+                type EntityRef
                 type StoryRef
                 type EpicRef
+                type ImpedimentRef
+                type ItemListingRef
                 interface EpicListing
                 interface DependencyEntry
                 +var ITEM_TYPES
@@ -106,8 +108,10 @@ classDiagram
                 interface SprintContext
                 +sprintContextFromSprintInfo()
                 interface EpicSummary
+                interface SprintRisk
                 interface BacklogHealth
-                interface ItemListing
+                interface BacklogItemListing
+                type ItemListing
                 interface DependencyNode
                 type DependencyMap
                 interface DraftStory
@@ -127,7 +131,7 @@ classDiagram
                 interface LinkedArtifact
                 interface ItemDetailResult
                 interface OrientResult
-                %% Unused: SprintName, ScrumTemplateUri, SprintContext
+                %% Unused: SprintName, ScrumTemplateUri, SprintRiskStance, SprintContext, ItemListing
             }
             class acceptance-criteria.ts:::rules {
                 +parseAcceptanceCriteria()
@@ -146,7 +150,7 @@ classDiagram
                 %% Unused: ArtifactType
             }
             class mutation-validator.ts:::services {
-                +isMutationQuery() boolean
+                +isMutationQuery()
                 %% Unused: isMutationQuery
             }
             class error-enrichment.ts:::services {
@@ -164,7 +168,7 @@ classDiagram
                 +registerScrumReadTools()
             }
             class scrum-write.ts:::tools {
-                +registerScrumWriteTools() void
+                +registerScrumWriteTools()
             }
             class scrum.ts:::schemas {
                 +var GetStorySchema
@@ -262,7 +266,9 @@ classDiagram
                 +isBacklogItem()
             }
             class resolver.ts:::internal {
-                +resolveSprint()
+                +resolveSprint() string | null
+                +resolveSprint() string | null
+                +resolveSprint() string | null
                 +resolveStory()
             }
             class field-value-mutator.ts:::internal {
@@ -315,19 +321,47 @@ classDiagram
                 type GitHubItemId
                 type GitHubIssueId
                 type GitHubMilestoneId
-                +toResolvedRef()
+                +toEntityRef()
                 interface GitHubBackendConfig
                 interface GraphQLResponse
                 type ItemContentType
+                type IssueIdentity
+                type PrIdentity
+                type PrDiscriminator
+                type PrState
+                type IssueState
+                type MilestoneRef
+                type IssueRef
+                type LabelRef
+                type LabelNameOnly
+                type UserLogin
+                type CommentProjection
+                type TimelinePrSource
+                type SelectFieldOption
+                type SelectFieldNode
+                type PageInfoRef
+                type ProjectV2Ref
+                type ProjectV2ItemRef
                 interface ProjectItemIssueContent
                 interface ProjectItemPRContent
                 interface ProjectItemDraftContent
                 interface ProjectItem
+                type FieldValueField
+                type FieldValueUser
+                type FieldValueUserNodes
+                type FieldValueLabel
+                type FieldValueLabelNodes
+                type FieldValueMilestone
+                type FieldValueRepository
+                type AssigneeNodes
+                type LabelColorNodes
+                type IssueRefNode
+                type MilestoneRefNode
                 interface ItemFieldValue
                 interface FieldValueNode
                 interface BoardFields
                 interface LinkedPr
-                %% Unused: GitHubMilestoneId, toResolvedRef
+                %% Unused: GitHubMilestoneId, toEntityRef, ItemContentType, IssueIdentity, PrIdentity, PrDiscriminator, PrState, IssueState, IssueRef, LabelRef, FieldValueField, FieldValueUser, FieldValueUserNodes, FieldValueLabel, FieldValueLabelNodes, FieldValueMilestone, FieldValueRepository, LabelColorNodes
             }
             class config-loader.ts:::github {
                 interface RuntimeConfig
@@ -366,6 +400,7 @@ classDiagram
     get-board-health.ts --> types.ts : "imports"
     ports.ts --> types.ts : "imports"
     update-impediment.ts --> ports.ts : "imports"
+    update-impediment.ts --> types.ts : "imports"
     config-helpers.ts --> config.ts : "imports"
     types.ts --> github-types.ts : "imports"
     error-enrichment.ts --> errors.ts : "imports"
@@ -417,6 +452,7 @@ classDiagram
     burndown-calculator.ts --> config-loader.ts : "imports"
     burndown-calculator.ts --> ports.ts : "imports"
     burndown-calculator.ts --> types.ts : "imports"
+    epic-service.ts --> github-types.ts : "imports"
     epic-service.ts --> http-client.ts : "imports"
     epic-service.ts --> queries.ts : "imports"
     epic-service.ts --> types.ts : "imports"
@@ -432,6 +468,7 @@ classDiagram
     pagination.ts --> config-loader.ts : "imports"
     pagination.ts --> types.ts : "imports"
     resolver.ts --> errors.ts : "imports"
+    resolver.ts --> github-types.ts : "imports"
     resolver.ts --> config-loader.ts : "imports"
     resolver.ts --> types.ts : "imports"
     resolver.ts --> queries.ts : "imports"
@@ -443,9 +480,11 @@ classDiagram
     field-value-mutator.ts --> types.ts : "imports"
     field-value-mutator.ts --> queries.ts : "imports"
     user-milestone-resolver.ts --> errors.ts : "imports"
+    user-milestone-resolver.ts --> github-types.ts : "imports"
     user-milestone-resolver.ts --> http-client.ts : "imports"
     user-milestone-resolver.ts --> label-resolver.ts : "imports"
     user-milestone-resolver.ts --> queries.ts : "imports"
+    user-milestone-resolver.ts --> types.ts : "imports"
     label-resolver.ts --> errors.ts : "imports"
     label-resolver.ts --> http-client.ts : "imports"
     label-resolver.ts --> queries.ts : "imports"
@@ -458,6 +497,7 @@ classDiagram
     file-reader.ts --> contents.ts : "imports"
     file-reader.ts --> ports.ts : "imports"
     vocabulary-manager.ts --> errors.ts : "imports"
+    vocabulary-manager.ts --> types.ts : "imports"
     vocabulary-manager.ts --> http-client.ts : "imports"
     vocabulary-manager.ts --> label-resolver.ts : "imports"
     vocabulary-manager.ts --> config-loader.ts : "imports"
@@ -484,6 +524,7 @@ classDiagram
     contents.ts --> errors.ts : "imports"
     contents.ts --> http-client.ts : "imports"
     story-query-service.ts --> errors.ts : "imports"
+    story-query-service.ts --> github-types.ts : "imports"
     story-query-service.ts --> http-client.ts : "imports"
     story-query-service.ts --> pagination.ts : "imports"
     story-query-service.ts --> resolver.ts : "imports"
@@ -497,6 +538,7 @@ classDiagram
     http-client.ts --> logger.ts : "imports"
     http-client.ts --> errors.ts : "imports"
     impediment-service.ts --> errors.ts : "imports"
+    impediment-service.ts --> github-types.ts : "imports"
     impediment-service.ts --> http-client.ts : "imports"
     impediment-service.ts --> resolver.ts : "imports"
     impediment-service.ts --> label-resolver.ts : "imports"
@@ -572,11 +614,29 @@ The following exports are never imported by any other module in the codebase:
 | [`./src/adapters/github/internal/label-resolver.ts`](../src/adapters/github/internal/label-resolver.ts) | `GitHubLabel`                | `interface` |
 | [`./src/adapters/github/internal/http-client.ts`](../src/adapters/github/internal/http-client.ts)       | `RestResponse`               | `interface` |
 | [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `GitHubMilestoneId`          | `type`      |
-| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `toResolvedRef`              | `function`  |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `toEntityRef`                | `function`  |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `ItemContentType`            | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `IssueIdentity`              | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `PrIdentity`                 | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `PrDiscriminator`            | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `PrState`                    | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `IssueState`                 | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `IssueRef`                   | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `LabelRef`                   | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `FieldValueField`            | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `FieldValueUser`             | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `FieldValueUserNodes`        | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `FieldValueLabel`            | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `FieldValueLabelNodes`       | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `FieldValueMilestone`        | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `FieldValueRepository`       | `type`      |
+| [`./src/adapters/github/types.ts`](../src/adapters/github/types.ts)                                     | `LabelColorNodes`            | `type`      |
 | [`./src/adapters/abstract-backend.ts`](../src/adapters/abstract-backend.ts)                             | `UnsupportedCapabilityError` | `class`     |
 | [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `SprintName`                 | `type`      |
 | [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `ScrumTemplateUri`           | `type`      |
+| [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `SprintRiskStance`           | `type`      |
 | [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `SprintContext`              | `interface` |
+| [`./src/domain/types.ts`](../src/domain/types.ts)                                                       | `ItemListing`                | `type`      |
 | [`./src/domain/rules/status.ts`](../src/domain/rules/status.ts)                                         | `isTerminalStatus`           | `function`  |
 | [`./src/domain/config.ts`](../src/domain/config.ts)                                                     | `ArtifactType`               | `type`      |
 | [`./src/services/mutation-validator.ts`](../src/services/mutation-validator.ts)                         | `isMutationQuery`            | `function`  |

@@ -7,42 +7,72 @@
 // or wire-format details appear here.
 // =============================================================================
 
-// ── Canonical resolved reference ─────────────────────────────────────────────
+// ── Base entity handle ────────────────────────────────────────────────────────
 
 /**
- * A resolved reference — always has an opaque `id`.
- * Used in listing entries, dependency entries, and any context where
- * the reference is guaranteed to be resolved (never needs adapter lookup).
+ * The universal opaque entity handle.
  *
- * This is the canonical reference shape across domain, port, and adapter layers.
- * All `ref` fields in domain and port types use this shape.
- * The `id` is an opaque platform handle — the domain layer does not
- * know or care whether it is a PVTI_, I_, MI_, or other prefix.
+ * Assigned by the backend adapter and passed back opaquely by the domain layer.
+ * The value of `id` is platform-specific (e.g. PVTI_... on GitHub Projects) but
+ * the domain layer never inspects it — it is always treated as an opaque string.
+ *
+ * This is the single base type for all resolved entity references in the system.
+ * No layer other than the adapter that produced it should care about the `id` format.
+ *
+ * Renamed from: ResolvedRef
  */
-export type ResolvedRef = { id: string };
+export type EntityRef = { readonly id: string };
 
-// ── Backward-compatible type aliases (will replace interfaces in P2) ──────────
+// ── Input refs (agent → server) ───────────────────────────────────────────────
 
 /**
- * A reference to a single Story.
+ * A reference to a Story accepted as tool input.
  *
- * Two forms accepted:
- * - `{ id: string }` — opaque project-item handle (PVTI_... on GitHub), returned
- *   by read tools. Prefer this form when available.
- * - `{ number: number }` — human-readable issue number (e.g. 42). The backend
- *   resolves this to an opaque handle via `resolveRef()`. Use when you know the
- *   issue number but do not yet have its `id`.
+ * Two forms:
+ * - `{ id }` — opaque project-item handle (PVTI_... on GitHub). Returned by every
+ *   read tool. Prefer this form when the agent already holds a listing entry.
+ * - `{ number }` — human-readable issue number (e.g. 42). The adapter resolves
+ *   this to an opaque handle via resolveRef(). Use for direct lookup when the
+ *   agent has no prior listing entry for the target item.
  *
- * TypeScript guard: `"id" in ref` narrows to the resolved form.
+ * TypeScript guard: `"id" in ref` narrows to EntityRef (resolved form).
  */
-export type StoryRef = { id: string } | { number: number };
+export type StoryRef = EntityRef | { readonly number: number };
 
 /**
- * A reference to a single Epic.
+ * A reference to an Epic passed as tool input.
+ * Always resolved — the agent obtains this from EpicListing.ref or IssueStory.epic.ref
+ * and passes it back unchanged to story create/update tools.
+ *
  * On GitHub: id is the Milestone node ID (MI_...).
- * Pass to story create/update tools as the epic identifier.
  */
-export type EpicRef = { id: string };
+export type EpicRef = EntityRef;
+
+/**
+ * A reference to an Impediment passed as tool input.
+ * Always resolved — the agent obtains this from ImpedimentListing.ref
+ * and passes it back to scrum_update_impediment.
+ */
+export type ImpedimentRef = EntityRef;
+
+// ── Output ref (server → agent, listing context only) ────────────────────────
+
+/**
+ * The compound item handle embedded in BacklogItemListing and dependency arrays.
+ *
+ * Bundles two identifiers the agent needs simultaneously:
+ * - `id`  — opaque platform handle. Used in all write tool calls.
+ * - `key` — human-readable issue number string (e.g. "42"). Shown to the user
+ *            and used as the canonical node key in DependencyMap. Empty string
+ *            for Draft Issues (which have no issue number).
+ *
+ * This type is OUTPUT-ONLY. It is never a valid input to a write tool.
+ * To target an item from a listing, pass `{ id: item.ref.id }` — not the
+ * ItemListingRef itself.
+ *
+ * New type — replaces inline `{ id: string; key: string }` in five locations.
+ */
+export type ItemListingRef = { readonly id: string; readonly key: string };
 
 /**
  * Lightweight epic entry for planning contexts.
@@ -69,7 +99,7 @@ export interface EpicListing {
 export interface DependencyEntry {
   readonly key: string;
   readonly title: string | null;
-  readonly ref: ResolvedRef;
+  readonly ref: EntityRef;
 }
 
 // ── Item type vocabulary ──────────────────────────────────────────────────────
@@ -219,7 +249,7 @@ export const sprintContextFromSprintInfo = (
  * Contains only the fields needed for the executive summary — no child stories.
  */
 export interface EpicSummary {
-  ref: ResolvedRef;
+  ref: EntityRef;
   name: string;
   description: string | null;
   status: "open" | "in_progress" | "done" | null;
@@ -270,7 +300,7 @@ export interface BacklogHealth {
  * `key` is always present (non-nullable) — Draft Issues get an empty string.
  */
 export interface BacklogItemListing {
-  readonly ref: { readonly id: string; readonly key: string };
+  readonly ref: ItemListingRef;
   readonly title: string;
   readonly type: string | null;
   readonly status: string | null;
@@ -280,13 +310,13 @@ export interface BacklogItemListing {
   readonly labels: readonly string[];
   readonly sprint: {
     readonly name: string | null;
-    readonly ref: ResolvedRef;
+    readonly ref: EntityRef;
   };
-  readonly epic: { readonly ref: ResolvedRef; readonly name: string } | null;
+  readonly epic: { readonly ref: EpicRef; readonly name: string } | null;
   /** Keys of items that block this one (must be Done first). */
-  readonly blocked_by: ReadonlyArray<{ readonly id: string; readonly key: string }>;
+  readonly blocked_by: ReadonlyArray<ItemListingRef>;
   /** Keys of items this one blocks (reverse dependency). Populated by adapter. */
-  readonly blocks: ReadonlyArray<{ readonly id: string; readonly key: string }>;
+  readonly blocks: ReadonlyArray<ItemListingRef>;
   readonly custom_fields: Record<string, string | number | boolean | null>;
 }
 
@@ -328,7 +358,7 @@ export type DependencyMap = Record<string, DependencyNode>;
  * story_points, priority) are nullable because they may be unset on the board.
  */
 interface StoryBase { // todo: also a close duplicate of the `ports.ts`. The type should be uniformed
-  readonly ref: ResolvedRef; // opaque project-item handle — use in subsequent tool calls
+  readonly ref: EntityRef; // opaque project-item handle — use in subsequent tool calls
   readonly title: string;
   readonly body: string;
   readonly type: ItemType | null; // canonical type key from config (e.g. "feature", "bug"); null when unset

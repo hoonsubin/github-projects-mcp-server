@@ -4,7 +4,7 @@
 // Single responsibility: impediment queries and mutations extracted from the facade.
 // Handles createImpediment, getOrphanImpediments, getSprintImpediments, updateImpediment.
 //
-// ImpedimentListing.ref.id is a ResolvedRef (project item ID, PVTI_...), consistent
+// ImpedimentListing.ref.id is an EntityRef (project item ID, PVTI_...), consistent
 // with every other ref.id in the codebase. updateImpediment resolves the item ID to
 // the underlying GitHub Issue node ID (I_...) internally before making GraphQL calls.
 //
@@ -30,7 +30,7 @@ import { PaginatedProjectItemFetcher } from "./pagination.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { ProjectItemIssueContent, UserLogin } from "../types.ts";
 import type { CreateStoryInput, ImpedimentListing } from "../../../scrum/ports.ts";
-import type { ResolvedRef, SprintRef, StoryRef } from "../../../domain/types.ts";
+import type { ImpedimentRef, SprintRef, StoryRef } from "../../../domain/types.ts";
 
 // ── Shared issue node shape ────────────────────────────────────────────────────
 
@@ -169,7 +169,7 @@ export class ImpedimentService {
   }
 
   async updateImpediment(
-    ref: ResolvedRef,
+    ref: ImpedimentRef,
     status: "open" | "in_progress" | "resolved",
     resolutionNotes?: string,
   ): Promise<ImpedimentListing> {
