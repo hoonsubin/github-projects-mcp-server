@@ -129,7 +129,11 @@ const createMcpServer = async (): Promise<McpServer> => {
   if (fileReader) {
     const templateReadCallback = async (uri: URL, variables: Variables) => {
       const type = Array.isArray(variables.type) ? variables.type[0] : variables.type;
-      const { content, mimeType } = await templateResourceUseCase(type, fileReader, typeTemplatePaths);
+      const { content, mimeType } = await templateResourceUseCase(
+        type,
+        fileReader,
+        typeTemplatePaths,
+      );
       return {
         contents: [{ uri: uri.href, mimeType, text: content }],
       };
@@ -137,7 +141,10 @@ const createMcpServer = async (): Promise<McpServer> => {
     server.registerResource(
       "scrum-template",
       new ResourceTemplate("scrum://template/{type}", { list: undefined }),
-      { description: "PBI item-type template. URI listed in scrum_orient → platform_state.template_uris." },
+      {
+        description:
+          "PBI item-type template. URI listed in scrum_orient → platform_state.template_uris.",
+      },
       templateReadCallback,
     );
   }
