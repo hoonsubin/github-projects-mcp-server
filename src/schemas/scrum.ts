@@ -87,13 +87,13 @@ const ScrumFieldSchema = z
   );
 
 // Story type — the canonical key for the Type project board field.
-// The valid values are declared in type_display in config.yml (e.g. "feature", "bug").
+// The valid values are declared in type_mapping in config.yml (e.g. "feature", "bug").
 // Call scrum_orient to see vocabulary.type for the current project's valid values.
 const StoryTypeSchema = z
   .string()
   .min(1)
   .describe(
-    "Canonical type key declared in type_display in config.yml. " +
+    "Canonical type key declared in type_mapping in config.yml. " +
       'Common examples: "feature", "bug", "tech_debt", "spike", "impediment", "user_story". ' +
       "Call scrum_orient to read vocabulary.type for the exact keys valid in this project. " +
       "NOTE: use scrum_log_impediment for impediment stories — it handles the full workflow.",

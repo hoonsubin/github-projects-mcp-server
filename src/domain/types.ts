@@ -107,7 +107,7 @@ export interface DependencyEntry {
 /**
  * PBI vocabulary for item types.
  * Used in `z.enum(ITEM_TYPES)` in schemas, `TemplateUriMap`, and `BacklogHealth.by_type`.
- * Keep in sync with config.yml `type_display` keys.
+ * Keep in sync with config.yml `type_mapping` keys.
  * todo: make the item types be dynamically populated based on the scrum config file properties
  */
 export const ITEM_TYPES = ["bug", "feature", "tech_debt", "spike", "user_story"] as const;

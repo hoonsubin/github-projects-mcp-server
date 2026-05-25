@@ -11,7 +11,8 @@
 // src/adapters/factory.ts, which selects the correct AdapterFactory by platform key.
 // =============================================================================
 
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { Variables } from "@modelcontextprotocol/sdk/shared/uriTemplate.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
@@ -23,6 +24,7 @@ import type { JSONRPCMessage, MessageExtraInfo } from "@modelcontextprotocol/sdk
 import express, { type Request, type Response } from "express";
 import { registerScrumReadTools } from "./tools/scrum-read.ts";
 import { registerScrumWriteTools } from "./tools/scrum-write.ts";
+import { templateResourceUseCase } from "./scrum/template-resource.ts";
 import { type AdapterFactory, createBackend } from "./adapters/factory.ts";
 import { GitHubAdapterFactory } from "./adapters/github/factory.ts";
 import { log } from "./services/logger.ts";
@@ -119,10 +121,26 @@ const createMcpServer = async (): Promise<McpServer> => {
   // Use the adapter factory registry to construct the backend.
   // SCRUM_PLATFORM env var controls which platform is selected (default: "github").
   const factories: AdapterFactory[] = [new GitHubAdapterFactory()];
-  const { backend, fileReader, scrumConfig } = await createBackend(factories);
+  const { backend, fileReader, scrumConfig, typeTemplatePaths } = await createBackend(factories);
 
   registerScrumReadTools(server, backend, scrumConfig, fileReader);
   registerScrumWriteTools(server, backend, scrumConfig);
+
+  if (fileReader) {
+    const templateReadCallback = async (uri: URL, variables: Variables) => {
+      const type = Array.isArray(variables.type) ? variables.type[0] : variables.type;
+      const { content, mimeType } = await templateResourceUseCase(type, fileReader, typeTemplatePaths);
+      return {
+        contents: [{ uri: uri.href, mimeType, text: content }],
+      };
+    };
+    server.registerResource(
+      "scrum-template",
+      new ResourceTemplate("scrum://template/{type}", { list: undefined }),
+      { description: "PBI item-type template. URI listed in scrum_orient → platform_state.template_uris." },
+      templateReadCallback,
+    );
+  }
 
   return server;
 };

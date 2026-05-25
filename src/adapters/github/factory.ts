@@ -51,10 +51,14 @@ export class GitHubAdapterFactory implements AdapterFactory {
 
     // ── Resolve display config at construction time ──────────────────────
 
+    const typeDisplay: Record<string, string> | null = gh.type_mapping
+      ? Object.fromEntries(Object.entries(gh.type_mapping).map(([k, v]) => [k, v.display]))
+      : null;
+
     const displayConfig: GitHubBackendDependencies["displayConfig"] = {
       statusDisplay: gh.status_display ?? {},
       priorityDisplay: gh.priority_display ?? {},
-      typeDisplay: gh.type_display ?? null,
+      typeDisplay,
     };
 
     // ── Service construction — each service receives only what it needs ──
@@ -127,7 +131,7 @@ export class GitHubAdapterFactory implements AdapterFactory {
 
     // ── File reader ──────────────────────────────────────────────────────
 
-    const fileReader = new GitHubFileReader(owner, primaryRepo);
+    const fileReader = new GitHubFileReader(owner, primaryRepo, Deno.cwd());
 
     // ── Facade assembly — single parameter object, no positional args ────
 
@@ -155,6 +159,7 @@ export class GitHubAdapterFactory implements AdapterFactory {
       capabilities: GITHUB_CAPABILITIES,
       fileReader,
       scrumConfig: config.scrumConfig,
+      typeTemplatePaths: config.typeTemplatePaths,
     };
   }
 }

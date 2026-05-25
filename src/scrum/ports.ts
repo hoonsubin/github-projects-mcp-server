@@ -136,10 +136,13 @@ export interface PlatformState {
     readonly statusDisplay: DisplayMap; // canonical → display
     readonly priorityDisplay: DisplayMap; // canonical → display
     readonly typeDisplay: DisplayMap; // canonical → display
+    /** Repo-relative template file paths, keyed by canonical type key. Only keys with a
+     *  declared template are present. Empty when no templates are configured. */
+    readonly typeTemplatePaths: Record<string, string>;
   };
   /** Active epics — populated by orientUseCase via backend.getEpics(). */
   readonly epics: { readonly active: readonly EpicSummary[]; readonly totalCount: number };
-  /** PBI template URIs — built from ITEM_TYPES intersection with scrumConfig.templates. */
+  /** PBI template URIs — built from typeTemplatePaths; null when no templates configured. */
   readonly templateUris: TemplateUriMap | null;
 }
 
@@ -192,7 +195,7 @@ export interface CompletionMap {
 export interface CreateStoryInput {
   readonly title: string;
   readonly body: string;
-  readonly type: string; // canonical key declared in config.yml type_display (e.g. "feature", "impediment")
+  readonly type: string; // canonical key declared in config.yml type_mapping (e.g. "feature", "impediment")
   readonly priority?: string;
   readonly storyPoints?: number;
   readonly labels?: readonly string[];
@@ -310,6 +313,7 @@ export interface ImpedimentPort {
 /**
  * File reader port — fetches files from the repository backing the PM platform.
  * Used by: getTemplateUseCase
+ * todo: this should be more generalized so it's not strictly fetching from a repository
  */
 export interface FileReaderPort {
   fetchRepoFile(path: string): Promise<string>;

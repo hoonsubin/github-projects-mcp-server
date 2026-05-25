@@ -59,7 +59,8 @@
 			"args": [],
 			"disabled": false,
 			"alwaysAllow": [
-				"mempalace_search"
+				"mempalace_search",
+				"mempalace_kg_add"
 			]
 		},
 		"sequentialthinking": {

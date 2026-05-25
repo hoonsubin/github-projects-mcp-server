@@ -45,6 +45,12 @@ export interface RuntimeConfig {
    */
   priorityOptions: Record<string, string>;
   typeOptions: Record<string, string>;
+  /**
+   * Maps canonical type keys → repo-relative template file paths.
+   * Only keys where type_mapping[key].template is declared are present.
+   * Empty when no templates are configured.
+   */
+  typeTemplatePaths: Record<string, string>;
   iterations: {
     active: IterationEntry | null;
     next: IterationEntry | null;
@@ -259,7 +265,7 @@ const buildOptionMaps = (
   const statusOptions: Record<string, string> = {};
   const priorityOptions: Record<string, string> = {};
   const typeOptions: Record<string, string> = {};
-  const { field_mapping, status_display, priority_display, type_display } = ghConfig;
+  const { field_mapping, status_display, priority_display, type_mapping } = ghConfig;
 
   for (const node of fieldNodes) {
     if (!isSingleSelectField(node)) continue;
@@ -277,9 +283,9 @@ const buildOptionMaps = (
         if (id) priorityOptions[displayName] = id;
       }
     }
-    if (field_mapping.item_type && type_display && node.name === field_mapping.item_type) {
-      for (const [canonicalKey, displayName] of Object.entries(type_display)) {
-        const id = displayToId.get(displayName);
+    if (field_mapping.item_type && type_mapping && node.name === field_mapping.item_type) {
+      for (const [canonicalKey, entry] of Object.entries(type_mapping)) {
+        const id = displayToId.get(entry.display);
         if (id) typeOptions[canonicalKey] = id;
       }
     }
@@ -414,17 +420,20 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
   );
   validateTeamRefs(patchedGhConfig.team, projectTeamNames, "github", configPath);
 
-  // Validate type_display — required because the Type board field is how every story
-  // indicates its type (bug, feature, etc.). Without this mapping, canonical keys
-  // cannot be resolved to GitHub single-select option names.
-  if (!patchedGhConfig.type_display || Object.keys(patchedGhConfig.type_display).length === 0) {
+  // Validate type_mapping — required when field_mapping.item_type is declared.
+  if (
+    patchedGhConfig.field_mapping.item_type &&
+    (!patchedGhConfig.type_mapping || Object.keys(patchedGhConfig.type_mapping).length === 0)
+  ) {
     throw new Error(
-      `${configPath}: backends.github.type_display is missing or empty. ` +
-        `type_display maps canonical type keys (e.g. 'bug', 'feature') to exact ` +
-        `single-select option names on the Type project field. Add the mapping, e.g.:\n` +
-        `  type_display:\n` +
-        `    bug: "Bug"\n` +
-        `    feature: "Feature"`,
+      `${configPath}: backends.github.type_mapping is missing or empty, but field_mapping.item_type is set. ` +
+        `type_mapping declares each canonical type key alongside its board display name and optional template path. Example:\n` +
+        `  type_mapping:\n` +
+        `    bug:\n` +
+        `      display: "Bug"\n` +
+        `    feature:\n` +
+        `      display: "Feature"\n` +
+        `      template: .github/ISSUE_TEMPLATE/feature.md`,
     );
   }
 
@@ -471,6 +480,34 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
     patchedGhConfig,
   );
 
+  // Validate each type_mapping entry's display name against live board options.
+  // A declared key absent from typeOptions means its display name wasn't found on the board.
+  if (patchedGhConfig.field_mapping.item_type && patchedGhConfig.type_mapping) {
+    const mismatched = Object.entries(patchedGhConfig.type_mapping)
+      .filter(([canonicalKey]) => !typeOptions[canonicalKey])
+      .map(([canonicalKey, entry]) =>
+        `  - type_mapping.${canonicalKey}: display "${entry.display}" not found in ` +
+        `"${patchedGhConfig.field_mapping.item_type}" field options`
+      );
+    if (mismatched.length > 0) {
+      throw new Error(
+        `${configPath}: type_mapping declares types whose display names are not present on the board:\n` +
+          mismatched.join("\n") + "\n" +
+          `For each entry above, either add the option to the ` +
+          `"${patchedGhConfig.field_mapping.item_type}" single-select field on your project board, ` +
+          `or remove the key from type_mapping.`,
+      );
+    }
+  }
+
+  // Extract template paths — only for keys that declare a template.
+  const typeTemplatePaths: Record<string, string> = {};
+  if (patchedGhConfig.type_mapping) {
+    for (const [key, entry] of Object.entries(patchedGhConfig.type_mapping)) {
+      if (entry.template) typeTemplatePaths[key] = entry.template;
+    }
+  }
+
   let activeIterations: IterationEntry[] = [];
   let completedIterations: IterationEntry[] = [];
   for (const node of fieldNodes) {
@@ -496,6 +533,7 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
     statusOptions,
     priorityOptions,
     typeOptions,
+    typeTemplatePaths,
     iterations,
   };
 };

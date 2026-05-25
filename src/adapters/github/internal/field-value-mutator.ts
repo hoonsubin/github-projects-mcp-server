@@ -193,7 +193,7 @@ export class FieldValueMutator {
           code: "OPTION_NOT_FOUND",
           statusCode: 400,
           recovery: `The canonical type "${value}" has no matching option in the Type field. ` +
-            "Check that type_display in config.yml maps this key to a valid GitHub option name.",
+            "Check that type_mapping in config.yml maps this key to a valid GitHub option name.",
           context: { field: "type", value, knownOptions: Object.keys(this.config.typeOptions) },
         },
       );

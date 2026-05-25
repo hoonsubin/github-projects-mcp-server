@@ -244,7 +244,7 @@ export const rest = async <T>(
   log.debug(`→ rest:${method} ${path}`, options.params);
 
   // Build URL with query params
-  const url = new URL(`${REST_API_URL}/${path}`);
+  const url = new URL(`${REST_API_URL}/${path.replace(/^\/+/, "")}`);
   if (options.params) {
     for (const [key, value] of Object.entries(options.params)) {
       url.searchParams.set(key, value);

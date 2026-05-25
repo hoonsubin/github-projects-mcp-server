@@ -172,11 +172,11 @@ export class StoryMutationService {
       throw new GitHubApiError(
         `Cannot set story type: "${input.type}" is not a recognized canonical type key. ` +
           `Valid keys: ${Object.keys(this.config.typeOptions).join(", ")}. ` +
-          `Check backends.github.type_display in your config file.`,
+          `Check backends.github.type_mapping in your config file.`,
         {
           code: "OPTION_NOT_FOUND",
           recovery: `Call scrum_orient to see valid type keys (vocabulary.type). ` +
-            `If "${input.type}" is a new type, add it to type_display in your config file and ` +
+            `If "${input.type}" is a new type, add it to type_mapping in your config file and ` +
             `ensure the matching option exists on the Type project field.`,
           context: { requested: input.type, valid: Object.keys(this.config.typeOptions) },
         },

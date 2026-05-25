@@ -147,7 +147,7 @@ OrientResult {
     dor:           DefinitionOfReady | null
     dod:           DefinitionOfDone | null
     autonomy:      AgentAutonomy | null
-    template_uris: TemplateUriMap      // NEW — replaces templates: { sprint_review, ... }
+    template_uris: TemplateUriMap | null  // partial — only types with a declared template; null when none configured
   }
 }
 ```
@@ -156,7 +156,7 @@ OrientResult {
 
 - `platform_state.iterations.active` now includes `days_elapsed`, `days_remaining`, `time_elapsed_pct` (computed from `start_date` + `duration_days` + today; no new backend calls)
 - `platform_state.epics` — epics that have at least one item in the active sprint, with names, descriptions, and open item counts (one additional backend call). Purpose: give the agent thematic context relevant to the current sprint, not a full epic dump. Fallback to all open epics when there is no active sprint or when the adapter cannot efficiently perform the sprint-scoped query.
-- `vocabulary.template_uris` — map of item type → `scrum://template/{type}` URI, replacing the static template path map; gives the agent a discovery surface for resources without a separate listing call
+- `vocabulary.template_uris` — partial map of item type → `scrum://template/{type}` URI. Only types with a team-declared template file appear in this map. When `null`, no templates are configured and the agent uses its own built-in defaults. Replaces the flat `templates:` ceremony map from the old orient response.
 
 ---
 
@@ -290,11 +290,13 @@ Existing `BurndownSeries` and `SprintSnapshot` types are preserved unchanged.
 
 ### `scrum://template/{type}` — New Resource
 
-**Role:** Item body templates addressable by PBI type. Replaces `scrum_get_template`.
+**Role:** Per-type instructional content that tells the agent how to construct a PBI of that type. Replaces `scrum_get_template`. These are not fillable markdown templates — they describe the expected structure, acceptance criteria conventions, and quality signals for each item type, and are intended to be read and interpreted by the agent, not rendered to the user.
 
-**URI pattern:** `scrum://template/{type}` where `{type}` is a value from `vocabulary.type` (e.g., `scrum://template/user_story`, `scrum://template/bug`).
+**URI pattern:** `scrum://template/{type}` where `{type}` is a PBI type key from `vocabulary.type` (e.g., `scrum://template/user_story`, `scrum://template/bug`).
 
-**Discovery:** Available URIs are listed in `scrum_orient` under `vocabulary.template_uris`. The agent does not need a separate resource listing call.
+**Content source:** Each backend declares template file paths alongside display names in its type configuration (e.g., `backends.github.type_mapping[type].template`). The server fetches the declared file from the managed repo at read time. This means teams control the template content by committing files to their repo (e.g., `.github/ISSUE_TEMPLATE/feature.md`). Template paths are backend-specific — different backends may point to different files for the same type.
+
+**Discovery:** Available URIs are listed in `scrum_orient` under `vocabulary.template_uris`. The map is partial — only types with a declared template file appear. A missing key means the agent falls back to its built-in default for that type. The agent does not need a separate resource listing call.
 
 **Why resource, not tool:** Templates are documents — stable, cacheable, addressable by a deterministic key. They do not change between requests and are not query results. The resource primitive is semantically correct here, unlike item lists which are dynamic query results.
 
@@ -328,8 +330,11 @@ interface EpicSummary {
 }
 
 // Template URI map (in scrum_orient vocabulary)
-type TemplateUriMap = Record<ItemType, string>;
-// e.g. { user_story: "scrum://template/user_story", bug: "scrum://template/bug", ... }
+// Partial — only types with a team-declared template file are included.
+// A missing key means no template is configured for that type; the agent uses its own default.
+type TemplateUriMap = Partial<Record<ItemType, ScrumTemplateUri>>;
+// e.g. { feature: "scrum://template/feature", bug: "scrum://template/bug" }
+// (user_story absent → no template declared for that type)
 
 // Backlog health (scrum_get_board_health output)
 interface BacklogHealth {
@@ -540,7 +545,9 @@ When the agent makes a prioritization recommendation, active epics from `scrum_o
 
 ### Template Discovery and Usage
 
-Template URIs are discovered from `vocabulary.template_uris` in the `scrum_orient` response. When drafting a new item the agent checks this map first. If a URI exists for the requested type, the agent reads it as a resource. It falls back to the canonical format in `references/item-types.md` only when no config template is declared.
+Template URIs are discovered from `vocabulary.template_uris` in the `scrum_orient` response. When drafting a new item the agent checks this map first. If a URI exists for the requested type, the agent reads the resource to get the team's instructional content for constructing that item type. If the type is absent from the map (no template declared), the agent falls back to its own built-in defaults for that type — it does not call the resource.
+
+Template content is instructional, not prescriptive. The agent interprets it to understand the team's conventions for that item type (e.g., expected AC format, required fields, definition-of-ready signals) and uses that to construct a well-formed item. The agent should not render the raw template content to the user.
 
 ### Analytics Usage
 
