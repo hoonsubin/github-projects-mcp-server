@@ -330,7 +330,7 @@ export interface FieldValueNode {
 }
 
 /** Extracted board fields from a field-value node array. */
-export interface BoardFields { // todo: this should be semi-dynamically created from the scrum_orient results
+export interface BoardFields {
   status: string | null;
   sprint: string | null;
   story_points: number | null;

@@ -108,6 +108,7 @@ export interface DependencyEntry {
  * PBI vocabulary for item types.
  * Used in `z.enum(ITEM_TYPES)` in schemas, `TemplateUriMap`, and `BacklogHealth.by_type`.
  * Keep in sync with config.yml `type_display` keys.
+ * todo: make the item types be dynamically populated based on the scrum config file properties
  */
 export const ITEM_TYPES = ["bug", "feature", "tech_debt", "spike", "user_story"] as const;
 
@@ -180,6 +181,7 @@ export type SprintRiskStance = "normal" | "monitor" | "elevated";
 export interface SprintContext {
   id: string;
   name: string;
+  // todo: sprint goals are not implemented yet
   goal: string | null;
   start_date: string;
   end_date: string;
