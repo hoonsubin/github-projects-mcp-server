@@ -84,7 +84,7 @@ classDiagram
                 %% Unused: resolveTerminalDisplay
             }
             class template-resource.ts:::scrum {
-                +templateResourceUseCase() Promise<{ content: string; mimeType: "text/markdown" }>
+                +templateResourceUseCase()
             }
             class errors.ts:::domain {
                 +assertNever()
