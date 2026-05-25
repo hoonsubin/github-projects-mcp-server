@@ -6,6 +6,9 @@
 // and optional structured context — making errors actionable at every layer.
 // =============================================================================
 
+import { AdapterError } from "../../domain/errors.ts";
+import type { SupportedBackend } from "../../domain/types.ts";
+
 // ── Error code taxonomy ────────────────────────────────────────────────────────
 
 export type GitHubErrorCode =
@@ -45,7 +48,7 @@ export const assertNever = (x: never): never => {
 
 // ── Parameter object ───────────────────────────────────────────────────────────
 
-export interface GitHubApiErrorParams {
+interface GitHubApiErrorParams {
   code: GitHubErrorCode;
   /** Agent recovery instruction: what the agent should do next to resolve this error. */
   recovery: string;
@@ -64,12 +67,13 @@ export interface GitHubApiErrorParams {
 
 // ── GitHubApiError class ───────────────────────────────────────────────────────
 
-export class GitHubApiError extends Error {
+export class GitHubApiError extends AdapterError {
+  override backendName: SupportedBackend = "github";
   override readonly name = "GitHubApiError";
   readonly code: GitHubErrorCode;
   readonly recovery: string;
   readonly statusCode?: number;
-  readonly context?: Record<string, unknown>;
+  override readonly context?: Record<string, unknown>;
   readonly graphqlErrors?: string[];
 
   constructor(message: string, params: GitHubApiErrorParams) {

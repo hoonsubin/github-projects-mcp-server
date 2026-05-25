@@ -38,3 +38,26 @@ export const enrichError = (err: unknown): string => {
 
   return `[${err.code}] ${err.message}${detail}\n\n→ Recovery: ${err.recovery}`;
 };
+
+interface BackendCallResult<T> {
+  value: T | null;
+  warnings: string[];
+}
+
+export const catchBackend = async <T>(
+  label: string,
+  fn: () => Promise<T>,
+): Promise<BackendCallResult<T>> => {
+  try {
+    const value = await fn();
+    return { value, warnings: [] };
+  } catch (err) {
+    if (err instanceof BackendError) {
+      const warning = `[${err.backendName}] ${err.code}: ${err.message}` +
+        (err.context ? `\n  Details: ${JSON.stringify(err.context)}` : "") +
+        `\n  → ${err.recovery}`;
+      return { value: null, warnings: [warning] };
+    }
+    throw err; // non-BackendError → real failure, propagate
+  }
+};

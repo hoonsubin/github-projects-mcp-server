@@ -5,6 +5,8 @@
 // code (src/adapters/) can throw and catch them without cross-layer coupling.
 // =============================================================================
 
+import { SupportedBackend } from "./types.ts";
+
 /**
  * Use in the `default` branch of exhaustive switches over discriminated unions.
  * TypeScript will produce a compile error if any variant is left unhandled,
@@ -48,5 +50,18 @@ export class StoryNotFoundError extends Error {
     super(message ?? `Story with key "${key}" not found.`);
     this.name = "StoryNotFoundError";
     this.key = key;
+  }
+}
+
+export abstract class AdapterError extends Error {
+  abstract readonly backendName: SupportedBackend;
+  abstract readonly code: string;
+  abstract readonly recovery: string;
+  readonly context?: Record<string, unknown>;
+
+  constructor(message: string, context?: Record<string, unknown>) {
+    super(message);
+    this.name = "AdapterError";
+    this.context = context;
   }
 }
