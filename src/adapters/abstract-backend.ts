@@ -95,7 +95,14 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
 
   abstract getStoryDetail(ref: StoryRef): Promise<StoryDetail>;
 
-  abstract getEpics(): Promise<EpicListing[]>;
+  abstract getEpics(sprintIterationId?: string | null): Promise<EpicListing[]>;
+
+  /**
+   * Compute work completion for a sprint.
+   * Returns completed points and total committed points.
+   * { completed: 0, total: 0 } when no items have story points.
+   */
+  abstract getSprintCompletion(iterationId: string): Promise<{ completed: number; total: number }>;
 
   // ── ProjectReader — unified search & analytics ───────────────────────────
 

@@ -102,8 +102,8 @@ interface IterationFieldNode {
   name: string;
   dataType: string;
   configuration: {
-    iterations: Array<{ id: string; title: string; startDate: string; duration: number }>;
-    completedIterations: Array<{ id: string; title: string; startDate: string; duration: number }>;
+    iterations: IterationEntry[];
+    completedIterations: IterationEntry[];
   };
 }
 
@@ -350,6 +350,7 @@ const classifyIterations = (
 // ── Main function ─────────────────────────────────────────────────────────────
 
 export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> => {
+  // todo: hard-coded path might not be scalable when we want to distribute the project as a stdio binary
   const { github, configPath = ".github/scrum/config.yml" } = params;
 
   // Read and parse the local config file.

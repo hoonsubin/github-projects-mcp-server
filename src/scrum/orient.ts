@@ -55,7 +55,8 @@ export const orientUseCase = async (
   });
 
   // Fetch epics via dedicated port method (not from PlatformState)
-  const allEpics: EpicListing[] = await backend.getEpics();
+  const sprintIterationId = state.iterations.active?.id ?? null;
+  const allEpics: EpicListing[] = await backend.getEpics(sprintIterationId);
 
   // Filter: active (open or in-progress) epics only; null status = active
   const activeEpics = allEpics.filter(
@@ -71,8 +72,16 @@ export const orientUseCase = async (
     open_item_count: epic.open_item_count,
   }));
 
+  // Compute work completion percentage for the active sprint
+  let workPct = 0;
+  if (state.iterations.active) {
+    const { completed, total } = await backend.getSprintCompletion(
+      state.iterations.active.id,
+    );
+    workPct = total > 0 ? Math.round((completed / total) * 100) : 0;
+  }
+
   // Build SprintContext from SprintInfo via the domain factory (pure, no backend call)
-  // workPct = 0 for now — P5 will feed actual work completion from findItems / analytics
   const buildSprintContext = (
     info: typeof state.iterations.active,
   ) => {
@@ -81,13 +90,13 @@ export const orientUseCase = async (
       {
         id: info.id,
         name: info.name,
-        goal: null, // todo: currently sprint goals are not implemented
+        goal: info.goal,
         start_date: info.startDate,
         end_date: info.endDate,
         duration_days: info.durationDays,
       },
       daysSince(info.startDate),
-      0, // P5: replace with actual work completion percentage
+      workPct,
     );
   };
 

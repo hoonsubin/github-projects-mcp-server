@@ -9,19 +9,20 @@
 import type { RuntimeConfig } from "./config-loader.ts";
 import type {
   DependencyEntry,
-  DraftStory,
-  IssueStory,
   ItemType,
   IterationEntry,
-  Story,
+  StoryBase,
+  StoryComment,
 } from "../../domain/types.ts";
 import type { BurndownStoryInput, SprintInfo } from "../../scrum/ports.ts";
 import type {
   AssigneeNodes,
   BoardFields,
   CommentProjection,
+  DraftStory,
   FieldValueNode,
   IssueRefNode,
+  IssueStory,
   LabelNameOnly,
   LinkedPr,
   MilestoneRefNode,
@@ -29,7 +30,6 @@ import type {
   TimelinePrSource,
   UserLogin,
 } from "./types.ts";
-import type { StoryComment } from "../../domain/types.ts";
 
 // ── Local input shapes (private — only for function parameter types) ───────────
 
@@ -150,7 +150,7 @@ const extractBoardFields = (
 export const buildStoryFromRaw = (
   item: ProjectItem,
   config: RuntimeConfig,
-): Story | null => {
+): StoryBase | null => {
   const content = item.content;
   if (!content) return null;
 
@@ -301,6 +301,7 @@ export const toSprintInfo = (iter: IterationEntry | null): SprintInfo | null => 
   return {
     id: iter.id,
     name: iter.title,
+    goal: null, // GitHub API does not expose iteration descriptions
     startDate: iter.startDate,
     durationDays: iter.duration,
     endDate: endDate.toISOString().slice(0, 10),
@@ -318,9 +319,9 @@ export const toSprintInfo = (iter: IterationEntry | null): SprintInfo | null => 
  * getStoryDetail() — ref.id stays as issue node ID in that context.
  */
 export const resolveDependencyRefs = (
-  stories: Story[],
+  stories: StoryBase[],
   allItems: ProjectItem[],
-): Story[] => {
+): StoryBase[] => {
   // Build lookups: issue number string → project item ID, and issue node ID → project item ID
   const keyToId = new Map<string, string>();
   const issueIdToItemId = new Map<string, string>();

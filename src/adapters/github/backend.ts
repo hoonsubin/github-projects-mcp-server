@@ -211,8 +211,12 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
     return this.deps.storyQueryService.getStoryDetail(ref);
   }
 
-  getEpics(): Promise<EpicListing[]> {
-    return this.deps.epicService.getEpics();
+  getEpics(sprintIterationId?: string | null): Promise<EpicListing[]> {
+    return this.deps.epicService.getEpics(sprintIterationId);
+  }
+
+  getSprintCompletion(iterationId: string): Promise<{ completed: number; total: number }> {
+    return this.deps.storyQueryService.computeSprintCompletion(iterationId);
   }
 
   // ── Story write delegations ───────────────────────────────────────────────

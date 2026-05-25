@@ -334,6 +334,57 @@ export class StoryQueryService {
     return fetcher.collect();
   }
 
+  /**
+   * Compute work completion percentage for a sprint.
+   * Returns completed points and total committed points.
+   * When no items have story points, returns { completed: 0, total: 0 }
+   * (workPct = 0 — no regression from current behavior).
+   */
+  async computeSprintCompletion(
+    iterationId: string,
+  ): Promise<{ completed: number; total: number }> {
+    const allItems = await this.fetchAllItems();
+
+    // Filter items assigned to this iteration
+    const sprintItems = allItems.filter((item) => {
+      const fv = item.fieldValues.nodes.find(
+        (v) => v.field?.id === this.config.fields.sprintFieldId,
+      );
+      return fv?.iterationId === iterationId;
+    });
+
+    const stories = sprintItems
+      .map((item) => buildStoryFromRaw(item, this.config))
+      .filter((s): s is Story => s !== null);
+
+    // Build reverse map: display name → canonical status key.
+    // story.status holds the display name (e.g. "Done"), but terminal
+    // semantics are keyed by canonical key (e.g. "done") in scrumConfig.scrum.status.
+    const statusReverseMap = new Map<string, string>();
+    const scrumConfig = this.config.scrumConfig;
+    const ghConfig = scrumConfig.backends.github as Record<string, unknown>;
+    const statusDisplay = (ghConfig?.status_display ?? {}) as Record<string, string>;
+    for (const [canonical, display] of Object.entries(statusDisplay)) {
+      statusReverseMap.set(display, canonical);
+    }
+
+    let completed = 0;
+    let total = 0;
+
+    for (const story of stories) {
+      const points = story.story_points ?? 0;
+      total += points;
+      if (story.status) {
+        const canonicalKey = statusReverseMap.get(story.status);
+        if (canonicalKey && scrumConfig.scrum.status[canonicalKey]?.terminal) {
+          completed += points;
+        }
+      }
+    }
+
+    return { completed, total };
+  }
+
   // ── Unified item search ──────────────────────────────────────────────────────
 
   /**

@@ -69,6 +69,7 @@ export class BurndownCalculator {
         name: iterEntry.title,
         startDate: iterEntry.startDate,
         endDate: endDate,
+        goal: null, // todo: fix this
         durationDays: iterEntry.duration,
       },
       stories,
