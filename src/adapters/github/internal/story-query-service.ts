@@ -245,8 +245,11 @@ export class StoryQueryService {
       .filter((s): s is Story => s !== null);
 
     // Apply filters in order of selectivity
-    stories = this.filterByScope(stories, filter.scope);
+    // keys takes priority over scope — when keys are provided, scope is bypassed
+    // so that items are found regardless of which bucket (sprint or backlog) they are in
+    const hasKeys = filter.keys.length > 0;
     stories = this.filterByKeys(stories, filter.keys);
+    stories = this.filterByScope(stories, filter.scope, hasKeys);
     stories = this.filterBySprintRef(stories, allItems, filter.sprint_ref);
     stories = this.filterByEpicId(stories, filter.epic_id);
     stories = this.filterByAssignee(stories, filter.assignee);
@@ -283,11 +286,8 @@ export class StoryQueryService {
     // ── Limit ─────────────────────────────────────────────────────────────
     items = items.slice(0, filter.limit);
 
-    // ── Dependency map (opt-in) ───────────────────────────────────────────
-    let dependencyMap: DependencyMap | null = null;
-    if (filter.include_dependencies) {
-      dependencyMap = this.buildDependencyMap(stories, allItems);
-    }
+    // ── Dependency map (always null in this story — wired in a separate ticket) ──
+    const dependencyMap: DependencyMap | null = null;
 
     return {
       items,
@@ -302,7 +302,9 @@ export class StoryQueryService {
 
   // ── Filter extraction helpers ────────────────────────────────────────────────
 
-  private filterByScope(stories: Story[], scope: string | undefined): Story[] {
+  private filterByScope(stories: Story[], scope: string | undefined, hasKeys: boolean): Story[] {
+    // When keys are provided, scope is bypassed — keys take priority
+    if (hasKeys) return stories;
     if (scope === "sprint") {
       return stories.filter((s) => s.sprint !== null);
     }

@@ -79,7 +79,7 @@ export const orientUseCase = async (
       {
         id: info.id,
         name: info.name,
-        goal: null, // P5: source sprint goal from config or backend metadata
+        goal: null, // todo: currently sprint goals are not implemented
         start_date: info.startDate,
         end_date: info.endDate,
         duration_days: info.durationDays,

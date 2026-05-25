@@ -169,7 +169,7 @@ const generateMarkdown = (
 The following exports are never imported by any other module in the codebase:
 
 | Module | Export | Kind |
-|--------|--------|------|
+|---|---|---|
 ${unusedRows}
 `;
   }
