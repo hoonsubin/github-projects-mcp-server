@@ -136,7 +136,7 @@ export class LabelResolver {
    *
    * Used by: StoryMutationService.createStory(), StoryMutationService.updateStory()
    */
-  async resolveExistingLabelNodeIds(names: string[]): Promise<string[]> {
+  async resolveExistingLabelNodeIds(names: readonly string[]): Promise<string[]> {
     const existingLabels = await this.fetchAllLabels();
     const nodeIds: string[] = [];
     const unknown: string[] = [];

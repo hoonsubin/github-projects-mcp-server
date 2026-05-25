@@ -38,8 +38,8 @@ export class SprintNotScheduledError extends Error {
 }
 
 /**
- * Thrown when an ItemRef by key cannot be resolved to a story.
- * Used by resolveRef() in the adapter layer when { key } lookup fails.
+ * Thrown when a StoryRef by number cannot be resolved to a story.
+ * Used by resolveRef() in the adapter layer when { number } lookup fails.
  */
 export class StoryNotFoundError extends Error {
   readonly key: string;

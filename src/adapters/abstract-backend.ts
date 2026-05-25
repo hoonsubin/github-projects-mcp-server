@@ -13,7 +13,6 @@ import type {
   PlatformState,
   ProjectReader,
   ProjectWriter,
-  Ref,
   ResolvedItemFilter,
   StoryDetail,
   StoryUpdates,
@@ -24,6 +23,8 @@ import type {
   BacklogHealth,
   EpicListing,
   ItemSearchResult,
+  ResolvedRef,
+  SprintRef,
   StoryRef,
 } from "../domain/types.ts";
 
@@ -119,7 +120,7 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
   // ── ProjectReader — impediments ──────────────────────────────────────────
 
   abstract getSprintImpediments(
-    sprint: import("../domain/types.ts").SprintRef,
+    sprint: SprintRef,
   ): Promise<ImpedimentListing[]>;
 
   abstract getOrphanImpediments(): Promise<ImpedimentListing[]>;
@@ -133,7 +134,7 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
   abstract setField(
     ref: StoryRef,
     field: "status" | "sprint" | "story_points" | "priority" | "assignee" | "type",
-    value: string | number | import("../domain/types.ts").SprintRef | null,
+    value: string | number | SprintRef | null,
   ): Promise<void>;
 
   abstract addComment(ref: StoryRef, body: string): Promise<void>;
@@ -164,7 +165,7 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
    * Override in adapters that support impediment resolution.
    */
   updateImpediment(
-    _ref: Ref,
+    _ref: ResolvedRef,
     _status: "open" | "in_progress" | "resolved",
     _resolutionNotes?: string,
   ): Promise<ImpedimentListing> {

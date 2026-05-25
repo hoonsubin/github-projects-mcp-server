@@ -9,6 +9,7 @@ import { GitHubApiError } from "../errors.ts";
 import { SprintNotScheduledError } from "../../../domain/errors.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { SprintRef, StoryRef } from "../../../domain/types.ts";
+import type { GitHubIssueId, GitHubItemId } from "../types.ts";
 import { GET_PROJECT_ITEM_BY_ID_QUERY } from "../queries.ts";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -16,13 +17,14 @@ import { GET_PROJECT_ITEM_BY_ID_QUERY } from "../queries.ts";
 /**
  * Resolved story — the node IDs the backend mutations need.
  *
+ * itemId is the project item node ID (PVTI_...) — branded as GitHubItemId.
  * issueId / issueNumber are null for DraftIssue items.
  * Write tools that require a real Issue (e.g. addComment) must guard on null
  * and throw a clear error rather than crashing.
  */
 interface ResolvedStory {
-  itemId: string; // project item node ID (PVTI_...)
-  issueId: string | null; // issue node ID (I_kwDO...), null for DraftIssues
+  itemId: GitHubItemId;
+  issueId: GitHubIssueId | null;
   issueNumber: number | null; // user-facing issue number, null for DraftIssues
 }
 
@@ -156,7 +158,7 @@ export const resolveStory = async (
 
   if (content.__typename === "DraftIssue") {
     return {
-      itemId: node.id,
+      itemId: node.id as GitHubItemId,
       issueId: null,
       issueNumber: null,
     };
@@ -177,8 +179,8 @@ export const resolveStory = async (
 
   // Issue — has id and number
   return {
-    itemId: node.id,
-    issueId: content.id,
+    itemId: node.id as GitHubItemId,
+    issueId: content.id as GitHubIssueId,
     issueNumber: content.number ?? null,
   };
 };

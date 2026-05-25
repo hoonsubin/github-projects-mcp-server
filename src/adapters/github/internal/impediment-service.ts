@@ -4,9 +4,13 @@
 // Single responsibility: impediment queries and mutations extracted from the facade.
 // Handles createImpediment, getOrphanImpediments, getSprintImpediments, updateImpediment.
 //
-// ImpedimentListing.ref.id is always a GitHub Issue node ID (I_...).
-// The tool layer uses this ID directly with updateImpediment.
-// The project item ID (PVTI_...) is returned separately for addComment calls.
+// ImpedimentListing.ref.id is a ResolvedRef (project item ID, PVTI_...), consistent
+// with every other ref.id in the codebase. updateImpediment resolves the item ID to
+// the underlying GitHub Issue node ID (I_...) internally before making GraphQL calls.
+//
+// Orphan impediments (getOrphanImpediments) carry GitHub Issue node IDs because they
+// are fetched directly from the Issues API and have no project item ID.
+// This is a known adapter-layer leak — see the getOrphanImpediments method docs.
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
@@ -24,8 +28,8 @@ import {
 import { PaginatedProjectItemFetcher } from "./pagination.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { ProjectItemIssueContent } from "../types.ts";
-import type { CreateStoryInput, ImpedimentListing, Ref } from "../../../scrum/ports.ts";
-import type { SprintRef, StoryRef } from "../../../domain/types.ts";
+import type { CreateStoryInput, ImpedimentListing } from "../../../scrum/ports.ts";
+import type { ResolvedRef, SprintRef, StoryRef } from "../../../domain/types.ts";
 
 // ── Shared issue node shape ────────────────────────────────────────────────────
 
@@ -72,8 +76,8 @@ export class ImpedimentService {
    * Create an impediment by delegating story creation to StoryMutationService.
    *
    * The StoryMutationService handles the full Draft Issue → Type field → optional
-   * conversion flow. After creation, we resolve the item to get the underlying
-   * issue node ID for the ImpedimentListing.ref.id field.
+   * conversion flow. The returned ref is the project item ID (PVTI_...) —
+   * consistent with every other ref.id in the codebase.
    */
   async createImpediment(
     input: CreateStoryInput,
@@ -81,14 +85,8 @@ export class ImpedimentService {
     // Delegate story creation to the canonical path — Draft Issue + Type board field
     const storyRef = await this.storyMutationService.createStory(input);
 
-    // Resolve the project item to get the underlying issue node ID.
-    // Draft Issues have issueId=null, but storyMutationService.createStory()
-    // converts Draft → Issue when labels are present, so issueId will be set
-    // since the handler passes labels: ["impediment"].
-    const resolved = await resolveStory(storyRef, this.gh);
-
     const listing: ImpedimentListing = {
-      ref: { id: resolved.issueId ?? ("id" in storyRef ? storyRef.id : String(storyRef.number)) },
+      ref: { id: "id" in storyRef ? storyRef.id : String(storyRef.number) },
       description: input.body ?? "",
       status: "open",
       raised_by: null,
@@ -155,7 +153,7 @@ export class ImpedimentService {
       .map((item) => {
         const issue = item.content as ProjectItemIssueContent;
         return {
-          ref: { id: issue.id },
+          ref: { id: item.id },
           description: issue.body ?? "",
           status: (issue.state === "OPEN" ? "open" : "resolved") as
             | "open"
@@ -169,10 +167,27 @@ export class ImpedimentService {
   }
 
   async updateImpediment(
-    ref: Ref,
+    ref: ResolvedRef,
     status: "open" | "in_progress" | "resolved",
     resolutionNotes?: string,
   ): Promise<ImpedimentListing> {
+    // Resolve the project item ID (PVTI_...) to the underlying GitHub Issue node ID (I_...).
+    // Mutation operations (label changes, comments, close) target the Issue, not the project item.
+    const resolved = await resolveStory({ id: ref.id }, this.gh);
+    if (!resolved.issueId) {
+      throw new GitHubApiError(
+        `Impediment "${ref.id}" is a Draft Issue — it has no underlying GitHub Issue.`,
+        {
+          code: "DRAFT_ISSUE_CONSTRAINT",
+          statusCode: 400,
+          recovery: "Draft Issues cannot be used as impediments. " +
+            "Convert it to a full Issue (by adding a label) before updating.",
+          context: { itemId: ref.id },
+        },
+      );
+    }
+    const issueId = resolved.issueId;
+
     const issueResult = await this.gh.graphql<{
       node: {
         __typename: "Issue";
@@ -185,7 +200,7 @@ export class ImpedimentService {
       };
     }>(
       GET_ISSUE_BY_ID_QUERY,
-      { issueId: ref.id },
+      { issueId },
     );
 
     const issue = issueResult?.node;
@@ -215,13 +230,13 @@ export class ImpedimentService {
 
     await this.gh.graphql(
       REPLACE_ISSUE_LABELS_MUTATION,
-      { issueId: ref.id, labelIds: updatedLabelIds },
+      { issueId, labelIds: updatedLabelIds },
     );
 
     if (status === "resolved" && resolutionNotes) {
       await this.gh.graphql(
         ADD_COMMENT_MUTATION,
-        { subjectId: ref.id, body: resolutionNotes },
+        { subjectId: issueId, body: resolutionNotes },
       );
     }
 
@@ -232,7 +247,7 @@ export class ImpedimentService {
         closeIssue: { issue: { closedAt: string } };
       }>(
         CLOSE_ISSUE_MUTATION,
-        { issueId: ref.id },
+        { issueId },
       );
       resolvedAt = closeResult.closeIssue?.issue?.closedAt ?? null;
     }
@@ -241,7 +256,7 @@ export class ImpedimentService {
       issue.closed || status === "resolved" ? "resolved" : status;
 
     return {
-      ref: { id: ref.id },
+      ref,
       description: issue.body ?? "",
       status: impedimentStatus,
       raised_by: null,

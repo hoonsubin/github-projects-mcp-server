@@ -75,16 +75,21 @@ export const groupStoriesByStatus = (
   for (const story of stories) {
     const key = story.status ?? "(No Status)";
     if (!groupMap.has(key)) groupMap.set(key, []);
-    groupMap.get(key)!.push(story);
+    const group = groupMap.get(key);
+    if (group) group.push(story);
   }
 
-  const orderedGroups = statusOrder
-    .filter((statusName) => groupMap.has(statusName))
-    .map((statusName) => ({
+  const orderedGroups: Array<{ status: string; stories: Story[]; points_sum: number }> = [];
+
+  for (const statusName of statusOrder) {
+    const groupStories = groupMap.get(statusName);
+    if (!groupStories) continue;
+    orderedGroups.push({
       status: statusName,
-      stories: groupMap.get(statusName)!,
-      points_sum: groupMap.get(statusName)!.reduce((acc, s) => acc + (s.story_points ?? 0), 0),
-    }));
+      stories: groupStories,
+      points_sum: groupStories.reduce((acc, s) => acc + (s.story_points ?? 0), 0),
+    });
+  }
 
   // Append unknown statuses
   const knownStatuses = new Set(statusOrder);

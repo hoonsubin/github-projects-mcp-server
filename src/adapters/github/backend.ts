@@ -28,7 +28,6 @@ import type {
   CreateStoryInput,
   ImpedimentListing,
   PlatformState,
-  Ref,
   ResolvedItemFilter,
   StoryDetail,
   StoryUpdates,
@@ -39,6 +38,7 @@ import type {
   BacklogHealth,
   EpicListing,
   ItemSearchResult,
+  ResolvedRef,
   SprintRef,
   StoryRef,
 } from "../../domain/types.ts";
@@ -257,7 +257,7 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
   }
 
   override updateImpediment(
-    ref: Ref,
+    ref: ResolvedRef,
     status: "open" | "in_progress" | "resolved",
     resolutionNotes?: string,
   ): Promise<ImpedimentListing> {

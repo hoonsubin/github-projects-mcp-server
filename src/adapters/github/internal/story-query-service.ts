@@ -365,16 +365,17 @@ export class StoryQueryService {
     let items = stories.map((story) => toItemListing(story));
 
     // Fix sprint.ref.id from hardcoded "" to actual iteration ID
-    for (const item of items) {
+    items = items.map((item) => {
       if (item.sprint.name) {
         const iterEntry = this.config.iterations.all.find(
           (i) => i.title === item.sprint.name,
         );
         if (iterEntry) {
-          item.sprint = { name: item.sprint.name, ref: { id: iterEntry.id } };
+          return { ...item, sprint: { name: item.sprint.name, ref: { id: iterEntry.id } } };
         }
       }
-    }
+      return item;
+    });
 
     // ── Limit ─────────────────────────────────────────────────────────────
     items = items.slice(0, filter.limit);

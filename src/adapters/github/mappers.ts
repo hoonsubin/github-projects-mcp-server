@@ -9,6 +9,7 @@ import type {
   DependencyEntry,
   DraftStory,
   IssueStory,
+  ItemType,
   IterationEntry,
   Story,
 } from "../../domain/types.ts";
@@ -92,7 +93,7 @@ const extractBoardFields = (
   let sprint: string | null = null;
   let story_points: number | null = null;
   let priority: string | null = null;
-  let type: string | null = null;
+  let type: ItemType | null = null;
 
   for (const fv of nodes) {
     const id = fv.field?.id;
@@ -114,7 +115,7 @@ const extractBoardFields = (
     ) {
       priority = fv.name;
     } else if (fields.typeFieldId && id === fields.typeFieldId && fv.name) {
-      type = fv.name;
+      type = fv.name as ItemType;
     }
   }
 
@@ -318,15 +319,17 @@ export const resolveDependencyRefs = (
     }
   }
 
-  const resolve = (entries: DependencyEntry[]): DependencyEntry[] =>
+  const resolve = (entries: readonly DependencyEntry[]): DependencyEntry[] =>
     entries.map((e) => {
       // Try issue node ID → project item ID (from native API mapping)
-      if (issueIdToItemId.has(e.ref.id)) {
-        return { ...e, ref: { id: issueIdToItemId.get(e.ref.id)! } };
+      const idFromIssue = issueIdToItemId.get(e.ref.id);
+      if (idFromIssue) {
+        return { ...e, ref: { id: idFromIssue } };
       }
       // Fallback: issue number string → project item ID (legacy path)
-      if (keyToId.has(e.key)) {
-        return { ...e, ref: { id: keyToId.get(e.key)! } };
+      const idFromKey = keyToId.get(e.key);
+      if (idFromKey) {
+        return { ...e, ref: { id: idFromKey } };
       }
       return e;
     });

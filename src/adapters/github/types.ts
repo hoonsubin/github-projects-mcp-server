@@ -17,6 +17,42 @@
 // =============================================================================
 
 import type * as GH from "./generated/github-types.ts";
+import type { ItemType, ResolvedRef } from "../../domain/types.ts";
+
+// ── Adapter-internal branded node ID types ───────────────────────────────────
+//
+// These branded string types distinguish GitHub's three node ID formats at
+// compile time. The domain layer sees only opaque ResolvedRef { id: string }.
+// These brands never cross the port boundary — use toResolvedRef() to erase
+// the brand when returning to the domain/port layers.
+
+/**
+ * GitHub Projects v2 item node ID (PVTI_... prefix).
+ * This is the canonical project item handle used in all domain-facing ref.id values.
+ * Returned by every read tool; passed to every write tool.
+ */
+export type GitHubItemId = string & { readonly _brand: "GitHubItemId" };
+
+/**
+ * GitHub Issue node ID (I_... prefix).
+ * Used internally by the adapter for issue-specific GraphQL operations
+ * (detailed issue queries, label mutations, comment posting).
+ * NEVER exposed as ref.id to the domain layer — always resolve to GitHubItemId first.
+ */
+export type GitHubIssueId = string & { readonly _brand: "GitHubIssueId" };
+
+/**
+ * GitHub Milestone node ID (MI_... prefix).
+ * Used for epic references (EpicRef.id).
+ */
+export type GitHubMilestoneId = string & { readonly _brand: "GitHubMilestoneId" };
+
+/**
+ * Erase the GitHub node ID brand and produce a domain-safe ResolvedRef.
+ * Use this at every adapter boundary where a branded ID crosses to the
+ * port or domain layer.
+ */
+export const toResolvedRef = (itemId: GitHubItemId): ResolvedRef => ({ id: itemId });
 
 // ── GitHub backend connection config (moved from src/types.ts) ───────────────
 
@@ -47,7 +83,6 @@ export interface GitHubBackendConfig {
     item_type?: string; // optional — SINGLE_SELECT type field for story type
     epic?: string; // optional — field used to track epic association on the board
     assignee?: string; // optional — field used to track assignees on the board
-    [key: string]: string | undefined;
   };
   /** Maps canonical status keys → exact GitHub single-select option names. */
   status_display: Record<string, string>;
@@ -192,7 +227,7 @@ export interface BoardFields { // todo: this should be semi-dynamically created 
   sprint: string | null;
   story_points: number | null;
   priority: string | null;
-  type: string | null; // canonical key from typeOptions; null when Type field absent or unset
+  type: ItemType | null; // canonical key from typeOptions; null when Type field absent or unset
 }
 
 // ── Issue detail output types (absorbed from raw-types.ts) ───────────────────

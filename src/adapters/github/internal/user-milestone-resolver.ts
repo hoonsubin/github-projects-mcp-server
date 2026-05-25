@@ -58,7 +58,7 @@ export class UserMilestoneResolver {
   }
 
   /** Resolve multiple user logins to their GitHub node IDs */
-  async resolveUserNodeIds(logins: string[]): Promise<string[]> {
+  async resolveUserNodeIds(logins: readonly string[]): Promise<string[]> {
     const ids: string[] = [];
     for (const login of logins) {
       ids.push(await this.resolveUserNodeId(login));
