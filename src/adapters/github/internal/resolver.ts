@@ -7,6 +7,7 @@
 
 import { GitHubApiError } from "../errors.ts";
 import { SprintNotScheduledError } from "../../../domain/errors.ts";
+import type * as GH from "../generated/github-types.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { SprintRef, StoryRef } from "../../../domain/types.ts";
 import type { GitHubIssueId, GitHubItemId } from "../types.ts";
@@ -33,15 +34,16 @@ interface GitHubClient {
   graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T>;
 }
 
-interface ItemByIdResponse {
-  node?: {
+/** Query projection of GH.ProjectV2Item for resolveStory. */
+interface ItemByIdQueryNode extends Required<Pick<GH.ProjectV2Item, "id">> {
+  content?: {
+    __typename: string;
     id: string;
-    content?: {
-      __typename: string;
-      id: string;
-      number?: number;
-    } | null;
+    number?: number;
   } | null;
+}
+interface ItemByIdResponse {
+  node?: ItemByIdQueryNode | null;
 }
 
 // ── resolveSprint ─────────────────────────────────────────────────────────────

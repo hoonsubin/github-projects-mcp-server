@@ -2,8 +2,11 @@
 // src/adapters/github/mappers.ts — GitHub raw types → domain types mappers
 //
 // Pure functions: take ProjectItem (or narrow input shapes) and return domain types.
+// Local input shapes are grounded in github-types.ts via Pick so field renames
+// in the generated schema break at compile time rather than silently desyncing.
 // =============================================================================
 
+import type * as GH from "./generated/github-types.ts";
 import type { RuntimeConfig } from "./config-loader.ts";
 import type {
   DependencyEntry,
@@ -14,30 +17,26 @@ import type {
   Story,
 } from "../../domain/types.ts";
 import type { BurndownStoryInput, SprintInfo } from "../../scrum/ports.ts";
-// classifyLabels / StoryTypeLabel removed — type is now read from the Type board field,
-// not from repo labels. See extractBoardFields → typeFieldId branch below.
 import type { BoardFields, FieldValueNode, LinkedPr, ProjectItem } from "./types.ts";
 import type { StoryComment } from "../../domain/types.ts";
 
 // ── Local input shapes (private — only for function parameter types) ───────────
 
-/** Comment node shape returned by GetIssueDetails timeline query. */
-interface CommentInput {
-  author?: { login: string } | null;
-  body: string;
-  createdAt: string;
-  url: string;
+/**
+ * Query projection of GH.IssueComment for buildCommentList.
+ * Grounded in GH types so field renames in the generated schema break at compile time.
+ */
+interface CommentInput extends Required<Pick<GH.IssueComment, "body" | "createdAt" | "url">> {
+  author?: Required<Pick<GH.User, "login">> | null;
 }
 
-/** CrossReferencedEvent node shape returned by GetIssueDetails timeline query. */
+/**
+ * Query projection of CrossReferencedEvent.source for buildLinkedPrList.
+ * The source field is GH.PullRequest (ReferencedSubject = Issue | PullRequest —
+ * in practice only PullRequests appear as linked artifacts).
+ */
 interface TimelineItemInput {
-  source?: {
-    number?: number | null;
-    title?: string | null;
-    url?: string | null;
-    state?: string | null;
-    isDraft?: boolean | null;
-  } | null;
+  source?: Required<Pick<GH.PullRequest, "number" | "title" | "url" | "state" | "isDraft">> | null;
 }
 
 // ── Dependency mapping ─────────────────────────────────────────────────────────
@@ -64,18 +63,20 @@ const mapIssueDependencies = (
 /**
  * Shape of the issue node returned by GetIssueDetails, cast to this interface
  * in backend.ts before passing to buildEnrichedStory.
+ *
+ * Flat scalar fields are grounded in GH.Issue via Pick so that field renames in
+ * the generated schema break at compile time. Nested connection shapes
+ * (assignees, labels, milestone, comments, timelineItems) are query-projection
+ * shapes narrower than the full schema connection types.
  */
-export interface IssueDetailsInput {
-  id: string;
-  number: number;
+export interface IssueDetailsInput
+  extends Required<Pick<GH.Issue, "id" | "number" | "createdAt" | "updatedAt">> {
   title: string | null;
   body: string | null;
   url: string | null;
-  createdAt: string;
-  updatedAt: string;
-  assignees?: { nodes: Array<{ login: string }> };
-  labels?: { nodes: Array<{ name: string }> };
-  milestone?: { id: string; title: string } | null;
+  assignees?: { nodes: Array<Required<Pick<GH.User, "login">>> };
+  labels?: { nodes: Array<Required<Pick<GH.Label, "name">>> };
+  milestone?: Required<Pick<GH.Milestone, "id" | "title">> | null;
   blockedBy?: { nodes: Array<{ id: string; number: number; title: string }> };
   blocking?: { nodes: Array<{ id: string; number: number; title: string }> };
   comments?: { nodes: CommentInput[] };

@@ -8,6 +8,7 @@
 
 import { GitHubApiError } from "../errors.ts";
 import { SprintNotScheduledError } from "../../../domain/errors.ts";
+import type * as GH from "../generated/github-types.ts";
 import type { GitHubClient } from "./http-client.ts";
 import { isBacklogItem, PaginatedProjectItemFetcher } from "./pagination.ts";
 import { resolveSprint, resolveStory } from "./resolver.ts";
@@ -44,43 +45,46 @@ import { toIssueKey } from "../../../domain/types.ts";
 
 // ── Response types ─────────────────────────────────────────────────────────────
 
-interface GetIssueDetailsResponse {
-  node?: {
-    id?: string;
-    number?: number;
-    title?: string;
-    body?: string;
-    url?: string;
-    createdAt?: string;
-    updatedAt?: string;
-    assignees?: { nodes: Array<{ login: string }> };
-    labels?: { nodes: Array<{ name: string }> };
-    milestone?: { id: string; title: string } | null;
-    comments?: {
-      nodes: Array<{
-        id: string;
-        author?: { login: string } | null;
-        body: string;
-        createdAt: string;
-        url: string;
-      }>;
-    };
-    timelineItems?: {
-      nodes: Array<{
-        source?: {
-          number?: number;
-          title?: string;
-          url?: string;
-          state?: string;
-          isDraft?: boolean;
-        } | null;
-      }>;
-    };
-  } | null;
+/**
+ * Query projection of GH.Issue + nested connections for getStoryDetail.
+ * Flat scalar fields grounded in GH.Issue via Pick; nested connections
+ * (assignees, labels, milestone, comments, timelineItems) are query-projection
+ * shapes narrower than the full schema types.
+ */
+interface GetIssueDetailsQueryNode extends
+  Required<
+    Pick<GH.Issue, "id" | "number" | "title" | "body" | "url" | "createdAt" | "updatedAt">
+  > {
+  assignees?: { nodes: Array<Required<Pick<GH.User, "login">>> };
+  labels?: { nodes: Array<Required<Pick<GH.Label, "name">>> };
+  milestone?: Required<Pick<GH.Milestone, "id" | "title">> | null;
+  comments?: {
+    nodes: Array<
+      Required<Pick<GH.IssueComment, "id" | "body" | "createdAt" | "url">> & {
+        author?: Required<Pick<GH.User, "login">> | null;
+      }
+    >;
+  };
+  timelineItems?: {
+    nodes: Array<{
+      /** Query projection of GH.PullRequest via CrossReferencedEvent.source. */
+      source?:
+        | Required<Pick<GH.PullRequest, "number" | "title" | "url" | "state" | "isDraft">>
+        | null;
+    }>;
+  };
 }
 
+interface GetIssueDetailsResponse {
+  node?: GetIssueDetailsQueryNode | null;
+}
+
+/** Query projection of GH.ProjectV2Item.fieldValues — item fields only. */
+interface GetItemFieldsQueryNode extends Pick<GH.ProjectV2Item, "fieldValues"> {
+  fieldValues?: { nodes: ItemFieldValue[] };
+}
 interface GetItemFieldsResponse {
-  node?: { fieldValues?: { nodes: ItemFieldValue[] } } | null;
+  node?: GetItemFieldsQueryNode | null;
 }
 
 // ── StoryQueryService class ────────────────────────────────────────────────────
@@ -188,16 +192,15 @@ export class StoryQueryService {
   }
 
   private async _getDraftIssueDetail(itemId: string): Promise<StoryDetail> {
+    /** Query projection of GH.ProjectV2Item for draft issue details. */
+    interface GetDraftIssueDetailsQueryNode
+      extends
+        Required<Pick<GH.ProjectV2Item, "id" | "type" | "createdAt" | "updatedAt" | "isArchived">> {
+      content?: unknown;
+      fieldValues?: { nodes: ItemFieldValue[] };
+    }
     interface GetDraftIssueDetailsResponse {
-      node?: {
-        id?: string;
-        type?: string;
-        createdAt?: string;
-        updatedAt?: string;
-        isArchived?: boolean;
-        content?: unknown;
-        fieldValues?: { nodes: ItemFieldValue[] };
-      } | null;
+      node?: GetDraftIssueDetailsQueryNode | null;
     }
 
     const data = await this.gh.graphql<GetDraftIssueDetailsResponse>(

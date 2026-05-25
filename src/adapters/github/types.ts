@@ -167,45 +167,69 @@ export interface ProjectItem {
 // ── Field value projection (replaces ProjectV2ItemFieldValue in src/types.ts) ─
 //
 // Flat projection of all field value properties our queries may return, keyed
-// by __typename. Each optional field corresponds to a specific generated type:
-//   iterationId / title / startDate / duration → GH.ProjectV2ItemFieldIterationValue
-//   name / color / optionId                    → GH.ProjectV2ItemFieldSingleSelectValue
-//   number                                     → GH.ProjectV2ItemFieldNumberValue
-//   text                                       → GH.ProjectV2ItemFieldTextValue
-//   date                                       → GH.ProjectV2ItemFieldDateValue
-//   users                                      → GH.ProjectV2ItemFieldUserValue
-//   labels                                     → GH.ProjectV2ItemFieldLabelValue
-//   milestone                                  → GH.ProjectV2ItemFieldMilestoneValue
-//   repository                                 → GH.ProjectV2ItemFieldRepositoryValue
+// by __typename. Each optional field corresponds to a specific generated type
+// (see the inline type-assertion comments below).
+//
+// Sub-shapes are grounded in GH.* types via Pick; the flat scalar fields
+// (iterationId, title, startDate, duration, text, number, date, name, color,
+// optionId) are derived from the respective GH.ProjectV2ItemField*Value types.
 //
 // TODO: replace with a proper discriminated union aligned to the per-type
 // generated interfaces once extractBoardFields is refactored.
+
+/** Query projection of GH.ProjectV2FieldCommon — we only fetch id + name. */
+export type FieldValueField = Required<Pick<GH.ProjectV2FieldCommon, "id" | "name">>;
+
+/** Query projection of GH.User — we only fetch login. */
+export type FieldValueUser = Pick<GH.User, "login">;
+
+/** Query projection of GH.UserConnection.nodes — flat array of login-only users. */
+export type FieldValueUserNodes = Required<Pick<GH.UserConnection, "nodes">> & {
+  nodes: FieldValueUser[];
+};
+
+/** Query projection of GH.Label — we only fetch name + color. */
+export type FieldValueLabel = Required<Pick<GH.Label, "name" | "color">>;
+
+/** Query projection of GH.LabelConnection.nodes — flat array of name+color labels. */
+export type FieldValueLabelNodes = Required<Pick<GH.LabelConnection, "nodes">> & {
+  nodes: FieldValueLabel[];
+};
+
+/** Query projection of GH.Milestone — we only fetch id + title + dueOn. */
+export type FieldValueMilestone = Required<Pick<GH.Milestone, "id" | "title">> & {
+  dueOn: GH.Milestone["dueOn"];
+};
+
+/** Query projection of GH.Repository — we only fetch name + nameWithOwner. */
+export type FieldValueRepository = Required<Pick<GH.Repository, "name" | "nameWithOwner">>;
+
 export interface ItemFieldValue {
   __typename: string;
-  field: { id: string; name: string };
-  // Iteration
+  field: FieldValueField;
+  // Iteration (GH.ProjectV2ItemFieldIterationValue)
   iterationId?: string;
   title?: string;
   startDate?: string;
   duration?: number;
-  // Text
+  // Text (GH.ProjectV2ItemFieldTextValue)
   text?: string;
-  // Number
+  // Number (GH.ProjectV2ItemFieldNumberValue)
   number?: number;
-  // Date
+  // Date (GH.ProjectV2ItemFieldDateValue)
   date?: string;
-  // Single-select
+  // Single-select (GH.ProjectV2ItemFieldSingleSelectValue)
   name?: string;
   color?: string;
   optionId?: string;
-  // User
-  users?: { nodes: Array<{ login: string }> };
-  // Label
-  labels?: { nodes: Array<{ name: string; color: string }> };
-  // Milestone
-  milestone?: { id: string; title: string; dueOn: string | null };
-  // Repository
-  repository?: { name: string; nameWithOwner: string };
+  // User (GH.ProjectV2ItemFieldUserValue)
+  users?: FieldValueUserNodes;
+  // Label (GH.ProjectV2ItemFieldLabelValue)
+  labels?: FieldValueLabelNodes;
+  // Milestone (GH.ProjectV2ItemFieldMilestoneValue)
+  milestone?: FieldValueMilestone;
+  // Repository (GH.ProjectV2ItemFieldRepositoryValue)
+  repository?: FieldValueRepository;
 }
 
 // ── Board extraction types (absorbed from raw-types.ts) ──────────────────────

@@ -14,6 +14,7 @@
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
+import type * as GH from "../generated/github-types.ts";
 import type { GitHubClient } from "./http-client.ts";
 import { resolveSprint, resolveStory } from "./resolver.ts";
 import { LabelResolver } from "./label-resolver.ts";
@@ -33,16 +34,14 @@ import type { ResolvedRef, SprintRef, StoryRef } from "../../../domain/types.ts"
 
 // ── Shared issue node shape ────────────────────────────────────────────────────
 
-interface ImpedimentIssueNode {
-  id: string;
-  number: number;
-  title: string;
-  body: string | null;
-  state: string;
-  createdAt: string;
-  closedAt: string | null;
-  author?: { login: string } | null;
-  comments?: { nodes: Array<{ body: string | null }> };
+/** Query projection of GH.Issue for impediment listing queries. */
+interface ImpedimentIssueNode
+  extends
+    Required<
+      Pick<GH.Issue, "id" | "number" | "title" | "body" | "state" | "createdAt" | "closedAt">
+    > {
+  author?: Required<Pick<GH.User, "login">> | null;
+  comments?: { nodes: Array<Pick<GH.IssueComment, "body">> };
 }
 
 interface ImpedimentIssuesResponse {

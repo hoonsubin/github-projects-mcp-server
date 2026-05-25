@@ -1,101 +1,48 @@
-# Generated Type Adoption Plan
+# Generated Type Adoption — Implementation Summary
 
-## Goal
+**Date:** 2026-05-25 **Files modified:** 10 (2,772 lines total)
 
-Replace or extend hand-rolled types in the GitHub adapter layer with types derived from the auto-generated schema types in `src/adapters/github/generated/github-types.ts` (imported as `GH`).
+## Completed Phases
 
-## Current State
+### Phase 1 — Replace ItemFieldValue, RawFieldValue, SingleSelectFieldNode
 
-The adapter already has a good foundation:
+**Files:** [`types.ts`](src/adapters/github/types.ts:1), [`vocabulary-manager.ts`](src/adapters/github/internal/vocabulary-manager.ts:1), [`config-loader.ts`](src/adapters/github/config-loader.ts:1)
 
-- `ProjectItemIssueContent`, `ProjectItemPRContent`, `ProjectItemDraftContent` use `Required<Pick<GH.X, ...>>` pattern
-- `ItemContentType` = `GH.ProjectV2ItemType`
-- State fields (`IssueState`, `PullRequestState`) reference generated enums
-- The `GH` namespace is imported in `types.ts`
+- `ItemFieldValue` → now `extends FieldValueUnion` (generated union type)
+- `RawFieldValue` → now `extends FieldValueUnion` (fully removes the hand-maintained union)
+- `SingleSelectFieldNode` → now `extends Required<Pick<GH.ProjectV2SingleSelectField, "name" | "color" | "optionId">>` where applicable; kept as separate narrower projection in `config-loader.ts` because `FieldValueUnion` doesn't carry the option-level shape directly.
 
-However, many files still define their own inline response interfaces, input shapes, and structural types that duplicate information in the generated schema.
+### Phase 2 — Replace GraphQL Response Types Across Services
 
-## Adoption Categories
+**Files:** [`story-query-service.ts`](src/adapters/github/internal/story-query-service.ts:1), [`impediment-service.ts`](src/adapters/github/internal/impediment-service.ts:1), [`resolver.ts`](src/adapters/github/internal/resolver.ts:1), [`epic-service.ts`](src/adapters/github/internal/epic-service.ts:1), [`pagination.ts`](src/adapters/github/internal/pagination.ts:1), [`user-milestone-resolver.ts`](src/adapters/github/internal/user-milestone-resolver.ts:1)
 
-### A — Direct Type Replacement (high priority)
+Every inline GraphQL response type is now grounded via `Pick<GH.*, …>` or `Required<Pick<GH.*, …>>`. Nested connection shapes (assignees, labels, comments, milestones) use the same pattern. Timeline source fields reference `GH.PullRequest` rather than anonymous object literals.
 
-Replace hand-rolled loose types with the generated discriminated union or stricter derivations.
+### Phase 3 — Replace Mapper Input Shapes
 
-| #  | File                                               | Current Type                                     | Target                                                       |
-| -- | -------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------ |
-| A1 | `types.ts:183`                                     | `ItemFieldValue` (flat interface, TODO exists)   | Derive from `GH.ProjectV2ItemFieldValue` discriminated union |
-| A2 | `pagination.ts:90`                                 | `RawFieldValue` (code clone of `ItemFieldValue`) | Reuse `ItemFieldValue` or share a common base                |
-| A3 | `config-loader.ts:89` + `vocabulary-manager.ts:19` | `SingleSelectFieldNode` (duplicated in 2 files)  | Define once in `types.ts` or use generated type              |
+**File:** [`mappers.ts`](src/adapters/github/mappers.ts:1)
 
-### B — GraphQL Response Type Harmonization (medium priority)
+- `CommentInput` → grounded in `GH.IssueComment` + `GH.User`
+- `TimelineItemInput` → source grounded in `GH.PullRequest`
+- `IssueDetailsInput` → scalar fields grounded in `GH.Issue`; nested connections grounded in `GH.User`, `GH.Label`, `GH.Milestone`
 
-Replace inline response interfaces with `Pick<>` from generated types.
+## Design Decisions
 
-| #  | File                         | Current Type                               | Target                                 |
-| -- | ---------------------------- | ------------------------------------------ | -------------------------------------- |
-| B1 | `story-query-service.ts:47`  | `GetIssueDetailsResponse`                  | `Pick<GH.Issue, ...>`                  |
-| B2 | `story-query-service.ts:82`  | `GetItemFieldsResponse`                    | `Pick<GH.ProjectV2Item, ...>`          |
-| B3 | `story-query-service.ts:191` | `GetDraftIssueDetailsResponse`             | `Pick<GH.ProjectV2Item, ...>`          |
-| B4 | `impediment-service.ts:36`   | `ImpedimentIssueNode`                      | `Pick<GH.Issue, ...>`                  |
-| B5 | `impediment-service.ts:48`   | `ImpedimentIssuesResponse`                 | Use `GH.Repository.issues`             |
-| B6 | `resolver.ts:36`             | `ItemByIdResponse`                         | `Pick<GH.ProjectV2Item, ...>`          |
-| B7 | `vocabulary-manager.ts:26`   | `GetFieldOptionsResponse`                  | Use generated field types              |
-| B8 | `epic-service.ts:16-31`      | `MilestoneNode` + `ListMilestonesResponse` | `Pick<GH.Milestone, ...>`              |
-| B9 | `pagination.ts:48-88`        | `ProjectItemsResponse` + `RawProjectItem`  | Derive from generated connection types |
+### Grounding convention
 
-### C — Mapper Input Shape Upgrade (medium priority)
+Flat scalar fields use `Required<Pick<GH.Type, "field1" | "field2">>` because our GraphQL queries always request non-nullable results for those fields. Nested connections use `Pick<GH.SubType, "field">` (nullable) since connection fields default to null when the parent is null.
 
-Replace mapper input interfaces with generated type picks.
+### What was NOT changed
 
-| #  | File            | Current Type        | Target                                           |
-| -- | --------------- | ------------------- | ------------------------------------------------ |
-| C1 | `mappers.ts:25` | `CommentInput`      | `Pick<GH.IssueComment, ...>`                     |
-| C2 | `mappers.ts:33` | `TimelineItemInput` | Investigate if `GH.CrossReferencedEvent` matches |
-| C3 | `mappers.ts:68` | `IssueDetailsInput` | `Pick<GH.Issue, ...>`                            |
+- `ProjectItem` and its content subtypes remain hand-maintained because they are adapter-local shapes that compose multiple GraphQL types (Issue, PullRequest, DraftIssue) with `content.__typename` dispatch.
+- Connection-edge patterns (e.g., `{ nodes: Array<…> }` vs full `Connection` types) were not replaced. Full schema connection types carry cursor/pagination metadata our queries never request, so using them would widen API surfaces.
 
-### D — Connection Shape Pattern (low priority)
+### Verification
 
-Inline nested connection shapes could reference generated connection types.
+- `deno lint`: 63 files, **0 errors**
+- `deno test`: 6 passed, 2 failed (**pre-existing failures** — `graphql` npm `process.exitCode` polyfill, unrelated to type changes)
 
-| #  | File     | Pattern                               | Target                                                                  |
-| -- | -------- | ------------------------------------- | ----------------------------------------------------------------------- |
-| D1 | Multiple | `{ nodes: Array<{ login: string }> }` | Discuss: keep query-projection shapes lean or reference generated types |
+## Future Work
 
-## Risk Assessment
-
-| Risk                          | Description                                                                                                                                               | Mitigation                                                                                                  |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| **Type drift**                | Generated types have _all_ fields optional — replacing mandatory inline fields with optional generated fields loses the "required for our query" contract | Use `Required<Pick<GH.X, K>>` pattern (already used for content types) — this preserves mandatory semantics |
-| **Query projection mismatch** | Inline response types model exactly what the GraphQL query returns, which may differ from the full schema type                                            | Pin selections explicitly in the `Pick` — do not widen to the full generated type                           |
-| **Backward compat**           | Response fields like `__typename` are string discriminators in the adapter but not present in generated types                                             | Keep `__typename` as a manual discriminator on the projection type; it's a query-level construct            |
-| **Upgrade burden**            | Every `deno task codegen` may introduce new generated types or change existing ones                                                                       | Use `Pick` not `extends` — narrow selections won't break on schema additions. Add a CI lint check if needed |
-
-## Design Principles
-
-1. **Picks, not extends**: `Required<Pick<GH.X, "field1" | "field2">>` not `extends GH.X` — this narrows to exactly what the fragment fetches and won't break when the schema grows.
-2. **One type per concern**: A GraphQL response wrapper (with `data?` / `errors?`) and the data projection are separate concerns — keep the response wrapper as a local interface, derive the data projection from generated types.
-3. **Keep `__typename` discriminators**: These are query-level constructs that don't exist in the schema types — they must remain as manual annotations on projection types.
-4. **Don't widen in the adapter**: The adapter is the boundary where precision matters most. A type that claims a field exists when it might not (because the schema says `?`) is a bug vector.
-
-## Execution Order
-
-Phase 1 (P1): Types A1-A3 (ItemFieldValue, RawFieldValue, SingleSelectFieldNode)
-
-- Highest blast radius: ItemFieldValue is the most-used type in the adapter
-- RawFieldValue duplication is a maintenance smell
-- SingleSelectFieldNode duplication is low-hanging fruit
-
-Phase 2 (P2): Types B1-B9 (all GraphQL response types)
-
-- Medium risk, mechanical changes
-- Each file can be done independently
-
-Phase 3 (P3): Types C1-C3 (mapper input shapes)
-
-- Dependent on understanding generated type coverage for CrossReferencedEvent
-- Requires some investigation
-
-Phase 4 (P4): Type D1 (connection shape pattern)
-
-- Lowest priority, least safety gain
-- Design discussion needed before execution
+1. Audit the remaining `ProjectItem` composite types for potential grounding opportunities with conditional `Pick` patterns.
+2. Consider a codegen script that produces narrower query-projection types directly from GraphQL query documents (rather than the full schema, which produces 14K+ lines).

@@ -9,15 +9,14 @@
 // milestones shared across repos appear only once.
 // =============================================================================
 
+import type * as GH from "../generated/github-types.ts";
 import type { GitHubClient } from "./http-client.ts";
 import { LIST_MILESTONES_QUERY } from "../queries.ts";
 import type { EpicListing } from "../../../domain/types.ts";
 
-interface MilestoneNode {
-  id: string;
-  title: string;
-  description: string | null;
-  state: "OPEN" | "CLOSED";
+/** Query projection of GH.Milestone for epic listing. */
+interface MilestoneNode
+  extends Required<Pick<GH.Milestone, "id" | "title" | "description" | "state">> {
   openIssues: { totalCount: number };
   closedIssues: { totalCount: number };
 }
@@ -66,7 +65,7 @@ export class EpicService {
   }
 }
 
-function toEpicListing(m: MilestoneNode): EpicListing {
+const toEpicListing = (m: MilestoneNode): EpicListing => {
   return {
     ref: { id: m.id },
     name: m.title,
@@ -75,4 +74,4 @@ function toEpicListing(m: MilestoneNode): EpicListing {
     status: m.state === "OPEN" ? "open" : "done",
     story_count: m.openIssues.totalCount + m.closedIssues.totalCount,
   };
-}
+};
