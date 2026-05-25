@@ -33,11 +33,11 @@ for (const def of _doc.definitions) {
 // Recursively collect all fragment names referenced by an AST node.
 // Uses WeakSet to track visited AST nodes and avoid infinite recursion
 // from circular parent/prev/next pointers in the GraphQL AST.
-function _collectFrags(
+const _collectFrags = (
   node: unknown,
   acc: Set<string> = new Set(),
   seen: WeakSet<object> = new WeakSet(),
-): Set<string> {
+): Set<string> => {
   if (!node || typeof node !== "object") return acc;
 
   if (Array.isArray(node)) {
@@ -67,7 +67,7 @@ function _collectFrags(
     if (v && typeof v === "object") _collectFrags(v, acc, seen);
   }
   return acc;
-}
+};
 
 // Build map: operation name → full document string (op + referenced fragments)
 const _ops = new Map<string, string>();
@@ -89,7 +89,7 @@ for (const def of _doc.definitions) {
  * Includes all fragment definitions the operation references.
  * Throws immediately (at startup) if the name is not in operations.graphql.
  */
-function getQuery(name: string): string {
+const getQuery = (name: string): string => {
   const q = _ops.get(name);
   if (!q) {
     throw new Error(
@@ -97,7 +97,7 @@ function getQuery(name: string): string {
     );
   }
   return q;
-}
+};
 
 // ── Named constants ───────────────────────────────────────────────────────────
 // Each call to getQuery() validates that the operation exists in operations.graphql

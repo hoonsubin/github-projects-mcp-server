@@ -16,11 +16,14 @@ import { GitHubApiError } from "../errors.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type {
   GitHubBackendConfig,
-  ItemContentType,
+  ItemFieldValue,
+  PageInfoRef,
   ProjectItem,
   ProjectItemDraftContent,
   ProjectItemIssueContent,
   ProjectItemPRContent,
+  ProjectV2ItemRef,
+  ProjectV2Ref,
 } from "../types.ts";
 
 // ---------------------------------------------------------------------------
@@ -45,39 +48,31 @@ interface ItemFetchConfig {
 }
 
 /** Internal GraphQL response shape for project items. */
+interface ProjectItemsConnection {
+  totalCount: number;
+  pageInfo: PageInfoRef;
+  nodes: RawProjectItem[];
+}
+
+/** Query projection of GH.ProjectV2 for paginated items query. */
+interface ProjectV2QueryNode extends ProjectV2Ref {
+  items: ProjectItemsConnection;
+}
+
 interface ProjectItemsResponse {
   user?: {
-    projectV2: {
-      id: string;
-      items: {
-        totalCount: number;
-        pageInfo: { hasNextPage: boolean; endCursor: string | null };
-        nodes: RawProjectItem[];
-      };
-    };
+    projectV2: ProjectV2QueryNode;
   };
   organization?: {
-    projectV2: {
-      id: string;
-      items: {
-        totalCount: number;
-        pageInfo: { hasNextPage: boolean; endCursor: string | null };
-        nodes: RawProjectItem[];
-      };
-    };
+    projectV2: ProjectV2QueryNode;
   };
 }
 
 /** Raw item from GraphQL — mapped to ProjectItem by the fetcher. */
-interface RawProjectItem {
-  id: string;
-  type: ItemContentType;
-  createdAt: string;
-  updatedAt: string;
-  isArchived: boolean;
+interface RawProjectItem extends ProjectV2ItemRef {
   content: RawContent;
   fieldValues: {
-    nodes: RawFieldValue[];
+    nodes: ItemFieldValue[];
   };
 }
 
@@ -86,34 +81,6 @@ type RawContent =
   | { __typename: "PullRequest" } & Omit<ProjectItemPRContent, "__typename">
   | { __typename: "DraftIssue" } & Omit<ProjectItemDraftContent, "__typename">
   | null;
-
-interface RawFieldValue {
-  __typename: string;
-  field?: { id: string; name: string };
-  // Iteration
-  iterationId?: string | null;
-  title?: string;
-  startDate?: string;
-  duration?: number;
-  // Text
-  text?: string;
-  // Number
-  number?: number;
-  // Date
-  date?: string;
-  // Single-select
-  name?: string;
-  color?: string;
-  optionId?: string;
-  // User
-  users?: { nodes: Array<{ login: string }> };
-  // Label
-  labels?: { nodes: Array<{ name: string; color: string }> };
-  // Milestone
-  milestone?: { id: string; title: string; dueOn: string | null };
-  // Repository
-  repository?: { name: string; nameWithOwner: string };
-}
 
 // ---------------------------------------------------------------------------
 // GraphQL Queries
@@ -127,8 +94,6 @@ const buildItemsQuery = (
   ownerType: "user" | "org",
   config: ItemFetchConfig,
 ): string => {
-  const _pageSize = config.pageSize ?? 100; // eslint-disable-line @typescript-eslint/no-unused-vars
-
   // Build content fragment based on what's requested
   const contentParts: string[] = [];
 

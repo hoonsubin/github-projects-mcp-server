@@ -2,48 +2,37 @@
 // src/scrum/orient.ts — orientUseCase
 //
 // Receives backend: ProjectReader and scrumConfig: ScrumConfig.
+// Returns OrientResult from domain/types.ts — the session ground truth.
 // =============================================================================
 
 import type { ProjectReader } from "./ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
+import type { EpicListing, EpicSummary, OrientResult, TemplateUriMap } from "../domain/types.ts";
+import { ITEM_TYPES, sprintContextFromSprintInfo } from "../domain/types.ts";
 
-interface OrientResult {
-  platform_state: {
-    fields: {
-      status: { exists: boolean; options: string[]; missing_options: string[] };
-      sprint: { exists: boolean };
-      story_points: { exists: boolean };
-      priority: { exists: boolean; options: string[]; missing_options: string[] };
-      type_field: { exists: boolean; configured: boolean };
-    };
-    missing_options: string[]; // convenience: concat of status + priority missing_options
-    labels: { existing: string[]; expected: string[]; missing: string[] };
-    iterations: {
-      active: { name: string; start_date: string; duration_days: number } | null;
-      next: { name: string; start_date: string; duration_days: number } | null;
-      completed_count: number;
-    };
-  };
-  vocabulary: {
-    status: Record<string, string> | null;
-    priority: Record<string, string> | null;
-    /** Maps canonical type keys → display names declared in type_display. null when not configured. */
-    type: Record<string, string> | null;
-    story_points: { scale: string | null; values: number[] | null };
-    sprint: { duration_days: number | null; velocity_window: number; length_weeks: number | null };
-    team: unknown;
-    dor: unknown; // was definition_of_ready
-    dod: unknown; // was definition_of_done
-    autonomy: { require_confirmation_above_n_items: number | null } | null;
-    templates: {
-      sprint_review: string | null;
-      retrospective: string | null;
-      standup: string | null;
-      sprint_planning: string | null;
-      refinement: string | null;
-    };
-  };
-}
+/**
+ * Compute days elapsed since the sprint start date (UTC midnight).
+ */
+const daysSince = (startDate: string): number => {
+  const start = new Date(`${startDate}T00:00:00Z`);
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const diffMs = today.getTime() - start.getTime();
+  return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+};
+
+/**
+ * Build a TemplateUriMap from ITEM_TYPES.
+ * Every PBI type gets a template URI scrum://template/{type}.
+ * The map is built at call time — no adapter config needed.
+ */
+const buildTemplateUriMap = (): TemplateUriMap | null => {
+  const map: TemplateUriMap = {};
+  for (const type of ITEM_TYPES) {
+    map[type] = `scrum://template/${type}`;
+  }
+  return Object.keys(map).length > 0 ? map : null;
+};
 
 /**
  * Orient to the project: return platform state and declared vocabulary.
@@ -62,6 +51,43 @@ export const orientUseCase = async (
     canonicalStatusKeys,
     canonicalPriorityKeys,
   });
+
+  // Fetch epics via dedicated port method (not from PlatformState)
+  const allEpics: EpicListing[] = await backend.getEpics();
+
+  // Filter: active (open or in-progress) epics only; null status = active
+  const activeEpics = allEpics.filter(
+    (epic) => epic.status !== "done",
+  );
+
+  // Map to EpicSummary for the response
+  const epicsSummary: EpicSummary[] = activeEpics.map((epic) => ({
+    ref: { id: epic.ref.id },
+    name: epic.name,
+    description: epic.description,
+    status: epic.status,
+    open_item_count: epic.open_item_count,
+  }));
+
+  // Build SprintContext from SprintInfo via the domain factory (pure, no backend call)
+  // workPct = 0 for now — P5 will feed actual work completion from findItems / analytics
+  const buildSprintContext = (
+    info: typeof state.iterations.active,
+  ) => {
+    if (!info) return null;
+    return sprintContextFromSprintInfo(
+      {
+        id: info.id,
+        name: info.name,
+        goal: null, // P5: source sprint goal from config or backend metadata
+        start_date: info.startDate,
+        end_date: info.endDate,
+        duration_days: info.durationDays,
+      },
+      daysSince(info.startDate),
+      0, // P5: replace with actual work completion percentage
+    );
+  };
 
   return {
     platform_state: {
@@ -88,24 +114,16 @@ export const orientUseCase = async (
         ...state.fields.priority.missingOptions,
       ],
       labels: state.labels,
-      // todo: orient should also return the currently active epics (name and description)
       iterations: {
-        active: state.iterations.active
-          ? {
-            name: state.iterations.active.name,
-            start_date: state.iterations.active.startDate,
-            duration_days: state.iterations.active.durationDays,
-          }
-          : null,
-        next: state.iterations.next
-          ? {
-            name: state.iterations.next.name,
-            start_date: state.iterations.next.startDate,
-            duration_days: state.iterations.next.durationDays,
-          }
-          : null,
+        active: buildSprintContext(state.iterations.active),
+        next: buildSprintContext(state.iterations.next),
         completed_count: state.iterations.completedCount,
       },
+      epics: {
+        active: epicsSummary,
+        total_count: allEpics.length,
+      },
+      template_uris: buildTemplateUriMap(),
     },
     vocabulary: {
       status: state.vocabulary.statusDisplay,
@@ -116,7 +134,9 @@ export const orientUseCase = async (
         values: scrumConfig.scrum.sprint?.story_point_values ?? null,
       },
       sprint: {
-        duration_days: null, // not modelled in new config — length_weeks is the source of truth
+        duration_days: scrumConfig.scrum.sprint?.length_weeks
+          ? scrumConfig.scrum.sprint.length_weeks * 7
+          : null,
         velocity_window: scrumConfig.scrum.sprint?.velocity_window ?? 5,
         length_weeks: scrumConfig.scrum.sprint?.length_weeks ?? null,
       },
@@ -129,13 +149,6 @@ export const orientUseCase = async (
             scrumConfig.project.agent.autonomy.require_confirmation_above_n_items ?? null,
         }
         : null,
-      templates: {
-        sprint_review: scrumConfig.templates?.sprint_review ?? null,
-        retrospective: scrumConfig.templates?.retrospective ?? null,
-        standup: scrumConfig.templates?.standup ?? null,
-        sprint_planning: scrumConfig.templates?.sprint_planning ?? null,
-        refinement: scrumConfig.templates?.refinement ?? null,
-      },
     },
   };
 };

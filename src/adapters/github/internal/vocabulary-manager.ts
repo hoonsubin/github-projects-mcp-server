@@ -8,6 +8,7 @@
 
 import { GitHubApiError } from "../errors.ts";
 import { assertNever } from "../../../domain/errors.ts";
+import { type SelectFieldOption } from "../types.ts";
 import { type GitHubClient } from "./http-client.ts";
 import { LabelResolver } from "./label-resolver.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
@@ -16,16 +17,10 @@ import { GET_FIELD_OPTIONS_QUERY, UPDATE_FIELD_MUTATION } from "../queries.ts";
 
 // ── Helper types ─────────────────────────────────────────────────────────────
 
-interface SingleSelectFieldNode {
-  id: string;
-  name: string;
-  color: string;
-  description: string;
-}
-
+/** GraphQL response shape for GET_FIELD_OPTIONS_QUERY. */
 interface GetFieldOptionsResponse {
   node?: {
-    options: Array<SingleSelectFieldNode>;
+    options: SelectFieldOption[];
   } | null;
 }
 

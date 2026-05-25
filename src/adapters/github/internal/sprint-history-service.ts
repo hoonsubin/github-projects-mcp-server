@@ -62,6 +62,7 @@ export class SprintHistoryService {
 
       return {
         info: {
+          id: iter.id,
           name: iter.title,
           startDate: iter.startDate,
           durationDays: iter.duration,

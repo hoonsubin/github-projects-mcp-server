@@ -11,69 +11,149 @@
 // =============================================================================
 
 import type {
+  AnalyticsResult,
+  BacklogHealth,
   DependencyEntry,
+  EntityRef,
   EpicListing,
   EpicRef,
+  EpicSummary,
+  ImpedimentRef,
+  ItemListingRef,
+  ItemSearchResult,
+  LinkedArtifact,
   SprintRef,
   Story,
+  StoryComment,
   StoryRef,
+  TemplateUriMap,
 } from "../domain/types.ts";
+
+// ── Input types (cross the port boundary) ─────────────────────────────────────
+
+/** Search scope for item queries. */
+export type SearchScope = "backlog" | "sprint" | "all";
+
+/**
+ * Input filter for findItems port method.
+ * All fields are optional — an empty filter returns all items.
+ * Defined at the port boundary because it's an input type, not a domain type.
+ */
+export interface ItemFilter {
+  readonly scope?: SearchScope;
+  readonly keys?: readonly string[];
+  readonly search?: string;
+  readonly types?: readonly string[];
+  readonly statuses?: readonly string[];
+  readonly priority?: string;
+  readonly epic_id?: string;
+  readonly labels?: readonly string[];
+  readonly assignee?: string;
+  readonly estimated?: boolean;
+  readonly sprint_ref?: string | null;
+  readonly include_dependencies?: boolean;
+  readonly limit?: number;
+}
+
+/**
+ * Resolved filter with defaults applied.
+ * All fields are guaranteed non-optional — use the defaults from the handler
+ * before calling the port method.
+ */
+export interface ResolvedItemFilter {
+  readonly scope: SearchScope;
+  readonly keys: readonly string[];
+  readonly search: string;
+  readonly types: readonly string[];
+  readonly statuses: readonly string[];
+  readonly priority: string;
+  readonly epic_id: string;
+  readonly labels: readonly string[];
+  readonly assignee: string;
+  readonly estimated: boolean | undefined;
+  readonly sprint_ref: string | null;
+  readonly include_dependencies: boolean;
+  readonly limit: number;
+}
+
+/**
+ * Input query for getAnalytics port method.
+ * Defined at the port boundary because it's an input type, not a domain type.
+ */
+export interface AnalyticsQuery {
+  readonly view: "burndown" | "history" | "both";
+  readonly sprint_ref?: string | null;
+  readonly history_window?: number; // 1-10, used when view includes history
+}
 
 // ── Supporting types that cross the boundary ──────────────────────────────────
 
 /** Lightweight sprint descriptor — no backend-internal IDs. */
 export interface SprintInfo {
-  name: string;
-  startDate: string; // YYYY-MM-DD
-  durationDays: number;
-  endDate: string; // YYYY-MM-DD (computed by adapter)
+  readonly id: string; // iteration ID from platform (e.g. GitHub iteration field ID)
+  readonly name: string;
+  readonly startDate: string; // YYYY-MM-DD
+  readonly durationDays: number;
+  readonly endDate: string; // YYYY-MM-DD (computed by adapter)
 }
+
+/** A platform field that may or may not exist. */
+export interface FieldPresence {
+  readonly exists: boolean;
+}
+
+/** A field with configurable options, such as status or priority. */
+export interface FieldWithOptions extends FieldPresence {
+  readonly options: readonly string[];
+  readonly missingOptions: readonly string[];
+}
+
+/** Maps canonical vocabulary keys to platform display names. Null when not resolved. */
+export type DisplayMap = Record<string, string> | null;
 
 /** What currently exists on the PM platform. Returned by orient use case. */
 export interface PlatformState {
-  fields: {
-    status: { exists: boolean; options: string[]; missingOptions: string[] };
-    sprint: { exists: boolean };
-    story_points: { exists: boolean };
-    priority: { exists: boolean; options: string[]; missingOptions: string[] };
-    type: { exists: boolean; configured: boolean };
+  readonly fields: {
+    readonly status: FieldWithOptions;
+    readonly sprint: FieldPresence;
+    readonly story_points: FieldPresence;
+    readonly priority: FieldWithOptions;
+    readonly type: FieldPresence & { readonly configured: boolean };
   };
-  labels: { existing: string[]; expected: string[]; missing: string[] };
-  iterations: {
-    active: SprintInfo | null;
-    next: SprintInfo | null;
-    completed: SprintInfo[];
-    completedCount: number;
+  readonly labels: {
+    readonly existing: readonly string[];
+    readonly expected: readonly string[];
+    readonly missing: readonly string[];
+  };
+  readonly iterations: {
+    readonly active: SprintInfo | null;
+    readonly next: SprintInfo | null;
+    readonly completed: readonly SprintInfo[];
+    readonly completedCount: number;
   };
   /** Vocabulary display maps — resolved by the adapter from backend-specific config. */
-  vocabulary: {
-    statusDisplay: Record<string, string> | null; // canonical → display
-    priorityDisplay: Record<string, string> | null; // canonical → display
-    typeDisplay: Record<string, string> | null; // canonical → display
+  readonly vocabulary: {
+    readonly statusDisplay: DisplayMap; // canonical → display
+    readonly priorityDisplay: DisplayMap; // canonical → display
+    readonly typeDisplay: DisplayMap; // canonical → display
   };
+  /** Active epics — populated by orientUseCase via backend.getEpics(). */
+  readonly epics: { readonly active: readonly EpicSummary[]; readonly totalCount: number };
+  /** PBI template URIs — built from ITEM_TYPES intersection with scrumConfig.templates. */
+  readonly templateUris: TemplateUriMap | null;
 }
 
-interface StoryComment {
-  author: string;
-  body: string;
-  created_at: string;
-  url: string;
-}
-
-/** Full story payload with associated data, returned by getStoryDetail. */
+/**
+ * Full story payload with associated data, returned by getStoryDetail.
+ *
+ * @deprecated Use ItemDetailResult from ../domain/types.ts instead.
+ *   ItemDetailResult is a superset — it adds acceptance_criteria.
+ *   StoryDetail will be removed in P2 (port type consolidation).
+ */
 export interface StoryDetail {
   story: Story;
   comments: StoryComment[];
-  // todo: instead of linked PRs (a GitHub term), it should be a generalized type of `LinkedStory`
-  // and extend the type with the nature of the link.
-  // Ideally, this should be reused as dependency resolution too
-  linkedPrs: Array<{
-    number: number;
-    title: string;
-    url: string;
-    state: string;
-    is_draft: boolean;
-  }>;
+  linked_artifacts: LinkedArtifact[];
 }
 
 /**
@@ -82,11 +162,11 @@ export interface StoryDetail {
  * and the adapter layer (mappers) can reference a single canonical type.
  */
 export interface BurndownStoryInput {
-  number: number;
-  title: string;
-  points: number;
-  status: string | null;
-  ref?: { id: string };
+  readonly number: number;
+  readonly title: string;
+  readonly points: number;
+  readonly status: string | null;
+  readonly ref?: EntityRef;
 }
 
 /** One completed sprint's worth of data for history. */
@@ -110,38 +190,30 @@ export interface CompletionMap {
 
 /** Inputs for scrum_create_story. */
 export interface CreateStoryInput {
-  title: string;
-  body: string;
-  type: string; // canonical key declared in config.yml type_display (e.g. "feature", "impediment")
-  priority?: string;
-  storyPoints?: number;
-  labels?: string[];
-  epic?: EpicRef;
-  assignees?: string[];
-  sprint?: SprintRef;
+  readonly title: string;
+  readonly body: string;
+  readonly type: string; // canonical key declared in config.yml type_display (e.g. "feature", "impediment")
+  readonly priority?: string;
+  readonly storyPoints?: number;
+  readonly labels?: readonly string[];
+  readonly epic?: EpicRef;
+  readonly assignees?: readonly string[];
+  readonly sprint?: SprintRef;
 }
 
 /** Inputs for scrum_update_story. */
 export interface StoryUpdates {
-  title?: string;
-  body?: string;
-  labels?: string[];
-  assignees?: string[];
-  epic?: EpicRef | null;
-  blocked_by?: StoryRef[] | null; // null clears all; omit to leave unchanged
+  readonly title?: string;
+  readonly body?: string;
+  readonly labels?: readonly string[];
+  readonly assignees?: readonly string[];
+  readonly epic?: EpicRef | null;
+  readonly blocked_by?: readonly StoryRef[] | null; // null clears all; omit to leave unchanged
 }
 
 export type VocabularyKind = "status_option" | "priority_option" | "label";
 
 // ── Listing types (SprintSnapshot items) ────────────────────────────────────────
-
-/**
- * Base reference for listing entries.
- * StoryListing and ImpedimentListing extend this pattern.
- */
-export interface Ref {
-  id: string;
-}
 
 /**
  * Lightweight listing entry for story collections.
@@ -151,9 +223,13 @@ export interface Ref {
  * or null for Draft Issues.
  *
  * writable: true for active sprint items (safe to mutate), false for history/read-only items.
+ *
+ * @deprecated Use ItemListing from domain/types.ts instead.
+ * ItemListing adds priority as a named field, sprint.ref, and epic info.
+ * Scheduled for removal in the next major refactor phase.
  */
 export interface StoryListing {
-  ref: { id: string; key: string | null };
+  ref: ItemListingRef;
   title: string;
   status: string | null;
   story_points: number | null;
@@ -167,82 +243,22 @@ export interface StoryListing {
  * Lightweight impediment entry for collections.
  */
 export interface ImpedimentListing {
-  ref: { id: string };
-  description: string;
-  status: "open" | "in_progress" | "resolved";
-  raised_by: string | null;
-  raised_at: string;
-  resolved_at: string | null;
-}
-
-/**
- * Totals for an active sprint snapshot.
- * History snapshots use SprintTotalsHistory instead.
- */
-export interface SprintTotalsActive {
-  by_status: Record<string, number>;
-  story_points: number;
-}
-
-/**
- * Totals for a completed sprint snapshot.
- * Extends SprintTotalsActive with velocity metrics.
- */
-export interface SprintTotalsHistory extends SprintTotalsActive {
-  committed_points: number;
-  completed_points: number;
-}
-
-/**
- * Sprint + item listing — canonical shape for both active and historical sprints.
- *
- * totals uses SprintTotalsActive for active sprints, SprintTotalsHistory for history.
- * Consumers distinguish by checking for committed_points presence.
- */
-export interface SprintSnapshot {
-  sprint: {
-    name: string;
-    start_date: string;
-    end_date: string;
-    duration_days: number;
-    days_remaining: number;
-  };
-  items: StoryListing[];
-  total_count: number;
-  totals: SprintTotalsActive | SprintTotalsHistory;
-  impediments: ImpedimentListing[];
+  readonly ref: ImpedimentRef;
+  readonly description: string;
+  readonly status: "open" | "in_progress" | "resolved";
+  readonly raised_by: string | null;
+  readonly raised_at: string;
+  readonly resolved_at: string | null;
 }
 
 // ── Focused port interfaces (Interface Segregation) ─────────────────────────────
 
 /**
  * Epic port — returns all epics for the project.
- * Used by: getBacklogUseCase
+ * Used by: getBacklogUseCase, orientUseCase
  */
 export interface EpicPort {
   getEpics(): Promise<EpicListing[]>;
-}
-
-/**
- * Backlog port — returns stories not assigned to any sprint and orphan impediments.
- * Used by: getBacklogUseCase
- */
-export interface BacklogPort {
-  getBacklogStories(): Promise<Story[]>;
-  getOrphanImpediments(): Promise<ImpedimentListing[]>;
-}
-
-/**
- * Sprint port — returns stories assigned to a specific sprint.
- * Callers must not pass null — guard the null case before calling this.
- * Throws SprintNotScheduledError when "current"/"next" resolves to no iteration.
- * Used by: getSprintUseCase
- */
-export interface SprintPort {
-  getSprintStories(sprint: SprintRef): Promise<{
-    stories: Story[];
-    sprintInfo: SprintInfo;
-  }>;
 }
 
 /**
@@ -254,20 +270,27 @@ export interface StoryPort {
 }
 
 /**
- * History port — returns completed sprint history.
- * Used by: getHistoryUseCase
+ * Find items port — unified item search across all PBIs.
+ * Replaces SprintPort.getSprintStories() and BacklogPort.getBacklogStories().
  */
-export interface HistoryPort {
-  getCompletedSprintHistory(window: number): Promise<SprintHistoryEntry[]>;
+export interface FindItemsPort {
+  findItems(filter: ResolvedItemFilter): Promise<ItemSearchResult>;
 }
 
 /**
- * Burndown port — returns burndown data and completion timestamps.
- * Used by: getBurndownUseCase
+ * Analytics port — unified sprint analytics (burndown + history).
+ * Replaces HistoryPort.getCompletedSprintHistory() and BurndownPort methods.
  */
-export interface BurndownPort {
-  getBurndownInput(sprint: SprintRef): Promise<BurndownInput>;
-  resolveCompletionTimestamps(input: BurndownInput): Promise<CompletionMap>;
+export interface AnalyticsPort {
+  getAnalytics(query: AnalyticsQuery): Promise<AnalyticsResult>;
+}
+
+/**
+ * Board health port — health dashboard (no item lists).
+ * Provides aggregated metrics without returning individual story data.
+ */
+export interface BoardHealthPort {
+  getBoardHealth(sprintScope: string): Promise<BacklogHealth>;
 }
 
 /**
@@ -276,8 +299,9 @@ export interface BurndownPort {
  */
 export interface ImpedimentPort {
   getSprintImpediments(sprint: SprintRef): Promise<ImpedimentListing[]>;
+  getOrphanImpediments(): Promise<ImpedimentListing[]>;
   updateImpediment(
-    ref: Ref,
+    ref: ImpedimentRef,
     status: "open" | "in_progress" | "resolved",
     resolutionNotes?: string,
   ): Promise<ImpedimentListing>;
@@ -296,7 +320,7 @@ export interface FileReaderPort {
  * Used by: orientUseCase (via getPlatformState), scrum-read tools
  */
 export interface ProjectReader
-  extends BacklogPort, SprintPort, StoryPort, HistoryPort, BurndownPort, ImpedimentPort, EpicPort {
+  extends StoryPort, EpicPort, FindItemsPort, AnalyticsPort, BoardHealthPort, ImpedimentPort {
   getPlatformState(declaredVocabulary: {
     canonicalStatusKeys: string[];
     canonicalPriorityKeys: string[];
@@ -336,15 +360,9 @@ export interface ProjectWriter {
   ): Promise<{ created: boolean }>;
 }
 
-// ── Legacy composition type (backward compatibility) ────────────────────────────
-
 /**
  * ProjectBackend — the full interface combining all ports.
- * Kept for backward compatibility; new code should import specific ports.
- *
- * @deprecated Import specific port interfaces (BacklogPort, SprintPort, etc.)
- * instead of this monolithic type. New use cases should depend only on the
- * focused ports they need. This type will be removed after all consumers are
- * migrated to focused ports.
+ * Tool handlers use this for convenience; new use-case code should
+ * import specific ports (FindItemsPort, AnalyticsPort, etc.).
  */
 export interface ProjectBackend extends ProjectReader, ProjectWriter {}

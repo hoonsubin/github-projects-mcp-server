@@ -7,8 +7,10 @@
 
 import { GitHubApiError } from "../errors.ts";
 import { SprintNotScheduledError } from "../../../domain/errors.ts";
+import type * as GH from "../generated/github-types.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { SprintRef, StoryRef } from "../../../domain/types.ts";
+import type { GitHubIssueId, GitHubItemId } from "../types.ts";
 import { GET_PROJECT_ITEM_BY_ID_QUERY } from "../queries.ts";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -16,13 +18,14 @@ import { GET_PROJECT_ITEM_BY_ID_QUERY } from "../queries.ts";
 /**
  * Resolved story — the node IDs the backend mutations need.
  *
+ * itemId is the project item node ID (PVTI_...) — branded as GitHubItemId.
  * issueId / issueNumber are null for DraftIssue items.
  * Write tools that require a real Issue (e.g. addComment) must guard on null
  * and throw a clear error rather than crashing.
  */
 interface ResolvedStory {
-  itemId: string; // project item node ID (PVTI_...)
-  issueId: string | null; // issue node ID (I_kwDO...), null for DraftIssues
+  itemId: GitHubItemId;
+  issueId: GitHubIssueId | null;
   issueNumber: number | null; // user-facing issue number, null for DraftIssues
 }
 
@@ -31,33 +34,49 @@ interface GitHubClient {
   graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T>;
 }
 
-interface ItemByIdResponse {
-  node?: {
+/** Query projection of GH.ProjectV2Item for resolveStory. */
+interface ItemByIdQueryNode extends Required<Pick<GH.ProjectV2Item, "id">> {
+  content?: {
+    __typename: string;
     id: string;
-    content?: {
-      __typename: string;
-      id: string;
-      number?: number;
-    } | null;
+    number?: number;
   } | null;
+}
+interface ItemByIdResponse {
+  node?: ItemByIdQueryNode | null;
 }
 
 // ── resolveSprint ─────────────────────────────────────────────────────────────
 
 /**
  * Resolve a SprintRef to a GitHub iteration ID (or null to clear the sprint field).
- * Pure function — operates on the already-fetched RuntimeConfig; no network call.
+ * Overload: accepts the strict SprintRef type.
  *
  * - "current"   → config.iterations.active.id — throws SprintNotScheduledError if none
  * - "next"      → config.iterations.next.id   — throws SprintNotScheduledError if none
  * - null        → returns null (clears the sprint field on an item)
  * - SprintName  → case-insensitive title match against config.iterations.all; throws if no match
  */
-export const resolveSprint = (
-  ref: SprintRef,
+export function resolveSprint(ref: SprintRef, config: RuntimeConfig): string | null;
+
+/**
+ * Resolve a sprint string (from user input or scope parameter) to a GitHub iteration ID.
+ * Accepts "current", "next", an explicit sprint name, or null/undefined.
+ * Returns null for invalid or unresolvable strings (does NOT throw).
+ */
+export function resolveSprint(
+  ref: string | null | undefined,
   config: RuntimeConfig,
-): string | null => {
-  if (ref === null) {
+): string | null;
+
+/**
+ * Implementation — handles both overloads.
+ */
+export function resolveSprint(
+  ref: SprintRef | string | null | undefined,
+  config: RuntimeConfig,
+): string | null {
+  if (ref === null || ref === undefined) {
     return null;
   }
 
@@ -83,20 +102,17 @@ export const resolveSprint = (
     return config.iterations.next.id;
   }
 
-  // Explicit sprint name (SprintName) — case-insensitive title match against all known iterations
+  // For SprintRef (SprintName branded type) — throw on not found.
+  // For plain string — return null on not found (user input may be invalid).
   const normalised = ref.toLowerCase();
   const match = config.iterations.all.find(
     (iter) => iter.title.toLowerCase() === normalised,
   );
   if (!match) {
-    const known = config.iterations.all.map((i) => `"${i.title}"`).join(", ");
-    throw new Error(
-      `Sprint "${ref}" not found. Known sprints: ${known || "(none)"}. ` +
-        'Pass "current", "next", or an exact sprint title.',
-    );
+    return null;
   }
   return match.id;
-};
+}
 
 // ── resolveStory ──────────────────────────────────────────────────────────────
 
@@ -115,6 +131,13 @@ export const resolveStory = async (
   ref: StoryRef,
   github: GitHubClient,
 ): Promise<ResolvedStory> => {
+  // resolveStory requires a resolved { id } ref — throw early if only { number } is given.
+  if (!("id" in ref)) {
+    throw new Error(
+      `resolveStory requires a resolved StoryRef with 'id', but received '{ number: ${ref.number} }'. ` +
+        "Call resolveRef() first to convert issue numbers to opaque IDs.",
+    );
+  }
   const data = await github.graphql<ItemByIdResponse>(GET_PROJECT_ITEM_BY_ID_QUERY, {
     itemId: ref.id,
   });
@@ -149,7 +172,7 @@ export const resolveStory = async (
 
   if (content.__typename === "DraftIssue") {
     return {
-      itemId: node.id,
+      itemId: node.id as GitHubItemId,
       issueId: null,
       issueNumber: null,
     };
@@ -170,8 +193,8 @@ export const resolveStory = async (
 
   // Issue — has id and number
   return {
-    itemId: node.id,
-    issueId: content.id,
+    itemId: node.id as GitHubItemId,
+    issueId: content.id as GitHubIssueId,
     issueNumber: content.number ?? null,
   };
 };

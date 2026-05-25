@@ -20,7 +20,7 @@
  * // returns true
  * ```
  */
-export function isMutationQuery(query: string): boolean {
+export const isMutationQuery = (query: string): boolean => {
   if (!query || typeof query !== "string") {
     return false;
   }
@@ -33,4 +33,4 @@ export function isMutationQuery(query: string): boolean {
   const mutationPattern = /\bmutation\b\s+\w+/;
 
   return mutationPattern.test(normalized);
-}
+};

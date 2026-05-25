@@ -7,36 +7,72 @@
 // or wire-format details appear here.
 // =============================================================================
 
-// todo: this entire type conflates backend adaptor types with the use-case layer types.
-// ── Story references ──────────────────────────────────────────────────────────
+// ── Base entity handle ────────────────────────────────────────────────────────
 
 /**
- * A reference to a single Story.
- * Every read tool returns `Story.ref.id` — pass it back here to identify the story.
- * Backend-agnostic: the id is an opaque project-item handle (PVTI_... on GitHub)
- * returned by scrum_get_sprint, scrum_get_backlog, or scrum_create_story.
+ * The universal opaque entity handle.
+ *
+ * Assigned by the backend adapter and passed back opaquely by the domain layer.
+ * The value of `id` is platform-specific (e.g. PVTI_... on GitHub Projects) but
+ * the domain layer never inspects it — it is always treated as an opaque string.
+ *
+ * This is the single base type for all resolved entity references in the system.
+ * No layer other than the adapter that produced it should care about the `id` format.
+ *
+ * Renamed from: ResolvedRef
  */
-export interface StoryRef {
-  id: string; // opaque project-item handle returned by any read tool
-}
+export type EntityRef = { readonly id: string };
+
+// ── Input refs (agent → server) ───────────────────────────────────────────────
 
 /**
- * A reference to an impediment (spike story tagged 'impediment').
- * On GitHub: id is the GitHub Issue node ID (I_...), not the project item ID.
- * Impediment operations (updateImpediment) operate on the GitHub Issue directly.
+ * A reference to a Story accepted as tool input.
+ *
+ * Two forms:
+ * - `{ id }` — opaque project-item handle (PVTI_... on GitHub). Returned by every
+ *   read tool. Prefer this form when the agent already holds a listing entry.
+ * - `{ number }` — human-readable issue number (e.g. 42). The adapter resolves
+ *   this to an opaque handle via resolveRef(). Use for direct lookup when the
+ *   agent has no prior listing entry for the target item.
+ *
+ * TypeScript guard: `"id" in ref` narrows to EntityRef (resolved form).
  */
-export interface ImpedimentRef {
-  id: string;
-}
+export type StoryRef = EntityRef | { readonly number: number };
 
 /**
- * A reference to a single Epic.
+ * A reference to an Epic passed as tool input.
+ * Always resolved — the agent obtains this from EpicListing.ref or IssueStory.epic.ref
+ * and passes it back unchanged to story create/update tools.
+ *
  * On GitHub: id is the Milestone node ID (MI_...).
- * Pass to story create/update tools as the epic identifier.
  */
-export interface EpicRef {
-  id: string;
-}
+export type EpicRef = EntityRef;
+
+/**
+ * A reference to an Impediment passed as tool input.
+ * Always resolved — the agent obtains this from ImpedimentListing.ref
+ * and passes it back to scrum_update_impediment.
+ */
+export type ImpedimentRef = EntityRef;
+
+// ── Output ref (server → agent, listing context only) ────────────────────────
+
+/**
+ * The compound item handle embedded in BacklogItemListing and dependency arrays.
+ *
+ * Bundles two identifiers the agent needs simultaneously:
+ * - `id`  — opaque platform handle. Used in all write tool calls.
+ * - `key` — human-readable issue number string (e.g. "42"). Shown to the user
+ *            and used as the canonical node key in DependencyMap. Empty string
+ *            for Draft Issues (which have no issue number).
+ *
+ * This type is OUTPUT-ONLY. It is never a valid input to a write tool.
+ * To target an item from a listing, pass `{ id: item.ref.id }` — not the
+ * ItemListingRef itself.
+ *
+ * New type — replaces inline `{ id: string; key: string }` in five locations.
+ */
+export type ItemListingRef = { readonly id: string; readonly key: string };
 
 /**
  * Lightweight epic entry for planning contexts.
@@ -45,12 +81,13 @@ export interface EpicRef {
  * scrum_get_backlog filtered by epic name.
  */
 export interface EpicListing {
-  ref: EpicRef;
-  name: string;
-  description: string | null;
-  priority: string | null; // team's vocabulary value, or null
-  status: "open" | "in_progress" | "done" | null;
-  story_count: number; // total stories under this epic (all statuses)
+  readonly ref: EpicRef;
+  readonly name: string;
+  readonly description: string | null;
+  readonly priority: string | null; // team's vocabulary value, or null
+  readonly status: "open" | "in_progress" | "done" | null;
+  readonly story_count: number; // total stories under this epic (all statuses)
+  readonly open_item_count: number; // stories with status ≠ "done" / "closed"
 }
 
 /**
@@ -60,12 +97,24 @@ export interface EpicListing {
  * title is the story title when available; null if not yet resolved.
  */
 export interface DependencyEntry {
-  key: string;
-  title: string | null;
-  // ref is sometimes a id, key pair (https://github.com/hoonsubin/github-projects-mcp-server/blob/0af4b3cefbc24470262964c3f9a27a1129ec6bc5/src/scrum/ports.ts#L146)
-  // and sometimes it's not. The item reference type should be unified across the project
-  ref: { id: string | null };
+  readonly key: string;
+  readonly title: string | null;
+  readonly ref: EntityRef;
 }
+
+// ── Item type vocabulary ──────────────────────────────────────────────────────
+
+/**
+ * PBI vocabulary for item types.
+ * Used in `z.enum(ITEM_TYPES)` in schemas, `TemplateUriMap`, and `BacklogHealth.by_type`.
+ * Keep in sync with config.yml `type_display` keys.
+ */
+export const ITEM_TYPES = ["bug", "feature", "tech_debt", "spike", "user_story"] as const;
+
+/** Union of all PBI item type strings. */
+export type ItemType = (typeof ITEM_TYPES)[number];
+
+// ── Sprint references ───────────────────────────────────────────────────────────
 
 /**
  * An explicit sprint name (e.g. "Sprint 12") lifted into a branded type.
@@ -86,6 +135,222 @@ export const toSprintName = (name: string): SprintName => name as SprintName;
  */
 export type SprintRef = "current" | "next" | null | SprintName;
 
+// ── Issue key ──────────────────────────────────────────────────────────────────
+
+/**
+ * Branded string for human-readable issue identifiers (e.g. "42", "PROJ-123").
+ * Always present — unlike nullable `ref.id`, `IssueKey` is guaranteed non-null.
+ * Used as the key in `DependencyMap` and `DependencyNode`.
+ */
+export type IssueKey = string & { readonly _brand: "IssueKey" };
+
+/** Cast a string to IssueKey. Call only at system boundaries with validated input. */
+export const toIssueKey = (key: string): IssueKey => key as IssueKey;
+
+// ── Template URI types ─────────────────────────────────────────────────────────
+
+/**
+ * Template URI format for PBI ceremony templates.
+ * Compile-time format validation via template literal type.
+ * Example: `scrum://template/feature`
+ */
+export type ScrumTemplateUri = `scrum://template/${ItemType}`;
+
+/**
+ * Maps PBI item types to their template URIs.
+ * Partial because not all item types necessarily have templates.
+ * Example: `{ feature: "scrum://template/feature", bug: "scrum://template/bug" }`
+ */
+export type TemplateUriMap = Partial<Record<ItemType, ScrumTemplateUri>>;
+
+// ── Sprint context ─────────────────────────────────────────────────────────────
+
+/**
+ * Risk stance for the current sprint's time progress.
+ * - `normal`: on track
+ * - `monitor`: approaching deadline with insufficient progress
+ * - `elevated`: significantly behind schedule
+ */
+export type SprintRiskStance = "normal" | "monitor" | "elevated";
+
+/**
+ * Sprint with time-progress fields.
+ * Built by `sprintContextFromSprintInfo()` at the port boundary.
+ */
+export interface SprintContext {
+  id: string;
+  name: string;
+  goal: string | null;
+  start_date: string;
+  end_date: string;
+  duration_days: number;
+  days_elapsed: number;
+  days_remaining: number;
+  time_elapsed_pct: number; // 0-100
+  riskStance: SprintRiskStance;
+}
+
+/**
+ * Compute risk stance based on time elapsed vs. work remaining.
+ * - `normal`: time_elapsed_pct <= 110% of work_pct (within 10% buffer)
+ * - `monitor`: time_elapsed_pct > 110% of work_pct but < 130%
+ * - `elevated`: time_elapsed_pct >= 130% of work_pct
+ */
+const computeRiskStance = (
+  timeElapsedPct: number,
+  workPct: number,
+): SprintRiskStance => {
+  if (workPct === 0) return timeElapsedPct > 0 ? "elevated" : "normal";
+  const ratio = timeElapsedPct / workPct;
+  if (ratio >= 1.3) return "elevated";
+  if (ratio > 1.1) return "monitor";
+  return "normal";
+};
+
+/**
+ * Build a SprintContext from sprint metadata + work data.
+ * Called by orientUseCase to populate platform_state.iterations.active/next.
+ */
+export const sprintContextFromSprintInfo = (
+  info: {
+    id: string;
+    name: string;
+    goal: string | null;
+    start_date: string;
+    end_date: string;
+    duration_days: number;
+  },
+  daysElapsed: number,
+  workPct: number, // 0-100, percentage of committed points completed
+): SprintContext => {
+  const daysRemaining = Math.max(0, info.duration_days - daysElapsed);
+  const timeElapsedPct = info.duration_days > 0
+    ? Math.round((daysElapsed / info.duration_days) * 100)
+    : 0;
+
+  return {
+    id: info.id,
+    name: info.name,
+    goal: info.goal,
+    start_date: info.start_date,
+    end_date: info.end_date,
+    duration_days: info.duration_days,
+    days_elapsed: daysElapsed,
+    days_remaining: daysRemaining,
+    time_elapsed_pct: timeElapsedPct,
+    riskStance: computeRiskStance(timeElapsedPct, workPct),
+  };
+};
+
+// ── Epic summary (orient) ──────────────────────────────────────────────────────
+
+/**
+ * Lightweight epic entry for orient response.
+ * Contains only the fields needed for the executive summary — no child stories.
+ */
+export interface EpicSummary {
+  ref: EntityRef;
+  name: string;
+  description: string | null;
+  status: "open" | "in_progress" | "done" | null;
+  open_item_count: number;
+}
+
+// ── Board health ───────────────────────────────────────────────────────────────
+
+/**
+ * Sprint risk signals — actionable counts the agent uses for intervention.
+ * Structured as an object (not a string enum) so each signal carries
+ * a concrete count the agent can act on directly.
+ */
+export interface SprintRisk {
+  readonly unestimated_count: number;
+  readonly blocked_count: number; // items whose status = "Blocked" vocabulary option
+  readonly no_assignee_count: number;
+}
+
+/**
+ * Board health output for scrum_get_board_health.
+ * Aggregated metrics — no individual story data.
+ */
+export interface BacklogHealth {
+  readonly readiness: {
+    /** Per-PBI-type breakdown of ready vs not-ready items. */
+    /** Per-type breakdown of ready vs not-ready items. Uses `string` key to accommodate untyped items. */
+    readonly by_type: Record<string, { ready: number; not_ready: number; total: number }>;
+    /** Percentage of all items meeting Definition of Ready (0-100). */
+    readonly overall_pct: number;
+  };
+  readonly sprint_risk: SprintRisk | null; // null when no active sprint
+  readonly impediments: {
+    /** Impediments not linked to any story (project-level blockers). */
+    readonly orphan_count: number;
+    /** Total open impediments (open + in_progress). */
+    readonly open_count: number;
+  };
+  readonly ungroomed_count: number; // items missing type OR estimate OR AC
+}
+
+// ── Item listing (findItems output) ────────────────────────────────────────────
+
+/**
+ * Enriched listing entry for story collections.
+ * Replaces StoryListing from ports.ts.
+ *
+ * `key` is always present (non-nullable) — Draft Issues get an empty string.
+ */
+export interface BacklogItemListing {
+  readonly ref: ItemListingRef;
+  readonly title: string;
+  readonly type: string | null;
+  readonly status: string | null;
+  readonly story_points: number | null;
+  readonly priority: string | null;
+  readonly assignees: readonly string[];
+  readonly labels: readonly string[];
+  readonly sprint: {
+    readonly name: string | null;
+    readonly ref: EntityRef;
+  };
+  readonly epic: { readonly ref: EpicRef; readonly name: string } | null;
+  /** Keys of items that block this one (must be Done first). */
+  readonly blocked_by: ReadonlyArray<ItemListingRef>;
+  /** Keys of items this one blocks (reverse dependency). Populated by adapter. */
+  readonly blocks: ReadonlyArray<ItemListingRef>;
+  readonly custom_fields: Record<string, string | number | boolean | null>;
+}
+
+/** @deprecated Use BacklogItemListing instead. */
+export type ItemListing = BacklogItemListing;
+
+// ── Dependency graph ───────────────────────────────────────────────────────────
+
+/**
+ * Graph node for dependency resolution, keyed by IssueKey (not nullable ref.id).
+ * Includes inline state signals so callers don't need a second lookup.
+ */
+export interface DependencyNode {
+  key: IssueKey;
+  title: string | null; // null for unknown/out-of-project items
+  status: string | null;
+  sprint: string | null;
+  epic_name: string | null;
+  story_points: number | null;
+  priority: string | null;
+  /** True when this node has a full listing in the items[] array. */
+  resolved: boolean;
+  /** Stories that this node blocks (reverse dependency). */
+  blocks: IssueKey[];
+  /** Keys of items this node depends on. */
+  blocked_by: IssueKey[];
+}
+
+/**
+ * Full dependency graph, keyed by IssueKey.
+ * Opt-in — not paid on every list call.
+ */
+export type DependencyMap = Record<string, DependencyNode>;
+
 // ── Story entity ──────────────────────────────────────────────────────────────
 
 /**
@@ -93,19 +358,19 @@ export type SprintRef = "current" | "next" | null | SprintName;
  * story_points, priority) are nullable because they may be unset on the board.
  */
 interface StoryBase { // todo: also a close duplicate of the `ports.ts`. The type should be uniformed
-  ref: { id: string }; // opaque project-item handle — use in subsequent tool calls
-  title: string;
-  body: string;
-  type: string | null; // canonical type key from config (e.g. "feature", "bug"); null when unset
-  status: string | null; // team's vocabulary value, e.g. "In Progress"
-  sprint: string | null; // sprint name, or null if in backlog
-  story_points: number | null;
-  priority: string | null; // team's vocabulary value, e.g. "Must"
-  assignees: string[]; // GitHub logins
-  labels: string[]; // repo labels; type is tracked via the Type board field, not labels
-  created_at: string; // ISO-8601
-  updated_at: string; // ISO-8601
-  blocked_by: DependencyEntry[]; // stories that must be Done before this one starts
+  readonly ref: EntityRef; // opaque project-item handle — use in subsequent tool calls
+  readonly title: string;
+  readonly body: string;
+  readonly type: ItemType | null; // canonical type key from config (e.g. "feature", "bug"); null when unset
+  readonly status: string | null; // team's vocabulary value, e.g. "In Progress"
+  readonly sprint: string | null; // sprint name, or null if in backlog
+  readonly story_points: number | null;
+  readonly priority: string | null; // team's vocabulary value, e.g. "Must"
+  readonly assignees: readonly string[]; // GitHub logins
+  readonly labels: readonly string[]; // repo labels; type is tracked via the Type board field, not labels
+  readonly created_at: string; // ISO-8601
+  readonly updated_at: string; // ISO-8601
+  readonly blocked_by: readonly DependencyEntry[]; // stories that must be Done before this one starts
 }
 
 /** A GitHub Projects draft issue — has no issue number, URL, or milestone. */
@@ -148,12 +413,12 @@ export interface IterationEntry {
 
 /** Response shape for scrum_get_burndown. */
 export interface BurndownResponse {
-  sprint: BurndownSprintMeta;
-  data_source: "audit_log" | "issue_close_proxy";
-  warning?: string;
-  series: BurndownDayPoint[];
-  ideal: IdealDayPoint[];
-  stories: BurndownStory[];
+  readonly sprint: BurndownSprintMeta;
+  readonly data_source: "audit_log" | "issue_close_proxy";
+  readonly warning?: string;
+  readonly series: readonly BurndownDayPoint[];
+  readonly ideal: readonly IdealDayPoint[];
+  readonly stories: readonly BurndownStory[];
 }
 
 /** Sprint window metadata returned alongside the burndown series. */
@@ -187,30 +452,175 @@ export interface BurndownStory {
   completed_at: string | null; // ISO-8601 timestamp, or null if not yet done
 }
 
-// ── Template types (scrum_get_template) ───────────────────────────────────────
+// ── Find-items output ──────────────────────────────────────────────────────────
 
 /**
- * The five ceremony artifact types for which custom templates can be declared.
- * Used in ScrumConfig.templates, GetTemplateSchema, and TemplateResponse.
+ * Output for scrum_find_items.
+ * Combines item listings with scope metadata and optional dependency graph.
  */
-export type ArtifactType =
-  | "sprint_review"
-  | "retrospective"
-  | "standup"
-  | "sprint_planning"
-  | "refinement";
+export interface ItemSearchResult {
+  items: BacklogItemListing[];
+  total_count: number;
+  scope_summary: {
+    sprint_count: number | null;
+    backlog_count: number | null;
+  };
+  dependency_map: DependencyMap | null;
+}
+
+// ── Sprint snapshot (analytics / history) ──────────────────────────────────────
 
 /**
- * Discriminated union response for scrum_get_template.
- *
- * source: "custom"  — a custom template was fetched from the repo.
- *                     content is the raw template text; the agent applies it.
- * source: "default" — no custom template is declared for this artifact type.
- *                     content is null; the agent uses its own built-in default.
- *
- * Invalid states (e.g. content: null with source: "custom") are structurally
- * excluded by the discriminated union — the compiler enforces the contract.
+ * Totals for a sprint snapshot.
+ * Discriminated union — narrow on `kind` to access variant-specific fields.
+ * - "active": totals for an in-progress sprint
+ * - "completed": totals for a completed sprint (adds velocity metrics)
  */
-export type TemplateResponse =
-  | { content: string; source: "custom" }
-  | { content: null; source: "default" };
+export type SprintTotals =
+  | {
+    kind: "active";
+    by_status: Record<string, number>;
+    story_points: number;
+  }
+  | {
+    kind: "completed";
+    by_status: Record<string, number>;
+    story_points: number;
+    committed_points: number;
+    completed_points: number;
+  };
+
+/**
+ * Sprint + item listing — canonical shape for both active and historical sprints.
+ *
+ * totals is a SprintTotals discriminated union — narrow on totals.kind
+ * instead of checking for committed_points presence.
+ */
+export interface SprintSnapshot {
+  readonly sprint: {
+    readonly name: string;
+    readonly start_date: string;
+    readonly end_date: string;
+    readonly duration_days: number;
+    readonly days_remaining: number;
+  };
+  readonly items: readonly BacklogItemListing[];
+  readonly total_count: number;
+  readonly totals: SprintTotals;
+}
+
+// ── Analytics output ───────────────────────────────────────────────────────────
+
+/**
+ * Output for scrum_get_analytics.
+ * Merges burndown data + sprint history into a single type.
+ */
+export interface AnalyticsResult {
+  burndown: BurndownResponse | null; // null if burndown unavailable (view === "history")
+  history: SprintSnapshot[] | null; // null if history unavailable (view === "burndown")
+  window: number;
+}
+
+// ── Story detail output ────────────────────────────────────────────────────────
+
+/**
+ * A comment on a story. Shared across domain, port, and adapter layers.
+ * Single source of truth — duplicates in ports.ts and adapter/types.ts
+ * should import this type instead of defining their own.
+ */
+export interface StoryComment {
+  author: string;
+  body: string;
+  created_at: string; // ISO-8601
+  url: string;
+}
+
+/**
+ * A linked artifact (pull request, merge request, patch, etc.) associated
+ * with a story. Platform-agnostic — replaces GitHub-specific "linkedPrs"
+ * terminology in domain and port types.
+ */
+export interface LinkedArtifact {
+  number: number;
+  title: string;
+  url: string;
+  state: string;
+  is_draft: boolean;
+}
+
+/**
+ * Output for scrum_get_story_detail.
+ * Wraps Story detail with comments, linked artifacts, and parsed acceptance criteria.
+ */
+export interface ItemDetailResult {
+  readonly story: Story;
+  readonly comments: readonly StoryComment[];
+  readonly linked_artifacts: readonly LinkedArtifact[];
+  readonly acceptance_criteria: readonly string[]; // parsed from story body
+}
+
+// ── Orient output ──────────────────────────────────────────────────────────────
+
+/**
+ * Exported output type for scrum_orient.
+ * Moved from private interface in orient.ts to domain so tests and handlers
+ * can import and annotate it.
+ */
+export interface OrientResult {
+  readonly platform_state: {
+    readonly fields: {
+      readonly status: {
+        readonly exists: boolean;
+        readonly options: readonly string[];
+        readonly missing_options: readonly string[];
+      };
+      readonly sprint: { readonly exists: boolean };
+      readonly story_points: { readonly exists: boolean };
+      readonly priority: {
+        readonly exists: boolean;
+        readonly options: readonly string[];
+        readonly missing_options: readonly string[];
+      };
+      readonly type_field: { readonly exists: boolean; readonly configured: boolean };
+    };
+    readonly missing_options: readonly string[];
+    readonly labels: {
+      readonly existing: readonly string[];
+      readonly expected: readonly string[];
+      readonly missing: readonly string[];
+    };
+    readonly iterations: {
+      readonly active: SprintContext | null;
+      readonly next: SprintContext | null;
+      readonly completed_count: number;
+    };
+    /** Active epics — populated by orientUseCase via backend.getEpics(). */
+    readonly epics: { readonly active: readonly EpicSummary[]; readonly total_count: number };
+    /** PBI template URIs — built from ITEM_TYPES intersection with scrumConfig.templates. */
+    readonly template_uris: TemplateUriMap | null;
+  };
+  readonly vocabulary: {
+    readonly status: Record<string, string> | null;
+    readonly priority: Record<string, string> | null;
+    readonly type: Record<string, string> | null;
+    readonly story_points: {
+      readonly scale: string | null;
+      readonly values: readonly number[] | null;
+    };
+    readonly sprint: {
+      readonly duration_days: number | null;
+      readonly velocity_window: number;
+      readonly length_weeks: number | null;
+    };
+    readonly team:
+      | readonly {
+        readonly name: string;
+        readonly role: "scrum_master" | "product_owner" | "developer";
+        readonly contact?: string;
+      }[]
+      | null;
+    readonly dor: readonly string[] | null;
+    readonly dod: readonly string[] | null;
+    readonly autonomy: { readonly require_confirmation_above_n_items: number | null } | null;
+  };
+}

@@ -7,6 +7,25 @@
 import type { BurndownDayPoint, IdealDayPoint, IterationEntry, Story } from "../domain/types.ts";
 import type { BurndownStoryInput } from "./ports.ts";
 
+// ── Shared date utility ────────────────────────────────────────────────────────
+
+/**
+ * Compute the sprint end date from a start date and duration.
+ *
+ * All date math is performed in UTC to avoid off-by-one errors when sprint
+ * boundaries cross DST transitions. Every sprint-math function that needs an
+ * end date goes through this single function.
+ *
+ * @param startDate ISO date string (YYYY-MM-DD)
+ * @param durationDays number of calendar days the sprint spans (inclusive)
+ * @returns ISO date string (YYYY-MM-DD) of the sprint end date
+ */
+export const computeSprintEndDate = (startDate: string, durationDays: number): string => {
+  const utc = new Date(`${startDate}T00:00:00Z`);
+  utc.setUTCDate(utc.getUTCDate() + durationDays);
+  return utc.toISOString().slice(0, 10);
+};
+
 // ── Sprint metadata ────────────────────────────────────────────────────────────
 
 /**
@@ -22,22 +41,21 @@ export const buildSprintMeta = (iterEntry: IterationEntry | null): {
 } => {
   if (!iterEntry) return { name: "(sprint not found)" };
 
-  const endDate = new Date(iterEntry.startDate);
-  endDate.setDate(endDate.getDate() + iterEntry.duration);
-  endDate.setHours(0, 0, 0, 0);
+  const endDate = computeSprintEndDate(iterEntry.startDate, iterEntry.duration);
 
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  today.setUTCHours(0, 0, 0, 0);
 
+  const endDateTime = new Date(`${endDate}T00:00:00Z`);
   const daysRemaining = Math.max(
     0,
-    Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
+    Math.ceil((endDateTime.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
   );
 
   return {
     name: iterEntry.title,
     start_date: iterEntry.startDate,
-    end_date: endDate.toISOString().slice(0, 10),
+    end_date: endDate,
     duration_days: iterEntry.duration,
     days_remaining: daysRemaining,
   };
@@ -57,16 +75,21 @@ export const groupStoriesByStatus = (
   for (const story of stories) {
     const key = story.status ?? "(No Status)";
     if (!groupMap.has(key)) groupMap.set(key, []);
-    groupMap.get(key)!.push(story);
+    const group = groupMap.get(key);
+    if (group) group.push(story);
   }
 
-  const orderedGroups = statusOrder
-    .filter((statusName) => groupMap.has(statusName))
-    .map((statusName) => ({
+  const orderedGroups: Array<{ status: string; stories: Story[]; points_sum: number }> = [];
+
+  for (const statusName of statusOrder) {
+    const groupStories = groupMap.get(statusName);
+    if (!groupStories) continue;
+    orderedGroups.push({
       status: statusName,
-      stories: groupMap.get(statusName)!,
-      points_sum: groupMap.get(statusName)!.reduce((acc, s) => acc + (s.story_points ?? 0), 0),
-    }));
+      stories: groupStories,
+      points_sum: groupStories.reduce((acc, s) => acc + (s.story_points ?? 0), 0),
+    });
+  }
 
   // Append unknown statuses
   const knownStatuses = new Set(statusOrder);
@@ -125,8 +148,9 @@ export const buildSprintWindow = (iterEntry: IterationEntry): SprintWindow => {
   const startDate = new Date(iterEntry.startDate);
   startDate.setUTCHours(0, 0, 0, 0);
 
-  const endDate = new Date(startDate);
-  endDate.setUTCDate(endDate.getUTCDate() + iterEntry.duration);
+  const endDate = new Date(
+    computeSprintEndDate(iterEntry.startDate, iterEntry.duration) + "T00:00:00Z",
+  );
 
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);

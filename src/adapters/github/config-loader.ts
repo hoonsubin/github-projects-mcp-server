@@ -86,12 +86,10 @@ const resolveEnvRef = (value: string, context: string): string => {
 
 // ── Helper types ──────────────────────────────────────────────────────────────
 
-interface SingleSelectFieldNode {
-  id: string;
-  name: string;
-  dataType: string;
-  options: Array<{ id: string; name: string; color: string; description: string }>;
-}
+import type { SelectFieldNode } from "./types.ts";
+
+/** Query projection of GH.ProjectV2SingleSelectField — all mandatory fields. */
+interface SingleSelectFieldNode extends SelectFieldNode {}
 
 interface IterationFieldNode {
   id: string;

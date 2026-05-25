@@ -1,0 +1,69 @@
+// =============================================================================
+// src/scrum/listing-mappers.ts — Shared Story → BacklogItemListing mappers
+//
+// Eliminates duplication across find-items.ts, analytics-service.ts, and
+// sprint-math.ts. Each function produces a BacklogItemListing — a
+// lightweight projection used in SprintSnapshot.items and ItemSearchResult.items.
+//
+// Mappers:
+//   toItemListing — for active sprint / backlog items (Story domain type)
+//   historyEntryToItemListing — for completed sprint history items (BurndownStoryInput)
+// =============================================================================
+
+import type { BurndownStoryInput } from "./ports.ts";
+import type { BacklogItemListing, EntityRef, Story } from "../domain/types.ts";
+
+/** Sentinel ref used when an adapter has not yet provided a sprint node ID. */
+const EMPTY_SPRINT_REF: EntityRef = { id: "" };
+
+// ── ItemListing mappers — for find-items use-case ─────────────────────────────
+
+/**
+ * Project a domain Story to its enriched ItemListing entry.
+ * Used by find-items.ts for active sprint / backlog items.
+ *
+ * sprint.ref is hardcoded to { id: "" } — known gap until the adapter
+ * provides sprint node IDs (P7).
+ */
+export const toItemListing = (story: Story): BacklogItemListing => ({
+  ref: { id: story.ref.id, key: story.key ?? "" },
+  title: story.title,
+  type: story.type,
+  status: story.status,
+  story_points: story.story_points,
+  priority: story.priority,
+  assignees: [...story.assignees],
+  labels: [...story.labels],
+  sprint: { name: story.sprint, ref: EMPTY_SPRINT_REF },
+  epic: story.kind === "issue" ? story.epic : null,
+  blocked_by: story.blocked_by.map((dep) => ({ id: dep.ref.id, key: dep.key })),
+  blocks: [],
+  custom_fields: {},
+});
+
+/**
+ * Project a BurndownStoryInput (history/burndown story) to a read-only
+ * ItemListing entry scoped to the given sprint name.
+ *
+ * History items are not writable — the returned listing has writable: false,
+ * no priority, no epic, and empty has_dependencies.
+ */
+export const historyEntryToItemListing = (
+  story: BurndownStoryInput,
+  sprintName: string,
+  refIdFallback: string = "<history>",
+): BacklogItemListing => ({
+  ref: { id: story.ref?.id ?? refIdFallback, key: String(story.number) },
+  title: story.title,
+  type: null,
+  status: story.status,
+  story_points: story.points,
+  priority: null,
+  assignees: [],
+  labels: [],
+  sprint: { name: sprintName, ref: EMPTY_SPRINT_REF },
+  epic: null,
+  blocked_by: [],
+  blocks: [],
+  custom_fields: {},
+});

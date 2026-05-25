@@ -102,32 +102,8 @@ export class LabelResolver {
 
   /** Resolve label names to node IDs, creating missing labels with auto-generated colors */
   async resolveOrCreateLabelNodeIds(names: string[]): Promise<string[]> {
-    const existingLabels = await this.fetchAllLabels();
-    const nodeIds: string[] = [];
-    const missing: string[] = [];
-
-    for (const name of names) {
-      const found = existingLabels.find((l) => l.name === name);
-      if (found) {
-        nodeIds.push(found.id);
-      } else {
-        missing.push(name);
-      }
-    }
-
-    if (missing.length > 0) {
-      const repositoryId = await this.fetchRepoNodeId();
-      for (const name of missing) {
-        const color = this.hashToColor(name);
-        const createResult = await this.gh.graphql<{ createLabel: { label: { id: string } } }>(
-          CREATE_LABEL_MUTATION,
-          { repositoryId, name, color },
-        );
-        nodeIds.push(createResult.createLabel.label.id);
-      }
-    }
-
-    return nodeIds;
+    const results: Array<{ id: string; name: string }> = await this.resolveOrCreateBatch(names);
+    return results.map((r) => r.id);
   }
 
   /**
@@ -136,7 +112,7 @@ export class LabelResolver {
    *
    * Used by: StoryMutationService.createStory(), StoryMutationService.updateStory()
    */
-  async resolveExistingLabelNodeIds(names: string[]): Promise<string[]> {
+  async resolveExistingLabelNodeIds(names: readonly string[]): Promise<string[]> {
     const existingLabels = await this.fetchAllLabels();
     const nodeIds: string[] = [];
     const unknown: string[] = [];
@@ -172,19 +148,43 @@ export class LabelResolver {
 
   /** Resolve a single label by name, creating it if it doesn't exist. Returns node ID or null. */
   async resolveOrCreateLabel(name: string): Promise<string | null> {
+    const results = await this.resolveOrCreateBatch([name]);
+    return results[0]?.id ?? null;
+  }
+
+  /**
+   * Internal: resolve label names to node IDs, creating missing ones on demand.
+   * Returns resolved entries with id and name for caller flexibility.
+   */
+  private async resolveOrCreateBatch(
+    names: string[],
+  ): Promise<Array<{ id: string; name: string }>> {
     const existingLabels = await this.fetchAllLabels();
-    const existing = existingLabels.find((l) => l.name === name);
-    if (existing) {
-      return existing.id;
+    const resolved: Array<{ id: string; name: string }> = [];
+    const missing: string[] = [];
+
+    for (const name of names) {
+      const found = existingLabels.find((l) => l.name === name);
+      if (found) {
+        resolved.push({ id: found.id, name });
+      } else {
+        missing.push(name);
+      }
     }
-    // Create the label
-    const repositoryId = await this.fetchRepoNodeId();
-    const color = this.hashToColor(name);
-    const createResult = await this.gh.graphql<{ createLabel?: { label?: { id: string } } }>(
-      CREATE_LABEL_MUTATION,
-      { repositoryId, name, color },
-    );
-    return createResult.createLabel?.label?.id ?? null;
+
+    if (missing.length > 0) {
+      const repositoryId = await this.fetchRepoNodeId();
+      for (const name of missing) {
+        const color = this.hashToColor(name);
+        const createResult = await this.gh.graphql<{ createLabel: { label: { id: string } } }>(
+          CREATE_LABEL_MUTATION,
+          { repositoryId, name, color },
+        );
+        resolved.push({ id: createResult.createLabel.label.id, name });
+      }
+    }
+
+    return resolved;
   }
 
   /** Add a label to the repo (used by vocabulary management) */

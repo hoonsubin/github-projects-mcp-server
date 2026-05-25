@@ -38,11 +38,11 @@ const resolveP0PriorityDisplay = (scrumConfig: ScrumConfig): string => {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-export function registerScrumWriteTools(
+export const registerScrumWriteTools = (
   server: McpServer,
   backend: ProjectBackend,
   scrumConfig: ScrumConfig,
-): void {
+): void => {
   const p0PriorityDisplay = resolveP0PriorityDisplay(scrumConfig);
 
   server.registerTool(
@@ -276,7 +276,7 @@ export function registerScrumWriteTools(
             field: "read",
             reason: enrichError(readErr),
           });
-          storyDetail = { id: storyRef.id }; // minimal shape — full Story unavailable
+          storyDetail = { id: "id" in storyRef ? storyRef.id : String(storyRef.number) }; // minimal shape — full Story unavailable
         }
 
         // Step 4: Return with partial failure indicator if needed
@@ -337,7 +337,15 @@ export function registerScrumWriteTools(
               '"all" is not valid for plan_sprint — use "current", "next", null, or an explicit sprint name.',
             );
           }
-          const { stories: currentStories } = await backend.getSprintStories(params.sprint);
+          // P2: getSprintStories was removed from the port interface
+          // but still exists as an internal method on GitHubProjectBackend.
+          interface BackendWithSprintStories {
+            getSprintStories(
+              s: typeof params.sprint,
+            ): Promise<{ stories: Array<{ ref: { id: string } }> }>;
+          }
+          const { stories: currentStories } = await (backend as unknown as BackendWithSprintStories)
+            .getSprintStories(params.sprint);
           for (const story of currentStories) {
             try {
               await backend.setField(story.ref, "sprint", null);
@@ -412,8 +420,11 @@ export function registerScrumWriteTools(
         if (params.affects) {
           bodyParts.push("", "## Affects");
           if ("story" in params.affects) {
+            const storyId = "id" in params.affects.story
+              ? params.affects.story.id
+              : `#${params.affects.story.number}`;
             bodyParts.push(
-              `This impediment affects story with item ID: ${params.affects.story.id}`,
+              `This impediment affects story with item ID: ${storyId}`,
             );
           } else if ("sprint" in params.affects) {
             bodyParts.push(`This impediment affects sprint: ${params.affects.sprint}`);
@@ -446,7 +457,9 @@ export function registerScrumWriteTools(
 
             await backend.addComment(params.affects.story, affectedComment);
 
-            const affectsRef = params.affects.story.id;
+            const affectsRef = "id" in params.affects.story
+              ? params.affects.story.id
+              : `#${params.affects.story.number}`;
             const impedimentComment = [
               ":link: This impediment affects story",
               `  - Story item ID: ${affectsRef}`,
@@ -516,4 +529,4 @@ export function registerScrumWriteTools(
       }
     },
   );
-}
+};

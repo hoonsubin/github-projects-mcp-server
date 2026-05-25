@@ -5,10 +5,11 @@
 // =============================================================================
 
 import type { ImpedimentListing, ImpedimentPort } from "./ports.ts";
+import type { ImpedimentRef } from "../domain/types.ts";
 
 export const updateImpedimentUseCase = async (
   backend: ImpedimentPort,
-  ref: { id: string },
+  ref: ImpedimentRef,
   status: "open" | "in_progress" | "resolved",
   resolutionNotes?: string,
 ): Promise<ImpedimentListing> => {

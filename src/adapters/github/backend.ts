@@ -3,73 +3,115 @@
 //
 // Thin facade: delegates to injected service objects.
 // No business logic lives here — services own their domain.
-// Constructor receives pre-built service instances (DIP via composition root).
+// Extends AbstractProjectBackend for shared infrastructure (resolveRef, capability
+// checks, optional method defaults). Constructor receives a single
+// GitHubBackendDependencies parameter object (built by the factory).
 // =============================================================================
 
+import { GITHUB_CAPABILITIES } from "../capabilities.ts";
+import { AbstractProjectBackend } from "../abstract-backend.ts";
+import { StoryNotFoundError } from "../../domain/errors.ts";
 import { type RuntimeConfig } from "./config-loader.ts";
 import { LabelResolver } from "./internal/label-resolver.ts";
 import { FieldValueMutator } from "./internal/field-value-mutator.ts";
-import { BurndownCalculator } from "./internal/burndown-calculator.ts";
-import { SprintHistoryService } from "./internal/sprint-history-service.ts";
 import { VocabularyManager } from "./internal/vocabulary-manager.ts";
 import { StoryQueryService } from "./internal/story-query-service.ts";
 import { StoryMutationService } from "./internal/story-mutation-service.ts";
 import { ImpedimentService } from "./internal/impediment-service.ts";
 import { EpicService } from "./internal/epic-service.ts";
 import { ConfigReloader } from "./internal/config-reloader.ts";
+import { AnalyticsService } from "./internal/analytics-service.ts";
+import { BoardHealthService } from "./internal/board-health-service.ts";
 import { toSprintInfo } from "./mappers.ts";
 import type {
-  BurndownInput,
-  CompletionMap,
+  AnalyticsQuery,
   CreateStoryInput,
   ImpedimentListing,
   PlatformState,
-  ProjectBackend,
-  Ref,
-  SprintHistoryEntry,
-  SprintInfo,
+  ResolvedItemFilter,
   StoryDetail,
   StoryUpdates,
   VocabularyKind,
 } from "../../scrum/ports.ts";
-import type { EpicListing, SprintRef, Story, StoryRef } from "../../domain/types.ts";
-import type { GitHubBackendConfig } from "./types.ts";
+import type {
+  AnalyticsResult,
+  BacklogHealth,
+  EpicListing,
+  ImpedimentRef,
+  ItemSearchResult,
+  SprintRef,
+  StoryRef,
+} from "../../domain/types.ts";
+
+// ── Dependencies parameter object ────────────────────────────────────────────
+
+/**
+ * All dependencies needed to construct a GitHubProjectBackend.
+ * AnalyticsService and BoardHealthService wrap the lower-level services
+ * (BurndownCalculator, SprintHistoryService) behind the new port interfaces.
+ */
+export interface GitHubBackendDependencies {
+  readonly labelResolver: LabelResolver;
+  readonly fieldValueMutator: FieldValueMutator;
+  readonly vocabularyManager: VocabularyManager;
+  readonly storyQueryService: StoryQueryService;
+  readonly storyMutationService: StoryMutationService;
+  readonly impedimentService: ImpedimentService;
+  readonly epicService: EpicService;
+  readonly config: RuntimeConfig;
+  readonly owner: string;
+  readonly repo: string;
+  readonly configReloader: ConfigReloader;
+  readonly analyticsService: AnalyticsService;
+  readonly boardHealthService: BoardHealthService;
+  /** Pre-resolved display name maps (from GitHubBackendConfig) — no cast needed at call time. */
+  readonly displayConfig: {
+    readonly statusDisplay: Record<string, string>;
+    readonly priorityDisplay: Record<string, string>;
+    readonly typeDisplay: Record<string, string> | null;
+  };
+}
 
 // ── GitHubProjectBackend ──────────────────────────────────────────────────────
 
-export class GitHubProjectBackend implements ProjectBackend {
-  constructor(
-    private readonly labelResolver: LabelResolver,
-    private readonly fieldValueMutator: FieldValueMutator,
-    private readonly burndownCalculator: BurndownCalculator,
-    private readonly sprintHistoryService: SprintHistoryService,
-    private readonly vocabularyManager: VocabularyManager,
-    private readonly storyQueryService: StoryQueryService,
-    private readonly storyMutationService: StoryMutationService,
-    private readonly impedimentService: ImpedimentService,
-    private readonly epicService: EpicService,
-    private readonly config: RuntimeConfig,
-    private readonly owner: string,
-    private readonly repo: string,
-    private readonly configReloader: ConfigReloader,
-  ) {}
+export class GitHubProjectBackend extends AbstractProjectBackend {
+  override readonly capabilities = GITHUB_CAPABILITIES;
 
-  // ── Vocabulary & history delegations ─────────────────────────────────────
-
-  getCompletedSprintHistory(window: number): Promise<SprintHistoryEntry[]> {
-    return this.sprintHistoryService.getCompletedSprintHistory(window);
+  constructor(private readonly deps: GitHubBackendDependencies) {
+    super();
   }
 
-  getBurndownInput(sprint: SprintRef): Promise<BurndownInput> {
-    return this.burndownCalculator.getBurndownInput(sprint);
-  }
+  // ── resolveRef (override AbstractProjectBackend default) ──────────────────
 
-  resolveCompletionTimestamps(input: BurndownInput): Promise<CompletionMap> {
-    return this.burndownCalculator.resolveCompletionTimestamps(input);
-  }
-
-  addVocabulary(kind: VocabularyKind, value: string): Promise<{ created: boolean }> {
-    return this.vocabularyManager.addVocabulary(kind, value);
+  /**
+   * Resolve a { number } StoryRef by looking up the issue number via findItems.
+   * { id } refs pass through unchanged (already resolved).
+   */
+  protected override async resolveRef(ref: StoryRef): Promise<StoryRef> {
+    if ("id" in ref && !("number" in ref)) return ref;
+    const result = await this.findItems({
+      scope: "all",
+      keys: [String(ref.number)],
+      search: "",
+      types: [],
+      statuses: [],
+      priority: "",
+      epic_id: "",
+      labels: [],
+      assignee: "",
+      estimated: undefined,
+      sprint_ref: null,
+      include_dependencies: false,
+      limit: 1,
+    });
+    if (result.items.length === 0) {
+      throw new StoryNotFoundError(
+        String(ref.number),
+        `Story #${ref.number} not found on the project board. ` +
+          "Verify the issue number and ensure it appears in the project.",
+      );
+    }
+    return { id: result.items[0].ref.id };
   }
 
   // ── Platform state ────────────────────────────────────────────────────────
@@ -78,23 +120,19 @@ export class GitHubProjectBackend implements ProjectBackend {
     canonicalStatusKeys: string[];
     canonicalPriorityKeys: string[];
   }): Promise<PlatformState> {
-    // Resolve canonical keys → display names using adapter-specific config
-    const ghConfig = this.config.scrumConfig.backends.github as GitHubBackendConfig;
+    const { statusDisplay, priorityDisplay, typeDisplay } = this.deps.displayConfig;
 
     const statusDisplayMap: Record<string, string> = {};
     for (const key of declaredVocabulary.canonicalStatusKeys) {
-      const display = ghConfig.status_display[key];
-      if (display) statusDisplayMap[key] = display;
+      if (statusDisplay[key]) statusDisplayMap[key] = statusDisplay[key];
     }
     const priorityDisplayMap: Record<string, string> = {};
     for (const key of declaredVocabulary.canonicalPriorityKeys) {
-      const display = ghConfig.priority_display[key];
-      if (display) priorityDisplayMap[key] = display;
+      if (priorityDisplay[key]) priorityDisplayMap[key] = priorityDisplay[key];
     }
 
-    // Diff display names against live platform options (keys are display names)
-    const liveStatusOptions = Object.keys(this.config.statusOptions);
-    const livePriorityOptions = Object.keys(this.config.priorityOptions);
+    const liveStatusOptions = Object.keys(this.deps.config.statusOptions);
+    const livePriorityOptions = Object.keys(this.deps.config.priorityOptions);
     const declaredStatusValues = Object.values(statusDisplayMap);
     const declaredPriorityValues = Object.values(priorityDisplayMap);
 
@@ -105,26 +143,26 @@ export class GitHubProjectBackend implements ProjectBackend {
       (v) => !livePriorityOptions.includes(v),
     );
 
-    const typeLabels = await this.labelResolver.auditTypeLabels();
+    const typeLabels = await this.deps.labelResolver.auditTypeLabels();
     const missingLabels = typeLabels.expected.filter((l) => !typeLabels.existing.includes(l));
 
     return {
       fields: {
         status: {
-          exists: !!this.config.fields.statusFieldId,
+          exists: !!this.deps.config.fields.statusFieldId,
           options: liveStatusOptions,
           missingOptions: missingStatusOptions,
         },
-        sprint: { exists: !!this.config.fields.sprintFieldId },
-        story_points: { exists: !!this.config.fields.storyPointsFieldId },
+        sprint: { exists: !!this.deps.config.fields.sprintFieldId },
+        story_points: { exists: !!this.deps.config.fields.storyPointsFieldId },
         priority: {
-          exists: !!this.config.fields.priorityFieldId,
+          exists: !!this.deps.config.fields.priorityFieldId,
           options: livePriorityOptions,
           missingOptions: missingPriorityOptions,
         },
         type: {
-          exists: !!this.config.fields.typeFieldId,
-          configured: Object.keys(this.config.typeOptions).length > 0,
+          exists: !!this.deps.config.fields.typeFieldId,
+          configured: Object.keys(this.deps.config.typeOptions).length > 0,
         },
       },
       labels: {
@@ -133,57 +171,63 @@ export class GitHubProjectBackend implements ProjectBackend {
         missing: missingLabels,
       },
       iterations: {
-        active: toSprintInfo(this.config.iterations.active),
-        next: toSprintInfo(this.config.iterations.next),
-        completed: this.config.iterations.completed.map((i) => toSprintInfo(i)!),
-        completedCount: this.config.iterations.completed.length,
+        active: toSprintInfo(this.deps.config.iterations.active),
+        next: toSprintInfo(this.deps.config.iterations.next),
+        completed: this.deps.config.iterations.completed.map((i) => toSprintInfo(i)!),
+        completedCount: this.deps.config.iterations.completed.length,
       },
       vocabulary: {
         statusDisplay: Object.keys(statusDisplayMap).length > 0 ? statusDisplayMap : null,
         priorityDisplay: Object.keys(priorityDisplayMap).length > 0 ? priorityDisplayMap : null,
-        typeDisplay: ghConfig.type_display ?? null,
+        typeDisplay: typeDisplay,
       },
+      epics: { active: [], totalCount: 0 },
+      templateUris: null,
     };
   }
 
   reload(): Promise<void> {
-    return this.configReloader.reload();
+    return this.deps.configReloader.reload();
+  }
+
+  // ── Port methods (P7 — real implementations) ──────────────────────────────
+
+  findItems(filter: ResolvedItemFilter): Promise<ItemSearchResult> {
+    return this.deps.storyQueryService.findItems(filter);
+  }
+
+  getAnalytics(query: AnalyticsQuery): Promise<AnalyticsResult> {
+    return this.deps.analyticsService.getAnalytics(query);
+  }
+
+  getBoardHealth(sprintScope: string): Promise<BacklogHealth> {
+    return this.deps.boardHealthService.getBoardHealth(sprintScope);
   }
 
   // ── Story read delegations ────────────────────────────────────────────────
 
-  getSprintStories(
-    sprint: SprintRef,
-  ): Promise<{ stories: Story[]; sprintInfo: SprintInfo }> {
-    return this.storyQueryService.getSprintStories(sprint);
-  }
-
-  getBacklogStories(): Promise<Story[]> {
-    return this.storyQueryService.getBacklogStories();
-  }
-
   getStoryDetail(ref: StoryRef): Promise<StoryDetail> {
-    return this.storyQueryService.getStoryDetail(ref);
+    return this.deps.storyQueryService.getStoryDetail(ref);
   }
 
   getEpics(): Promise<EpicListing[]> {
-    return this.epicService.getEpics();
+    return this.deps.epicService.getEpics();
   }
 
   // ── Story write delegations ───────────────────────────────────────────────
 
   createStory(input: CreateStoryInput): Promise<StoryRef> {
-    return this.storyMutationService.createStory(input);
+    return this.deps.storyMutationService.createStory(input);
   }
 
-  createImpediment(
+  override createImpediment(
     input: CreateStoryInput,
   ): Promise<{ listing: ImpedimentListing; itemRef: StoryRef }> {
-    return this.impedimentService.createImpediment(input);
+    return this.deps.impedimentService.createImpediment(input);
   }
 
   updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void> {
-    return this.storyMutationService.updateStory(ref, updates);
+    return this.deps.storyMutationService.updateStory(ref, updates);
   }
 
   setField(
@@ -191,28 +235,32 @@ export class GitHubProjectBackend implements ProjectBackend {
     field: "status" | "sprint" | "story_points" | "priority" | "assignee" | "type",
     value: string | number | SprintRef | null,
   ): Promise<void> {
-    return this.storyMutationService.setField(ref, field, value);
+    return this.deps.storyMutationService.setField(ref, field, value);
   }
 
   addComment(ref: StoryRef, body: string): Promise<void> {
-    return this.storyMutationService.addComment(ref, body);
+    return this.deps.storyMutationService.addComment(ref, body);
+  }
+
+  addVocabulary(kind: VocabularyKind, value: string): Promise<{ created: boolean }> {
+    return this.deps.vocabularyManager.addVocabulary(kind, value);
   }
 
   // ── Impediment delegations ────────────────────────────────────────────────
 
   getOrphanImpediments(): Promise<ImpedimentListing[]> {
-    return this.impedimentService.getOrphanImpediments();
+    return this.deps.impedimentService.getOrphanImpediments();
   }
 
   getSprintImpediments(sprint: SprintRef): Promise<ImpedimentListing[]> {
-    return this.impedimentService.getSprintImpediments(sprint);
+    return this.deps.impedimentService.getSprintImpediments(sprint);
   }
 
-  updateImpediment(
-    ref: Ref,
+  override updateImpediment(
+    ref: ImpedimentRef,
     status: "open" | "in_progress" | "resolved",
     resolutionNotes?: string,
   ): Promise<ImpedimentListing> {
-    return this.impedimentService.updateImpediment(ref, status, resolutionNotes);
+    return this.deps.impedimentService.updateImpediment(ref, status, resolutionNotes);
   }
 }

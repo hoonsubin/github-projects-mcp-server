@@ -9,23 +9,19 @@ import type { FileReaderPort, ProjectBackend } from "../scrum/ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 
 import {
-  GetBacklogSchema,
-  GetBurndownSchema,
-  GetHistorySchema,
-  GetSprintSchema,
+  FindItemsSchema,
+  GetAnalyticsSchema,
+  GetBoardHealthSchema,
   GetStorySchema,
-  GetTemplateSchema,
 } from "../schemas/scrum.ts";
 import { z } from "zod";
 import { enrichError } from "../services/error-enrichment.ts";
 
 import { orientUseCase } from "../scrum/orient.ts";
-import { getTemplateUseCase } from "../scrum/get-template.ts";
 import { getStoryUseCase } from "../scrum/get-story.ts";
-import { getSprintUseCase } from "../scrum/get-sprint.ts";
-import { getBacklogUseCase } from "../scrum/get-backlog.ts";
-import { getHistoryUseCase } from "../scrum/get-history.ts";
-import { getBurndownUseCase } from "../scrum/get-burndown.ts";
+import { findItemsUseCase } from "../scrum/find-items.ts";
+import { getAnalyticsUseCase } from "../scrum/get-analytics.ts";
+import { getBoardHealthUseCase } from "../scrum/get-board-health.ts";
 
 // ── Tool registration ──────────────────────────────────────────────────────────
 
@@ -33,7 +29,7 @@ export const registerScrumReadTools = (
   server: McpServer,
   backend: ProjectBackend,
   scrumConfig: ScrumConfig,
-  fileReader: FileReaderPort,
+  _fileReader: FileReaderPort | null,
 ): void => {
   // ── scrum_orient ───────────────────────────────────────────────────────────
 
@@ -61,151 +57,6 @@ export const registerScrumReadTools = (
     async () => {
       try {
         const result = await orientUseCase(backend, scrumConfig);
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      } catch (err: unknown) {
-        return {
-          content: [{ type: "text", text: enrichError(err) }],
-          isError: true,
-        };
-      }
-    },
-  );
-
-  // ── scrum_get_history ──────────────────────────────────────────────────────
-
-  server.registerTool(
-    "scrum_get_history",
-    {
-      title: "Get Sprint History",
-      description: `Return sprint snapshots for the last N completed sprints, aligned with the
-        SprintSnapshot shape used by scrum_get_sprint.
-
-        Use for velocity calculations, retrospective prep, and trend analysis. Each
-        snapshot includes lightweight item listing (no body/comments), totals by
-        status, committed vs. completed story points, and velocity metrics.
-
-        Args:
-          window  integer 1-10, default 5 — how many completed sprints to look back
-
-        Returns: {
-          "sprints": [
-            {
-              "sprint": { "name": string, "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD", "duration_days": number, "days_remaining": 0 },
-              "items": [
-                { "ref": { "id": string, "key": string|null }, "title": string, "status": string|null, "story_points": number|null, "priority": null, "sprint": string|null, "writable": false }
-              ],
-              "total_count": number,
-              "totals": { "by_status": {string: number}, "story_points": number, "committed_points": number, "completed_points": number },
-              "impediments": []
-            }
-          ],
-          "window": number,
-          "average_completed_points": number
-        }
-        Each sprint snapshot has totals.committed_points and totals.completed_points.
-        Items have ref.id for use in subsequent write calls (may be empty for history items).
-        Note: history items have empty ref.id and cannot be used with write tools.`,
-      inputSchema: GetHistorySchema.shape,
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: true,
-      },
-    },
-    async (params: z.infer<typeof GetHistorySchema>) => {
-      try {
-        const result = await getHistoryUseCase(backend, scrumConfig, params.window);
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      } catch (err: unknown) {
-        return {
-          content: [{ type: "text", text: enrichError(err) }],
-          isError: true,
-        };
-      }
-    },
-  );
-
-  // ── scrum_get_backlog ──────────────────────────────────────────────────────
-
-  server.registerTool(
-    "scrum_get_backlog",
-    {
-      title: "Get Product Backlog",
-      description: `Return all active stories not yet assigned to any sprint (the product backlog).
-
-        Active items: excludes archived stories and Done stories with no sprint assigned.
-        All filter arguments are optional and combinable. Results are sorted by priority
-        descending, then story number ascending.
-
-        Args:
-          search    string — case-insensitive substring match on title + body
-          labels    string[] — include only stories carrying ALL of these labels
-          priority  string — vocabulary display name, e.g. "Must" (from scrum_orient)
-          epic      string — Epic name to filter by (exact match on epic.name)
-          limit     integer > 0, default 50
-
-        Returns: {
-          stories: StoryListing[],         — lightweight entries (no body or comments)
-          total_count: number,
-          readiness: { ready, partially_ready, not_ready },
-          orphan_impediments: ImpedimentListing[],  — unresolved impediments with no story/sprint context
-          epics: EpicListing[]                      — all project epics, regardless of story filter applied
-        }
-        Each story has ref.id for use in subsequent write calls.`,
-      inputSchema: GetBacklogSchema.shape,
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: true,
-      },
-    },
-    async (params: z.infer<typeof GetBacklogSchema>) => {
-      try {
-        const result = await getBacklogUseCase(backend, scrumConfig, params);
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      } catch (err: unknown) {
-        return {
-          content: [{ type: "text", text: enrichError(err) }],
-          isError: true,
-        };
-      }
-    },
-  );
-
-  // ── scrum_get_sprint ───────────────────────────────────────────────────────
-
-  server.registerTool(
-    "scrum_get_sprint",
-    {
-      title: "Get Sprint Board",
-      description:
-        `Return the sprint board: all stories for a sprint, grouped by status with point totals.
-
-        For a single sprint, returns { sprint: SprintSnapshot }. For sprint="all", returns
-        { sprints: SprintSnapshot[], total_count }. SprintSnapshot includes lightweight item
-        listing (no body/comments) and totals by status.
-
-        Args:
-          sprint  "current" | "next" | "all" | "<sprint-name>" | null — defaults to "current"
-                  Use scrum_orient to see the list of valid sprint names.
-          limit   integer > 0, default 50 — max sprints to return when sprint="all"
-
-        Returns: { sprint: SprintSnapshot } for single sprint,
-                 { sprints: SprintSnapshot[], total_count: number } for sprint="all".`,
-      inputSchema: GetSprintSchema.shape,
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: true,
-      },
-    },
-    async (params: z.infer<typeof GetSprintSchema>) => {
-      try {
-        const sprintParam = params.sprint ?? "current";
-        const result = await getSprintUseCase(backend, sprintParam, params.limit);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
         return {
@@ -253,23 +104,38 @@ export const registerScrumReadTools = (
     },
   );
 
-  // ── scrum_get_burndown ─────────────────────────────────────────────────────
+  // ── scrum_find_items ───────────────────────────────────────────────────────
 
   server.registerTool(
-    "scrum_get_burndown",
+    "scrum_find_items",
     {
-      title: "Get Sprint Burndown",
-      description: `Return a day-by-day burndown chart for a sprint.
+      title: "Find Items",
+      description: `Unified item search across all PBIs.
 
-        Completion timestamps are sourced from the GitHub audit log (org accounts) or
-        inferred from issue close events (user accounts). When falling back to the
-        issue-close proxy a "warning" field is included in the response.
+        Search by scope, keys, text, type, status, priority, epic, labels, assignee,
+        or sprint. Optionally include the full dependency graph.
 
         Args:
-          sprint  "current" | "next" | "<sprint-name>" — defaults to "current"
+          scope  "backlog" | "sprint" | "all" — default: "all"
+          keys   string[] — numeric issue keys to fetch directly, e.g. ["42", "123"]
+          search string — case-insensitive substring match on title + body
+          types  string[] — filter by item type canonical keys (e.g. ["feature", "bug"])
+          statuses string[] — filter by status display names (e.g. ["In Progress"])
+          priority string — filter by priority display name (e.g. "Must")
+          epic_id string — filter by epic/milestone ID
+          labels string[] — require ALL of these labels
+          assignee string — filter by GitHub login
+          estimated boolean — true = estimated only; false = unestimated only
+          sprint_ref "current" | "next" | "<name>" — filter by sprint
+          include_dependencies boolean (default false) — include dependency_map
+          limit number (default 50)
 
-        Returns: sprint date range, per-day remaining-points series, and completion events.`,
-      inputSchema: GetBurndownSchema.shape,
+        Returns: {
+          items: ItemListing[],
+          scope_summary: { total_count, limit, scope, filters_applied },
+          dependency_map?: DependencyMap  — only if include_dependencies=true
+        }`,
+      inputSchema: FindItemsSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -277,15 +143,9 @@ export const registerScrumReadTools = (
         openWorldHint: true,
       },
     },
-    async (params: z.infer<typeof GetBurndownSchema>) => {
+    async (params: z.infer<typeof FindItemsSchema>) => {
       try {
-        const { sprint } = params;
-        if (sprint === "all") {
-          throw new Error(
-            '"all" is not valid for scrum_get_burndown — use "current", "next", null, or an explicit sprint name.',
-          );
-        }
-        const result = await getBurndownUseCase(backend, scrumConfig, { sprint });
+        const result = await findItemsUseCase(backend, params);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
         return {
@@ -296,27 +156,29 @@ export const registerScrumReadTools = (
     },
   );
 
-  // ── scrum_get_template ─────────────────────────────────────────────────────
+  // ── scrum_get_analytics ────────────────────────────────────────────────────
 
   server.registerTool(
-    "scrum_get_template",
+    "scrum_get_analytics",
     {
-      title: "Get Ceremony Template",
-      description: `Fetch a Scrum ceremony artifact template by type.
-
-        Returns a markdown template pre-populated with sprint context. Fill in the
-        blank sections before presenting to the team.
+      title: "Get Sprint Analytics",
+      description: `Unified sprint analytics — burndown + velocity history.
 
         Args:
-          artifact_type  one of:
-            "sprint_review"   — demo and stakeholder feedback template
-            "retrospective"   — what went well / delta / actions template
-            "standup"         — daily sync format
-            "sprint_planning" — capacity and commitment planning template
-            "refinement"      — backlog grooming and estimation template
+          view   "burndown" | "history" | "both" — default: "both"
+                 "burndown" = burndown chart data for the target sprint
+                 "history" = completed sprint velocity snapshots
+                 "both" = burndown + history
+          sprint_ref "current" | "next" | "<name>" — target sprint for burndown
+                     defaults to "current"
+          history_window number 1-10, default 5 — how many completed sprints
 
-        Returns: markdown string — pre-populated ceremony template.`,
-      inputSchema: GetTemplateSchema.shape,
+        Returns: {
+          burndown: BurndownResponse | null,
+          history: SprintSnapshot[] | null,
+          window: number
+        }`,
+      inputSchema: GetAnalyticsSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -324,9 +186,13 @@ export const registerScrumReadTools = (
         openWorldHint: true,
       },
     },
-    async (params: z.infer<typeof GetTemplateSchema>) => {
+    async (params: z.infer<typeof GetAnalyticsSchema>) => {
       try {
-        const result = await getTemplateUseCase(fileReader, scrumConfig, params.artifact_type);
+        const result = await getAnalyticsUseCase(backend, {
+          view: params.view ?? "both",
+          sprint_ref: params.sprint_ref,
+          history_window: params.history_window,
+        });
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err: unknown) {
         return {
@@ -334,6 +200,248 @@ export const registerScrumReadTools = (
           isError: true,
         };
       }
+    },
+  );
+
+  // ── scrum_get_board_health ─────────────────────────────────────────────────
+
+  server.registerTool(
+    "scrum_get_board_health",
+    {
+      title: "Get Board Health",
+      description: `Board health dashboard — aggregate metrics without item lists.
+
+        Returns readiness breakdown (by PBI type with overall %), sprint risk counts
+        (unestimated/blocked/no-assignee), impediment counts (orphan + open), and
+        ungroomed count. No individual story data — use scrum_find_items
+        for item-level queries.
+
+        Args:
+          sprint_scope string — "current" | "next" | "<name>" — which sprint to assess
+                        defaults to "current"
+
+        Returns: {
+          readiness: { by_type: Record<ItemType, { ready, not_ready, total }>, overall_pct: number },
+          sprint_risk: { unestimated_count, blocked_count, no_assignee_count } | null,
+          impediments: { orphan_count, open_count },
+          ungroomed_count: number
+        }`,
+      inputSchema: GetBoardHealthSchema.shape,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    async (params: z.infer<typeof GetBoardHealthSchema>) => {
+      try {
+        const result = await getBoardHealthUseCase(backend, params.sprint_scope);
+        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      } catch (err: unknown) {
+        return {
+          content: [{ type: "text", text: enrichError(err) }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // ── Deprecated tools — guidance stubs pointing to replacements ───────────────
+  //
+  // These 5 tools have been replaced by the new unified surface above.
+  // Each returns a descriptive error message telling the agent which replacement
+  // to use, rather than silently disappearing.
+
+  // scrum_get_sprint → scrum_find_items
+  server.registerTool(
+    "scrum_get_sprint",
+    {
+      title: "Get Sprint Board",
+      description: `[DEPRECATED] Replaced by scrum_find_items.
+        Use scrum_find_items({ scope: "sprint", sprint_ref: "<name>" }) instead.
+        Valid sprint names are returned by scrum_orient in platform_state.iterations.`,
+      inputSchema: z.object({
+        _: z.string().optional().describe("This tool is deprecated."),
+      }).shape,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    () => {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify(
+            {
+              error: true,
+              message: `scrum_get_sprint has been replaced by scrum_find_items.`,
+              replacement:
+                `Call scrum_find_items with { scope: "sprint", sprint_ref: "<name>" } instead.`,
+              see: `scrum_orient returns valid sprint names in platform_state.iterations.`,
+            },
+            null,
+            2,
+          ),
+        }],
+        isError: true,
+      };
+    },
+  );
+
+  // scrum_get_backlog → scrum_find_items + scrum_get_board_health
+  server.registerTool(
+    "scrum_get_backlog",
+    {
+      title: "Get Product Backlog",
+      description: `[DEPRECATED] Replaced by scrum_find_items and scrum_get_board_health.
+        Use scrum_find_items({ scope: "backlog" }) for item lists.
+        Use scrum_get_board_health() for aggregate health metrics.`,
+      inputSchema: z.object({
+        _: z.string().optional().describe("This tool is deprecated."),
+      }).shape,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    () => {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify(
+            {
+              error: true,
+              message: `scrum_get_backlog has been replaced.`,
+              replacements: [
+                `scrum_find_items({ scope: "backlog", search: "...", limit: 50 }) — for item lists`,
+                `scrum_get_board_health() — for aggregate health metrics`,
+              ],
+            },
+            null,
+            2,
+          ),
+        }],
+        isError: true,
+      };
+    },
+  );
+
+  // scrum_get_history → scrum_get_analytics
+  server.registerTool(
+    "scrum_get_history",
+    {
+      title: "Get Sprint History",
+      description: `[DEPRECATED] Replaced by scrum_get_analytics.
+        Use scrum_get_analytics({ view: "history", history_window: 5 }) instead.`,
+      inputSchema: z.object({
+        _: z.string().optional().describe("This tool is deprecated."),
+      }).shape,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    () => {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify(
+            {
+              error: true,
+              message: `scrum_get_history has been replaced by scrum_get_analytics.`,
+              replacement:
+                `Call scrum_get_analytics({ view: "history", history_window: 5 }) instead.`,
+            },
+            null,
+            2,
+          ),
+        }],
+        isError: true,
+      };
+    },
+  );
+
+  // scrum_get_burndown → scrum_get_analytics
+  server.registerTool(
+    "scrum_get_burndown",
+    {
+      title: "Get Sprint Burndown",
+      description: `[DEPRECATED] Replaced by scrum_get_analytics.
+        Use scrum_get_analytics({ view: "burndown", sprint_ref: "current" }) instead.`,
+      inputSchema: z.object({
+        _: z.string().optional().describe("This tool is deprecated."),
+      }).shape,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    () => {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify(
+            {
+              error: true,
+              message: `scrum_get_burndown has been replaced by scrum_get_analytics.`,
+              replacement:
+                `Call scrum_get_analytics({ view: "burndown", sprint_ref: "current" }) instead.`,
+            },
+            null,
+            2,
+          ),
+        }],
+        isError: true,
+      };
+    },
+  );
+
+  // scrum_get_template → scrum://template/{type} resource
+  server.registerTool(
+    "scrum_get_template",
+    {
+      title: "Get Ceremony Template",
+      description: `[DEPRECATED] Templates are now MCP resources.
+        Template URIs are listed in scrum_orient under platform_state.template_uris.
+        Use the resource URI scrum://template/{type} to read templates directly.`,
+      inputSchema: z.object({
+        _: z.string().optional().describe("This tool is deprecated."),
+      }).shape,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    () => {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify(
+            {
+              error: true,
+              message: `scrum_get_template has been replaced by MCP resources.`,
+              replacement:
+                `Template URIs are available in scrum_orient under vocabulary.templates.`,
+              see: `scrum_orient returns template URIs for all PBI types.`,
+            },
+            null,
+            2,
+          ),
+        }],
+        isError: true,
+      };
     },
   );
 };

@@ -2,6 +2,8 @@
 // src/adapters/github/mappers.ts — GitHub raw types → domain types mappers
 //
 // Pure functions: take ProjectItem (or narrow input shapes) and return domain types.
+// Local input shapes are grounded in github-types.ts via Pick so field renames
+// in the generated schema break at compile time rather than silently desyncing.
 // =============================================================================
 
 import type { RuntimeConfig } from "./config-loader.ts";
@@ -9,33 +11,43 @@ import type {
   DependencyEntry,
   DraftStory,
   IssueStory,
+  ItemType,
   IterationEntry,
   Story,
 } from "../../domain/types.ts";
 import type { BurndownStoryInput, SprintInfo } from "../../scrum/ports.ts";
-// classifyLabels / StoryTypeLabel removed — type is now read from the Type board field,
-// not from repo labels. See extractBoardFields → typeFieldId branch below.
-import type { BoardFields, Comment, FieldValueNode, LinkedPr, ProjectItem } from "./types.ts";
+import type {
+  AssigneeNodes,
+  BoardFields,
+  CommentProjection,
+  FieldValueNode,
+  IssueRefNode,
+  LabelNameOnly,
+  LinkedPr,
+  MilestoneRefNode,
+  ProjectItem,
+  TimelinePrSource,
+  UserLogin,
+} from "./types.ts";
+import type { StoryComment } from "../../domain/types.ts";
 
 // ── Local input shapes (private — only for function parameter types) ───────────
 
-/** Comment node shape returned by GetIssueDetails timeline query. */
-interface CommentInput {
-  author?: { login: string } | null;
-  body: string;
-  createdAt: string;
-  url: string;
+/**
+ * Query projection of GH.IssueComment for buildCommentList.
+ * Grounded in GH types so field renames in the generated schema break at compile time.
+ */
+interface CommentInput extends CommentProjection {
+  author?: UserLogin | null;
 }
 
-/** CrossReferencedEvent node shape returned by GetIssueDetails timeline query. */
+/**
+ * Query projection of CrossReferencedEvent.source for buildLinkedPrList.
+ * The source field is GH.PullRequest (ReferencedSubject = Issue | PullRequest —
+ * in practice only PullRequests appear as linked artifacts).
+ */
 interface TimelineItemInput {
-  source?: {
-    number?: number | null;
-    title?: string | null;
-    url?: string | null;
-    state?: string | null;
-    isDraft?: boolean | null;
-  } | null;
+  source?: TimelinePrSource | null;
 }
 
 // ── Dependency mapping ─────────────────────────────────────────────────────────
@@ -45,11 +57,9 @@ interface TimelineItemInput {
  * Used by buildStoryFromRaw (project items) and buildEnrichedStory (detail query).
  */
 const mapIssueDependencies = (
-  issueContent: {
-    blockedBy?: { nodes: Array<{ id: string; number: number; title: string }> };
-  },
+  issueContent: { blockedBy?: { nodes: IssueRefNode[] } },
 ): DependencyEntry[] => {
-  const toEntry = (n: { id: string; number: number; title: string }): DependencyEntry => ({
+  const toEntry = (n: IssueRefNode): DependencyEntry => ({
     key: String(n.number),
     title: n.title,
     ref: { id: n.id }, // issue node ID — resolveDependencyRefs() maps to project item IDs
@@ -62,20 +72,25 @@ const mapIssueDependencies = (
 /**
  * Shape of the issue node returned by GetIssueDetails, cast to this interface
  * in backend.ts before passing to buildEnrichedStory.
+ *
+ * Flat scalar fields are grounded in GH.Issue via Pick so that field renames in
+ * the generated schema break at compile time. Nested connection shapes
+ * (assignees, labels, milestone, comments, timelineItems) are query-projection
+ * shapes narrower than the full schema connection types.
  */
 export interface IssueDetailsInput {
   id: string;
   number: number;
+  createdAt: string;
+  updatedAt: string;
   title: string | null;
   body: string | null;
   url: string | null;
-  createdAt: string;
-  updatedAt: string;
-  assignees?: { nodes: Array<{ login: string }> };
-  labels?: { nodes: Array<{ name: string }> };
-  milestone?: { id: string; title: string } | null;
-  blockedBy?: { nodes: Array<{ id: string; number: number; title: string }> };
-  blocking?: { nodes: Array<{ id: string; number: number; title: string }> };
+  assignees?: AssigneeNodes;
+  labels?: { nodes: Array<LabelNameOnly> };
+  milestone?: MilestoneRefNode | null;
+  blockedBy?: { nodes: IssueRefNode[] };
+  blocking?: { nodes: IssueRefNode[] };
   comments?: { nodes: CommentInput[] };
   timelineItems?: { nodes: TimelineItemInput[] };
 }
@@ -91,7 +106,7 @@ const extractBoardFields = (
   let sprint: string | null = null;
   let story_points: number | null = null;
   let priority: string | null = null;
-  let type: string | null = null;
+  let type: ItemType | null = null;
 
   for (const fv of nodes) {
     const id = fv.field?.id;
@@ -113,7 +128,7 @@ const extractBoardFields = (
     ) {
       priority = fv.name;
     } else if (fields.typeFieldId && id === fields.typeFieldId && fv.name) {
-      type = fv.name;
+      type = fv.name as ItemType;
     }
   }
 
@@ -171,7 +186,7 @@ export const buildStoryFromRaw = (
   if (!content.labels || !content.assignees) return null;
   // Type comes from the Type board field — not from labels.
   // All repo labels are passed through unfiltered.
-  const labels = content.labels.nodes.map((l) => l.name);
+  const labels: string[] = content.labels.nodes.map((l: { name: string }) => l.name);
   const epic = content.__typename === "Issue" && content.milestone
     ? { ref: { id: content.milestone.id }, name: content.milestone.title }
     : null;
@@ -215,7 +230,7 @@ export const buildEnrichedStory = (
   const boardFields = extractBoardFields(fieldValueNodes, config.fields);
   // Type comes from the Type board field — not from labels.
   // All repo labels are passed through unfiltered.
-  const labels = issueNode.labels?.nodes.map((l) => l.name) ?? [];
+  const labels: string[] = issueNode.labels?.nodes.map((l: { name: string }) => l.name) ?? [];
 
   // Dependencies come from native Issue.blockedBy GraphQL field
   return {
@@ -246,7 +261,7 @@ export const buildEnrichedStory = (
 /**
  * Build a comment list from GraphQL comment nodes.
  */
-export const buildCommentList = (nodes: CommentInput[]): Comment[] =>
+export const buildCommentList = (nodes: CommentInput[]): StoryComment[] =>
   nodes.map((c) => ({
     author: c.author?.login ?? "(ghost)",
     body: c.body,
@@ -282,6 +297,7 @@ export const toSprintInfo = (iter: IterationEntry | null): SprintInfo | null => 
   const endDate = new Date(iter.startDate);
   endDate.setDate(endDate.getDate() + iter.duration);
   return {
+    id: iter.id,
     name: iter.title,
     startDate: iter.startDate,
     durationDays: iter.duration,
@@ -316,15 +332,17 @@ export const resolveDependencyRefs = (
     }
   }
 
-  const resolve = (entries: DependencyEntry[]): DependencyEntry[] =>
+  const resolve = (entries: readonly DependencyEntry[]): DependencyEntry[] =>
     entries.map((e) => {
-      // First try: issue node ID → project item ID (from native API mapping)
-      if (e.ref.id !== null && issueIdToItemId.has(e.ref.id)) {
-        return { ...e, ref: { id: issueIdToItemId.get(e.ref.id)! } };
+      // Try issue node ID → project item ID (from native API mapping)
+      const idFromIssue = issueIdToItemId.get(e.ref.id);
+      if (idFromIssue) {
+        return { ...e, ref: { id: idFromIssue } };
       }
       // Fallback: issue number string → project item ID (legacy path)
-      if (e.ref.id === null && keyToId.has(e.key)) {
-        return { ...e, ref: { id: keyToId.get(e.key)! } };
+      const idFromKey = keyToId.get(e.key);
+      if (idFromKey) {
+        return { ...e, ref: { id: idFromKey } };
       }
       return e;
     });

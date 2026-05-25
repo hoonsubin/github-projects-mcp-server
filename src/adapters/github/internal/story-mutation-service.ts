@@ -33,8 +33,8 @@ import type { SprintRef, StoryRef } from "../../../domain/types.ts";
 const applyDependencyMutations = async (
   gh: GitHubClient,
   issueId: string,
-  blockedBy: StoryRef[] | null | undefined,
-  resolveRefsToIssueIds: (refs: StoryRef[]) => Promise<string[]>,
+  blockedBy: readonly StoryRef[] | null | undefined,
+  resolveRefsToIssueIds: (refs: readonly StoryRef[]) => Promise<string[]>,
 ): Promise<void> => {
   if (blockedBy === undefined) return;
 
@@ -226,7 +226,7 @@ export class StoryMutationService {
         this.gh,
         issueId,
         updates.blocked_by,
-        async (refs: StoryRef[]) => {
+        async (refs: readonly StoryRef[]) => {
           const results = await Promise.all(refs.map((r) => resolveStory(r, this.gh)));
           return results.map((r) => {
             if (!r.issueId) {

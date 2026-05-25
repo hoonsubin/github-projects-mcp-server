@@ -17,16 +17,27 @@ import { toSprintName } from "../domain/types.ts";
 
 // Accepted as input by any tool that references a story.
 // Every read tool returns Story.ref.id — pass that value here.
-const StoryRefSchema = z.object({
-  id: z
-    .string()
-    .describe(
-      "Opaque project-item handle returned by any read tool (scrum_get_sprint, " +
-        "scrum_get_backlog, scrum_get_story, scrum_create_story, etc.). " +
-        "Always present in Story.ref.id. Use scrum_get_sprint or scrum_get_backlog " +
-        "first if you do not yet have the id for the story you want to act on.",
-    ),
-});
+const StoryRefSchema: z.ZodType<{ id: string } | { number: number }> = z.union([
+  z.object({
+    id: z
+      .string()
+      .describe(
+        "Opaque project-item handle returned by any read tool (scrum_get_sprint, " +
+          "scrum_get_backlog, scrum_get_story, scrum_create_story, etc.). " +
+          "Always present in Story.ref.id. Use scrum_get_sprint or scrum_get_backlog " +
+          "first if you do not yet have the id for the story you want to act on.",
+      ),
+  }),
+  z.object({
+    number: z
+      .number()
+      .describe(
+        "Human-readable issue number (e.g. 42). " +
+          "The backend resolves this to an opaque project-item handle. " +
+          "Use when you know the issue number but do not yet have its 'id'.",
+      ),
+  }),
+]);
 
 // Accepted as input by any tool that references an epic (Milestone).
 // Derived from the domain EpicRef type to maintain a single source of truth.
@@ -92,62 +103,6 @@ const StoryTypeSchema = z
 
 // scrum_orient — no arguments; uses z.object({_:...}).shape inline in the handler
 
-// scrum_get_sprint — optional sprint ref, defaults to "current" in the handler
-export const GetSprintSchema = z
-  .object({
-    sprint: SprintRefSchema.optional().describe(
-      'Which sprint to fetch. Defaults to "current" if omitted. ' +
-        'Pass "all" to receive every sprint as an array of snapshots.',
-    ),
-    limit: z
-      .number()
-      .int()
-      .positive()
-      .default(50)
-      .describe(
-        'Maximum number of sprints to return when sprint="all". ' +
-          "Ignored for single-sprint requests. Defaults to 50.",
-      ),
-  })
-  .strict();
-
-// scrum_get_backlog — all filters are optional; client-side filtering in handler
-export const GetBacklogSchema = z
-  .object({
-    search: z
-      .string()
-      .optional()
-      .describe(
-        "Case-insensitive substring matched against story title and body. " +
-          "Results are filtered before applying limit.",
-      ),
-    labels: z
-      .array(z.string())
-      .optional()
-      .describe("Return only stories carrying ALL of these labels (intersection, not union)."),
-    priority: z
-      .string()
-      .optional()
-      .describe(
-        'Return only stories with this exact priority display name (e.g. "Must"). ' +
-          "Use scrum_orient to see valid priority values.",
-      ),
-    epic: z
-      .string()
-      .optional()
-      .describe("Return only stories belonging to this Milestone title (exact match)."),
-    limit: z
-      .number()
-      .int()
-      .positive()
-      .default(50)
-      .describe(
-        "Maximum number of stories to return. Defaults to 50. " +
-          "Applied after active-item filter and user-supplied filters.",
-      ),
-  })
-  .strict();
-
 // scrum_get_story — single story by ref
 export const GetStorySchema = z
   .object({
@@ -158,25 +113,107 @@ export const GetStorySchema = z
   })
   .strict();
 
-// scrum_get_history — how many completed sprints to look back
-export const GetHistorySchema = z
+// ── New tool schemas (for P6 handlers) ────────────────────────────────────────
+
+// scrum_find_items — unified item search across all PBIs
+export const FindItemsSchema = z
   .object({
-    window: z
+    scope: z
+      .enum(["backlog", "sprint", "all"])
+      .optional()
+      .default("all")
+      .describe('Scope to search. Defaults to "all".'),
+    keys: z
+      .array(z.string().regex(/^\d+$/, "Must be a numeric string"))
+      .optional()
+      .describe('Numeric issue keys to fetch directly, e.g. ["42", "123"].'),
+    search: z
+      .string()
+      .optional()
+      .describe("Case-insensitive substring match against story title and body."),
+    types: z
+      .array(z.string())
+      .optional()
+      .describe('Filter by item type canonical keys (e.g. ["feature", "bug"]).'),
+    statuses: z
+      .array(z.string())
+      .optional()
+      .describe('Filter by status display names (e.g. ["In Progress", "Done"]).'),
+    priority: z
+      .string()
+      .optional()
+      .describe('Filter by priority display name, e.g. "Must".'),
+    epic_id: z
+      .string()
+      .optional()
+      .describe("Filter by epic/milestone ID."),
+    labels: z
+      .array(z.string())
+      .optional()
+      .describe("Return only stories carrying ALL of these labels."),
+    assignee: z
+      .string()
+      .optional()
+      .describe("Filter by assignee GitHub login."),
+    estimated: z
+      .boolean()
+      .optional()
+      .describe("true = only estimated; false = only unestimated; omit = all."),
+    sprint_ref: SprintRefSchema.optional().describe(
+      'Filter by sprint. Pass "current", "next", or an explicit sprint name.',
+    ),
+    include_dependencies: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe("Resolve and include the full dependency graph in the response."),
+    limit: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .default(50)
+      .describe("Maximum number of items to return."),
+  })
+  .strict();
+
+// scrum_get_analytics — unified sprint analytics (burndown + history)
+export const GetAnalyticsSchema = z
+  .object({
+    view: z
+      .enum(["burndown", "history", "both"])
+      .optional()
+      .default("both")
+      .describe(
+        'Which analytics view to return. "burndown" = burndown chart data; ' +
+          '"history" = completed sprint history; ' +
+          '"both" = burndown + history (default).',
+      ),
+    sprint_ref: SprintRefSchema.optional().describe(
+      'Target sprint for burndown. Defaults to "current" if omitted.',
+    ),
+    history_window: z
       .number()
       .int()
       .min(1)
       .max(10)
+      .optional()
       .default(5)
-      .describe("Number of completed sprints to include (1–10). Defaults to 5."),
+      .describe("Number of completed sprints to include in history (1–10, default 5)."),
   })
   .strict();
 
-// scrum_get_burndown — optional sprint ref, defaults to "current" in the handler
-export const GetBurndownSchema = z
+// scrum_get_board_health — board health dashboard (no item lists)
+export const GetBoardHealthSchema = z
   .object({
-    sprint: SprintRefSchema.optional().describe(
-      'Sprint to chart. Defaults to "current" if omitted.',
-    ),
+    sprint_scope: z
+      .string()
+      .optional()
+      .default("current")
+      .describe(
+        'Which sprint to assess. "current" = active sprint; "next" = upcoming; ' +
+          'or an explicit sprint name (e.g. "Sprint 5"). Defaults to "current".',
+      ),
   })
   .strict();
 
@@ -410,24 +447,6 @@ export const AddVocabularySchema = z
       .describe(
         'Display name of the option or label to add (e.g. "Blocked", "Critical", "tech_debt"). ' +
           "Safe to call if the value already exists — operation is idempotent.",
-      ),
-  })
-  .strict();
-
-// scrum_get_template — fetch a ceremony artifact template by type
-export const GetTemplateSchema = z
-  .object({
-    artifact_type: z
-      .enum([
-        "sprint_review",
-        "retrospective",
-        "standup",
-        "sprint_planning",
-        "refinement",
-      ])
-      .describe(
-        'Ceremony template to fetch: "sprint_review", "retrospective", "standup", ' +
-          '"sprint_planning", or "refinement".',
       ),
   })
   .strict();
