@@ -9,6 +9,13 @@
 //
 // This file imports no adapter internals — backend construction is delegated to
 // src/adapters/factory.ts, which selects the correct AdapterFactory by platform key.
+//
+// Error handling strategy:
+//   - All logging goes to stderr (never stdout — MCP protocol).
+//   - Unhandled rejections are logged to stderr only.
+//   - stdio transport wraps the entire lifecycle in a try/catch that emits
+//     a valid JSON-RPC error response on stdout so the MCP client receives
+//     protocol-compliant error instead of raw stack traces.
 // =============================================================================
 
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -27,12 +34,29 @@ import { registerScrumWriteTools } from "./tools/scrum-write.ts";
 import { templateResourceUseCase } from "./scrum/template-resource.ts";
 import { type AdapterFactory, createBackend } from "./adapters/factory.ts";
 import { GitHubAdapterFactory } from "./adapters/github/factory.ts";
+import { AdapterError } from "./domain/errors.ts";
 import { log } from "./services/logger.ts";
 import type { Socket } from "node:net";
 import { parseArgs } from "@std/cli/parse-args";
 import { resolve as resolvePath } from "@std/path";
 import { SCRUM_READ_TOOL_NAMES } from "./tools/scrum-read.ts";
 import { SCRUM_WRITE_TOOL_NAMES } from "./tools/scrum-write.ts";
+
+// ── Process-level crash guard ────────────────────────────────────────────────
+//
+// Registered BEFORE any module-level code runs that could throw.
+// Ensures unhandled rejections write only to stderr, never to stdout.
+// In stdio mode, a raw stack trace on stdout breaks the MCP wire protocol
+// and produces the confusing "is not valid JSON" error the client sees.
+
+addEventListener("unhandledrejection", (event: Event) => {
+  const reason = (event as PromiseRejectionEvent).reason;
+  log.error("Unhandled rejection — this is a bug.", {
+    error: reason instanceof Error ? reason.message : String(reason),
+    stack: reason instanceof Error ? reason.stack : undefined,
+  });
+  event.preventDefault();
+});
 
 // ── CLI argument parsing ─────────────────────────────────────────────────────
 
@@ -43,7 +67,8 @@ const _cliArgs = parseArgs(Deno.args, {
 });
 
 if (_cliArgs.help) {
-  console.log(`
+  // Use console.error so help text never contaminates the MCP stdio stream.
+  console.error(`
 github-projects-mcp-server
 
 Usage:
@@ -232,9 +257,14 @@ const createMcpServer = async (
   try {
     backendResult = await createBackend(factories, { configPath, projectRoot });
   } catch (err) {
-    const hint = configPath
-      ? `Config not found or invalid at: ${configPath}`
-      : `Config not found at default path: .github/scrum/config.yml`;
+    let hint: string;
+    if (err instanceof AdapterError && err.code === "AUTH_FAILED") {
+      hint = `Backend authentication failed — check that the platform token (e.g. GITHUB_TOKEN) is set and valid.`;
+    } else if (configPath) {
+      hint = `Config not found or invalid at: ${configPath}`;
+    } else {
+      hint = `Config not found at default path: .github/scrum/config.yml`;
+    }
     const errorMessage = `${hint}\n` +
       `Pass --config <path> and --root <project-dir> when starting the server.\n` +
       `Original error: ${err instanceof Error ? err.message : String(err)}`;
@@ -275,16 +305,49 @@ const createMcpServer = async (
 };
 
 // ── Stdio transport ──────────────────────────────────────────────────────────
+//
+// Wraps the entire lifecycle in try/catch. If createMcpServer or server.connect
+// throws — due to a module init failure, config crash, or transport error —
+// a valid JSON-RPC error response is emitted on stdout so the MCP client
+// receives protocol-compliant output instead of a raw stack trace.
+
+/**
+ * Emit a valid JSON-RPC 2.0 error response on stdout.
+ * Used as a last-resort fallback when the server cannot even complete
+ * initialization. Without this, the MCP client sees raw error text on stdout
+ * and reports "is not valid JSON".
+ */
+const emitJsonRpcError = (message: string): void => {
+  const response = JSON.stringify({
+    jsonrpc: "2.0",
+    id: null,
+    error: {
+      code: -32000,
+      message: `Server initialization failed: ${message}`,
+    },
+  });
+  // Write directly to stdout — this is the only place in the codebase that
+  // does so, and only as a catastrophic-fallback.
+  const encoder = new TextEncoder();
+  Deno.stdout.writeSync(encoder.encode(response + "\n"));
+};
 
 const runStdio = async (
   configPath?: string,
   projectRoot?: string,
 ): Promise<void> => {
-  const server = await createMcpServer(configPath, projectRoot);
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  if (Deno.env.get("TRACE")) wrapTransportLogging(transport, "stdio");
-  log.info("github-projects-mcp-server running on stdio");
+  try {
+    const server = await createMcpServer(configPath, projectRoot);
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    if (Deno.env.get("TRACE")) wrapTransportLogging(transport, "stdio");
+    log.info("github-projects-mcp-server running on stdio");
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    log.error("Stdio server failed to start.", { error: message });
+    emitJsonRpcError(message);
+    Deno.exit(1);
+  }
 };
 
 // ── Streamable HTTP transport ────────────────────────────────────────────────
