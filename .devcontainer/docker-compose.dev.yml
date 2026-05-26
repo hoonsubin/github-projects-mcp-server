@@ -9,10 +9,9 @@ services:
       - workspace-cache:/home/vscode
     working_dir: /workspace
     command: sleep infinity
+    env_file:
+      - ../.env
     environment:
-      MCP_TRANSPORT: "${MCP_TRANSPORT:-stdio}"
-      GITHUB_TOKEN: "${GITHUB_TOKEN}"
-      PORT: "${PORT:-3000}"
       DEBUG: "${DEBUG:-0}"
       QDRANT_URL: "http://qdrant:6333"
     extra_hosts:
