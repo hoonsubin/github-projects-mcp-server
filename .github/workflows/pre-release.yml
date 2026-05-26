@@ -3,8 +3,10 @@ name: Pre-release
 # Fires on every push to main (i.e. every merged PR).
 # Produces two releases for each merge:
 #
-#   1. Commit-pinned pre-release  — tag: v0.0.0-pre.<sha7>
-#      Permanent record; useful for bisecting regressions across merges.
+#   1. Commit-pinned pre-release  — tag: v<latest-release>-pre.<sha7>
+#      e.g. v1.2.3-pre.abc1234.  Permanent record; useful for bisecting
+#      regressions across merges.  Base version tracks the latest full
+#      release tag (vX.Y.Z); falls back to 0.0.0 if none exists yet.
 #
 #   2. Rolling "edge" release     — tag: edge  (force-updated each run)
 #      Always points to the latest commit on main.  Consumers who always
@@ -35,17 +37,23 @@ jobs:
         with:
           deno-version: v2.x
 
-      # Derive both the human-readable version string and the release tag from
-      # the first 7 characters of the triggering commit SHA.
-      #   value  →  0.0.0-pre.abc1234   (written into binaries)
-      #   tag    →  v0.0.0-pre.abc1234  (GitHub release tag)
+      # Find the latest full-release tag (vX.Y.Z, no pre-release suffix) and use
+      # it as the base version.  Falls back to 0.0.0 if no release tag exists yet.
+      #   base   →  1.2.3               (latest release tag, "v" stripped)
+      #   value  →  1.2.3-pre.abc1234   (written into binaries)
+      #   tag    →  v1.2.3-pre.abc1234  (GitHub release tag)
       - name: Derive version
         id: version
         run: |
           SHORT_SHA="${GITHUB_SHA::7}"
-          echo "short_sha=${SHORT_SHA}"          >> "$GITHUB_OUTPUT"
-          echo "value=0.0.0-pre.${SHORT_SHA}"    >> "$GITHUB_OUTPUT"
-          echo "tag=v0.0.0-pre.${SHORT_SHA}"     >> "$GITHUB_OUTPUT"
+          BASE=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' \
+                   | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+                   | sort -V | tail -1)
+          BASE="${BASE#v}"          # strip leading "v"
+          BASE="${BASE:-0.0.0}"     # fallback if no release tag exists yet
+          echo "short_sha=${SHORT_SHA}"                >> "$GITHUB_OUTPUT"
+          echo "value=${BASE}-pre.${SHORT_SHA}"        >> "$GITHUB_OUTPUT"
+          echo "tag=v${BASE}-pre.${SHORT_SHA}"         >> "$GITHUB_OUTPUT"
 
       # Bake the version string directly into source before compiling so the
       # binary reports the correct version at runtime without needing env vars.
@@ -66,7 +74,10 @@ jobs:
       # ── Commit-pinned pre-release ──────────────────────────────────────────
       # gh release create also creates the git tag on the current commit if it
       # does not already exist, so no separate "git tag" step is needed here.
+      # Skipped under act: act injects ACT=true and has no gh CLI; publish steps
+      # interact with the real GitHub API and must only run on GitHub's runners.
       - name: Publish commit-pinned pre-release
+        if: ${{ !env.ACT }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -86,6 +97,7 @@ jobs:
       # Delete the previous edge release and tag before recreating so the
       # assets are always the binaries from the latest commit on main.
       - name: Delete previous edge release & tag (if any)
+        if: ${{ !env.ACT }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -93,6 +105,7 @@ jobs:
           git push origin :refs/tags/edge          2>/dev/null || true
 
       - name: Publish rolling edge release
+        if: ${{ !env.ACT }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -122,83 +135,17 @@ jobs:
       #   2. Per calendar month     → keep the  7 most recent builds
       #   3. Hard cap               → keep at most 50 total
       #
-      # The "edge" release is excluded because its tag does not match the
-      # v0.0.0-pre.* pattern.  --cleanup-tag removes both the release and its
-      # git tag in a single call.  continue-on-error ensures a pruning hiccup
-      # never fails the overall publish run.
+      # Under act: --mock generates 80 synthetic releases so the algorithm can
+      # be verified without credentials or a real repo.  --dry-run ensures
+      # nothing is deleted.  On GitHub runners both flags are omitted and the
+      # script calls gh against the real repo.
       - name: Prune old pre-releases
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          python3 - <<'EOF'
-          import json, subprocess, sys
-          from datetime import datetime, timezone
-          from collections import defaultdict
-
-          WEEK_KEEP  = 12
-          MONTH_KEEP =  7
-          TOTAL_CAP  = 50
-
-          # ── fetch ──────────────────────────────────────────────────────────
-          raw = subprocess.run(
-              ["gh", "release", "list", "--limit", "200",
-               "--json", "tagName,createdAt,isPrerelease"],
-              capture_output=True, text=True, check=True,
-          ).stdout
-          all_releases = json.loads(raw)
-
-          # Only commit-pinned pre-releases; excludes "edge" and semver tags.
-          pre = [
-              r for r in all_releases
-              if r["isPrerelease"] and r["tagName"].startswith("v0.0.0-pre.")
-          ]
-
-          # Newest first — all bucket slices below preserve this order.
-          pre.sort(key=lambda r: r["createdAt"], reverse=True)
-
-          to_delete: set[str] = set()
-
-          def prune_buckets(releases, key_fn, keep):
-              """Mark tags beyond `keep` in each bucket for deletion."""
-              buckets: dict[str, list[str]] = defaultdict(list)
-              for r in releases:
-                  dt = datetime.fromisoformat(r["createdAt"].replace("Z", "+00:00"))
-                  buckets[key_fn(dt)].append(r["tagName"])
-              for tags in buckets.values():
-                  if len(tags) > keep:
-                      to_delete.update(tags[keep:])  # oldest end of newest-first list
-
-          # Pass 1 — weekly (ISO 8601 week: %G-W%V handles year-boundary correctly)
-          prune_buckets(pre, lambda dt: dt.strftime("%G-W%V"), WEEK_KEEP)
-
-          # Pass 2 — monthly (survivors from pass 1 only)
-          survivors = [r for r in pre if r["tagName"] not in to_delete]
-          prune_buckets(survivors, lambda dt: dt.strftime("%Y-%m"), MONTH_KEEP)
-
-          # Pass 3 — hard cap (survivors from passes 1+2)
-          survivors = [r for r in pre if r["tagName"] not in to_delete]
-          if len(survivors) > TOTAL_CAP:
-              to_delete.update(r["tagName"] for r in survivors[TOTAL_CAP:])
-
-          # ── report ─────────────────────────────────────────────────────────
-          print(f"Pre-releases found: {len(pre)} | marked for deletion: {len(to_delete)}", file=sys.stderr)
-
-          if not to_delete:
-              print("Nothing to prune.", file=sys.stderr)
-              sys.exit(0)
-
-          # ── delete ─────────────────────────────────────────────────────────
-          errors = 0
-          for tag in sorted(to_delete):
-              print(f"  deleting {tag}", file=sys.stderr)
-              result = subprocess.run(
-                  ["gh", "release", "delete", tag, "--yes", "--cleanup-tag"],
-              )
-              if result.returncode != 0:
-                  print(f"  WARNING: failed to delete {tag}", file=sys.stderr)
-                  errors += 1
-
-          print(f"Pruning complete — {len(to_delete) - errors} deleted, {errors} failed.", file=sys.stderr)
-          sys.exit(1 if errors else 0)
-          EOF
+          if [[ -n "${ACT}" ]]; then
+            python3 scripts/prune-pre-releases.py --mock --dry-run
+          else
+            python3 scripts/prune-pre-releases.py
+          fi

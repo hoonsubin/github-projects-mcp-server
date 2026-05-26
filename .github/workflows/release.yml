@@ -1,12 +1,15 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v[0-9]+.[0-9]+.[0-9]+" # matches v1.0.0, v2.3.1, etc.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Semantic version to release (e.g. 1.2.3 or v1.2.3)"
+        required: true
+        type: string
 
 permissions:
-  contents: write # required to create releases and upload assets
+  contents: write # required to create tags, releases, and upload assets
 
 jobs:
   release:
@@ -16,16 +19,33 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so the new tag can be pushed
+
+      # Normalise: strip a leading "v" if the user included one, then re-add it
+      # so the tag is always "vX.Y.Z" and the bare version is always "X.Y.Z".
+      - name: Derive version
+        id: version
+        run: |
+          RAW="${{ github.event.inputs.version }}"
+          BARE="${RAW#v}"
+          echo "value=${BARE}"       >> "$GITHUB_OUTPUT"
+          echo "tag=v${BARE}"        >> "$GITHUB_OUTPUT"
+
+      # Create an annotated tag on the current branch ref and push it.
+      - name: Create and push tag
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
 
       - name: Set up Deno
         uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-
-      # Strip the leading "v" from the tag (v1.2.3 → 1.2.3) for the version string.
-      - name: Derive version
-        id: version
-        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
       # Patch the version string directly into source before compiling.
       # The binary reads Deno.env.get("RELEASE_VERSION") at runtime, but end users
@@ -51,11 +71,13 @@ jobs:
       # Create the GitHub Release and upload all dist/ files as assets.
       # --generate-notes pulls PR titles and commit messages since the last tag.
       - name: Publish release
+        if: ${{ !env.ACT }}
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            --title "Release $GITHUB_REF_NAME" \
+          gh release create "$TAG" \
+            --title "Release $TAG" \
             --generate-notes \
             dist/mcp-server-mac-arm64 \
             dist/mcp-server-mac-x64 \
