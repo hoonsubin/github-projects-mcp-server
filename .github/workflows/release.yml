@@ -60,5 +60,6 @@ jobs:
             dist/mcp-server-mac-arm64 \
             dist/mcp-server-mac-x64 \
             dist/mcp-server-linux-x64 \
+            dist/mcp-server-linux-arm64 \
             dist/mcp-server-win.exe \
             dist/checksums.txt
