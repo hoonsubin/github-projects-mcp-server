@@ -10,7 +10,7 @@ Project guidance for all coding agents. Concise by design - linked docs provide 
 - `docs/proj-diagram.md` - Current module dependency diagram.
 - `docs/ARCHITECTURE.MD` - Project architecture
 
-## Architecture
+## High-Level Architecture
 
 Three layers. Inner layers never import outer.
 
