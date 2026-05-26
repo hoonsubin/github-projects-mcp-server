@@ -4,7 +4,8 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CreateStoryInput, ProjectBackend, StoryUpdates } from "../scrum/ports.ts";
 import type { Story, StoryRef } from "../domain/types.ts";
-import type { CommitBackendDisplayConfig, ScrumConfig } from "../domain/config.ts";
+import type { ScrumConfig } from "../domain/config.ts";
+import { resolveP0PriorityDisplay } from "../scrum/config-helpers.ts";
 import {
   AddVocabularySchema,
   CreateStorySchema,
@@ -14,7 +15,7 @@ import {
   UpdateImpedimentSchema,
   UpdateStorySchema,
 } from "../schemas/scrum.ts";
-import { enrichError } from "../services/error-enrichment.ts";
+import { catchBackend } from "../services/error-enrichment.ts";
 import { pickDefined } from "../services/pick-defined.ts";
 import { z } from "zod";
 
@@ -25,16 +26,6 @@ interface PartialFailureResult {
   partialFailure: true;
   failedFields: Array<{ field: string; reason: string }>;
 }
-
-// ── Derived constants ─────────────────────────────────────────────────────────
-
-/** Resolve the p0 (highest-tier) priority display label from config. */
-const resolveP0PriorityDisplay = (scrumConfig: ScrumConfig): string => {
-  const p0Key = scrumConfig.scrum.priority?.[0]?.key ?? "p0";
-  const ghConfig = scrumConfig.backends.github as CommitBackendDisplayConfig;
-  const priorityDisplay = ghConfig.priority_display ?? {};
-  return priorityDisplay[p0Key] ?? "Must";
-};
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -67,26 +58,13 @@ export const registerScrumWriteTools = (
       annotations: { role: "admin" },
     },
     async (params: z.infer<typeof AddVocabularySchema>) => {
-      try {
-        const result = await backend.addVocabulary(params.kind, params.value);
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(
-                { ...result, kind: params.kind, value: params.value },
-                null,
-                2,
-              ),
-            },
-          ],
-        };
-      } catch (err) {
-        return {
-          content: [{ type: "text", text: enrichError(err) }],
-          isError: true,
-        };
-      }
+      const result = await backend.addVocabulary(params.kind, params.value);
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({ ...result, kind: params.kind, value: params.value }, null, 2),
+        }],
+      };
     },
   );
 
@@ -117,21 +95,12 @@ export const registerScrumWriteTools = (
       annotations: { role: "admin" },
     },
     async (params: z.infer<typeof SetFieldSchema>) => {
-      try {
-        await backend.setField(params.ref, params.field, params.value);
-        // Fetch and return updated story
-        const updated = await backend.getStoryDetail(params.ref);
-        return {
-          content: [
-            { type: "text", text: JSON.stringify(updated.story, null, 2) },
-          ],
-        };
-      } catch (err) {
-        return {
-          content: [{ type: "text", text: enrichError(err) }],
-          isError: true,
-        };
-      }
+      const { warnings } = await catchBackend(
+        () => backend.setField(params.ref, params.field, params.value),
+      );
+      const { value: detail } = await backend.getStoryDetail(params.ref);
+      const response = warnings.length > 0 ? { ...detail?.story, warnings } : detail?.story;
+      return { content: [{ type: "text", text: JSON.stringify(response, null, 2) }] };
     },
   );
 
@@ -162,36 +131,23 @@ export const registerScrumWriteTools = (
       annotations: { role: "admin" },
     },
     async (params: z.infer<typeof UpdateStorySchema>) => {
-      try {
-        const updates = pickDefined(params, [
-          "title",
-          "body",
-          "labels",
-          "assignees",
-          "epic",
-          "blocked_by",
-        ]);
+      const updates = pickDefined(params, [
+        "title",
+        "body",
+        "labels",
+        "assignees",
+        "epic",
+        "blocked_by",
+      ]);
 
-        await backend.updateStory(params.ref, updates as StoryUpdates);
+      await backend.updateStory(params.ref, updates as StoryUpdates);
 
-        // Post comment if provided
-        if (params.comment !== undefined) {
-          await backend.addComment(params.ref, params.comment);
-        }
-
-        // Fetch and return updated story
-        const updated = await backend.getStoryDetail(params.ref);
-        return {
-          content: [
-            { type: "text", text: JSON.stringify(updated.story, null, 2) },
-          ],
-        };
-      } catch (err) {
-        return {
-          content: [{ type: "text", text: enrichError(err) }],
-          isError: true,
-        };
+      if (params.comment !== undefined) {
+        await backend.addComment(params.ref, params.comment);
       }
+
+      const { value: detail } = await backend.getStoryDetail(params.ref);
+      return { content: [{ type: "text", text: JSON.stringify(detail?.story, null, 2) }] };
     },
   );
 
@@ -224,83 +180,59 @@ export const registerScrumWriteTools = (
       annotations: { role: "admin" },
     },
     async (params: z.infer<typeof CreateStorySchema>) => {
-      try {
-        // Step 1: Create the story via backend
-        const storyRef = await backend.createStory(params as CreateStoryInput);
+      // Step 1: Create the story via backend
+      const storyRef = await backend.createStory(params as CreateStoryInput);
 
-        // Step 2: Apply optional field sets (collect failures, don't abort)
-        const failedFields: PartialFailureResult["failedFields"] = [];
+      // Step 2: Apply optional field sets (collect failures, don't abort)
+      const failedFields: PartialFailureResult["failedFields"] = [];
 
-        if (params.sprint !== undefined) {
-          try {
-            await backend.setField(storyRef, "sprint", params.sprint);
-          } catch (err) {
-            failedFields.push({
-              field: "sprint",
-              reason: enrichError(err),
-            });
-          }
-        }
-
-        if (params.story_points !== undefined) {
-          try {
-            await backend.setField(storyRef, "story_points", params.story_points);
-          } catch (err) {
-            failedFields.push({
-              field: "story_points",
-              reason: enrichError(err),
-            });
-          }
-        }
-
-        if (params.priority !== undefined) {
-          try {
-            await backend.setField(storyRef, "priority", params.priority);
-          } catch (err) {
-            failedFields.push({
-              field: "priority",
-              reason: enrichError(err),
-            });
-          }
-        }
-
-        // Step 3: Fetch updated story (wrap so a read failure after successful
-        //         creation returns partial-success, not a full failure)
-        let storyDetail: Story | Partial<StoryRef>;
-        try {
-          const fetchedDetail = await backend.getStoryDetail(storyRef);
-          storyDetail = fetchedDetail.story;
-        } catch (readErr) {
-          // Story was created successfully — return partial success with issue ref
-          failedFields.push({
-            field: "read",
-            reason: enrichError(readErr),
-          });
-          storyDetail = { id: "id" in storyRef ? storyRef.id : String(storyRef.number) }; // minimal shape — full Story unavailable
-        }
-
-        // Step 4: Return with partial failure indicator if needed
-        if (failedFields.length > 0) {
-          const result: PartialFailureResult & { story: Story } = {
-            story: storyDetail as Story,
-            partialFailure: true,
-            failedFields,
-          };
-          return {
-            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-            isError: false,
-          };
-        }
-
-        return {
-          content: [{ type: "text", text: JSON.stringify(storyDetail, null, 2) }],
-        };
-      } catch (err) {
-        return {
-          content: [{ type: "text", text: enrichError(err) }],
-          isError: true,
-        };
+      if (params.sprint !== undefined) {
+        const sprintVal = params.sprint;
+        const { warnings: w } = await catchBackend(
+          () => backend.setField(storyRef, "sprint", sprintVal),
+        );
+        for (const reason of w) failedFields.push({ field: "sprint", reason });
       }
+
+      if (params.story_points !== undefined) {
+        const pointsVal = params.story_points;
+        const { warnings: w } = await catchBackend(
+          () => backend.setField(storyRef, "story_points", pointsVal),
+        );
+        for (const reason of w) failedFields.push({ field: "story_points", reason });
+      }
+
+      if (params.priority !== undefined) {
+        const priorityVal = params.priority;
+        const { warnings: w } = await catchBackend(
+          () => backend.setField(storyRef, "priority", priorityVal),
+        );
+        for (const reason of w) failedFields.push({ field: "priority", reason });
+      }
+
+      // Step 3: Fetch updated story — getStoryDetail already returns BackendCallResult
+      let storyDetail: Story | Partial<StoryRef>;
+      const { value: fetchedDetail, warnings: readWarnings } = await backend.getStoryDetail(
+        storyRef,
+      );
+      for (const reason of readWarnings) failedFields.push({ field: "read", reason });
+      if (fetchedDetail) {
+        storyDetail = fetchedDetail.story;
+      } else {
+        storyDetail = { id: "id" in storyRef ? storyRef.id : String(storyRef.number) };
+      }
+
+      // Step 4: Return with partial failure indicator if needed
+      if (failedFields.length > 0) {
+        const result: PartialFailureResult & { story: Story } = {
+          story: storyDetail as Story,
+          partialFailure: true,
+          failedFields,
+        };
+        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      }
+
+      return { content: [{ type: "text", text: JSON.stringify(storyDetail, null, 2) }] };
     },
   );
 
@@ -326,68 +258,51 @@ export const registerScrumWriteTools = (
       annotations: { role: "admin" },
     },
     async (params: z.infer<typeof PlanSprintSchema>) => {
-      try {
-        const assigned: StoryRef[] = [];
-        const skipped: Array<{ ref: StoryRef; reason: string }> = [];
+      const assigned: StoryRef[] = [];
+      const skipped: Array<{ ref: StoryRef; reason: string }> = [];
 
-        // Step 1: If replace: true, clear existing sprint items
-        if (params.replace) {
-          if (params.sprint === "all") {
-            throw new Error(
-              '"all" is not valid for plan_sprint — use "current", "next", null, or an explicit sprint name.',
-            );
-          }
-          // P2: getSprintStories was removed from the port interface
-          // but still exists as an internal method on GitHubProjectBackend.
-          interface BackendWithSprintStories {
-            getSprintStories(
-              s: typeof params.sprint,
-            ): Promise<{ stories: Array<{ ref: { id: string } }> }>;
-          }
-          const { stories: currentStories } = await (backend as unknown as BackendWithSprintStories)
-            .getSprintStories(params.sprint);
-          for (const story of currentStories) {
-            try {
-              await backend.setField(story.ref, "sprint", null);
-              assigned.push(story.ref);
-            } catch (err) {
-              skipped.push({
-                ref: story.ref,
-                reason: enrichError(err),
-              });
-            }
+      // Step 1: If replace: true, clear existing sprint items
+      if (params.replace) {
+        if (params.sprint === "all") {
+          throw new Error(
+            '"all" is not valid for plan_sprint — use "current", "next", null, or an explicit sprint name.',
+          );
+        }
+        interface BackendWithSprintStories {
+          getSprintStories(
+            s: typeof params.sprint,
+          ): Promise<{ stories: Array<{ ref: { id: string } }> }>;
+        }
+        const { stories: currentStories } = await (backend as unknown as BackendWithSprintStories)
+          .getSprintStories(params.sprint);
+        for (const story of currentStories) {
+          const { warnings: w } = await catchBackend(
+            () => backend.setField(story.ref, "sprint", null),
+          );
+          if (w.length > 0) {
+            for (const reason of w) skipped.push({ ref: story.ref, reason });
+          } else {
+            assigned.push(story.ref);
           }
         }
-
-        // Step 2: Assign each requested story
-        for (const ref of params.stories) {
-          try {
-            await backend.setField(ref, "sprint", params.sprint);
-            assigned.push(ref);
-          } catch (err) {
-            skipped.push({ ref, reason: enrichError(err) });
-          }
-        }
-
-        const result: Record<string, unknown> = {
-          sprint: params.sprint,
-          assigned,
-          skipped,
-        };
-        // Include goal in response if provided (echo only, not persisted)
-        if (params.goal !== undefined) {
-          result.goal = params.goal;
-        }
-
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (err) {
-        return {
-          content: [{ type: "text", text: enrichError(err) }],
-          isError: true,
-        };
       }
+
+      // Step 2: Assign each requested story
+      for (const ref of params.stories) {
+        const { warnings: w } = await catchBackend(
+          () => backend.setField(ref, "sprint", params.sprint),
+        );
+        if (w.length > 0) {
+          for (const reason of w) skipped.push({ ref, reason });
+        } else {
+          assigned.push(ref);
+        }
+      }
+
+      const result: Record<string, unknown> = { sprint: params.sprint, assigned, skipped };
+      if (params.goal !== undefined) result.goal = params.goal;
+
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     },
   );
 
@@ -414,85 +329,69 @@ export const registerScrumWriteTools = (
       annotations: { role: "admin" },
     },
     async (params: z.infer<typeof LogImpedimentSchema>) => {
-      try {
-        // Step 1: Compose body with description + optional "Affects" section
-        const bodyParts = [params.description];
-        if (params.affects) {
-          bodyParts.push("", "## Affects");
-          if ("story" in params.affects) {
-            const storyId = "id" in params.affects.story
-              ? params.affects.story.id
-              : `#${params.affects.story.number}`;
-            bodyParts.push(
-              `This impediment affects story with item ID: ${storyId}`,
-            );
-          } else if ("sprint" in params.affects) {
-            bodyParts.push(`This impediment affects sprint: ${params.affects.sprint}`);
-          }
+      // Step 1: Compose body with description + optional "Affects" section
+      const bodyParts = [params.description];
+      if (params.affects) {
+        bodyParts.push("", "## Affects");
+        if ("story" in params.affects) {
+          const storyId = "id" in params.affects.story
+            ? params.affects.story.id
+            : `#${params.affects.story.number}`;
+          bodyParts.push(`This impediment affects story with item ID: ${storyId}`);
+        } else if ("sprint" in params.affects) {
+          bodyParts.push(`This impediment affects sprint: ${params.affects.sprint}`);
         }
+      }
 
-        // Step 2: Build impediment story input
-        const impedimentInput: CreateStoryInput = {
-          title: `Impediment: ${params.description.slice(0, 80)}`,
-          body: bodyParts.join("\n"),
-          type: "impediment",
-          priority: params.priority ?? p0PriorityDisplay,
-          labels: ["impediment"],
-        };
+      // Step 2: Create the impediment story
+      const impedimentInput: CreateStoryInput = {
+        title: `Impediment: ${params.description.slice(0, 80)}`,
+        body: bodyParts.join("\n"),
+        type: "impediment",
+        priority: params.priority ?? p0PriorityDisplay,
+        labels: ["impediment"],
+      };
+      const { listing: impediment, itemRef } = await backend.createImpediment(impedimentInput);
 
-        // Step 2: Create the impediment story; listing.ref.id is the GitHub Issue node ID (I_...)
-        const { listing: impediment, itemRef } = await backend.createImpediment(impedimentInput);
+      // Step 3: Post cross-reference comments
+      if (params.affects) {
+        if ("story" in params.affects) {
+          const affectedComment = [
+            ":warning: **Impediment logged**",
+            "",
+            params.description,
+            "",
+            `> Created by ${params.raised_by ?? "agent"}`,
+          ].join("\n");
+          await backend.addComment(params.affects.story, affectedComment);
 
-        // Step 3: Conditional branching based on affects presence
-        if (params.affects) {
-          if ("story" in params.affects) {
-            // Story case: post warning on affected story + back-link on impediment
-            const affectedComment = [
-              ":warning: **Impediment logged**",
-              "",
-              params.description,
-              "",
-              `> Created by ${params.raised_by ?? "agent"}`,
-            ].join("\n");
-
-            await backend.addComment(params.affects.story, affectedComment);
-
-            const affectsRef = "id" in params.affects.story
-              ? params.affects.story.id
-              : `#${params.affects.story.number}`;
-            const impedimentComment = [
+          const affectsRef = "id" in params.affects.story
+            ? params.affects.story.id
+            : `#${params.affects.story.number}`;
+          await backend.addComment(
+            itemRef,
+            [
               ":link: This impediment affects story",
               `  - Story item ID: ${affectsRef}`,
-            ].join("\n");
-
-            await backend.addComment(itemRef, impedimentComment);
-          } else if ("sprint" in params.affects) {
-            // Sprint case: post single cross-reference comment on impediment
-            const sprintName = params.affects.sprint;
-            const impedimentComment = [
+            ].join("\n"),
+          );
+        } else if ("sprint" in params.affects) {
+          await backend.addComment(
+            itemRef,
+            [
               ":link: This impediment affects sprint",
-              `  - Sprint: ${sprintName}`,
-            ].join("\n");
-
-            await backend.addComment(itemRef, impedimentComment);
-          }
+              `  - Sprint: ${params.affects.sprint}`,
+            ].join("\n"),
+          );
         }
-        return {
-          content: [{
-            type: "text",
-            text: JSON.stringify(
-              { impediment, affects: params.affects ?? null },
-              null,
-              2,
-            ),
-          }],
-        };
-      } catch (err) {
-        return {
-          content: [{ type: "text", text: enrichError(err) }],
-          isError: true,
-        };
       }
+
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({ impediment, affects: params.affects ?? null }, null, 2),
+        }],
+      };
     },
   );
 
@@ -512,21 +411,12 @@ export const registerScrumWriteTools = (
       annotations: { role: "admin" },
     },
     async (params: z.infer<typeof UpdateImpedimentSchema>) => {
-      try {
-        const result = await backend.updateImpediment(
-          params.ref,
-          params.status,
-          params.resolution_notes,
-        );
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (err) {
-        return {
-          content: [{ type: "text", text: enrichError(err) }],
-          isError: true,
-        };
-      }
+      const result = await backend.updateImpediment(
+        params.ref,
+        params.status,
+        params.resolution_notes,
+      );
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     },
   );
 };

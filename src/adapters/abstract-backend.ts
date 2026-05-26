@@ -18,6 +18,7 @@ import type {
   StoryUpdates,
   VocabularyKind,
 } from "../scrum/ports.ts";
+import type { BackendCallResult } from "../services/error-enrichment.ts";
 import type {
   AnalyticsResult,
   BacklogHealth,
@@ -26,7 +27,9 @@ import type {
   ItemSearchResult,
   SprintRef,
   StoryRef,
+  SupportedBackend,
 } from "../domain/types.ts";
+import { AdapterError } from "../domain/errors.ts";
 
 // ── UnsupportedCapabilityError ───────────────────────────────────────────────
 
@@ -35,24 +38,28 @@ import type {
  * implement it. Carries the adapter's platform name so error messages can
  * guide the agent toward a platform-appropriate alternative.
  *
+ * Extends AdapterError so catchBackend() and enrichError() can both produce
+ * structured "[platform] CODE: ..." output.
+ *
  * Example: calling updateImpediment() on a mock adapter used in tests.
  * The agent reads the message and knows the feature is unavailable.
  */
-export class UnsupportedCapabilityError extends Error {
+export class UnsupportedCapabilityError extends AdapterError {
   override readonly name = "UnsupportedCapabilityError";
-
-  /** The platform that lacks this capability (e.g. "mock", "linear"). */
-  readonly platform: string;
+  override readonly backendName: SupportedBackend;
+  override readonly code = "UNSUPPORTED_CAPABILITY";
+  override readonly recovery: string;
 
   /** The method that was called but is unsupported. */
   readonly method: string;
 
   constructor(platform: string, method: string) {
-    super(
-      `Platform "${platform}" does not support the "${method}" operation. ` +
-        `Check the platform's capabilities before calling this method.`,
-    );
-    this.platform = platform;
+    const message = `Platform "${platform}" does not support the "${method}" operation. ` +
+      `Check the platform's capabilities before calling this method.`;
+    super(message);
+    this.backendName = platform as SupportedBackend;
+    this.recovery = `Use a different adapter that supports "${method}", ` +
+      `or check PlatformCapabilities before calling this method.`;
     this.method = method;
   }
 }
@@ -87,15 +94,22 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
   abstract getPlatformState(declaredVocabulary: {
     canonicalStatusKeys: string[];
     canonicalPriorityKeys: string[];
-  }): Promise<PlatformState>;
+  }): Promise<BackendCallResult<PlatformState>>;
 
   abstract reload(): Promise<void>;
 
   // ── ProjectReader — story read ───────────────────────────────────────────
 
-  abstract getStoryDetail(ref: StoryRef): Promise<StoryDetail>;
+  abstract getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>>;
 
-  abstract getEpics(): Promise<EpicListing[]>;
+  abstract getEpics(sprintIterationId?: string | null): Promise<EpicListing[]>;
+
+  /**
+   * Compute work completion for a sprint.
+   * Returns completed points and total committed points.
+   * { completed: 0, total: 0 } when no items have story points.
+   */
+  abstract getSprintCompletion(iterationId: string): Promise<{ completed: number; total: number }>;
 
   // ── ProjectReader — unified search & analytics ───────────────────────────
 

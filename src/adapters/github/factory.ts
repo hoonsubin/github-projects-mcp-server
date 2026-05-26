@@ -92,7 +92,7 @@ export class GitHubAdapterFactory implements AdapterFactory {
 
     const storyQueryService = new StoryQueryService(config, ghClient, owner, primaryRepo);
 
-    const epicService = new EpicService(ghClient, owner, gh.tracked_repos);
+    const epicService = new EpicService(ghClient, owner, gh.tracked_repos, storyQueryService);
 
     const storyMutationService = new StoryMutationService(
       config,

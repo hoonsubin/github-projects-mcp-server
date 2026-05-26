@@ -359,7 +359,7 @@ export type DependencyMap = Record<string, DependencyNode>;
  * Fields shared by every Story variant. Board fields (type, status, sprint,
  * story_points, priority) are nullable because they may be unset on the board.
  */
-interface StoryBase { // todo: also a close duplicate of the `ports.ts`. The type should be uniformed
+export interface StoryBase {
   readonly ref: EntityRef; // opaque project-item handle — use in subsequent tool calls
   readonly title: string;
   readonly body: string;
@@ -373,30 +373,33 @@ interface StoryBase { // todo: also a close duplicate of the `ports.ts`. The typ
   readonly created_at: string; // ISO-8601
   readonly updated_at: string; // ISO-8601
   readonly blocked_by: readonly DependencyEntry[]; // stories that must be Done before this one starts
+  // ── Bridging fields ── populated by backends; nullable when the concept is absent ──
+  readonly kind: string | null; // content type discriminator (e.g. "issue", "draft", "pr")
+  readonly key: string | null; // human-readable issue number; null for draft items
+  readonly url: string | null; // canonical URL in the backend UI; null for draft items
+  readonly epic: { readonly ref: EpicRef; readonly name: string } | null;
 }
 
-/** A GitHub Projects draft issue — has no issue number, URL, or milestone. */
-export interface DraftStory extends StoryBase {
-  kind: "draft";
-  key: null;
-  url: null;
-  epic: null;
-  blocked_by: DependencyEntry[]; // always [] — Draft Issues have no tracked dependencies
-}
+export const SUPPORTED_BACKENDS = {
+  // must match the `backend.[key]` from the scrum config file
+  GitHub: "github",
+} as const;
 
-/** A real GitHub Issue (or PR) promoted to a project item. */
-export interface IssueStory extends StoryBase {
-  kind: "issue";
-  key: string; // human-readable issue number, e.g. "42"
-  url: string; // canonical URL in the backend UI
-  epic: { ref: EpicRef; name: string } | null;
-}
+export type SupportedBackend = typeof SUPPORTED_BACKENDS[keyof typeof SUPPORTED_BACKENDS];
+
+/**
+ * Backend adapter configurations, keyed by platform name (e.g. "github").
+ * Type-erased here — each adapter casts its own entry to its concrete config
+ * type (e.g. GitHubBackendConfig). The domain layer has no knowledge of
+ * platform-specific fields such as tokens, project numbers, or field mappings.
+ */
+export type AdapterBackend = Record<SupportedBackend, unknown>;
 
 /**
  * Discriminated union of all Story variants.
  * Narrow on `story.kind` to access variant-specific fields without null checks.
  */
-export type Story = DraftStory | IssueStory;
+export type Story = StoryBase;
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
 
@@ -556,19 +559,52 @@ export interface LinkedArtifact {
  */
 export interface ItemDetailResult {
   readonly story: Story;
-  readonly comments: readonly StoryComment[];
-  readonly linked_artifacts: readonly LinkedArtifact[];
+  readonly comments: readonly StoryComment[] | null;
+  readonly linked_artifacts: readonly LinkedArtifact[] | null;
   readonly acceptance_criteria: readonly string[]; // parsed from story body
+}
+
+// ── Partial-result marker ──────────────────────────────────────────────────────
+
+/**
+ * Marker interface for use-case response types that can carry per-field
+ * warning messages alongside their primary data.
+ *
+ * Warnings follow the AdapterError format: "[backendName] CODE: message\n  → Recovery: instruction"
+ * Use-case code accumulates warnings via catchBackend() for fallible backend calls.
+ */
+export interface PartialResult {
+  readonly warnings: readonly string[];
+}
+
+// ── Use-case result wrapper ────────────────────────────────────────────────────
+
+/**
+ * Generic wrapper for use-case function return values.
+ *
+ * Every use-case function returns UseCaseResult<T> instead of raw T.
+ * - `data`: the primary payload (may be null if the adapter call fully failed)
+ * - `warnings`: accumulated adapter-error strings from catchBackend() calls
+ *
+ * Use-case functions NEVER throw AdapterError — they convert them into warnings.
+ * The framework layer unwraps UseCaseResult<T> and formats the response.
+ *
+ * Non-adapter errors (programming bugs, startup config failures) propagate
+ * normally — catchBackend re-throws them.
+ */
+export interface UseCaseResult<T> extends PartialResult {
+  readonly data: T;
 }
 
 // ── Orient output ──────────────────────────────────────────────────────────────
 
 /**
  * Exported output type for scrum_orient.
- * Moved from private interface in orient.ts to domain so tests and handlers
- * can import and annotate it.
+ * Extends PartialResult because orientUseCase wraps fallible backend calls
+ * (getEpics, getSprintCompletion) via catchBackend() and accumulates their
+ * warnings here.
  */
-export interface OrientResult {
+export interface OrientResult extends PartialResult {
   readonly platform_state: {
     readonly fields: {
       readonly status: {

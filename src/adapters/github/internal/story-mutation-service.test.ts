@@ -839,7 +839,7 @@ Deno.test({
 
     await assertRejects(
       () => service.setField(makeStoryRef(), "unknown_field" as never, "value"),
-      Error,
+      GitHubApiError,
       "Unknown field: unknown_field",
     );
   },

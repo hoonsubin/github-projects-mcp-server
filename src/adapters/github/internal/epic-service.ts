@@ -7,6 +7,9 @@
 //
 // Results from multiple repos are merged and deduplicated by node ID so that
 // milestones shared across repos appear only once.
+//
+// Sprint filtering: when sprintIterationId is provided, only epics with ≥1 item
+// in the active sprint are returned. Falls back to all open epics when null.
 // =============================================================================
 
 import type * as GH from "../generated/github-types.ts";
@@ -14,6 +17,7 @@ import type { GitHubClient } from "./http-client.ts";
 import { LIST_MILESTONES_QUERY } from "../queries.ts";
 import type { EpicListing } from "../../../domain/types.ts";
 import type { MilestoneRef } from "../types.ts";
+import { StoryQueryService } from "./story-query-service.ts";
 
 /** Query projection of GH.Milestone for epic listing. */
 interface MilestoneNode extends MilestoneRef {
@@ -40,9 +44,41 @@ export class EpicService {
     private readonly gh: GitHubClient,
     private readonly owner: string,
     private readonly repos: string[],
+    private readonly storyQueryService: StoryQueryService,
   ) {}
 
-  async getEpics(): Promise<EpicListing[]> {
+  async getEpics(sprintIterationId?: string | null): Promise<EpicListing[]> {
+    const allMilestones = await this._fetchMilestones();
+
+    if (!sprintIterationId) return allMilestones;
+
+    // Fetch items in the active sprint and collect their epic IDs
+    const sprintItems = await this.storyQueryService.findItems({
+      scope: "sprint",
+      keys: [],
+      search: "",
+      types: [],
+      statuses: [],
+      priority: "",
+      epic_id: "",
+      labels: [],
+      assignee: "",
+      estimated: undefined,
+      sprint_ref: sprintIterationId,
+      include_dependencies: false,
+      limit: 100,
+    });
+
+    const epicIdsInSprint = new Set<string>();
+    for (const item of sprintItems.items) {
+      if (item.epic?.ref.id) epicIdsInSprint.add(item.epic.ref.id);
+    }
+
+    return allMilestones.filter((m) => epicIdsInSprint.has(m.ref.id));
+  }
+
+  /** Fetch all milestones across tracked repositories. */
+  private async _fetchMilestones(): Promise<EpicListing[]> {
     const results = await Promise.all(
       this.repos.map((repo) =>
         this.gh.graphql<ListMilestonesResponse>(LIST_MILESTONES_QUERY, {

@@ -17,7 +17,13 @@
 // =============================================================================
 
 import type * as GH from "./generated/github-types.ts";
-import type { EntityRef, ItemType } from "../../domain/types.ts";
+import type {
+  DependencyEntry,
+  EntityRef,
+  EpicRef,
+  ItemType,
+  StoryBase,
+} from "../../domain/types.ts";
 
 // ── Adapter-internal branded node ID types ───────────────────────────────────
 //
@@ -359,4 +365,21 @@ export interface LinkedPr {
   url: string;
   state: string;
   is_draft: boolean;
+}
+
+/** A GitHub Projects draft issue — has no issue number, URL, or milestone. */
+export interface DraftStory extends StoryBase {
+  kind: "draft";
+  key: null;
+  url: null;
+  epic: null;
+  blocked_by: DependencyEntry[]; // always [] — Draft Issues have no tracked dependencies
+}
+
+/** A real GitHub Issue (or PR) promoted to a project item. */
+export interface IssueStory extends StoryBase {
+  kind: "issue";
+  key: string; // human-readable issue number, e.g. "42"
+  url: string; // canonical URL in the backend UI
+  epic: { ref: EpicRef; name: string } | null;
 }

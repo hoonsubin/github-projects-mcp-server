@@ -7,7 +7,7 @@
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
-import { SprintNotScheduledError } from "../../../domain/errors.ts";
+import { type BackendCallResult, catchBackend } from "../../../services/error-enrichment.ts";
 import type * as GH from "../generated/github-types.ts";
 import type { GitHubClient } from "./http-client.ts";
 import { isBacklogItem, PaginatedProjectItemFetcher } from "./pagination.ts";
@@ -91,7 +91,7 @@ export const buildDependencyMap = (
   for (const story of stories) {
     if (story.kind !== "issue") continue;
 
-    const key = toIssueKey(story.key);
+    const key = toIssueKey(story.key!); // kind guard ensures key is string
     const blocked_by_keys: IssueKey[] = [];
 
     for (const dep of story.blocked_by) {
@@ -138,7 +138,7 @@ export const buildDependencyMap = (
       }
       const depStory = buildStoryFromRaw(item, config);
       if (!depStory || depStory.kind !== "issue") continue;
-      const key = toIssueKey(depStory.key);
+      const key = toIssueKey(depStory.key!); // kind guard ensures key is string
       map[key] = {
         key,
         title: depStory.title,
@@ -185,17 +185,26 @@ export class StoryQueryService {
   ): Promise<{ stories: Story[]; sprintInfo: SprintInfo }> {
     const iterationId = resolveSprint(sprint, this.config);
     if (iterationId === null) {
-      throw new SprintNotScheduledError(
-        "current",
+      throw new GitHubApiError(
         "getSprintStories called with a null sprint ref — guard the null case before calling this method.",
+        {
+          code: "NOT_FOUND",
+          recovery: "Call scrum_orient to find active sprints before calling getSprintStories.",
+          context: { sprint },
+        },
       );
     }
     const iterEntry = this.config.iterations.all.find((i) => i.id === iterationId);
     const sprintInfo = toSprintInfo(iterEntry ?? null);
     if (!sprintInfo) {
-      throw new SprintNotScheduledError(
-        "current",
+      throw new GitHubApiError(
         `Iteration ${iterationId} resolved from config but not found in iterations list.`,
+        {
+          code: "NOT_FOUND",
+          recovery: "The iteration may have been deleted or the config is stale. " +
+            "Call scrum_orient to refresh platform state.",
+          context: { iterationId },
+        },
       );
     }
     const allItems = await this.fetchAllItems();
@@ -232,7 +241,7 @@ export class StoryQueryService {
     );
   }
 
-  async getStoryDetail(ref: StoryRef): Promise<StoryDetail> {
+  async getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>> {
     const resolved = await resolveStory(ref, this.gh);
 
     // Draft Issues have no GitHub Issue node — fetch project item directly
@@ -240,13 +249,25 @@ export class StoryQueryService {
       return this._getDraftIssueDetail(resolved.itemId);
     }
 
-    const [issueData, itemData] = await Promise.all([
+    const warnings: string[] = [];
+
+    // issueData carries body, comments, timeline — optional sub-query
+    const { value: issueData, warnings: issueWarnings } = await catchBackend(() =>
       this.gh.graphql<GetIssueDetailsResponse>(GET_ISSUE_DETAILS_QUERY, {
-        issueId: resolved.issueId,
-      }),
-      this.gh.graphql<GetItemFieldsResponse>(GET_ITEM_FIELDS_QUERY, { itemId: resolved.itemId }),
-    ]);
-    const issue = issueData.node;
+        issueId: resolved.issueId!,
+      })
+    );
+    warnings.push(...issueWarnings);
+
+    // itemData carries custom field values — optional sub-query
+    const { value: itemData, warnings: fieldWarnings } = await catchBackend(() =>
+      this.gh.graphql<GetItemFieldsResponse>(GET_ITEM_FIELDS_QUERY, {
+        itemId: resolved.itemId,
+      })
+    );
+    warnings.push(...fieldWarnings);
+
+    const issue = issueData?.node;
     if (!issue || issue.number === null) {
       throw new GitHubApiError(
         `Issue ${resolved.issueId} could not be fetched.`,
@@ -259,18 +280,20 @@ export class StoryQueryService {
         },
       );
     }
+
     const story = buildEnrichedStory(
       issue,
       resolved.itemId,
-      itemData.node?.fieldValues?.nodes ?? [],
+      itemData?.node?.fieldValues?.nodes ?? [],
       this.config,
     );
-    const comments = buildCommentList(issue.comments?.nodes ?? []);
-    const linked_artifacts = buildLinkedPrList(issue.timelineItems?.nodes ?? []);
-    return { story, comments, linked_artifacts };
+    const comments = issueData ? buildCommentList(issue.comments?.nodes ?? []) : null;
+    const linked_artifacts = issueData ? buildLinkedPrList(issue.timelineItems?.nodes ?? []) : null;
+
+    return { value: { story, comments, linked_artifacts }, warnings };
   }
 
-  private async _getDraftIssueDetail(itemId: string): Promise<StoryDetail> {
+  private async _getDraftIssueDetail(itemId: string): Promise<BackendCallResult<StoryDetail>> {
     /** Query projection of GH.ProjectV2Item for draft issue details. */
     interface GetDraftIssueDetailsQueryNode extends ProjectV2ItemRef {
       content?: unknown;
@@ -320,7 +343,7 @@ export class StoryQueryService {
     }
 
     // Draft Issues have no GitHub Issue node — no comments or linked artifacts available
-    return { story, comments: [], linked_artifacts: [] };
+    return { value: { story, comments: null, linked_artifacts: null }, warnings: [] };
   }
 
   /** Fetch all project items (including issues, PRs, and draft issues). */
@@ -332,6 +355,57 @@ export class StoryQueryService {
       pageSize: 100,
     });
     return fetcher.collect();
+  }
+
+  /**
+   * Compute work completion percentage for a sprint.
+   * Returns completed points and total committed points.
+   * When no items have story points, returns { completed: 0, total: 0 }
+   * (workPct = 0 — no regression from current behavior).
+   */
+  async computeSprintCompletion(
+    iterationId: string,
+  ): Promise<{ completed: number; total: number }> {
+    const allItems = await this.fetchAllItems();
+
+    // Filter items assigned to this iteration
+    const sprintItems = allItems.filter((item) => {
+      const fv = item.fieldValues.nodes.find(
+        (v) => v.field?.id === this.config.fields.sprintFieldId,
+      );
+      return fv?.iterationId === iterationId;
+    });
+
+    const stories = sprintItems
+      .map((item) => buildStoryFromRaw(item, this.config))
+      .filter((s): s is Story => s !== null);
+
+    // Build reverse map: display name → canonical status key.
+    // story.status holds the display name (e.g. "Done"), but terminal
+    // semantics are keyed by canonical key (e.g. "done") in scrumConfig.scrum.status.
+    const statusReverseMap = new Map<string, string>();
+    const scrumConfig = this.config.scrumConfig;
+    const ghConfig = scrumConfig.backends.github as Record<string, unknown>;
+    const statusDisplay = (ghConfig?.status_display ?? {}) as Record<string, string>;
+    for (const [canonical, display] of Object.entries(statusDisplay)) {
+      statusReverseMap.set(display, canonical);
+    }
+
+    let completed = 0;
+    let total = 0;
+
+    for (const story of stories) {
+      const points = story.story_points ?? 0;
+      total += points;
+      if (story.status) {
+        const canonicalKey = statusReverseMap.get(story.status);
+        if (canonicalKey && scrumConfig.scrum.status[canonicalKey]?.terminal) {
+          completed += points;
+        }
+      }
+    }
+
+    return { completed, total };
   }
 
   // ── Unified item search ──────────────────────────────────────────────────────
@@ -393,6 +467,16 @@ export class StoryQueryService {
         if (iterEntry) {
           return { ...item, sprint: { name: item.sprint.name, ref: { id: iterEntry.id } } };
         }
+        // Sprint name exists but no matching iteration — config is stale
+        throw new GitHubApiError(
+          `Sprint "${item.sprint.name}" has no matching iteration in config.`,
+          {
+            code: "NOT_FOUND",
+            recovery: "The sprint may have been deleted or the config is stale. " +
+              "Call scrum_orient to refresh platform state.",
+            context: { sprintName: item.sprint.name, itemKey: item.ref.key },
+          },
+        );
       }
       return item;
     });
@@ -433,7 +517,7 @@ export class StoryQueryService {
   private filterByKeys(stories: Story[], keys: readonly string[]): Story[] {
     if (keys.length === 0) return stories;
     const keySet = new Set(keys);
-    return stories.filter((s) => s.kind === "issue" && keySet.has(s.key));
+    return stories.filter((s) => s.kind === "issue" && keySet.has(s.key!));
   }
 
   private filterBySprintRef(

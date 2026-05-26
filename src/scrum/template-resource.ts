@@ -11,11 +11,16 @@
 
 import type { FileReaderPort } from "./ports.ts";
 
-export async function templateResourceUseCase(
+interface TemplateData {
+  content: string;
+  mimeType: "text/markdown";
+}
+
+export const templateResourceUseCase = async (
   type: string,
   fileReader: FileReaderPort,
   typeTemplatePaths: Record<string, string>,
-): Promise<{ content: string; mimeType: "text/markdown" }> {
+): Promise<TemplateData> => {
   const path = typeTemplatePaths[type];
   if (!path) {
     throw new Error(
@@ -26,4 +31,4 @@ export async function templateResourceUseCase(
   }
   const content = await fileReader.fetchRepoFile(path);
   return { content, mimeType: "text/markdown" };
-}
+};

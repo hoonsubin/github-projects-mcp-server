@@ -8,15 +8,9 @@
 import { assertEquals, assertFalse } from "jsr:@std/assert@^1.0.0";
 import { buildDependencyMap } from "./story-query-service.ts";
 import { toIssueKey } from "../../../domain/types.ts";
-import type {
-  DependencyEntry,
-  EntityRef,
-  IssueStory,
-  ItemType,
-  Story,
-} from "../../../domain/types.ts";
+import type { DependencyEntry, EntityRef, ItemType, Story } from "../../../domain/types.ts";
+import type { IssueStory, ProjectItem } from "../types.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
-import type { ProjectItem } from "../types.ts";
 
 // =============================================================================
 // Test helpers

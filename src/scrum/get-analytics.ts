@@ -7,7 +7,7 @@
 // =============================================================================
 
 import type { AnalyticsPort, AnalyticsQuery } from "./ports.ts";
-import type { AnalyticsResult } from "../domain/types.ts";
+import type { AnalyticsResult, UseCaseResult } from "../domain/types.ts";
 
 /**
  * Return unified sprint analytics for the given query.
@@ -15,9 +15,10 @@ import type { AnalyticsResult } from "../domain/types.ts";
  * This use-case is a thin bridge — it passes through to the adapter.
  * The adapter merges burndown and history data behind the AnalyticsPort interface.
  */
-export const getAnalyticsUseCase = (
+export const getAnalyticsUseCase = async (
   backend: AnalyticsPort,
   query: AnalyticsQuery,
-): Promise<AnalyticsResult> => {
-  return backend.getAnalytics(query);
+): Promise<UseCaseResult<AnalyticsResult>> => {
+  const data = await backend.getAnalytics(query);
+  return { data, warnings: [] };
 };

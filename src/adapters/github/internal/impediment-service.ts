@@ -225,10 +225,21 @@ export class ImpedimentService {
     ) ?? [];
     const currentLabelIds = issue.labels?.nodes.map((label) => label.id) ?? [];
     const newLabelId = await this.labelResolver.resolveOrCreateLabel(`status_${status}`);
+    if (!newLabelId) {
+      throw new GitHubApiError(
+        `Failed to resolve or create the status label "status_${status}".`,
+        {
+          code: "MUTATION_FAILED",
+          recovery: "Verify that your token has Issues (read/write) permission. " +
+            "Check GitHub API status and retry.",
+          context: { status, labelName: `status_${status}` },
+        },
+      );
+    }
 
     const updatedLabelIds = currentLabelIds
       .filter((id) => !removedLabels.find((label) => label.id === id))
-      .concat(newLabelId ?? []);
+      .concat(newLabelId);
 
     await this.gh.graphql(
       REPLACE_ISSUE_LABELS_MUTATION,
@@ -246,12 +257,24 @@ export class ImpedimentService {
     let resolvedAt = issue.closedAt;
     if (status === "resolved" && !issue.closed) {
       const closeResult = await this.gh.graphql<{
-        closeIssue: { issue: { closedAt: string } };
+        closeIssue?: { issue?: { closedAt: string } | null } | null;
       }>(
         CLOSE_ISSUE_MUTATION,
         { issueId },
       );
-      resolvedAt = closeResult.closeIssue?.issue?.closedAt ?? null;
+      const closedAt = closeResult.closeIssue?.issue?.closedAt;
+      if (!closedAt) {
+        throw new GitHubApiError(
+          `Issue close mutation succeeded but returned no closedAt timestamp.`,
+          {
+            code: "MUTATION_FAILED",
+            recovery: "The issue may have been closed but the timestamp is unavailable. " +
+              "Use scrum_get_story to verify the current state.",
+            context: { issueId, impedimentId: ref.id },
+          },
+        );
+      }
+      resolvedAt = closedAt;
     }
 
     const impedimentStatus: "open" | "in_progress" | "resolved" =

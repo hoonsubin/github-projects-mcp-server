@@ -10,7 +10,7 @@
 
 import { GITHUB_CAPABILITIES } from "../capabilities.ts";
 import { AbstractProjectBackend } from "../abstract-backend.ts";
-import { StoryNotFoundError } from "../../domain/errors.ts";
+import { GitHubApiError } from "./errors.ts";
 import { type RuntimeConfig } from "./config-loader.ts";
 import { LabelResolver } from "./internal/label-resolver.ts";
 import { FieldValueMutator } from "./internal/field-value-mutator.ts";
@@ -22,23 +22,26 @@ import { EpicService } from "./internal/epic-service.ts";
 import { ConfigReloader } from "./internal/config-reloader.ts";
 import { AnalyticsService } from "./internal/analytics-service.ts";
 import { BoardHealthService } from "./internal/board-health-service.ts";
-import { toSprintInfo } from "./mappers.ts";
+import { resolveSprintGoal } from "./mappers.ts";
 import type {
   AnalyticsQuery,
   CreateStoryInput,
   ImpedimentListing,
   PlatformState,
   ResolvedItemFilter,
+  SprintInfo,
   StoryDetail,
   StoryUpdates,
   VocabularyKind,
 } from "../../scrum/ports.ts";
+import { type BackendCallResult, catchBackend } from "../../services/error-enrichment.ts";
 import type {
   AnalyticsResult,
   BacklogHealth,
   EpicListing,
   ImpedimentRef,
   ItemSearchResult,
+  IterationEntry,
   SprintRef,
   StoryRef,
 } from "../../domain/types.ts";
@@ -105,10 +108,14 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
       limit: 1,
     });
     if (result.items.length === 0) {
-      throw new StoryNotFoundError(
-        String(ref.number),
-        `Story #${ref.number} not found on the project board. ` +
-          "Verify the issue number and ensure it appears in the project.",
+      throw new GitHubApiError(
+        `Story #${ref.number} not found on the project board.`,
+        {
+          code: "NOT_FOUND",
+          recovery: "Verify the issue number and ensure it appears in the project. " +
+            "Use scrum_find_items to search for stories by keyword if the number may be incorrect.",
+          context: { storyNumber: ref.number },
+        },
       );
     }
     return { id: result.items[0].ref.id };
@@ -119,7 +126,30 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
   async getPlatformState(declaredVocabulary: {
     canonicalStatusKeys: string[];
     canonicalPriorityKeys: string[];
-  }): Promise<PlatformState> {
+  }): Promise<BackendCallResult<PlatformState>> {
+    const warnings: string[] = [];
+
+    // Builds a SprintInfo for a single iteration, attempting to resolve the
+    // sprint goal. Always produces a NOT_IMPLEMENTED warning since the GitHub
+    // Projects API does not expose iteration goals.
+    const buildSprintInfo = async (iter: IterationEntry | null): Promise<SprintInfo | null> => {
+      if (!iter) return null;
+      const { value: goal, warnings: gw } = await catchBackend(
+        (): Promise<string> => resolveSprintGoal(iter),
+      );
+      warnings.push(...gw);
+      const endDate = new Date(iter.startDate);
+      endDate.setDate(endDate.getDate() + iter.duration);
+      return {
+        id: iter.id,
+        name: iter.title,
+        goal,
+        startDate: iter.startDate,
+        durationDays: iter.duration,
+        endDate: endDate.toISOString().slice(0, 10),
+      };
+    };
+
     const { statusDisplay, priorityDisplay, typeDisplay } = this.deps.displayConfig;
 
     const statusDisplayMap: Record<string, string> = {};
@@ -133,20 +163,24 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
 
     const liveStatusOptions = Object.keys(this.deps.config.statusOptions);
     const livePriorityOptions = Object.keys(this.deps.config.priorityOptions);
-    const declaredStatusValues = Object.values(statusDisplayMap);
-    const declaredPriorityValues = Object.values(priorityDisplayMap);
-
-    const missingStatusOptions = declaredStatusValues.filter(
+    const missingStatusOptions = Object.values(statusDisplayMap).filter(
       (v) => !liveStatusOptions.includes(v),
     );
-    const missingPriorityOptions = declaredPriorityValues.filter(
+    const missingPriorityOptions = Object.values(priorityDisplayMap).filter(
       (v) => !livePriorityOptions.includes(v),
     );
 
     const typeLabels = await this.deps.labelResolver.auditTypeLabels();
     const missingLabels = typeLabels.expected.filter((l) => !typeLabels.existing.includes(l));
 
-    return {
+    const [active, next, ...completedOrNull] = await Promise.all([
+      buildSprintInfo(this.deps.config.iterations.active),
+      buildSprintInfo(this.deps.config.iterations.next),
+      ...this.deps.config.iterations.completed.map((i) => buildSprintInfo(i)),
+    ]);
+    const completed = completedOrNull.filter((info): info is SprintInfo => info !== null);
+
+    const value: PlatformState = {
       fields: {
         status: {
           exists: !!this.deps.config.fields.statusFieldId,
@@ -171,9 +205,9 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
         missing: missingLabels,
       },
       iterations: {
-        active: toSprintInfo(this.deps.config.iterations.active),
-        next: toSprintInfo(this.deps.config.iterations.next),
-        completed: this.deps.config.iterations.completed.map((i) => toSprintInfo(i)!),
+        active: active ?? null,
+        next: next ?? null,
+        completed,
         completedCount: this.deps.config.iterations.completed.length,
       },
       vocabulary: {
@@ -185,6 +219,8 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
       epics: { active: [], totalCount: 0 },
       templateUris: null,
     };
+
+    return { value, warnings: [...new Set(warnings)] };
   }
 
   reload(): Promise<void> {
@@ -207,12 +243,16 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
 
   // ── Story read delegations ────────────────────────────────────────────────
 
-  getStoryDetail(ref: StoryRef): Promise<StoryDetail> {
+  getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>> {
     return this.deps.storyQueryService.getStoryDetail(ref);
   }
 
-  getEpics(): Promise<EpicListing[]> {
-    return this.deps.epicService.getEpics();
+  getEpics(sprintIterationId?: string | null): Promise<EpicListing[]> {
+    return this.deps.epicService.getEpics(sprintIterationId);
+  }
+
+  getSprintCompletion(iterationId: string): Promise<{ completed: number; total: number }> {
+    return this.deps.storyQueryService.computeSprintCompletion(iterationId);
   }
 
   // ── Story write delegations ───────────────────────────────────────────────

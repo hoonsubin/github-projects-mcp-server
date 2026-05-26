@@ -6,6 +6,9 @@
 // and optional structured context — making errors actionable at every layer.
 // =============================================================================
 
+import { AdapterError } from "../../domain/errors.ts";
+import type { SupportedBackend } from "../../domain/types.ts";
+
 // ── Error code taxonomy ────────────────────────────────────────────────────────
 
 export type GitHubErrorCode =
@@ -14,6 +17,8 @@ export type GitHubErrorCode =
   | "DRAFT_ISSUE_CONSTRAINT" // operation requires a real Issue, not a DraftIssue
   | "RESOLUTION_FAILED" // unable to resolve a StoryRef to an issue number for dependencies
   | "WRONG_CONTENT_TYPE" // project item is not an Issue (e.g. a PullRequest)
+  // Platform capability
+  | "NOT_IMPLEMENTED" // feature not supported by this adapter or the underlying API
   // Platform configuration
   | "FIELD_NOT_CONFIGURED" // project field not set up in GitHub Projects
   | "OPTION_NOT_FOUND" // vocabulary value missing from project field options
@@ -45,7 +50,7 @@ export const assertNever = (x: never): never => {
 
 // ── Parameter object ───────────────────────────────────────────────────────────
 
-export interface GitHubApiErrorParams {
+interface GitHubApiErrorParams {
   code: GitHubErrorCode;
   /** Agent recovery instruction: what the agent should do next to resolve this error. */
   recovery: string;
@@ -64,20 +69,41 @@ export interface GitHubApiErrorParams {
 
 // ── GitHubApiError class ───────────────────────────────────────────────────────
 
-export class GitHubApiError extends Error {
+export class GitHubApiError extends AdapterError {
+  override readonly backendName: SupportedBackend = "github";
   override readonly name = "GitHubApiError";
-  readonly code: GitHubErrorCode;
-  readonly recovery: string;
+  override readonly code: GitHubErrorCode;
+  override readonly recovery: string;
   readonly statusCode?: number;
-  readonly context?: Record<string, unknown>;
   readonly graphqlErrors?: string[];
 
   constructor(message: string, params: GitHubApiErrorParams) {
-    super(message);
+    super(message, params.context);
     this.code = params.code;
     this.recovery = params.recovery;
     this.statusCode = params.statusCode;
-    this.context = params.context;
     this.graphqlErrors = params.graphqlErrors;
   }
 }
+
+// ── NOT_IMPLEMENTED throw helper ───────────────────────────────────────────────
+
+/**
+ * Throw a NOT_IMPLEMENTED GitHubApiError for a feature that the GitHub adapter
+ * or the underlying API does not yet support. Use at adapter layer throw sites
+ * so the backend assembly layer can catch via catchBackend and emit a warning.
+ */
+export const notImplemented = (
+  feature: string,
+  context: Record<string, unknown> = {},
+): never => {
+  throw new GitHubApiError(
+    `"${feature}" is not supported by the GitHub adapter.`,
+    {
+      code: "NOT_IMPLEMENTED",
+      recovery: `This feature is not yet available via the GitHub Projects API. ` +
+        `No action is required — the field will be null in the response.`,
+      context,
+    },
+  );
+};

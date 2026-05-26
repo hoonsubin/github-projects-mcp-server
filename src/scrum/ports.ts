@@ -28,6 +28,7 @@ import type {
   StoryRef,
   TemplateUriMap,
 } from "../domain/types.ts";
+import type { BackendCallResult } from "../services/error-enrichment.ts";
 
 // ── Input types (cross the port boundary) ─────────────────────────────────────
 
@@ -92,6 +93,7 @@ export interface AnalyticsQuery {
 export interface SprintInfo {
   readonly id: string; // iteration ID from platform (e.g. GitHub iteration field ID)
   readonly name: string;
+  readonly goal: string | null;
   readonly startDate: string; // YYYY-MM-DD
   readonly durationDays: number;
   readonly endDate: string; // YYYY-MM-DD (computed by adapter)
@@ -155,8 +157,8 @@ export interface PlatformState {
  */
 export interface StoryDetail {
   story: Story;
-  comments: StoryComment[];
-  linked_artifacts: LinkedArtifact[];
+  comments: StoryComment[] | null;
+  linked_artifacts: LinkedArtifact[] | null;
 }
 
 /**
@@ -261,7 +263,7 @@ export interface ImpedimentListing {
  * Used by: getBacklogUseCase, orientUseCase
  */
 export interface EpicPort {
-  getEpics(): Promise<EpicListing[]>;
+  getEpics(sprintIterationId?: string | null): Promise<EpicListing[]>;
 }
 
 /**
@@ -269,7 +271,7 @@ export interface EpicPort {
  * Used by: getStoryUseCase
  */
 export interface StoryPort {
-  getStoryDetail(ref: StoryRef): Promise<StoryDetail>;
+  getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>>;
 }
 
 /**
@@ -328,7 +330,14 @@ export interface ProjectReader
   getPlatformState(declaredVocabulary: {
     canonicalStatusKeys: string[];
     canonicalPriorityKeys: string[];
-  }): Promise<PlatformState>;
+  }): Promise<BackendCallResult<PlatformState>>;
+
+  /**
+   * Compute work completion for a sprint.
+   * Returns completed points and total committed points.
+   * { completed: 0, total: 0 } when no items have story points.
+   */
+  getSprintCompletion(iterationId: string): Promise<{ completed: number; total: number }>;
 
   /**
    * Re-sync with the platform: re-fetch live field metadata (iterations, field

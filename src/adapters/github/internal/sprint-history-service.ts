@@ -5,6 +5,7 @@
 // Injected into GitHubProjectBackend via constructor (DIP).
 // =============================================================================
 
+import { GitHubApiError } from "../errors.ts";
 import type { GitHubClient } from "./http-client.ts";
 import { PaginatedProjectItemFetcher } from "./pagination.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
@@ -44,14 +45,24 @@ export class SprintHistoryService {
       const stories = iterItems
         .filter((item) => item.content !== null && item.content.__typename !== "DraftIssue")
         .map((item) => {
-          const content = item.content as ProjectItemIssueContent | ProjectItemPRContent;
+          const content = item.content;
+          if (!content || !("number" in content)) {
+            throw new GitHubApiError(
+              `Sprint history item has no issue number — unexpected content type.`,
+              {
+                code: "NOT_FOUND",
+                recovery: "The item may have been deleted. Re-run scrum_orient to refresh.",
+                context: { itemId: item.id, contentType: content?.__typename },
+              },
+            );
+          }
           const ptsFv = storyPointsFieldId
             ? item.fieldValues.nodes.find((v) => v.field?.id === storyPointsFieldId)
             : null;
           const statusFv = item.fieldValues.nodes.find((v) => v.field?.id === statusFieldId);
           return {
-            number: content.number,
-            title: content.title,
+            number: (content as ProjectItemIssueContent | ProjectItemPRContent).number,
+            title: (content as ProjectItemIssueContent | ProjectItemPRContent).title,
             points: ptsFv?.number ?? 0,
             status: statusFv?.name ?? null,
           };
@@ -64,6 +75,7 @@ export class SprintHistoryService {
         info: {
           id: iter.id,
           name: iter.title,
+          goal: null, // GitHub API does not expose iteration descriptions
           startDate: iter.startDate,
           durationDays: iter.duration,
           endDate: endDate.toISOString().slice(0, 10),

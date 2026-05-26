@@ -7,21 +7,23 @@
 // =============================================================================
 
 import type { RuntimeConfig } from "./config-loader.ts";
+import { notImplemented } from "./errors.ts";
 import type {
   DependencyEntry,
-  DraftStory,
-  IssueStory,
   ItemType,
   IterationEntry,
-  Story,
+  StoryBase,
+  StoryComment,
 } from "../../domain/types.ts";
 import type { BurndownStoryInput, SprintInfo } from "../../scrum/ports.ts";
 import type {
   AssigneeNodes,
   BoardFields,
   CommentProjection,
+  DraftStory,
   FieldValueNode,
   IssueRefNode,
+  IssueStory,
   LabelNameOnly,
   LinkedPr,
   MilestoneRefNode,
@@ -29,7 +31,6 @@ import type {
   TimelinePrSource,
   UserLogin,
 } from "./types.ts";
-import type { StoryComment } from "../../domain/types.ts";
 
 // ── Local input shapes (private — only for function parameter types) ───────────
 
@@ -150,7 +151,7 @@ const extractBoardFields = (
 export const buildStoryFromRaw = (
   item: ProjectItem,
   config: RuntimeConfig,
-): Story | null => {
+): StoryBase | null => {
   const content = item.content;
   if (!content) return null;
 
@@ -266,7 +267,7 @@ export const buildEnrichedStory = (
 export const buildCommentList = (nodes: CommentInput[]): StoryComment[] =>
   nodes.map((c) => ({
     author: c.author?.login ?? "(ghost)",
-    body: c.body,
+    body: c.body ?? "",
     created_at: c.createdAt,
     url: c.url,
   }));
@@ -301,11 +302,23 @@ export const toSprintInfo = (iter: IterationEntry | null): SprintInfo | null => 
   return {
     id: iter.id,
     name: iter.title,
+    goal: null,
     startDate: iter.startDate,
     durationDays: iter.duration,
     endDate: endDate.toISOString().slice(0, 10),
   };
 };
+
+/**
+ * Attempt to resolve a sprint goal for the given iteration.
+ * Always throws NOT_IMPLEMENTED — the GitHub Projects API does not expose
+ * iteration descriptions or goals.
+ *
+ * Call via catchBackend so the throw is converted to a warning rather than
+ * aborting the enclosing request.
+ */
+export const resolveSprintGoal = (_iter: IterationEntry): never =>
+  notImplemented("sprint goal", { reason: "GitHub Projects API does not expose iteration goals" });
 
 // ── Dependency ref resolution ──────────────────────────────────────────────────
 
@@ -318,9 +331,9 @@ export const toSprintInfo = (iter: IterationEntry | null): SprintInfo | null => 
  * getStoryDetail() — ref.id stays as issue node ID in that context.
  */
 export const resolveDependencyRefs = (
-  stories: Story[],
+  stories: StoryBase[],
   allItems: ProjectItem[],
-): Story[] => {
+): StoryBase[] => {
   // Build lookups: issue number string → project item ID, and issue node ID → project item ID
   const keyToId = new Map<string, string>();
   const issueIdToItemId = new Map<string, string>();
