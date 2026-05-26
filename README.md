@@ -16,7 +16,9 @@ Supports two transports: **stdio** (Claude Desktop / Claude Code / LM Studio) an
 - A GitHub Project (v2) set up and configured with your Scrum fields (Sprint, Status, Priority, etc.)
 - A `config.yml` for your project (see `.github/scrum/config.yml` in this repo as a reference)
 
-### Option A - Download a pre-built binary (recommended)
+### Option A - Pre-built binary (no runtime required)
+
+The compiled binary embeds a full JavaScript runtime. Download, make executable, and run - nothing else to install. Best for desktop MCP clients and standalone deployments.
 
 1. Go to the [Releases page](../../releases) and download the binary for your platform:
 
@@ -30,7 +32,7 @@ Supports two transports: **stdio** (Claude Desktop / Claude Code / LM Studio) an
 
 2. Make it executable (macOS / Linux):
    ```bash
-   chmod +x mcp-server-mac-arm64   # or mcp-server-linux-x64
+   chmod +x mcp-server-mac-arm64   # adjust filename for your platform
    ```
 
 3. Optionally move it somewhere on your `$PATH`:
@@ -38,27 +40,67 @@ Supports two transports: **stdio** (Claude Desktop / Claude Code / LM Studio) an
    mv mcp-server-mac-arm64 /usr/local/bin/scrum-mcp
    ```
 
-### Option B - Build from source
+### Option B - Node.js bundle (requires Node.js 18+)
+
+`server.mjs` is a single self-contained JavaScript file (~a few MB) with all dependencies inlined - no Deno, no `node_modules`. Best for Docker images, CI pipelines, and environments where Node.js is already present.
+
+1. Go to the [Releases page](../../releases) and download `server.mjs`.
+
+2. Run it directly:
+   ```bash
+   node /path/to/server.mjs --config /path/to/.github/scrum/config.yml --root /path/to/project
+   ```
+
+### Option C - Build from source
 
 Requires [Deno](https://deno.com) v2.x.
 
 ```bash
 git clone https://github.com/hoonsubin/github-projects-mcp-server.git
 cd github-projects-mcp-server
-deno task compile          # builds ./mcp-server for your current platform
-deno task compile:all      # builds all four platform binaries into dist/
+deno task compile          # builds ./mcp-server binary for your current platform
+deno task compile:all      # builds all five platform binaries into dist/
+deno task bundle:node      # builds dist/server.mjs (Node.js bundle)
 ```
 
-### Configure your MCP client
+## Usage
 
-Add the following to your MCP client configuration (e.g. Claude Desktop's `claude_desktop_config.json`, `.mcp.json`, or `.roo/mcp.json`):
+### Stdio mode (Claude Desktop, Claude Code, RooCode, LM Studio)
+
+Stdio is the default transport. Your MCP client launches the server as a child process and communicates over stdin/stdout.
+
+Add one of the following blocks to your MCP client configuration (e.g. Claude Desktop's `claude_desktop_config.json`, `.mcp.json`, or `.roo/mcp.json`):
+
+**Pre-built binary (Option A):**
 
 ```json
 {
   "mcpServers": {
     "scrum-master": {
-      "command": "/absolute/path/to/mcp-server",
+      "command": "/absolute/path/to/mcp-server-mac-arm64",
       "args": [
+        "--config",
+        "/absolute/path/to/your-project/.github/scrum/config.yml",
+        "--root",
+        "/absolute/path/to/your-project"
+      ],
+      "env": {
+        "GITHUB_TOKEN": "ghp_your_token_here"
+      }
+    }
+  }
+}
+```
+
+**Node.js bundle (Option B):**
+
+```json
+{
+  "mcpServers": {
+    "scrum-master": {
+      "command": "node",
+      "args": [
+        "/absolute/path/to/server.mjs",
         "--config",
         "/absolute/path/to/your-project/.github/scrum/config.yml",
         "--root",
@@ -74,19 +116,31 @@ Add the following to your MCP client configuration (e.g. Claude Desktop's `claud
 
 **`--config`** - path to your project's `config.yml`. Defaults to `.github/scrum/config.yml` relative to the working directory.
 
-**`--root`** - the project root directory, used to resolve repo-relative template paths declared in `config.yml`. Defaults to the current working directory. Required when the binary is invoked from outside the project directory (which is always the case when a MCP client launches it).
+**`--root`** - the project root, used to resolve repo-relative template paths declared in `config.yml`. Defaults to `cwd`. Required whenever the binary or bundle is launched from outside the project directory - which is always the case when an MCP client spawns it.
 
-**`GITHUB_TOKEN`** - must be set in the `env` block (or in your shell environment). This is the value referenced as `$GITHUB_TOKEN` in the `backends.github.auth.token` field of your `config.yml`.
+**`GITHUB_TOKEN`** - set in the `env` block or your shell environment. Referenced as `$GITHUB_TOKEN` in `backends.github.auth.token` in your `config.yml`.
 
-### Run as HTTP server
+### Streamable HTTP mode (Open WebUI, Docker, homelab)
 
-Set `MCP_TRANSPORT=http` to switch to Streamable HTTP mode (e.g. for Open WebUI or Docker):
+Set `MCP_TRANSPORT=http` to expose `POST /mcp`, `GET /mcp`, `DELETE /mcp`, and `GET /health` on the configured port.
+
+**Pre-built binary (Option A):**
 
 ```bash
-MCP_TRANSPORT=http PORT=3000 ./mcp-server --config ./my-project/.github/scrum/config.yml --root ./my-project
+GITHUB_TOKEN=ghp_your_token_here \
+MCP_TRANSPORT=http \
+PORT=3000 \
+./mcp-server-mac-arm64 --config /path/to/.github/scrum/config.yml --root /path/to/project
 ```
 
-The server exposes `POST /mcp`, `GET /mcp`, and `DELETE /mcp` at the configured port, plus `GET /health`.
+**Node.js bundle (Option B):**
+
+```bash
+GITHUB_TOKEN=ghp_your_token_here \
+MCP_TRANSPORT=http \
+PORT=3000 \
+node /path/to/server.mjs --config /path/to/.github/scrum/config.yml --root /path/to/project
+```
 
 ## Development Environment
 
@@ -206,7 +260,8 @@ Under `act` the workflow automatically skips the four publish and prune steps th
 | Checkout                  | Git history and fetch depth                                                         |
 | Set up Deno               | Deno install and cache                                                              |
 | Derive version            | SHA-based version string format                                                     |
-| Patch version into source | `sed` regex against `src/index.ts`                                                  |
+| Patch version into source | `sed` regex against `src/server.ts`                                                 |
 | Compile all targets       | Cross-compilation for all five platforms                                            |
-| Generate checksums        | `sha256sum` over `dist/`                                                            |
+| Bundle Node.js            | esbuild + deno-loader producing `dist/server.mjs`                                   |
+| Generate checksums        | `sha256sum` over `dist/` (binaries + bundle)                                        |
 | Prune old pre-releases    | Pruning algorithm against 80 synthetic releases (mock + dry-run, no real API calls) |
