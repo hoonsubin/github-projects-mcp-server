@@ -1,7 +1,7 @@
 // =============================================================================
-// src/scrum/sprint-math.ts — Pure sprint computation helpers
+// src/scrum/sprint-math.ts - Pure sprint computation helpers
 //
-// All functions depend only on domain types — no RuntimeConfig or GitHub types.
+// All functions depend only on domain types - no RuntimeConfig or GitHub types.
 // =============================================================================
 
 import type { BurndownDayPoint, IdealDayPoint, IterationEntry, Story } from "../domain/types.ts";
@@ -131,7 +131,7 @@ export const computeSprintTotals = (
 
 // ── Sprint window ──────────────────────────────────────────────────────────────
 
-/** Computed sprint window — pure derivation of an IterationEntry. */
+/** Computed sprint window - pure derivation of an IterationEntry. */
 interface SprintWindow {
   name: string;
   startDate: Date;

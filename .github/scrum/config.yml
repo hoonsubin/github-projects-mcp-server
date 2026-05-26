@@ -2,30 +2,30 @@
 #
 # Two audiences read this file:
 #
-#   AGENT  — reads project, scrum, definition_of_ready/done, templates, and
+#   AGENT  - reads project, scrum, definition_of_ready/done, templates, and
 #            ceremony_records on every tool call via scrum_orient. Uses these
 #            to ground Scrum reasoning in platform-neutral terms.
 #
-#   SERVER — reads backends.* at startup to instantiate adapters and resolve
+#   SERVER - reads backends.* at startup to instantiate adapters and resolve
 #            credentials. Never exposes platform credentials to the agent.
 #
 # What lives here:
-#   project          — identity, agent behavior, team roster
-#   scrum            — platform-neutral Scrum taxonomy (sprint, priority, status)
-#   definition_of_*  — quality gates (agent-facing only)
-#   templates        — ceremony artifact template paths or null for agent defaults
-#   ceremony_records — where the agent writes ceremony artifacts
-#   backends         — one section per PM platform; credentials as $ENV_VAR refs
+#   project          - identity, agent behavior, team roster
+#   scrum            - platform-neutral Scrum taxonomy (sprint, priority, status)
+#   definition_of_*  - quality gates (agent-facing only)
+#   templates        - ceremony artifact template paths or null for agent defaults
+#   ceremony_records - where the agent writes ceremony artifacts
+#   backends         - one section per PM platform; credentials as $ENV_VAR refs
 #
 # What does NOT live here:
-#   GitHub node IDs, field IDs, option IDs — fetched live by the adapter
-#   Sprint goals, capacity plans, standup notes — written by the agent directly
-#   Derived metrics (velocity, burndown) — computed by the agent from raw data
+#   GitHub node IDs, field IDs, option IDs - fetched live by the adapter
+#   Sprint goals, capacity plans, standup notes - written by the agent directly
+#   Derived metrics (velocity, burndown) - computed by the agent from raw data
 
 # ── PROJECT ───────────────────────────────────────────────────────────────────
 #
 # Platform-agnostic identity. The `agent` block controls AI behavior for this
-# project. `team` is the canonical roster — platform-specific identity (e.g.
+# project. `team` is the canonical roster - platform-specific identity (e.g.
 # GitHub login, Notion user ID) is declared under the relevant backend below.
 
 project:
@@ -69,10 +69,10 @@ scrum:
   # Canonical workflow states with semantic metadata.
   # The agent always receives canonical keys, never platform display names.
   #
-  # terminal: true  — this state counts as "done" for velocity and burndown.
+  # terminal: true  - this state counts as "done" for velocity and burndown.
   #                   Only one state should be terminal; the adapter uses it
   #                   to determine completion timestamps.
-  # blocking: true  — this state indicates the story is impeding sprint flow.
+  # blocking: true  - this state indicates the story is impeding sprint flow.
   #                   The agent uses it to surface impediments and infer
   #                   dependency risk when explicit link data is unavailable.
   #
@@ -101,7 +101,7 @@ scrum:
 
 # ── QUALITY GATES ─────────────────────────────────────────────────────────────
 #
-# Agent-facing only. The server never enforces these — the agent references
+# Agent-facing only. The server never enforces these - the agent references
 # them when coaching the team during refinement and sprint planning.
 
 definition_of_ready:
@@ -120,7 +120,7 @@ definition_of_done:
 #
 # `ceremony_records` declares where the agent writes ceremony documents.
 # The agent writes directly to this backend using its own platform capabilities
-# — ceremony records are outside the MCP server's scope.
+# - ceremony records are outside the MCP server's scope.
 #
 # `templates` maps each artifact type to a repo-relative path for a custom
 # template, or null to use the agent skill's built-in default.
@@ -172,11 +172,11 @@ backends:
     # Maps canonical Scrum field names to exact GitHub project field names.
     # sprint and status are required; others degrade gracefully if absent.
     field_mapping:
-      sprint: "Sprint" # REQUIRED — ITERATION type field
-      status: "Status" # REQUIRED — SINGLE_SELECT type field
-      item_type: "Type" # REQUIRED — SINGLE_SELECT type field
-      story_points: "Story Points" # optional — NUMBER type field
-      priority: "Priority" # optional — SINGLE_SELECT type field
+      sprint: "Sprint" # REQUIRED - ITERATION type field
+      status: "Status" # REQUIRED - SINGLE_SELECT type field
+      item_type: "Type" # REQUIRED - SINGLE_SELECT type field
+      story_points: "Story Points" # optional - NUMBER type field
+      priority: "Priority" # optional - SINGLE_SELECT type field
 
     type_mapping:
       user_story: # REQUIRED

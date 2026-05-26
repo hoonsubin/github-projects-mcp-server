@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Use this template for **defects** — unexpected behaviour, incorrect tool responses, or
+        Use this template for **defects** - unexpected behaviour, incorrect tool responses, or
         contract violations in the `scrum_*` tool surface.
 
   - type: checkboxes
@@ -105,7 +105,7 @@ body:
     id: deno-version
     attributes:
       label: Deno version
-      placeholder: "e.g. 2.3.1 — run `deno --version`"
+      placeholder: "e.g. 2.3.1 - run `deno --version`"
     validations:
       required: false
 

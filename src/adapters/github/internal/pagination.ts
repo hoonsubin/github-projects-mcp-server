@@ -1,15 +1,15 @@
 // =============================================================================
-// src/adapters/github/internal/pagination.ts — PaginatedProjectItemFetcher
+// src/adapters/github/internal/pagination.ts - PaginatedProjectItemFetcher
 //
 // Reusable abstraction for fetching GitHub Projects v2 items with cursor-based
 // pagination. Optimized for minimal payload by allowing callers to specify
 // which field values to include.
 //
 // Used by:
-//   - Story 7 (scrum_find_items) — fetch all items, filter by null sprint
-//   - Story 8 (scrum_get_sprint) — fetch items for a specific sprint
-//   - Story 10 (scrum_get_burndown) — fetch items across sprints for velocity
-//   - Future tools — any tool needing project item access
+//   - Story 7 (scrum_find_items) - fetch all items, filter by null sprint
+//   - Story 8 (scrum_get_sprint) - fetch items for a specific sprint
+//   - Story 10 (scrum_get_burndown) - fetch items across sprints for velocity
+//   - Future tools - any tool needing project item access
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
@@ -68,7 +68,7 @@ interface ProjectItemsResponse {
   };
 }
 
-/** Raw item from GraphQL — mapped to ProjectItem by the fetcher. */
+/** Raw item from GraphQL - mapped to ProjectItem by the fetcher. */
 interface RawProjectItem extends ProjectV2ItemRef {
   content: RawContent;
   fieldValues: {
@@ -132,13 +132,13 @@ const buildItemsQuery = (
 
   const contentFragment = contentParts.join("\n");
 
-  // Build fieldValues fragment — if sprintFieldIds provided, fetch only those
+  // Build fieldValues fragment - if sprintFieldIds provided, fetch only those
   const sprintFieldIds = config.sprintFieldIds;
   let fieldValuesFragment = "";
 
   if (sprintFieldIds && sprintFieldIds.length > 0) {
     // Fetch all field values but only render sub-fields for iteration type.
-    // first: 1 was wrong — GitHub has no field-type filter on fieldValues, so
+    // first: 1 was wrong - GitHub has no field-type filter on fieldValues, so
     // fetching only 1 value misses the sprint field whenever it isn't first.
     fieldValuesFragment = `
           fieldValues(first: 20) {
@@ -337,7 +337,7 @@ export class PaginatedProjectItemFetcher {
     };
   }
 
-  /** AsyncIterator protocol — enables `for await` syntax. */
+  /** AsyncIterator protocol - enables `for await` syntax. */
   async *[Symbol.asyncIterator](): AsyncIterator<ProjectItem> {
     while (this.hasNextPage || this.bufferIndex < this.buffer.length) {
       if (this.bufferIndex >= this.buffer.length) {
@@ -394,6 +394,6 @@ export const isBacklogItem = (
     return ("iterationId" in sprintValue ? sprintValue.iterationId : null) === null;
   }
 
-  // Any other typename means the field exists but isn't an iteration — treat as backlog
+  // Any other typename means the field exists but isn't an iteration - treat as backlog
   return true;
 };

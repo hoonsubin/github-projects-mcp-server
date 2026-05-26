@@ -1,5 +1,5 @@
 // =============================================================================
-// src/adapters/github/config-loader.ts — Bootstrap + config loading
+// src/adapters/github/config-loader.ts - Bootstrap + config loading
 //
 // Single responsibility: read the local config file, resolve credentials,
 // fetch live GitHub field metadata, and return a RuntimeConfig.
@@ -94,7 +94,7 @@ const resolveEnvRef = (value: string, context: string): string => {
 
 import type { SelectFieldNode } from "./types.ts";
 
-/** Query projection of GH.ProjectV2SingleSelectField — all mandatory fields. */
+/** Query projection of GH.ProjectV2SingleSelectField - all mandatory fields. */
 interface SingleSelectFieldNode extends SelectFieldNode {}
 
 interface IterationFieldNode {
@@ -225,7 +225,7 @@ const resolveFieldIds = (
     );
   }
 
-  // item_type is required — the Type board field is how every story indicates its type.
+  // item_type is required - the Type board field is how every story indicates its type.
   if (!typeFieldId) {
     throw new Error(
       `Type field '${
@@ -393,7 +393,7 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
   const ghConfig = parsedConfig.backends.github as GitHubBackendConfig;
 
   // Resolve $ENV_VAR references in auth and patch the config object.
-  // We do NOT mutate the original parsed object — create a patched copy for internal use.
+  // We do NOT mutate the original parsed object - create a patched copy for internal use.
   const resolvedToken = resolveEnvRef(ghConfig.auth.token, "backends.github.auth.token");
   const patchedGhConfig: GitHubBackendConfig = {
     ...ghConfig,
@@ -421,7 +421,7 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
   );
   validateTeamRefs(patchedGhConfig.team, projectTeamNames, "github", configPath);
 
-  // Validate type_mapping — required when field_mapping.item_type is declared.
+  // Validate type_mapping - required when field_mapping.item_type is declared.
   if (
     patchedGhConfig.field_mapping.item_type &&
     (!patchedGhConfig.type_mapping || Object.keys(patchedGhConfig.type_mapping).length === 0)
@@ -501,7 +501,7 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
     }
   }
 
-  // Extract template paths — only for keys that declare a template.
+  // Extract template paths - only for keys that declare a template.
   const typeTemplatePaths: Record<string, string> = {};
   if (patchedGhConfig.type_mapping) {
     for (const [key, entry] of Object.entries(patchedGhConfig.type_mapping)) {

@@ -1,5 +1,5 @@
 // =============================================================================
-// src/adapters/github/internal/http-client.ts — GitHub HTTP transport layer
+// src/adapters/github/internal/http-client.ts - GitHub HTTP transport layer
 //
 // Provides GraphQL and REST transport to the GitHub API.
 // =============================================================================
@@ -182,7 +182,7 @@ export const graphql = async <T>(
 
   if (json.errors && json.errors.length > 0) {
     const messages = json.errors.map((e) => e.message);
-    // Log at debug — the tool-level interceptor always re-logs errors with full
+    // Log at debug - the tool-level interceptor always re-logs errors with full
     // context (tool name + params). Keeping the API detail at debug avoids
     // printing the same failure twice at ERROR level.
     log.debug(`✗ graphql:${op} GraphQL errors (${ms}ms)`, messages);
@@ -225,7 +225,7 @@ export const graphql = async <T>(
  * Returns { data, linkHeader } so callers can paginate via the Link header
  * without a second HTTP round-trip.
  *
- * Throws GitHubApiError on 401, 403, and non-2xx responses —
+ * Throws GitHubApiError on 401, 403, and non-2xx responses -
  * same classification as graphql().
  */
 export const rest = async <T>(

@@ -1,8 +1,8 @@
 // =============================================================================
-// src/scrum/ports.ts — ProjectBackend interface (THE CONTRACT)
+// src/scrum/ports.ts - ProjectBackend interface (THE CONTRACT)
 //
 // This interface is the entire surface area that separates Scrum policy from
-// platform details. It lives in the use-case layer — implementations depend
+// platform details. It lives in the use-case layer - implementations depend
 // on it, not the other way around.
 //
 // No GitHub field IDs, GraphQL shapes, or platform-specific primitives appear
@@ -37,7 +37,7 @@ export type SearchScope = "backlog" | "sprint" | "all";
 
 /**
  * Input filter for findItems port method.
- * All fields are optional — an empty filter returns all items.
+ * All fields are optional - an empty filter returns all items.
  * Defined at the port boundary because it's an input type, not a domain type.
  */
 export interface ItemFilter {
@@ -58,7 +58,7 @@ export interface ItemFilter {
 
 /**
  * Resolved filter with defaults applied.
- * All fields are guaranteed non-optional — use the defaults from the handler
+ * All fields are guaranteed non-optional - use the defaults from the handler
  * before calling the port method.
  */
 export interface ResolvedItemFilter {
@@ -89,7 +89,7 @@ export interface AnalyticsQuery {
 
 // ── Supporting types that cross the boundary ──────────────────────────────────
 
-/** Lightweight sprint descriptor — no backend-internal IDs. */
+/** Lightweight sprint descriptor - no backend-internal IDs. */
 export interface SprintInfo {
   readonly id: string; // iteration ID from platform (e.g. GitHub iteration field ID)
   readonly name: string;
@@ -133,7 +133,7 @@ export interface PlatformState {
     readonly completed: readonly SprintInfo[];
     readonly completedCount: number;
   };
-  /** Vocabulary display maps — resolved by the adapter from backend-specific config. */
+  /** Vocabulary display maps - resolved by the adapter from backend-specific config. */
   readonly vocabulary: {
     readonly statusDisplay: DisplayMap; // canonical → display
     readonly priorityDisplay: DisplayMap; // canonical → display
@@ -142,9 +142,9 @@ export interface PlatformState {
      *  declared template are present. Empty when no templates are configured. */
     readonly typeTemplatePaths: Record<string, string>;
   };
-  /** Active epics — populated by orientUseCase via backend.getEpics(). */
+  /** Active epics - populated by orientUseCase via backend.getEpics(). */
   readonly epics: { readonly active: readonly EpicSummary[]; readonly totalCount: number };
-  /** PBI template URIs — built from typeTemplatePaths; null when no templates configured. */
+  /** PBI template URIs - built from typeTemplatePaths; null when no templates configured. */
   readonly templateUris: TemplateUriMap | null;
 }
 
@@ -152,7 +152,7 @@ export interface PlatformState {
  * Full story payload with associated data, returned by getStoryDetail.
  *
  * @deprecated Use ItemDetailResult from ../domain/types.ts instead.
- *   ItemDetailResult is a superset — it adds acceptance_criteria.
+ *   ItemDetailResult is a superset - it adds acceptance_criteria.
  *   StoryDetail will be removed in P2 (port type consolidation).
  */
 export interface StoryDetail {
@@ -222,7 +222,7 @@ export type VocabularyKind = "status_option" | "priority_option" | "label";
 
 /**
  * Lightweight listing entry for story collections.
- * Does NOT include body, comments, or linked PRs — use StoryDetail for full content.
+ * Does NOT include body, comments, or linked PRs - use StoryDetail for full content.
  *
  * ref.key matches Story.key: the human-readable issue number as a string (e.g. "42"),
  * or null for Draft Issues.
@@ -259,7 +259,7 @@ export interface ImpedimentListing {
 // ── Focused port interfaces (Interface Segregation) ─────────────────────────────
 
 /**
- * Epic port — returns all epics for the project.
+ * Epic port - returns all epics for the project.
  * Used by: getBacklogUseCase, orientUseCase
  */
 export interface EpicPort {
@@ -267,7 +267,7 @@ export interface EpicPort {
 }
 
 /**
- * Story port — returns full detail for a single story.
+ * Story port - returns full detail for a single story.
  * Used by: getStoryUseCase
  */
 export interface StoryPort {
@@ -275,7 +275,7 @@ export interface StoryPort {
 }
 
 /**
- * Find items port — unified item search across all PBIs.
+ * Find items port - unified item search across all PBIs.
  * Replaces SprintPort.getSprintStories() and BacklogPort.getBacklogStories().
  */
 export interface FindItemsPort {
@@ -283,7 +283,7 @@ export interface FindItemsPort {
 }
 
 /**
- * Analytics port — unified sprint analytics (burndown + history).
+ * Analytics port - unified sprint analytics (burndown + history).
  * Replaces HistoryPort.getCompletedSprintHistory() and BurndownPort methods.
  */
 export interface AnalyticsPort {
@@ -291,7 +291,7 @@ export interface AnalyticsPort {
 }
 
 /**
- * Board health port — health dashboard (no item lists).
+ * Board health port - health dashboard (no item lists).
  * Provides aggregated metrics without returning individual story data.
  */
 export interface BoardHealthPort {
@@ -299,7 +299,7 @@ export interface BoardHealthPort {
 }
 
 /**
- * Impediment port — returns sprint-specific impediments and allows status updates.
+ * Impediment port - returns sprint-specific impediments and allows status updates.
  * Used by: getSprintUseCase, updateImpedimentUseCase
  */
 export interface ImpedimentPort {
@@ -313,7 +313,7 @@ export interface ImpedimentPort {
 }
 
 /**
- * File reader port — fetches files from the repository backing the PM platform.
+ * File reader port - fetches files from the repository backing the PM platform.
  * Used by: getTemplateUseCase
  * todo: this should be more generalized so it's not strictly fetching from a repository
  */
@@ -322,7 +322,7 @@ export interface FileReaderPort {
 }
 
 /**
- * Project reader — composition of all read ports.
+ * Project reader - composition of all read ports.
  * Used by: orientUseCase (via getPlatformState), scrum-read tools
  */
 export interface ProjectReader
@@ -348,7 +348,7 @@ export interface ProjectReader
 }
 
 /**
- * Project writer — all mutation operations.
+ * Project writer - all mutation operations.
  * Used by: scrum-write tools
  */
 export interface ProjectWriter {
@@ -374,7 +374,7 @@ export interface ProjectWriter {
 }
 
 /**
- * ProjectBackend — the full interface combining all ports.
+ * ProjectBackend - the full interface combining all ports.
  * Tool handlers use this for convenience; new use-case code should
  * import specific ports (FindItemsPort, AnalyticsPort, etc.).
  */

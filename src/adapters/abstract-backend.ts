@@ -1,4 +1,4 @@
-// src/adapters/abstract-backend.ts — AbstractProjectBackend
+// src/adapters/abstract-backend.ts - AbstractProjectBackend
 //
 // Abstract base class for platform adapters. Provides default (throwing)
 // implementations for optional port methods so each adapter only overrides
@@ -75,12 +75,12 @@ export class UnsupportedCapabilityError extends AdapterError {
  * {@link UnsupportedCapabilityError} because they are optional features not
  * available on every platform:
  *
- *   - {@link resolveRef} — protected helper for converting `{ number }` refs
- *   - {@link createImpediment} — impediment logging support
- *   - {@link updateImpediment} — impediment resolution support
+ *   - {@link resolveRef} - protected helper for converting `{ number }` refs
+ *   - {@link createImpediment} - impediment logging support
+ *   - {@link updateImpediment} - impediment resolution support
  *
  * All other {@link ProjectReader} and {@link ProjectWriter} methods are
- * declared abstract — the compiler enforces that every concrete adapter
+ * declared abstract - the compiler enforces that every concrete adapter
  * provides them.
  */
 export abstract class AbstractProjectBackend implements ProjectReader, ProjectWriter {
@@ -89,7 +89,7 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
   /** Each adapter MUST declare its platform capabilities. Read-only. */
   abstract readonly capabilities: PlatformCapabilities;
 
-  // ── ProjectReader — platform state ───────────────────────────────────────
+  // ── ProjectReader - platform state ───────────────────────────────────────
 
   abstract getPlatformState(declaredVocabulary: {
     canonicalStatusKeys: string[];
@@ -98,7 +98,7 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
 
   abstract reload(): Promise<void>;
 
-  // ── ProjectReader — story read ───────────────────────────────────────────
+  // ── ProjectReader - story read ───────────────────────────────────────────
 
   abstract getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>>;
 
@@ -111,7 +111,7 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
    */
   abstract getSprintCompletion(iterationId: string): Promise<{ completed: number; total: number }>;
 
-  // ── ProjectReader — unified search & analytics ───────────────────────────
+  // ── ProjectReader - unified search & analytics ───────────────────────────
 
   /**
    * Unified item search across all PBIs.
@@ -127,11 +127,11 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
   abstract getAnalytics(query: AnalyticsQuery): Promise<AnalyticsResult>;
 
   /**
-   * Board health dashboard — aggregated metrics without item lists.
+   * Board health dashboard - aggregated metrics without item lists.
    */
   abstract getBoardHealth(sprintScope: string): Promise<BacklogHealth>;
 
-  // ── ProjectReader — impediments ──────────────────────────────────────────
+  // ── ProjectReader - impediments ──────────────────────────────────────────
 
   abstract getSprintImpediments(
     sprint: SprintRef,
@@ -139,7 +139,7 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
 
   abstract getOrphanImpediments(): Promise<ImpedimentListing[]>;
 
-  // ── ProjectWriter — story mutations ──────────────────────────────────────
+  // ── ProjectWriter - story mutations ──────────────────────────────────────
 
   abstract createStory(input: CreateStoryInput): Promise<StoryRef>;
 
@@ -197,13 +197,13 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
    * {@link PlatformCapabilities.supports.stableItemKeys}) should override
    * this to delegate `{ number }` lookups to a `findItems` query.
    *
-   * Design note: this is `protected` — an internal adapter concern, not
+   * Design note: this is `protected` - an internal adapter concern, not
    * exposed on any port interface. Use-case code never sees ref resolution.
    */
   protected resolveRef(
     ref: StoryRef,
   ): Promise<StoryRef> {
-    // { id } refs are already resolved — pass through
+    // { id } refs are already resolved - pass through
     if ("id" in ref && !("number" in ref)) {
       return Promise.resolve(ref);
     }

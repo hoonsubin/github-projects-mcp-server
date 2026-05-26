@@ -1,5 +1,5 @@
 // =============================================================================
-// src/scrum/get-story.ts — getStoryUseCase
+// src/scrum/get-story.ts - getStoryUseCase
 //
 // Receives backend: StoryPort.
 // Returns UseCaseResult<ItemDetailResult | null>.
@@ -12,7 +12,7 @@ import { parseAcceptanceCriteria } from "../domain/rules/acceptance-criteria.ts"
 /**
  * Get full details for a single story.
  *
- * backend.getStoryDetail() returns a BackendCallResult — partial data already
+ * backend.getStoryDetail() returns a BackendCallResult - partial data already
  * assembled with any sub-query failures captured as warnings. If the story
  * itself is unavailable the adapter throws, propagating to the framework layer.
  */
@@ -22,7 +22,7 @@ export const getStoryUseCase = async (
 ): Promise<UseCaseResult<ItemDetailResult>> => {
   const { value: detail, warnings } = await backend.getStoryDetail(ref);
   if (!detail) {
-    // getStoryDetail throws on missing story — null here would be a bug
+    // getStoryDetail throws on missing story - null here would be a bug
     throw new Error("getStoryDetail returned null value without throwing");
   }
 

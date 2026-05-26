@@ -1,5 +1,5 @@
 // =============================================================================
-// src/scrum/update-impediment.ts — updateImpedimentUseCase
+// src/scrum/update-impediment.ts - updateImpedimentUseCase
 //
 // Updates an impediment's status and optionally adds resolution notes.
 // =============================================================================

@@ -1,5 +1,5 @@
 // =============================================================================
-// src/index.ts — Composition root and transport entry point
+// src/index.ts - Composition root and transport entry point
 //
 // Responsibilities:
 //   - Select which backend to build via the adapter factory registry
@@ -7,11 +7,11 @@
 //   - Set up MCP transports (stdio and HTTP)
 //   - Install cross-cutting observability (tool logging, transport tracing)
 //
-// This file imports no adapter internals — backend construction is delegated to
+// This file imports no adapter internals - backend construction is delegated to
 // src/adapters/factory.ts, which selects the correct AdapterFactory by platform key.
 //
 // Error handling strategy:
-//   - All logging goes to stderr (never stdout — MCP protocol).
+//   - All logging goes to stderr (never stdout - MCP protocol).
 //   - Unhandled rejections are logged to stderr only.
 //   - stdio transport wraps the entire lifecycle in a try/catch that emits
 //     a valid JSON-RPC error response on stdout so the MCP client receives
@@ -51,7 +51,7 @@ import { SCRUM_WRITE_TOOL_NAMES } from "./tools/scrum-write.ts";
 
 addEventListener("unhandledrejection", (event: Event) => {
   const reason = (event as PromiseRejectionEvent).reason;
-  log.error("Unhandled rejection — this is a bug.", {
+  log.error("Unhandled rejection - this is a bug.", {
     error: reason instanceof Error ? reason.message : String(reason),
     stack: reason instanceof Error ? reason.stack : undefined,
   });
@@ -118,7 +118,7 @@ const _projectRoot: string | undefined = _cliArgs.root
 
 // ── Runtime permission guard ─────────────────────────────────────────────────
 //
-// `deno compile --allow-env ...` bakes permissions into the binary — this
+// `deno compile --allow-env ...` bakes permissions into the binary - this
 // guard fires only when someone runs the uncompiled source via `deno run`
 // without the required flags.
 
@@ -140,9 +140,9 @@ try {
 //
 // Three verbosity tiers:
 //
-//   always   — tool name, timing, and errors with input params (no env var needed)
-//   DEBUG=1  — GraphQL/REST operation names and params (API-level tracing)
-//   TRACE=1  — raw JSON-RPC wire messages (transport dump, very noisy)
+//   always   - tool name, timing, and errors with input params (no env var needed)
+//   DEBUG=1  - GraphQL/REST operation names and params (API-level tracing)
+//   TRACE=1  - raw JSON-RPC wire messages (transport dump, very noisy)
 
 const patchToolLogging = (server: McpServer): void => {
   // McpServer does not expose registerTool on its public type, but the
@@ -168,7 +168,7 @@ const patchToolLogging = (server: McpServer): void => {
     handler: (params: unknown, extra: unknown) => Promise<unknown>,
   ): unknown => {
     return original(name, config, async (params: unknown, extra: unknown) => {
-      // Always: log which tool fired (no params — keeps the line short)
+      // Always: log which tool fired (no params - keeps the line short)
       log.info(`→ ${name}`);
       // DEBUG: also log the full input so you can see what the agent passed
       log.debug(`  params`, params);
@@ -194,7 +194,7 @@ const patchToolLogging = (server: McpServer): void => {
 
 // ── Transport-level request/response logger (TRACE=1 only) ───────────────────
 //
-// Logs every raw JSON-RPC message — useful for debugging MCP protocol issues
+// Logs every raw JSON-RPC message - useful for debugging MCP protocol issues
 // but extremely noisy during normal use. Enable with TRACE=1 (not DEBUG=1).
 
 const wrapTransportLogging = (transport: Transport, label: string): void => {
@@ -228,7 +228,7 @@ const ALL_SCRUM_TOOL_NAMES = [...SCRUM_READ_TOOL_NAMES, ...SCRUM_WRITE_TOOL_NAME
 
 const registerStubTools = (server: McpServer, errorMessage: string): void => {
   for (const name of ALL_SCRUM_TOOL_NAMES) {
-    // server.tool() is the MCP SDK convenience method — no description or
+    // server.tool() is the MCP SDK convenience method - no description or
     // annotations needed for stub handlers. It accepts an empty Zod schema {}.
     server.tool(name, {}, () => ({
       content: [{ type: "text" as const, text: errorMessage }],
@@ -259,7 +259,8 @@ const createMcpServer = async (
   } catch (err) {
     let hint: string;
     if (err instanceof AdapterError && err.code === "AUTH_FAILED") {
-      hint = `Backend authentication failed — check that the platform token (e.g. GITHUB_TOKEN) is set and valid.`;
+      hint =
+        `Backend authentication failed - check that the platform token (e.g. GITHUB_TOKEN) is set and valid.`;
     } else if (configPath) {
       hint = `Config not found or invalid at: ${configPath}`;
     } else {
@@ -307,7 +308,7 @@ const createMcpServer = async (
 // ── Stdio transport ──────────────────────────────────────────────────────────
 //
 // Wraps the entire lifecycle in try/catch. If createMcpServer or server.connect
-// throws — due to a module init failure, config crash, or transport error —
+// throws - due to a module init failure, config crash, or transport error -
 // a valid JSON-RPC error response is emitted on stdout so the MCP client
 // receives protocol-compliant output instead of a raw stack trace.
 
@@ -326,7 +327,7 @@ const emitJsonRpcError = (message: string): void => {
       message: `Server initialization failed: ${message}`,
     },
   });
-  // Write directly to stdout — this is the only place in the codebase that
+  // Write directly to stdout - this is the only place in the codebase that
   // does so, and only as a catastrophic-fallback.
   const encoder = new TextEncoder();
   Deno.stdout.writeSync(encoder.encode(response + "\n"));

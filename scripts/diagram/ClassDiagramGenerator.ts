@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/diagram/ClassDiagramGenerator.ts — Orchestrate class diagram generation
+// scripts/diagram/ClassDiagramGenerator.ts - Orchestrate class diagram generation
 // =============================================================================
 
 import { ParsedModule } from "./ParsedModule.ts";

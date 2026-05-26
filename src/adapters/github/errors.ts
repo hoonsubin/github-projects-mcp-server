@@ -1,9 +1,9 @@
 // =============================================================================
-// src/adapters/github/errors.ts — GitHubApiError class
+// src/adapters/github/errors.ts - GitHubApiError class
 //
 // GitHubApiError is the canonical exception thrown by all GitHub adapter code.
 // Every throw site declares a machine-readable code, an agent recovery instruction,
-// and optional structured context — making errors actionable at every layer.
+// and optional structured context - making errors actionable at every layer.
 // =============================================================================
 
 import { AdapterError } from "../../domain/errors.ts";
@@ -25,7 +25,7 @@ export type GitHubErrorCode =
   // API mutations
   | "MUTATION_FAILED" // mutation completed but returned no data
   // GitHub API transport
-  | "AUTH_FAILED" // 401 — token invalid or expired
+  | "AUTH_FAILED" // 401 - token invalid or expired
   | "RATE_LIMITED" // 403 + x-ratelimit-reset header present
   | "PERMISSION_DENIED" // 403 without rate-limit header
   | "GRAPHQL_ERROR" // errors array in GraphQL response body
@@ -102,7 +102,7 @@ export const notImplemented = (
     {
       code: "NOT_IMPLEMENTED",
       recovery: `This feature is not yet available via the GitHub Projects API. ` +
-        `No action is required — the field will be null in the response.`,
+        `No action is required - the field will be null in the response.`,
       context,
     },
   );

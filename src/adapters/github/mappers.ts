@@ -1,5 +1,5 @@
 // =============================================================================
-// src/adapters/github/mappers.ts — GitHub raw types → domain types mappers
+// src/adapters/github/mappers.ts - GitHub raw types → domain types mappers
 //
 // Pure functions: take ProjectItem (or narrow input shapes) and return domain types.
 // Local input shapes are grounded in github-types.ts via Pick so field renames
@@ -32,7 +32,7 @@ import type {
   UserLogin,
 } from "./types.ts";
 
-// ── Local input shapes (private — only for function parameter types) ───────────
+// ── Local input shapes (private - only for function parameter types) ───────────
 
 /**
  * Query projection of GH.IssueComment for buildCommentList.
@@ -44,7 +44,7 @@ interface CommentInput extends CommentProjection {
 
 /**
  * Query projection of CrossReferencedEvent.source for buildLinkedPrList.
- * The source field is GH.PullRequest (ReferencedSubject = Issue | PullRequest —
+ * The source field is GH.PullRequest (ReferencedSubject = Issue | PullRequest -
  * in practice only PullRequests appear as linked artifacts).
  */
 interface TimelineItemInput {
@@ -63,7 +63,7 @@ const mapIssueDependencies = (
   const toEntry = (n: IssueRefNode): DependencyEntry => ({
     key: String(n.number),
     title: n.title,
-    ref: { id: n.id }, // issue node ID — resolveDependencyRefs() maps to project item IDs
+    ref: { id: n.id }, // issue node ID - resolveDependencyRefs() maps to project item IDs
   });
   return (issueContent.blockedBy?.nodes ?? []).map(toEntry);
 };
@@ -168,7 +168,7 @@ export const buildStoryFromRaw = (
 
   // ── DraftIssue branch ───────────────────────────────────────────────────────
   if (content.__typename === "DraftIssue") {
-    // assignees is absent when includeDraftIssueContent: false — skip this item
+    // assignees is absent when includeDraftIssueContent: false - skip this item
     if (!content.assignees) return null;
     const draft: DraftStory = {
       kind: "draft",
@@ -194,9 +194,9 @@ export const buildStoryFromRaw = (
 
   // ── Issue / PullRequest branch ──────────────────────────────────────────────
   // Both have number, title, url, body, assignees, labels
-  // labels/assignees are absent when includePRContent: false — skip this item
+  // labels/assignees are absent when includePRContent: false - skip this item
   if (!content.labels || !content.assignees) return null;
-  // Type comes from the Type board field — not from labels.
+  // Type comes from the Type board field - not from labels.
   // All repo labels are passed through unfiltered.
   const labels: string[] = content.labels.nodes.map((l: { name: string }) => l.name);
   const epic = content.__typename === "Issue" && content.milestone
@@ -240,7 +240,7 @@ export const buildEnrichedStory = (
   config: RuntimeConfig,
 ): IssueStory => {
   const boardFields = extractBoardFields(fieldValueNodes, config);
-  // Type comes from the Type board field — not from labels.
+  // Type comes from the Type board field - not from labels.
   // All repo labels are passed through unfiltered.
   const labels: string[] = issueNode.labels?.nodes.map((l: { name: string }) => l.name) ?? [];
 
@@ -320,7 +320,7 @@ export const toSprintInfo = (iter: IterationEntry | null): SprintInfo | null => 
 
 /**
  * Attempt to resolve a sprint goal for the given iteration.
- * Always throws NOT_IMPLEMENTED — the GitHub Projects API does not expose
+ * Always throws NOT_IMPLEMENTED - the GitHub Projects API does not expose
  * iteration descriptions or goals.
  *
  * Call via catchBackend so the throw is converted to a warning rather than
@@ -335,9 +335,9 @@ export const resolveSprintGoal = (_iter: IterationEntry): never =>
  * Second-pass resolver: fills in ref.id for dependency entries by matching
  * issue node IDs or issue numbers against in-memory project items.
  *
- * Called at the end of getBacklogStories() and getSprintStories() — both of which
+ * Called at the end of getBacklogStories() and getSprintStories() - both of which
  * have the full list of ProjectItems already in memory. Not called from
- * getStoryDetail() — ref.id stays as issue node ID in that context.
+ * getStoryDetail() - ref.id stays as issue node ID in that context.
  */
 export const resolveDependencyRefs = (
   stories: StoryBase[],

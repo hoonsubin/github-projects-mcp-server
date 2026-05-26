@@ -1,5 +1,5 @@
 // =============================================================================
-// src/adapters/github/internal/board-health-service.ts — Board Health Dashboard
+// src/adapters/github/internal/board-health-service.ts - Board Health Dashboard
 //
 // Computes aggregate board health metrics without returning individual story data.
 // Called by GitHubProjectBackend.getBoardHealth() (P7d).
@@ -18,7 +18,7 @@ import type { BacklogHealth, SprintRef, SprintRisk, Story } from "../../../domai
 // ── BoardHealthService class ──────────────────────────────────────────────────
 
 /**
- * Board health dashboard — aggregated metrics without item lists.
+ * Board health dashboard - aggregated metrics without item lists.
  * Uses existing StoryQueryService and ImpedimentService; no new API queries.
  * Injected into GitHubProjectBackend via constructor (DIP).
  */
@@ -32,12 +32,12 @@ export class BoardHealthService {
   /**
    * Return board health metrics for the given sprint scope.
    *
-   * @param sprintScope — "current" | "next" | "<name>" | "all"
+   * @param sprintScope - "current" | "next" | "<name>" | "all"
    */
   async getBoardHealth(sprintScope: string): Promise<BacklogHealth> {
     const stories = await this.fetchStoriesForScope(sprintScope);
 
-    // Exclude Done items from all active-work metrics — they're already resolved
+    // Exclude Done items from all active-work metrics - they're already resolved
     // and inflate risk counts and readiness percentages when included.
     const ghConfig = this.config.scrumConfig.backends.github as Record<string, unknown>;
     const statusDisplay = (ghConfig?.status_display ?? {}) as Record<string, string>;

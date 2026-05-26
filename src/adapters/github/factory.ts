@@ -1,12 +1,12 @@
 // =============================================================================
-// src/adapters/github/factory.ts — GitHub adapter factory
+// src/adapters/github/factory.ts - GitHub adapter factory
 //
 // Single responsibility: construct and wire all GitHub adapter services,
 // returning a platform-agnostic BackendResult to the composition root via
 // the AdapterFactory interface.
 //
 // Keeping this logic inside the adapter package means index.ts only needs
-// one import — it calls createBackend([new GitHubAdapterFactory()]) without
+// one import - it calls createBackend([new GitHubAdapterFactory()]) without
 // knowing which internal services exist or how they depend on each other.
 // =============================================================================
 
@@ -64,7 +64,7 @@ export class GitHubAdapterFactory implements AdapterFactory {
       typeDisplay,
     };
 
-    // ── Service construction — each service receives only what it needs ──
+    // ── Service construction - each service receives only what it needs ──
 
     const labelResolver = new LabelResolver(config, ghClient, owner, primaryRepo);
 
@@ -140,7 +140,7 @@ export class GitHubAdapterFactory implements AdapterFactory {
     const localRoot = options?.projectRoot ?? Deno.cwd();
     const fileReader = new GitHubFileReader(owner, primaryRepo, localRoot);
 
-    // ── Facade assembly — single parameter object, no positional args ────
+    // ── Facade assembly - single parameter object, no positional args ────
 
     const deps: GitHubBackendDependencies = {
       labelResolver,

@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/diagram/resolveImport.ts — Resolve relative import paths to module paths
+// scripts/diagram/resolveImport.ts - Resolve relative import paths to module paths
 // =============================================================================
 
 import { UnusedExport } from "./types.ts";

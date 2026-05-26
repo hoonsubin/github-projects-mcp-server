@@ -1,5 +1,5 @@
 // =============================================================================
-// src/adapters/github/internal/config-reloader.ts — Live config refresh
+// src/adapters/github/internal/config-reloader.ts - Live config refresh
 //
 // Single responsibility: re-fetch GitHub project field metadata and patch the
 // shared RuntimeConfig object in-place so all services that hold a reference
@@ -18,7 +18,7 @@ export class ConfigReloader {
   async reload(): Promise<void> {
     const fresh = await loadConfig({ github: this.github });
 
-    // Patch iterations in-place — every service reads these via the shared reference
+    // Patch iterations in-place - every service reads these via the shared reference
     this.config.iterations.active = fresh.iterations.active;
     this.config.iterations.next = fresh.iterations.next;
     this.config.iterations.completed = fresh.iterations.completed;

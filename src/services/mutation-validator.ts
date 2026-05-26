@@ -1,8 +1,8 @@
 // =============================================================================
-// src/services/mutation-validator.ts — Validates GraphQL queries for mutations
+// src/services/mutation-validator.ts - Validates GraphQL queries for mutations
 //
 // Single Responsibility: Detects mutation keywords in GraphQL query strings.
-// Follows SRP — no business logic, only validation.
+// Follows SRP - no business logic, only validation.
 // =============================================================================
 
 /**

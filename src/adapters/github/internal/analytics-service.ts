@@ -1,5 +1,5 @@
 // =============================================================================
-// src/adapters/github/internal/analytics-service.ts — Unified Sprint Analytics
+// src/adapters/github/internal/analytics-service.ts - Unified Sprint Analytics
 //
 // Merges SprintHistoryService + BurndownCalculator behind the AnalyticsPort
 // interface. Called by GitHubProjectBackend.getAnalytics() (P7d).
@@ -67,12 +67,12 @@ export class AnalyticsService {
     try {
       burndown = await this.buildBurndown(query.sprint_ref ?? "current");
     } catch (_err) {
-      // burndown stays null — partial analytics with history only
+      // burndown stays null - partial analytics with history only
     }
     try {
       history = await this.buildHistory(window);
     } catch (_err) {
-      // history stays null — partial analytics with burndown only
+      // history stays null - partial analytics with burndown only
     }
     return { burndown, history, window };
   }
@@ -121,7 +121,7 @@ export class AnalyticsService {
           start_date: entry.info.startDate,
           end_date: entry.info.endDate,
           duration_days: entry.info.durationDays,
-          days_remaining: 0, // completed sprint — always 0
+          days_remaining: 0, // completed sprint - always 0
         },
         items,
         total_count: items.length,

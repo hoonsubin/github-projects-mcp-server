@@ -1,4 +1,4 @@
-// src/adapters/factory.ts — AdapterFactory + createBackend() registry
+// src/adapters/factory.ts - AdapterFactory + createBackend() registry
 //
 // The factory contract every platform adapter must implement, and the
 // composition-root entry point that selects the correct adapter at startup.
@@ -55,7 +55,7 @@ export interface AdapterFactory {
  * Unified return type for all adapter factories.
  *
  * Replaces the adapter-specific GitHubBackendResult. The composition root
- * receives this and uses it for tool registration — it never knows which
+ * receives this and uses it for tool registration - it never knows which
  * concrete adapter produced it.
  *
  * fileReader is nullable because not every platform has a file-reader
@@ -66,7 +66,7 @@ export interface BackendResult {
   /** The constructed backend, exposed only through the port interfaces. */
   readonly backend: ProjectReader & ProjectWriter;
 
-  /** Capability declaration — gates optional behavior in the composition root. */
+  /** Capability declaration - gates optional behavior in the composition root. */
   readonly capabilities: PlatformCapabilities;
 
   /** File reader for template fetching, or null if the platform lacks file-reader support. */
@@ -93,11 +93,11 @@ export interface BackendResult {
  * 3. Throws if no match is found (lists registered platforms in the error).
  * 4. Calls factory.create() and returns the BackendResult.
  *
- * The caller (src/index.ts) registers factories and passes the list here —
+ * The caller (src/index.ts) registers factories and passes the list here -
  * this function owns neither the construction nor the registration; it only
  * selects.
  *
- * @param factories — one or more AdapterFactory instances registered by the composition root
+ * @param factories - one or more AdapterFactory instances registered by the composition root
  * @throws {Error} when SCRUM_PLATFORM does not match any registered factory
  */
 export const createBackend = async (

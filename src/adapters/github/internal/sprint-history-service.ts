@@ -1,5 +1,5 @@
 // =============================================================================
-// src/adapters/github/internal/sprint-history-service.ts — Sprint History
+// src/adapters/github/internal/sprint-history-service.ts - Sprint History
 //
 // Single responsibility: fetch and project completed sprint history.
 // Injected into GitHubProjectBackend via constructor (DIP).
@@ -48,7 +48,7 @@ export class SprintHistoryService {
           const content = item.content;
           if (!content || !("number" in content)) {
             throw new GitHubApiError(
-              `Sprint history item has no issue number — unexpected content type.`,
+              `Sprint history item has no issue number - unexpected content type.`,
               {
                 code: "NOT_FOUND",
                 recovery: "The item may have been deleted. Re-run scrum_orient to refresh.",

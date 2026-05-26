@@ -29,7 +29,7 @@ jobs:
 
       # Patch the version string directly into source before compiling.
       # The binary reads Deno.env.get("RELEASE_VERSION") at runtime, but end users
-      # won't set that env var — so we replace the literal in index.ts here so the
+      # won't set that env var - so we replace the literal in index.ts here so the
       # correct version is baked into every compiled binary.
       - name: Patch version into source
         run: |
@@ -37,7 +37,7 @@ jobs:
           sed -i "s/Deno.env.get(\"RELEASE_VERSION\") ?? \"dev\"/\"${VERSION}\"/" src/index.ts
 
       # Cross-compile all four platform targets from this single Linux runner.
-      # deno compile embeds the JS bundle into a platform-specific denort binary —
+      # deno compile embeds the JS bundle into a platform-specific denort binary -
       # no native toolchain is needed for cross-compilation.
       - name: Compile all targets
         run: deno task compile:all

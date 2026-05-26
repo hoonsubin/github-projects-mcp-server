@@ -1,5 +1,5 @@
 // =============================================================================
-// src/scrum/find-items.ts — findItemsUseCase
+// src/scrum/find-items.ts - findItemsUseCase
 //
 // Unified item search across all PBIs. Delegates to FindItemsPort.findItems().
 // The adapter must implement findItems() (P7) before this returns real data;
@@ -32,7 +32,7 @@ const resolveFilter = (filter: ItemFilter): ResolvedItemFilter => ({
 /**
  * Find items matching the given filter.
  *
- * This use-case is a thin bridge — it resolves defaults on the input filter
+ * This use-case is a thin bridge - it resolves defaults on the input filter
  * and delegates to the adapter. The adapter is responsible for translating
  * the filter into platform-specific queries (GraphQL, REST, etc.).
  */

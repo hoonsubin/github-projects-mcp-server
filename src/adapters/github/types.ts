@@ -1,17 +1,17 @@
 // =============================================================================
-// src/adapters/github/types.ts — GitHub adapter projection types
+// src/adapters/github/types.ts - GitHub adapter projection types
 //
 // Single source of truth for all GitHub API types used by this adapter:
 //
-//   - GitHubBackendConfig     — platform-specific connection config
-//   - GraphQLResponse<T>      — generic response envelope
-//   - ItemContentType         — alias of the generated ProjectV2ItemType enum
-//   - ProjectItem*            — query-specific projections of GH.Issue / PullRequest / DraftIssue
-//   - ProjectItem             — the full project board item (replaces ProjectV2Item)
-//   - ItemFieldValue          — flat field-value projection (replaces ProjectV2ItemFieldValue)
-//   - FieldValueNode          — minimal structural interface for extractBoardFields
-//   - BoardFields             — board field extraction output
-//   - Comment / LinkedPr      — issue detail output shapes
+//   - GitHubBackendConfig     - platform-specific connection config
+//   - GraphQLResponse<T>      - generic response envelope
+//   - ItemContentType         - alias of the generated ProjectV2ItemType enum
+//   - ProjectItem*            - query-specific projections of GH.Issue / PullRequest / DraftIssue
+//   - ProjectItem             - the full project board item (replaces ProjectV2Item)
+//   - ItemFieldValue          - flat field-value projection (replaces ProjectV2ItemFieldValue)
+//   - FieldValueNode          - minimal structural interface for extractBoardFields
+//   - BoardFields             - board field extraction output
+//   - Comment / LinkedPr      - issue detail output shapes
 //
 // Nothing in the domain layer (src/domain/, src/scrum/) imports from this file.
 // =============================================================================
@@ -29,7 +29,7 @@ import type {
 //
 // These branded string types distinguish GitHub's three node ID formats at
 // compile time. The domain layer sees only opaque EntityRef { id: string }.
-// These brands never cross the port boundary — use toEntityRef() to erase
+// These brands never cross the port boundary - use toEntityRef() to erase
 // the brand when returning to the domain/port layers.
 
 /**
@@ -43,7 +43,7 @@ export type GitHubItemId = string & { readonly _brand: "GitHubItemId" };
  * GitHub Issue node ID (I_... prefix).
  * Used internally by the adapter for issue-specific GraphQL operations
  * (detailed issue queries, label mutations, comment posting).
- * NEVER exposed as ref.id to the domain layer — always resolve to GitHubItemId first.
+ * NEVER exposed as ref.id to the domain layer - always resolve to GitHubItemId first.
  */
 export type GitHubIssueId = string & { readonly _brand: "GitHubIssueId" };
 
@@ -69,7 +69,7 @@ export const toEntityRef = (itemId: GitHubItemId): EntityRef => ({ id: itemId })
 
 /**
  * GitHub-specific backend configuration.
- * All values here are platform-specific — the use-case layer never reads this directly.
+ * All values here are platform-specific - the use-case layer never reads this directly.
  * Auth values are $ENV_VAR references resolved by the config loader at startup.
  */
 export interface GitHubBackendConfig {
@@ -87,13 +87,13 @@ export interface GitHubBackendConfig {
   }>;
   /** Maps canonical Scrum field names to exact GitHub project field names. */
   field_mapping: {
-    sprint: string; // REQUIRED — ITERATION type field
-    status: string; // REQUIRED — SINGLE_SELECT type field
-    story_points?: string; // optional — NUMBER type field
-    priority?: string; // optional — SINGLE_SELECT type field
-    item_type?: string; // optional — SINGLE_SELECT type field for story type
-    epic?: string; // optional — field used to track epic association on the board
-    assignee?: string; // optional — field used to track assignees on the board
+    sprint: string; // REQUIRED - ITERATION type field
+    status: string; // REQUIRED - SINGLE_SELECT type field
+    story_points?: string; // optional - NUMBER type field
+    priority?: string; // optional - SINGLE_SELECT type field
+    item_type?: string; // optional - SINGLE_SELECT type field for story type
+    epic?: string; // optional - field used to track epic association on the board
+    assignee?: string; // optional - field used to track assignees on the board
   };
   /** Maps canonical status keys → exact GitHub single-select option names. */
   status_display: Record<string, string>;
@@ -105,7 +105,7 @@ export interface GitHubBackendConfig {
    *
    * Each entry is a contract with the agent: the MCP will expose this type in
    * vocabulary.type and (when template is declared) in vocabulary.template_uris.
-   * The set of keys is open — teams may add custom types beyond the built-in PBI set.
+   * The set of keys is open - teams may add custom types beyond the built-in PBI set.
    * The server validates each display name against live board options at startup and
    * surfaces a decorated error for any key whose display name is not found on the board.
    *
@@ -134,7 +134,7 @@ export interface GraphQLResponse<T> {
  *
  * Note: these are item-level values ("ISSUE", "PULL_REQUEST", "DRAFT_ISSUE")
  * on ProjectItem.type. The __typename discriminators on content objects use
- * title-case ("Issue", "PullRequest", "DraftIssue") — these are separate fields.
+ * title-case ("Issue", "PullRequest", "DraftIssue") - these are separate fields.
  */
 export type ItemContentType = GH.ProjectV2ItemType;
 
@@ -150,7 +150,7 @@ export type IssueIdentity = Required<Pick<GH.Issue, "id" | "number" | "title" | 
 /** Minimal PR identity: same five core fields from GH.PullRequest. */
 export type PrIdentity = Required<Pick<GH.PullRequest, "id" | "number" | "title" | "body" | "url">>;
 
-/** PR discriminator field (isDraft) — compose with PrIdentity for full PR identity. */
+/** PR discriminator field (isDraft) - compose with PrIdentity for full PR identity. */
 export type PrDiscriminator = Required<Pick<GH.PullRequest, "isDraft">>;
 
 /** PR state enum (OPEN | CLOSED | MERGED). */
@@ -168,10 +168,10 @@ export type IssueRef = Required<Pick<GH.Issue, "id" | "number" | "title">>;
 /** Label stub (name + color) for connection nodes. */
 export type LabelRef = Required<Pick<GH.Label, "name" | "color">>;
 
-/** Label-only stub (name) — used in IssueDetailsInput.labels. */
+/** Label-only stub (name) - used in IssueDetailsInput.labels. */
 export type LabelNameOnly = Required<Pick<GH.Label, "name">>;
 
-/** User login stub — used in author/assignee connections. */
+/** User login stub - used in author/assignee connections. */
 export type UserLogin = Required<Pick<GH.User, "login">>;
 
 /** IssueComment projection: body + createdAt + url. */
@@ -187,7 +187,7 @@ export type SelectFieldOption = Required<
   Pick<GH.ProjectV2SingleSelectFieldOption, "id" | "name" | "color" | "description">
 >;
 
-/** ProjectV2SingleSelectField projection — id + name + dataType + options. */
+/** ProjectV2SingleSelectField projection - id + name + dataType + options. */
 export type SelectFieldNode =
   & Required<
     Pick<GH.ProjectV2SingleSelectField, "id" | "name" | "dataType">
@@ -196,13 +196,13 @@ export type SelectFieldNode =
     options: SelectFieldOption[];
   };
 
-/** PageInfo projection — hasNextPage + endCursor. */
+/** PageInfo projection - hasNextPage + endCursor. */
 export type PageInfoRef = Required<Pick<GH.PageInfo, "hasNextPage" | "endCursor">>;
 
-/** ProjectV2 projection — id only. */
+/** ProjectV2 projection - id only. */
 export type ProjectV2Ref = Required<Pick<GH.ProjectV2, "id">>;
 
-/** ProjectV2Item projection — id + type + createdAt + updatedAt + isArchived. */
+/** ProjectV2Item projection - id + type + createdAt + updatedAt + isArchived. */
 export type ProjectV2ItemRef = Required<
   Pick<GH.ProjectV2Item, "id" | "type" | "createdAt" | "updatedAt" | "isArchived">
 >;
@@ -215,7 +215,7 @@ export type ProjectV2ItemRef = Required<
 // Design: scalar fields that exist on the generated GH.* interfaces are declared
 // via the named aliases above so the compiler validates them against the schema.
 // Nested connection fields (assignees, labels, milestone) are defined as inline
-// query-projection shapes — narrower than the full schema types — matching exactly
+// query-projection shapes - narrower than the full schema types - matching exactly
 // what our GraphQL fragments fetch.
 
 export interface ProjectItemIssueContent extends IssueIdentity {
@@ -267,43 +267,43 @@ export interface ProjectItem {
 // TODO: replace with a proper discriminated union aligned to the per-type
 // generated interfaces once extractBoardFields is refactored.
 
-/** Query projection of GH.ProjectV2FieldCommon — we only fetch id + name. */
+/** Query projection of GH.ProjectV2FieldCommon - we only fetch id + name. */
 export type FieldValueField = Required<Pick<GH.ProjectV2FieldCommon, "id" | "name">>;
 
-/** Query projection of GH.User — we only fetch login. */
+/** Query projection of GH.User - we only fetch login. */
 export type FieldValueUser = Pick<GH.User, "login">;
 
-/** Query projection of GH.UserConnection.nodes — flat array of login-only users. */
+/** Query projection of GH.UserConnection.nodes - flat array of login-only users. */
 export type FieldValueUserNodes = Required<Pick<GH.UserConnection, "nodes">> & {
   nodes: FieldValueUser[];
 };
 
-/** Query projection of GH.Label — we only fetch name + color. */
+/** Query projection of GH.Label - we only fetch name + color. */
 export type FieldValueLabel = Required<Pick<GH.Label, "name" | "color">>;
 
-/** Query projection of GH.LabelConnection.nodes — flat array of name+color labels. */
+/** Query projection of GH.LabelConnection.nodes - flat array of name+color labels. */
 export type FieldValueLabelNodes = Required<Pick<GH.LabelConnection, "nodes">> & {
   nodes: FieldValueLabel[];
 };
 
-/** Query projection of GH.Milestone — we only fetch id + title + dueOn. */
+/** Query projection of GH.Milestone - we only fetch id + title + dueOn. */
 export type FieldValueMilestone = Required<Pick<GH.Milestone, "id" | "title">> & {
   dueOn: GH.Milestone["dueOn"];
 };
 
-/** Query projection of GH.Repository — we only fetch name + nameWithOwner. */
+/** Query projection of GH.Repository - we only fetch name + nameWithOwner. */
 export type FieldValueRepository = Required<Pick<GH.Repository, "name" | "nameWithOwner">>;
 
-/** Minimal assignees connection for content projections — login-only, non-nullable nodes. */
+/** Minimal assignees connection for content projections - login-only, non-nullable nodes. */
 export type AssigneeNodes = { nodes: Array<{ login: string }> };
 
-/** Minimal labels connection for content projections — name + color, non-nullable nodes. */
+/** Minimal labels connection for content projections - name + color, non-nullable nodes. */
 export type LabelColorNodes = { nodes: Array<{ name: string; color: string }> };
 
 /** Issue node stub used in blockedBy / blocking connection nodes. */
 export type IssueRefNode = Required<Pick<GH.Issue, "id" | "number" | "title">>;
 
-/** Minimal milestone reference used in issue content projections (no dueOn — use FieldValueMilestone where dueOn is needed). */
+/** Minimal milestone reference used in issue content projections (no dueOn - use FieldValueMilestone where dueOn is needed). */
 export type MilestoneRefNode = Required<Pick<GH.Milestone, "id" | "title">>;
 
 export interface ItemFieldValue {
@@ -367,13 +367,13 @@ export interface LinkedPr {
   is_draft: boolean;
 }
 
-/** A GitHub Projects draft issue — has no issue number, URL, or milestone. */
+/** A GitHub Projects draft issue - has no issue number, URL, or milestone. */
 export interface DraftStory extends StoryBase {
   kind: "draft";
   key: null;
   url: null;
   epic: null;
-  blocked_by: DependencyEntry[]; // always [] — Draft Issues have no tracked dependencies
+  blocked_by: DependencyEntry[]; // always [] - Draft Issues have no tracked dependencies
 }
 
 /** A real GitHub Issue (or PR) promoted to a project item. */

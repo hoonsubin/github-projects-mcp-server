@@ -1,5 +1,5 @@
 // =============================================================================
-// src/adapters/github/internal/vocabulary-manager.ts — Vocabulary Management
+// src/adapters/github/internal/vocabulary-manager.ts - Vocabulary Management
 //
 // Single responsibility: manage project vocabulary (status, priority, labels).
 // Injected into GitHubProjectBackend via constructor (DIP).

@@ -1,5 +1,5 @@
 // =============================================================================
-// src/adapters/github/internal/epic-service.ts — Epic Read Operations
+// src/adapters/github/internal/epic-service.ts - Epic Read Operations
 //
 // Single responsibility: fetch GitHub Milestones across all tracked repositories
 // and map them to EpicListing[]. Milestones are the GitHub backing concept for

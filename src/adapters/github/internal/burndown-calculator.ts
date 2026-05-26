@@ -1,5 +1,5 @@
 // =============================================================================
-// src/adapters/github/internal/burndown-calculator.ts — Burndown Calculation
+// src/adapters/github/internal/burndown-calculator.ts - Burndown Calculation
 //
 // Calculates the actual vs ideal burndown series for a given sprint.
 // Uses PaginatedProjectItemFetcher for item collection and REST timeline
@@ -10,7 +10,7 @@ import { GitHubApiError } from "../errors.ts";
 import { GitHubClient } from "./http-client.ts";
 import { PaginatedProjectItemFetcher } from "./pagination.ts";
 import { buildBurndownStoryInput } from "../mappers.ts";
-import { resolveSprint } from "./resolver.ts"; // standalone function — not a class method
+import { resolveSprint } from "./resolver.ts"; // standalone function - not a class method
 import { computeSprintEndDate } from "../../../scrum/sprint-math.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { BurndownInput, BurndownStoryInput, CompletionMap } from "../../../scrum/ports.ts";
@@ -57,7 +57,7 @@ export class BurndownCalculator {
       );
     }
 
-    // No sprintFieldIds — use the full field values query so extractBoardFields
+    // No sprintFieldIds - use the full field values query so extractBoardFields
     // can resolve story_points, status, etc. Sprint filtering is done by the
     // predicate below via iterationId, which the full query still returns.
     const fetcher = new PaginatedProjectItemFetcher(

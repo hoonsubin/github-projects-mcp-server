@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Use this template for **spikes** — short, time-boxed investigations whose output is
+        Use this template for **spikes** - short, time-boxed investigations whose output is
         knowledge, not shippable code. A spike should answer a specific question so the team
         can make a confident decision or estimate for a follow-on story.
 
@@ -28,7 +28,7 @@ body:
     attributes:
       label: Question(s) to answer
       description: |
-        List the specific questions this spike must resolve. Keep it tight — if there are more
+        List the specific questions this spike must resolve. Keep it tight - if there are more
         than three questions, split into separate spikes.
       placeholder: |
         1. Can the GitHub Projects v2 GraphQL API return iteration field values in a single query, or does it require a second round-trip?
@@ -70,7 +70,7 @@ body:
       label: Out of scope
       description: What are we explicitly NOT doing in this spike? Prevents scope creep.
       placeholder: |
-        - No production-ready implementation — proof-of-concept code only.
+        - No production-ready implementation - proof-of-concept code only.
         - No changes to the public tool surface.
     validations:
       required: false
@@ -83,7 +83,7 @@ body:
       label: Output / deliverable definition
       description: |
         What must exist at the end of the spike for it to be considered **done**?
-        This is not a Definition of Done for a story — it's the concrete artifact that
+        This is not a Definition of Done for a story - it's the concrete artifact that
         captures the answer (e.g. a decision comment, a benchmark result, a prototype branch, a short doc).
       placeholder: |
         - [ ] A comment on this issue summarising the query shape and round-trip count.

@@ -1,5 +1,5 @@
 // =============================================================================
-// src/scrum/config-helpers.ts — Use-case layer config resolution helpers
+// src/scrum/config-helpers.ts - Use-case layer config resolution helpers
 //
 // Resolves platform-specific display values from ScrumConfig so that
 // domain-layer functions can remain pure (no config access, no adapter knowledge).

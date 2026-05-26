@@ -1,4 +1,4 @@
-// src/adapters/capabilities.ts — PlatformCapabilities
+// src/adapters/capabilities.ts - PlatformCapabilities
 //
 // Declares what features an adapter supports. Each adapter exports a constant
 // of this type; the composition root uses it for capability-gated decisions
@@ -13,7 +13,7 @@
  * dependency graph rendering) on these flags.
  */
 export interface PlatformCapabilities {
-  /** Platform identifier key — must match an AdapterFactory.platform value. */
+  /** Platform identifier key - must match an AdapterFactory.platform value. */
   readonly platform: string;
 
   /** Supported feature flags. */

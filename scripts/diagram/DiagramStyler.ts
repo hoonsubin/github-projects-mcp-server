@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/diagram/DiagramStyler.ts — Generate Mermaid classDef style declarations
+// scripts/diagram/DiagramStyler.ts - Generate Mermaid classDef style declarations
 // =============================================================================
 
 import { ParsedModule } from "./ParsedModule.ts";

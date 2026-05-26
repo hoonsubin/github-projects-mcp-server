@@ -1,5 +1,5 @@
 // =============================================================================
-// src/adapters/github/internal/label-resolver.ts — Label & Milestone Resolution
+// src/adapters/github/internal/label-resolver.ts - Label & Milestone Resolution
 //
 // Single responsibility: manage GitHub label CRUD, repository node ID fetching,
 // and hash-to-color utility for auto-generated label colors.
@@ -95,7 +95,7 @@ export class LabelResolver {
     const labels = await this.fetchAllLabels();
     const existing = labels.map((l) => l.name);
     // Type vocabulary is now managed via the Type project board field (type_mapping in config.yml).
-    // No labels are expected by the system — all label management is user-driven.
+    // No labels are expected by the system - all label management is user-driven.
     const expected: string[] = [];
     return { existing, expected };
   }
@@ -108,7 +108,7 @@ export class LabelResolver {
 
   /**
    * Resolve label names to node IDs. Throws if any label does not already exist
-   * on the repository — this is the correct behavior for story creation/update.
+   * on the repository - this is the correct behavior for story creation/update.
    *
    * Used by: StoryMutationService.createStory(), StoryMutationService.updateStory()
    */
@@ -189,7 +189,7 @@ export class LabelResolver {
             {
               code: "MUTATION_FAILED",
               recovery: "Retry the label creation. If the issue persists, the GitHub API " +
-                "may be returning an unexpected shape — check GitHub status.",
+                "may be returning an unexpected shape - check GitHub status.",
               context: { name, repositoryId, responseShape: JSON.stringify(createResult) },
             },
           );

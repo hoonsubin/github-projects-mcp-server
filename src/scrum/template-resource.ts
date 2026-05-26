@@ -1,9 +1,9 @@
 // =============================================================================
-// src/scrum/template-resource.ts — Template resource use case
+// src/scrum/template-resource.ts - Template resource use case
 //
 // Serves PBI item-type instructional content for scrum://template/{type} MCP resources.
 // Template file paths are resolved by the backend from its type_mapping config and
-// passed in at composition time — this use case has no knowledge of config structure.
+// passed in at composition time - this use case has no knowledge of config structure.
 //
 // The resource is only reachable for types listed in vocabulary.template_uris; the
 // agent does not call it for types absent from that map.

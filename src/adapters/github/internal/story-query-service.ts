@@ -1,5 +1,5 @@
 // =============================================================================
-// src/adapters/github/internal/story-query-service.ts — Story Read Operations
+// src/adapters/github/internal/story-query-service.ts - Story Read Operations
 //
 // Single responsibility: read-side story queries extracted from the backend facade.
 // Handles getSprintStories, getBacklogStories, getStoryDetail, fetchAllItems,
@@ -48,7 +48,7 @@ interface GetIssueDetailsResponse {
   node?: IssueDetailsInput | null;
 }
 
-/** Query projection of GH.ProjectV2Item.fieldValues — item fields only. */
+/** Query projection of GH.ProjectV2Item.fieldValues - item fields only. */
 interface GetItemFieldsQueryNode extends Pick<GH.ProjectV2Item, "fieldValues"> {
   fieldValues?: { nodes: ItemFieldValue[] };
 }
@@ -62,7 +62,7 @@ interface GetItemFieldsResponse {
  * Build a DependencyMap from a filtered story set + all project items.
  * Uses IssueKey as node identifier (always present for IssueStory).
  *
- * Pure function — no I/O, no side effects. Extracted from StoryQueryService
+ * Pure function - no I/O, no side effects. Extracted from StoryQueryService
  * for testability and to follow imperative-shell/functional-core separation.
  *
  * Resolves both in-set (resolved) and out-of-scope (unresolved) dependency
@@ -108,7 +108,7 @@ export const buildDependencyMap = (
       priority: story.priority,
       resolved: true,
       blocks: [], // populated by third pass
-      blocked_by: blocked_by_keys, // upstream deps — correct direction
+      blocked_by: blocked_by_keys, // upstream deps - correct direction
     };
   }
 
@@ -118,7 +118,7 @@ export const buildDependencyMap = (
     for (const dep of story.blocked_by) {
       // Already resolved in first pass? Skip.
       if (map[dep.key]) continue;
-      // Not in filtered set — look up in allItems
+      // Not in filtered set - look up in allItems
       const item = allItemsById.get(dep.ref.id);
       if (!item) {
         // Cross-repo or off-board: emit a stub node with what we know.
@@ -186,7 +186,7 @@ export class StoryQueryService {
     const iterationId = resolveSprint(sprint, this.config);
     if (iterationId === null) {
       throw new GitHubApiError(
-        "getSprintStories called with a null sprint ref — guard the null case before calling this method.",
+        "getSprintStories called with a null sprint ref - guard the null case before calling this method.",
         {
           code: "NOT_FOUND",
           recovery: "Call scrum_orient to find active sprints before calling getSprintStories.",
@@ -244,14 +244,14 @@ export class StoryQueryService {
   async getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>> {
     const resolved = await resolveStory(ref, this.gh);
 
-    // Draft Issues have no GitHub Issue node — fetch project item directly
+    // Draft Issues have no GitHub Issue node - fetch project item directly
     if (!resolved.issueId) {
       return this._getDraftIssueDetail(resolved.itemId);
     }
 
     const warnings: string[] = [];
 
-    // issueData carries body, comments, timeline — optional sub-query
+    // issueData carries body, comments, timeline - optional sub-query
     const { value: issueData, warnings: issueWarnings } = await catchBackend(() =>
       this.gh.graphql<GetIssueDetailsResponse>(GET_ISSUE_DETAILS_QUERY, {
         issueId: resolved.issueId!,
@@ -259,7 +259,7 @@ export class StoryQueryService {
     );
     warnings.push(...issueWarnings);
 
-    // itemData carries custom field values — optional sub-query
+    // itemData carries custom field values - optional sub-query
     const { value: itemData, warnings: fieldWarnings } = await catchBackend(() =>
       this.gh.graphql<GetItemFieldsResponse>(GET_ITEM_FIELDS_QUERY, {
         itemId: resolved.itemId,
@@ -342,7 +342,7 @@ export class StoryQueryService {
       );
     }
 
-    // Draft Issues have no GitHub Issue node — no comments or linked artifacts available
+    // Draft Issues have no GitHub Issue node - no comments or linked artifacts available
     return { value: { story, comments: null, linked_artifacts: null }, warnings: [] };
   }
 
@@ -361,7 +361,7 @@ export class StoryQueryService {
    * Compute work completion percentage for a sprint.
    * Returns completed points and total committed points.
    * When no items have story points, returns { completed: 0, total: 0 }
-   * (workPct = 0 — no regression from current behavior).
+   * (workPct = 0 - no regression from current behavior).
    */
   async computeSprintCompletion(
     iterationId: string,
@@ -429,7 +429,7 @@ export class StoryQueryService {
       .filter((s): s is Story => s !== null);
 
     // Apply filters in order of selectivity
-    // keys takes priority over scope — when keys are provided, scope is bypassed
+    // keys takes priority over scope - when keys are provided, scope is bypassed
     // so that items are found regardless of which bucket (sprint or backlog) they are in
     const hasKeys = filter.keys.length > 0;
     stories = this.filterByKeys(stories, filter.keys);
@@ -467,7 +467,7 @@ export class StoryQueryService {
         if (iterEntry) {
           return { ...item, sprint: { name: item.sprint.name, ref: { id: iterEntry.id } } };
         }
-        // Sprint name exists but no matching iteration — config is stale
+        // Sprint name exists but no matching iteration - config is stale
         throw new GitHubApiError(
           `Sprint "${item.sprint.name}" has no matching iteration in config.`,
           {
@@ -503,7 +503,7 @@ export class StoryQueryService {
   // ── Filter extraction helpers ────────────────────────────────────────────────
 
   private filterByScope(stories: Story[], scope: string | undefined, hasKeys: boolean): Story[] {
-    // When keys are provided, scope is bypassed — keys take priority
+    // When keys are provided, scope is bypassed - keys take priority
     if (hasKeys) return stories;
     if (scope === "sprint") {
       return stories.filter((s) => s.sprint !== null);
@@ -593,7 +593,7 @@ export class StoryQueryService {
 
   /**
    * Build a DependencyMap from the filtered story set + all project items.
-   * Thin delegation wrapper — delegates to the standalone pure function below.
+   * Thin delegation wrapper - delegates to the standalone pure function below.
    */
   private buildDependencyMap(
     stories: readonly Story[],
