@@ -60,20 +60,27 @@ export const registerScrumReadTools = (
     },
   );
 
-  // ── scrum_get_story ────────────────────────────────────────────────────────
+  // ── scrum_get_item_detail ─────────────────────────────────────────────────
+
+  const getItemDetailHandler = async (params: z.infer<typeof GetStorySchema>) => {
+    const { data, warnings } = await getStoryUseCase(backend, params.ref);
+    const response = warnings.length > 0 ? { ...data, warnings } : data;
+    return { content: [{ type: "text", text: JSON.stringify(response, null, 2) }] };
+  };
 
   server.registerTool(
-    "scrum_get_story",
+    "scrum_get_item_detail",
     {
-      title: "Get Story Details",
-      description: `Return full details for a single story: content, all board fields, comments,
+      title: "Get Item Detail",
+      description:
+        `Return full details for a single backlog item: content, all board fields, comments,
         linked PRs, and acceptance criteria.
 
         Args:
-          ref  { number: integer } | { id: string } | { number, id }
+          ref  { number: integer } | { id: string }
                At least one of number or id is required.
-               number = visible issue number (e.g. 42)
-               id = opaque board item ID from a previous tool response
+               number = visible issue number (e.g. 42) — use for direct user-driven lookups
+               id = opaque board item ID from a previous tool response — use this when already held
 
         Returns: Story object with full body, comments array, and linked PR list.`,
       inputSchema: GetStorySchema.shape,
@@ -84,10 +91,41 @@ export const registerScrumReadTools = (
         openWorldHint: true,
       },
     },
-    async (params: z.infer<typeof GetStorySchema>) => {
-      const { data, warnings } = await getStoryUseCase(backend, params.ref);
-      const response = warnings.length > 0 ? { ...data, warnings } : data;
-      return { content: [{ type: "text", text: JSON.stringify(response, null, 2) }] };
+    getItemDetailHandler,
+  );
+
+  // scrum_get_story → scrum_get_item_detail
+  server.registerTool(
+    "scrum_get_story",
+    {
+      title: "Get Story (deprecated)",
+      description: `[DEPRECATED] Use scrum_get_item_detail instead.`,
+      inputSchema: z.object({
+        _: z.string().optional(),
+      }).shape,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    () => {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify(
+            {
+              error: true,
+              message: "scrum_get_story has been renamed to scrum_get_item_detail.",
+              replacement: "scrum_get_item_detail",
+            },
+            null,
+            2,
+          ),
+        }],
+        isError: true,
+      };
     },
   );
 
@@ -251,46 +289,6 @@ export const registerScrumReadTools = (
               replacement:
                 `Call scrum_find_items with { scope: "sprint", sprint_ref: "<name>" } instead.`,
               see: `scrum_orient returns valid sprint names in platform_state.iterations.`,
-            },
-            null,
-            2,
-          ),
-        }],
-        isError: true,
-      };
-    },
-  );
-
-  // scrum_get_backlog → scrum_find_items + scrum_get_board_health
-  server.registerTool(
-    "scrum_get_backlog",
-    {
-      title: "Get Product Backlog",
-      description: `[DEPRECATED] Replaced by scrum_find_items and scrum_get_board_health.
-        Use scrum_find_items({ scope: "backlog" }) for item lists.
-        Use scrum_get_board_health() for aggregate health metrics.`,
-      inputSchema: z.object({
-        _: z.string().optional().describe("This tool is deprecated."),
-      }).shape,
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: true,
-      },
-    },
-    () => {
-      return {
-        content: [{
-          type: "text",
-          text: JSON.stringify(
-            {
-              error: true,
-              message: `scrum_get_backlog has been replaced.`,
-              replacements: [
-                `scrum_find_items({ scope: "backlog", search: "...", limit: 50 }) — for item lists`,
-                `scrum_get_board_health() — for aggregate health metrics`,
-              ],
             },
             null,
             2,

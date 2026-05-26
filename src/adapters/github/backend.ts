@@ -243,8 +243,9 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
 
   // ── Story read delegations ────────────────────────────────────────────────
 
-  getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>> {
-    return this.deps.storyQueryService.getStoryDetail(ref);
+  async getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>> {
+    const resolved = await this.resolveRef(ref);
+    return this.deps.storyQueryService.getStoryDetail(resolved);
   }
 
   getEpics(sprintIterationId?: string | null): Promise<EpicListing[]> {
@@ -267,20 +268,23 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
     return this.deps.impedimentService.createImpediment(input);
   }
 
-  updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void> {
-    return this.deps.storyMutationService.updateStory(ref, updates);
+  async updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void> {
+    const resolved = await this.resolveRef(ref);
+    return this.deps.storyMutationService.updateStory(resolved, updates);
   }
 
-  setField(
+  async setField(
     ref: StoryRef,
     field: "status" | "sprint" | "story_points" | "priority" | "assignee" | "type",
     value: string | number | SprintRef | null,
   ): Promise<void> {
-    return this.deps.storyMutationService.setField(ref, field, value);
+    const resolved = await this.resolveRef(ref);
+    return this.deps.storyMutationService.setField(resolved, field, value);
   }
 
-  addComment(ref: StoryRef, body: string): Promise<void> {
-    return this.deps.storyMutationService.addComment(ref, body);
+  async addComment(ref: StoryRef, body: string): Promise<void> {
+    const resolved = await this.resolveRef(ref);
+    return this.deps.storyMutationService.addComment(resolved, body);
   }
 
   addVocabulary(kind: VocabularyKind, value: string): Promise<{ created: boolean }> {

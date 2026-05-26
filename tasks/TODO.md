@@ -217,7 +217,7 @@ Delete the entire `server.registerTool("scrum_get_template", ...)` block once B2
 
 ---
 
-## Group C — Orient Enhancements
+## Group C — Orient Enhancements (done)
 
 **Context:** `orientUseCase()` in `src/scrum/orient.ts` has three hardcoded stubs: `goal: null` (line 82), `workPct = 0` (line 88), and epics are not sprint-scoped. C1 feeds data that C2 and C3 also need, so implement in order: C1 → C2 → C3.
 
