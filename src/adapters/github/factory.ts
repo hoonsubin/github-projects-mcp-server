@@ -5,7 +5,7 @@
 // returning a platform-agnostic BackendResult to the composition root via
 // the AdapterFactory interface.
 //
-// Keeping this logic inside the adapter package means index.ts only needs
+// Keeping this logic inside the adapter package means server.ts only needs
 // one import - it calls createBackend([new GitHubAdapterFactory()]) without
 // knowing which internal services exist or how they depend on each other.
 // =============================================================================

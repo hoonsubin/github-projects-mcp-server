@@ -20,7 +20,7 @@
 //   node dist/server.mjs [options] # run on any Node.js 18+ host
 // =============================================================================
 
-import * as esbuild from "npm:esbuild";
+import * as esbuild from "esbuild";
 import { denoPlugins } from "jsr:@luca/esbuild-deno-loader@^0.11";
 import { resolve } from "@std/path";
 
@@ -32,13 +32,13 @@ const outfile = resolve(root, "dist/server.mjs");
 console.error("[bundle-node] building dist/server.mjs ...");
 
 const result = await esbuild.build({
-  entryPoints: ["src/index.ts"],
+  entryPoints: ["src/server.ts"],
 
   // ── Module resolution ──────────────────────────────────────────────────────
   // denoPlugins handles jsr:, npm:, and deno.json import map entries.
   // It must be the first plugin so it intercepts all specifiers before any
   // other plugins run.
-  plugins: [...denoPlugins({ configPath })],
+  plugins: [...denoPlugins({ configPath })] as esbuild.Plugin[],
 
   // ── Bundle settings ────────────────────────────────────────────────────────
   bundle: true,

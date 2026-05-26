@@ -93,7 +93,7 @@ export interface BackendResult {
  * 3. Throws if no match is found (lists registered platforms in the error).
  * 4. Calls factory.create() and returns the BackendResult.
  *
- * The caller (src/index.ts) registers factories and passes the list here -
+ * The caller (src/server.ts) registers factories and passes the list here -
  * this function owns neither the construction nor the registration; it only
  * selects.
  *

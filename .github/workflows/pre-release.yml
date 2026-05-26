@@ -60,7 +60,7 @@ jobs:
       - name: Patch version into source
         run: |
           VERSION="${{ steps.version.outputs.value }}"
-          sed -i "s/Deno.env.get(\"RELEASE_VERSION\") ?? \"dev\"/\"${VERSION}\"/" src/index.ts
+          sed -i "s/Deno.env.get(\"RELEASE_VERSION\") ?? \"dev\"/\"${VERSION}\"/" src/server.ts
 
       # Cross-compile all five platform targets from this single Linux runner.
       - name: Compile all targets

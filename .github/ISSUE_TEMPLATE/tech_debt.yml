@@ -54,7 +54,7 @@ body:
         - Services (src/services/)
         - Tool registrations (src/tools/)
         - Schemas (src/schemas/)
-        - Composition root (src/index.ts)
+        - Composition root (src/server.ts)
         - Agent mode (.roo/)
         - Build / CI / tooling
         - Multiple layers

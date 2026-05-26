@@ -28,7 +28,7 @@ interface ResolvedStory {
   issueNumber: number | null; // user-facing issue number, null for DraftIssues
 }
 
-/** Minimal GitHub client interface - matches what index.ts passes in. */
+/** Minimal GitHub client interface - matches what server.ts passes in. */
 interface GitHubClient {
   graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T>;
 }

@@ -1,5 +1,5 @@
 // =============================================================================
-// src/index.ts - Composition root and transport entry point
+// src/server.ts - Composition root and transport entry point
 //
 // Responsibilities:
 //   - Select which backend to build via the adapter factory registry
@@ -126,7 +126,7 @@ try {
   if (err instanceof Deno.errors.PermissionDenied) {
     console.error(
       "Error: missing required Deno permissions.\n" +
-        "Run with: deno run --allow-env --allow-net --allow-read src/index.ts\n" +
+        "Run with: deno run --allow-env --allow-net --allow-read src/server.ts\n" +
         "Or use the compiled binary which has permissions baked in.",
     );
     Deno.exit(1);

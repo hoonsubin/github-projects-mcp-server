@@ -23,7 +23,7 @@ import { serve as honoServe } from "@hono/node-server";
 // esbuild (platform: "node") leaves it as a free variable; this export is
 // what the inject resolves it to.
 //
-// Only "unhandledrejection" is used by the project (crash guard in index.ts).
+// Only "unhandledrejection" is used by the project (crash guard in server.ts).
 // The handler signature matches PromiseRejectionEvent: it receives an object
 // with a `reason` property and a `preventDefault()` no-op.
 //
@@ -74,7 +74,7 @@ export const Deno = {
     readFile(path instanceof URL ? path.pathname : path, "utf-8"),
 
   // ── Error types ────────────────────────────────────────────────────────────
-  // PermissionDenied is caught in the runtime permission guard in index.ts.
+  // PermissionDenied is caught in the runtime permission guard in server.ts.
   // It will never be thrown when running under Node.js (the guard exists only
   // to produce a helpful message when someone runs the Deno source without the
   // required --allow-env flag). The class must exist to satisfy the instanceof
