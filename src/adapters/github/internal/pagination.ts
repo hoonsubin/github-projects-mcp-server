@@ -6,7 +6,7 @@
 // which field values to include.
 //
 // Used by:
-//   - Story 7 (scrum_get_backlog) — fetch all items, filter by null sprint
+//   - Story 7 (scrum_find_items) — fetch all items, filter by null sprint
 //   - Story 8 (scrum_get_sprint) — fetch items for a specific sprint
 //   - Story 10 (scrum_get_burndown) — fetch items across sprints for velocity
 //   - Future tools — any tool needing project item access

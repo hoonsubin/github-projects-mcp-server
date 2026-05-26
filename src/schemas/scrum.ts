@@ -22,9 +22,9 @@ const StoryRefSchema: z.ZodType<{ id: string } | { number: number }> = z.union([
     id: z
       .string()
       .describe(
-        "Opaque project-item handle returned by any read tool (scrum_get_sprint, " +
-          "scrum_get_backlog, scrum_get_story, scrum_create_story, etc.). " +
-          "Always present in Story.ref.id. Use scrum_get_sprint or scrum_get_backlog " +
+        "Opaque project-item handle returned by any read tool (scrum_orient, " +
+          "scrum_find_items, scrum_get_item_detail, scrum_create_story, etc.). " +
+          "Always present in Story.ref.id. Use scrum_orient or scrum_find_items " +
           "first if you do not yet have the id for the story you want to act on.",
       ),
   }),
@@ -46,8 +46,8 @@ const EpicRefSchema: z.ZodType<EpicRef> = z.object({
   id: z
     .string()
     .describe(
-      "Opaque Milestone node ID returned by scrum_get_backlog.epics[].ref.id " +
-        "or scrum_get_story.story.epic.ref.id.",
+      "Opaque Milestone node ID returned by scrum_find_items (type=epic).ref.id " +
+        "or scrum_get_item_detail on a story with an epic field.",
     ),
 });
 
@@ -108,7 +108,7 @@ export const GetStorySchema = z
   .object({
     ref: StoryRefSchema.describe(
       "Reference to the story to fetch. Supply the Story.ref.id value returned by " +
-        "scrum_get_sprint, scrum_get_backlog, or a previous write tool.",
+        "scrum_orient, scrum_find_items, or a previous write tool.",
     ),
   })
   .strict();
@@ -254,7 +254,7 @@ export const CreateStorySchema = z
           "Story type is set via the Type board field, not a label.",
       ),
     epic: EpicRefSchema.optional().describe(
-      "Epic reference ({ id: string }) from scrum_get_backlog.epics[].ref.id. " +
+      "Epic reference ({ id: string }) from scrum_find_items (type=epic).ref.id. " +
         "Associates the new story with the corresponding Milestone.",
     ),
     assignees: z
@@ -298,7 +298,7 @@ export const UpdateStorySchema = z
       .optional()
       .describe(
         "Epic reference ({ id: string }) to assign to, or null to detach from the current epic. " +
-          "Pass the EpicRef.id from scrum_get_backlog.epics[].ref.id. Omit entirely to leave unchanged.",
+          "Pass the EpicRef.id from scrum_find_items (type=epic).ref.id. Omit entirely to leave unchanged.",
       ),
     comment: z
       .string()
@@ -415,7 +415,7 @@ export const UpdateImpedimentSchema = z
         id: z
           .string()
           .describe(
-            "Impediment ID as returned by scrum_get_backlog.orphan_impediments or scrum_get_sprint.impediments ref.id field.",
+            "Impediment ID as returned by scrum_get_board_health.impediments[].ref.id or scrum_find_items (type=impediment).ref.id.",
           ),
       })
       .describe("Reference to the impediment to update."),

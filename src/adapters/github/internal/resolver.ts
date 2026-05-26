@@ -161,7 +161,7 @@ export const resolveStory = async (
         code: "NOT_FOUND",
         statusCode: 404,
         recovery: "The ID may be stale or the item was deleted. " +
-          "Use scrum_get_sprint or scrum_get_backlog to get a fresh Story.ref.id.",
+          "Use scrum_orient or scrum_find_items to get a fresh Story.ref.id.",
         context: { itemId: ref.id },
       },
     );
@@ -196,7 +196,7 @@ export const resolveStory = async (
         code: "WRONG_CONTENT_TYPE",
         statusCode: 400,
         recovery: "Only Issues and Draft Issues are supported as Stories. " +
-          "Use a Story ref from scrum_get_sprint or scrum_get_backlog.",
+          "Use a Story ref from scrum_orient or scrum_find_items.",
         context: { itemId: ref.id, contentType: "PullRequest" },
       },
     );

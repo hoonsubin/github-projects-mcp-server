@@ -136,8 +136,9 @@ classDiagram
                 interface LinkedArtifact
                 interface ItemDetailResult
                 interface PartialResult
+                interface UseCaseResult
                 interface OrientResult
-                %% Unused: SprintName, ScrumTemplateUri, SprintRiskStance, SprintContext, ItemListing, SUPPORTED_BACKENDS, PartialResult
+                %% Unused: SprintName, ScrumTemplateUri, SprintRiskStance, SprintContext, ItemListing, SUPPORTED_BACKENDS
             }
             class acceptance-criteria.ts:::rules {
                 +parseAcceptanceCriteria()
@@ -158,7 +159,7 @@ classDiagram
                 +enrichError()
                 interface BackendCallResult
                 +catchBackend()
-                %% Unused: BackendCallResult
+                %% Unused: enrichError
             }
             class logger.ts:::services {
                 +var log
@@ -169,9 +170,11 @@ classDiagram
     }
     namespace Framework {
             class scrum-read.ts:::tools {
+                +var SCRUM_READ_TOOL_NAMES
                 +registerScrumReadTools()
             }
             class scrum-write.ts:::tools {
+                +var SCRUM_WRITE_TOOL_NAMES
                 +registerScrumWriteTools()
             }
             class scrum.ts:::schemas {
@@ -198,6 +201,7 @@ classDiagram
                 +PlatformCapabilities GITHUB_CAPABILITIES
             }
             class factory.ts:::adapters {
+                interface AdapterStartupOptions
                 interface AdapterFactory
                 interface BackendResult
                 +createBackend()
@@ -206,6 +210,7 @@ classDiagram
                 type GitHubErrorCode
                 +assertNever()
                 class GitHubApiError
+                +notImplemented()
                 %% Unused: GitHubErrorCode, assertNever
             }
             class queries.ts:::github {
@@ -249,6 +254,7 @@ classDiagram
                 +buildCommentList()
                 +buildLinkedPrList()
                 +toSprintInfo()
+                +resolveSprintGoal()
                 +resolveDependencyRefs()
                 +buildBurndownStoryInput()
             }
@@ -407,6 +413,7 @@ classDiagram
     get-board-health.ts --> ports.ts : "imports"
     get-board-health.ts --> types.ts : "imports"
     ports.ts --> types.ts : "imports"
+    ports.ts --> error-enrichment.ts : "imports"
     update-impediment.ts --> ports.ts : "imports"
     update-impediment.ts --> types.ts : "imports"
     config-helpers.ts --> config.ts : "imports"
@@ -415,10 +422,10 @@ classDiagram
     types.ts --> github-types.ts : "imports"
     config.ts --> types.ts : "imports"
     error-enrichment.ts --> errors.ts : "imports"
+    error-enrichment.ts --> types.ts : "imports"
     scrum-read.ts --> ports.ts : "imports"
     scrum-read.ts --> config.ts : "imports"
     scrum-read.ts --> scrum.ts : "imports"
-    scrum-read.ts --> error-enrichment.ts : "imports"
     scrum-read.ts --> orient.ts : "imports"
     scrum-read.ts --> get-story.ts : "imports"
     scrum-read.ts --> find-items.ts : "imports"
@@ -452,6 +459,7 @@ classDiagram
     factory.ts --> file-reader.ts : "imports"
     factory.ts --> types.ts : "imports"
     mappers.ts --> config-loader.ts : "imports"
+    mappers.ts --> errors.ts : "imports"
     mappers.ts --> types.ts : "imports"
     mappers.ts --> ports.ts : "imports"
     config-reloader.ts --> config-loader.ts : "imports"
@@ -471,6 +479,7 @@ classDiagram
     epic-service.ts --> queries.ts : "imports"
     epic-service.ts --> types.ts : "imports"
     epic-service.ts --> story-query-service.ts : "imports"
+    analytics-service.ts --> errors.ts : "imports"
     analytics-service.ts --> sprint-history-service.ts : "imports"
     analytics-service.ts --> burndown-calculator.ts : "imports"
     analytics-service.ts --> resolver.ts : "imports"
@@ -504,6 +513,7 @@ classDiagram
     label-resolver.ts --> http-client.ts : "imports"
     label-resolver.ts --> queries.ts : "imports"
     label-resolver.ts --> config-loader.ts : "imports"
+    sprint-history-service.ts --> errors.ts : "imports"
     sprint-history-service.ts --> http-client.ts : "imports"
     sprint-history-service.ts --> pagination.ts : "imports"
     sprint-history-service.ts --> config-loader.ts : "imports"
@@ -539,6 +549,7 @@ classDiagram
     contents.ts --> errors.ts : "imports"
     contents.ts --> http-client.ts : "imports"
     story-query-service.ts --> errors.ts : "imports"
+    story-query-service.ts --> error-enrichment.ts : "imports"
     story-query-service.ts --> github-types.ts : "imports"
     story-query-service.ts --> http-client.ts : "imports"
     story-query-service.ts --> pagination.ts : "imports"
@@ -582,9 +593,11 @@ classDiagram
     backend.ts --> board-health-service.ts : "imports"
     backend.ts --> mappers.ts : "imports"
     backend.ts --> ports.ts : "imports"
+    backend.ts --> error-enrichment.ts : "imports"
     backend.ts --> types.ts : "imports"
     abstract-backend.ts --> capabilities.ts : "imports"
     abstract-backend.ts --> ports.ts : "imports"
+    abstract-backend.ts --> error-enrichment.ts : "imports"
     abstract-backend.ts --> types.ts : "imports"
     abstract-backend.ts --> errors.ts : "imports"
     index.ts --> scrum-read.ts : "imports"
@@ -655,10 +668,9 @@ The following exports are never imported by any other module in the codebase:
 | [`./src/domain/types.ts`](../src/domain/types.ts)                                                                 | `SprintContext`              | `interface` |
 | [`./src/domain/types.ts`](../src/domain/types.ts)                                                                 | `ItemListing`                | `type`      |
 | [`./src/domain/types.ts`](../src/domain/types.ts)                                                                 | `SUPPORTED_BACKENDS`         | `var`       |
-| [`./src/domain/types.ts`](../src/domain/types.ts)                                                                 | `PartialResult`              | `interface` |
 | [`./src/domain/config.ts`](../src/domain/config.ts)                                                               | `ArtifactType`               | `type`      |
 | [`./src/services/mutation-validator.ts`](../src/services/mutation-validator.ts)                                   | `isMutationQuery`            | `function`  |
-| [`./src/services/error-enrichment.ts`](../src/services/error-enrichment.ts)                                       | `BackendCallResult`          | `interface` |
+| [`./src/services/error-enrichment.ts`](../src/services/error-enrichment.ts)                                       | `enrichError`                | `function`  |
 
 ## Notes
 

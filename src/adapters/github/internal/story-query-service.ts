@@ -275,7 +275,7 @@ export class StoryQueryService {
           code: "NOT_FOUND",
           statusCode: 404,
           recovery: "The issue may have been deleted from the repository. " +
-            "Refresh your story list with scrum_get_sprint or scrum_get_backlog.",
+            "Refresh your story list with scrum_orient or scrum_find_items.",
           context: { issueId: resolved.issueId, itemId: resolved.itemId },
         },
       );
@@ -314,7 +314,7 @@ export class StoryQueryService {
         code: "NOT_FOUND",
         statusCode: 404,
         recovery: "The item may have been deleted from the project. " +
-          "Refresh your story list with scrum_get_sprint or scrum_get_backlog.",
+          "Refresh your story list with scrum_orient or scrum_find_items.",
         context: { itemId },
       });
     }
