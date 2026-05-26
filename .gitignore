@@ -1,3 +1,7 @@
+# act local runner secrets (never commit)
+.secrets
+.secret
+
 # Deno
 .deno/
 
