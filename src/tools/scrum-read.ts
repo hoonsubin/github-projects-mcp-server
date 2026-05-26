@@ -60,13 +60,20 @@ export const registerScrumReadTools = (
     },
   );
 
-  // ── scrum_get_story ────────────────────────────────────────────────────────
+  // ── scrum_get_item_detail ─────────────────────────────────────────────────
+
+  const getItemDetailHandler = async (params: z.infer<typeof GetStorySchema>) => {
+    const { data, warnings } = await getStoryUseCase(backend, params.ref);
+    const response = warnings.length > 0 ? { ...data, warnings } : data;
+    return { content: [{ type: "text", text: JSON.stringify(response, null, 2) }] };
+  };
 
   server.registerTool(
-    "scrum_get_story",
+    "scrum_get_item_detail",
     {
-      title: "Get Story Details",
-      description: `Return full details for a single story: content, all board fields, comments,
+      title: "Get Item Detail",
+      description:
+        `Return full details for a single backlog item: content, all board fields, comments,
         linked PRs, and acceptance criteria.
 
         Args:
@@ -84,10 +91,41 @@ export const registerScrumReadTools = (
         openWorldHint: true,
       },
     },
-    async (params: z.infer<typeof GetStorySchema>) => {
-      const { data, warnings } = await getStoryUseCase(backend, params.ref);
-      const response = warnings.length > 0 ? { ...data, warnings } : data;
-      return { content: [{ type: "text", text: JSON.stringify(response, null, 2) }] };
+    getItemDetailHandler,
+  );
+
+  // scrum_get_story → scrum_get_item_detail
+  server.registerTool(
+    "scrum_get_story",
+    {
+      title: "Get Story (deprecated)",
+      description: `[DEPRECATED] Use scrum_get_item_detail instead.`,
+      inputSchema: z.object({
+        _: z.string().optional(),
+      }).shape,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    () => {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify(
+            {
+              error: true,
+              message: "scrum_get_story has been renamed to scrum_get_item_detail.",
+              replacement: "scrum_get_item_detail",
+            },
+            null,
+            2,
+          ),
+        }],
+        isError: true,
+      };
     },
   );
 
