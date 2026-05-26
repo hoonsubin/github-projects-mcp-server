@@ -76,9 +76,9 @@ export type ItemListingRef = { readonly id: string; readonly key: string };
 
 /**
  * Lightweight epic entry for planning contexts.
- * Returned in scrum_get_backlog alongside StoryListing[].
+ * Returned by scrum_find_items alongside StoryListing[].
  * Full epic detail (child stories, history) is derived by the agent via
- * scrum_get_backlog filtered by epic name.
+ * scrum_find_items filtered by epic name.
  */
 export interface EpicListing {
   readonly ref: EpicRef;

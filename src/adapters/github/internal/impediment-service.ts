@@ -213,7 +213,7 @@ export class ImpedimentService {
           code: "NOT_FOUND",
           statusCode: 404,
           recovery: "The impediment ID may be stale or the issue was deleted. " +
-            "Use scrum_get_sprint or scrum_get_backlog to refresh the list.",
+            "Use scrum_orient or scrum_find_items to refresh the list.",
           context: { impedimentId: ref.id },
         },
       );

@@ -185,7 +185,7 @@ export const registerScrumWriteTools = (
           priority     string — vocabulary display name (e.g. "Must"); call scrum_orient for valid values
           story_points number — Fibonacci estimate (1, 2, 3, 5, 8, 13)
           labels       string[] — must already exist; check platform_state.labels.existing from scrum_orient
-          epic         { id: string } — EpicRef from scrum_get_backlog.epics[].ref.id
+          epic         { id: string } — EpicRef from scrum_find_items (type=epic).ref.id
           assignees    string[] — GitHub logins
           sprint       "current" | "next" | "<sprint-name>" — places on board; omit for backlog
 
@@ -329,7 +329,7 @@ export const registerScrumWriteTools = (
         comment on the affected story, and cross-links the two stories.
 
         Use this instead of scrum_create_story when logging something that blocks another story.
-        The impediment will appear in scrum_get_backlog results filterable by the 'impediment' label.
+        The impediment will appear in scrum_find_items results filterable by the 'impediment' label.
 
         Args:
           description  string (required) — full description of the blocker; becomes the story body
@@ -416,7 +416,7 @@ export const registerScrumWriteTools = (
       description: `Update an impediment's status and optionally add resolution notes.
 
         Args:
-          ref              { id } — impediment project item ID from scrum_get_backlog or scrum_get_sprint
+          ref              { id } — impediment project item ID from scrum_get_board_health or scrum_find_items
           status           "open" | "in_progress" | "resolved" — new impediment status
           resolution_notes  string (optional) — notes explaining why this impediment was resolved
 
