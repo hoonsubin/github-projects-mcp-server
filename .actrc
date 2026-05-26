@@ -1,0 +1,7 @@
+# Use the catthehacker full Ubuntu image instead of act's default slim image.
+# The slim image is missing gh, python3, sha256sum, and other tools the
+# pre-release workflow depends on. act-22.04 mirrors the actual GitHub runner.
+-P ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-22.04
+
+# Load secrets from .secrets (git-ignored) so GH_TOKEN is available to gh CLI.
+--secret-file .secrets

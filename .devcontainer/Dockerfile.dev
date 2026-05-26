@@ -2,7 +2,7 @@ FROM denoland/deno:2.3.3
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       curl wget git unzip bash-completion \
-      ca-certificates gnupg procps \
+      ca-certificates gnupg procps sudo \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
@@ -34,6 +34,9 @@ RUN groupadd --gid $USER_GID $USERNAME \
  && mkdir -p /home/$USERNAME/.pi \
  && mkdir -p /home/$USERNAME/.npm-global \
  && chown -R $USERNAME:$USERNAME /home/$USERNAME
+
+ RUN echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/$USERNAME \
+ && chmod 0440 /etc/sudoers.d/$USERNAME
 
 USER $USERNAME
 
