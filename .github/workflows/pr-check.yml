@@ -23,3 +23,5 @@ jobs:
         run: deno check src/index.ts
       - name: Run tests
         run: deno task test
+      - name: Compile check
+        run: deno task compile:all

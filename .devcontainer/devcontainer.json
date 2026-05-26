@@ -9,7 +9,11 @@
   // uv and Python are bootstrapped in postCreateCommand via the official uv installer.
   "features": {
     "ghcr.io/devcontainers-extra/features/deno:1": {},
-    "ghcr.io/devcontainers/features/github-cli:1": {}
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:3": {
+      "moby": false
+    },
+    "ghcr.io/devcontainers-extra/features/act:1": {}
   },
 
   "customizations": {
