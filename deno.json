@@ -27,6 +27,11 @@
     "@std/cli": "jsr:@std/cli@^1.0.29",
     "@std/yaml": "jsr:@std/yaml@^1.1.0"
   },
+  "exclude": [
+    "dist/",
+    ".roo/",
+    "docs/"
+  ],
   "compilerOptions": {
     "lib": [
       "ES2022",
@@ -52,10 +57,7 @@
     "indentWidth": 2,
     "singleQuote": false,
     "semiColons": true,
-    "proseWrap": "never",
-    "exclude": [
-      ".roo/"
-    ]
+    "proseWrap": "never"
   },
   "lint": {
     "rules": {

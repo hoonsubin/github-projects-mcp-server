@@ -300,7 +300,7 @@ export interface BoardHealthPort {
 
 /**
  * Impediment port - returns sprint-specific impediments and allows status updates.
- * Used by: getSprintUseCase, updateImpedimentUseCase
+ * Used by: getBoardHealthUseCase, updateImpedimentUseCase
  */
 export interface ImpedimentPort {
   getSprintImpediments(sprint: SprintRef): Promise<ImpedimentListing[]>;
@@ -314,7 +314,7 @@ export interface ImpedimentPort {
 
 /**
  * File reader port - fetches files from the repository backing the PM platform.
- * Used by: getTemplateUseCase
+ * Used by: templateResourceUseCase
  * todo: this should be more generalized so it's not strictly fetching from a repository
  */
 export interface FileReaderPort {
