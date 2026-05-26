@@ -385,14 +385,22 @@ const runHttp = (configPath?: string, projectRoot?: string): void => {
             body = await req.json();
           } catch {
             return Response.json(
-              { jsonrpc: "2.0", error: { code: -32700, message: "Parse error: invalid JSON" }, id: null },
+              {
+                jsonrpc: "2.0",
+                error: { code: -32700, message: "Parse error: invalid JSON" },
+                id: null,
+              },
               { status: 400 },
             );
           }
 
           if (!isInitializeRequest(body)) {
             return Response.json(
-              { jsonrpc: "2.0", error: { code: -32000, message: "Bad Request: No valid session ID provided" }, id: null },
+              {
+                jsonrpc: "2.0",
+                error: { code: -32000, message: "Bad Request: No valid session ID provided" },
+                id: null,
+              },
               { status: 400 },
             );
           }
@@ -422,7 +430,11 @@ const runHttp = (configPath?: string, projectRoot?: string): void => {
         const transport = transports[sessionId];
         if (!transport) {
           return Response.json(
-            { jsonrpc: "2.0", error: { code: -32000, message: "Bad Request: No valid session ID provided" }, id: null },
+            {
+              jsonrpc: "2.0",
+              error: { code: -32000, message: "Bad Request: No valid session ID provided" },
+              id: null,
+            },
             { status: 400 },
           );
         }
