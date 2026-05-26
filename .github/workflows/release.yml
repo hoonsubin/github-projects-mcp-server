@@ -33,7 +33,8 @@ jobs:
       # correct version is baked into every compiled binary.
       - name: Patch version into source
         run: |
-          sed -i 's/Deno.env.get("RELEASE_VERSION") ?? "dev"/"${{ steps.version.outputs.value }}"/' src/index.ts
+          VERSION="${{ steps.version.outputs.value }}"
+          sed -i "s/Deno.env.get(\"RELEASE_VERSION\") ?? \"dev\"/\"${VERSION}\"/" src/index.ts
 
       # Cross-compile all four platform targets from this single Linux runner.
       # deno compile embeds the JS bundle into a platform-specific denort binary —
