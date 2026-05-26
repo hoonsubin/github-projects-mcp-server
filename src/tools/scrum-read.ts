@@ -17,11 +17,9 @@ export const SCRUM_READ_TOOL_NAMES = [
   "scrum_get_item_detail",
   "scrum_get_board_health",
   "scrum_get_analytics",
-  // Deprecated redirect stubs (5 tools)
+  // Deprecated redirect stubs (3 tools)
   "scrum_get_story",
   "scrum_get_sprint",
-  "scrum_get_history",
-  "scrum_get_burndown",
   "scrum_get_template",
 ] as const;
 import type { FileReaderPort, ProjectBackend } from "../scrum/ports.ts";
@@ -275,7 +273,7 @@ export const registerScrumReadTools = (
 
   // ── Deprecated tools - guidance stubs pointing to replacements ───────────────
   //
-  // These 5 tools have been replaced by the new unified surface above.
+  // These 3 tools have been replaced by the new unified surface above.
   // Each returns a descriptive error message telling the agent which replacement
   // to use, rather than silently disappearing.
 
@@ -308,80 +306,6 @@ export const registerScrumReadTools = (
               replacement:
                 `Call scrum_find_items with { scope: "sprint", sprint_ref: "<name>" } instead.`,
               see: `scrum_orient returns valid sprint names in platform_state.iterations.`,
-            },
-            null,
-            2,
-          ),
-        }],
-        isError: true,
-      };
-    },
-  );
-
-  // scrum_get_history → scrum_get_analytics
-  server.registerTool(
-    "scrum_get_history",
-    {
-      title: "Get Sprint History",
-      description: `[DEPRECATED] Replaced by scrum_get_analytics.
-        Use scrum_get_analytics({ view: "history", history_window: 5 }) instead.`,
-      inputSchema: z.object({
-        _: z.string().optional().describe("This tool is deprecated."),
-      }).shape,
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: true,
-      },
-    },
-    () => {
-      return {
-        content: [{
-          type: "text",
-          text: JSON.stringify(
-            {
-              error: true,
-              message: `scrum_get_history has been replaced by scrum_get_analytics.`,
-              replacement:
-                `Call scrum_get_analytics({ view: "history", history_window: 5 }) instead.`,
-            },
-            null,
-            2,
-          ),
-        }],
-        isError: true,
-      };
-    },
-  );
-
-  // scrum_get_burndown → scrum_get_analytics
-  server.registerTool(
-    "scrum_get_burndown",
-    {
-      title: "Get Sprint Burndown",
-      description: `[DEPRECATED] Replaced by scrum_get_analytics.
-        Use scrum_get_analytics({ view: "burndown", sprint_ref: "current" }) instead.`,
-      inputSchema: z.object({
-        _: z.string().optional().describe("This tool is deprecated."),
-      }).shape,
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: true,
-      },
-    },
-    () => {
-      return {
-        content: [{
-          type: "text",
-          text: JSON.stringify(
-            {
-              error: true,
-              message: `scrum_get_burndown has been replaced by scrum_get_analytics.`,
-              replacement:
-                `Call scrum_get_analytics({ view: "burndown", sprint_ref: "current" }) instead.`,
             },
             null,
             2,
