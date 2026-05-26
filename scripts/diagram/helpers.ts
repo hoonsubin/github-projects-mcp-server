@@ -11,7 +11,7 @@ import { ParsedModule } from "./ParsedModule.ts";
  * Examples:
  *   resolveImport("tools/scrum-read.ts", "./mappers")       → "tools/mappers.ts"
  *   resolveImport("tools/scrum-read.ts", "../types")        → "types.ts"
- *   resolveImport("tools/scrum-read.ts", "./github")        → "github/index.ts"
+ *   resolveImport("tools/scrum-read.ts", "./github")        → "github/server.ts"
  */
 export const resolveImport = (
   fromPath: string,
@@ -40,7 +40,7 @@ export const resolveImport = (
 
   const candidate = [...dir, ...result].join("/");
   if (candidate.endsWith(".ts")) return candidate;
-  return `${candidate}/index.ts`;
+  return `${candidate}/server.ts`;
 };
 
 /**

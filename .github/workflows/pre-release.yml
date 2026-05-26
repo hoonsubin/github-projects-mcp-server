@@ -60,13 +60,18 @@ jobs:
       - name: Patch version into source
         run: |
           VERSION="${{ steps.version.outputs.value }}"
-          sed -i "s/Deno.env.get(\"RELEASE_VERSION\") ?? \"dev\"/\"${VERSION}\"/" src/index.ts
+          sed -i "s/Deno.env.get(\"RELEASE_VERSION\") ?? \"dev\"/\"${VERSION}\"/" src/server.ts
 
       # Cross-compile all five platform targets from this single Linux runner.
       - name: Compile all targets
         run: deno task compile:all
 
-      # SHA-256 checksums for every binary in dist/.
+      # Bundle the server as a single self-contained Node.js ESM file.
+      # Requires Node.js 18+ at runtime; no Deno needed.
+      - name: Bundle Node.js
+        run: deno task bundle:node
+
+      # SHA-256 checksums for every file in dist/ (binaries + bundle).
       - name: Generate checksums
         working-directory: dist
         run: sha256sum * > checksums.txt
@@ -91,6 +96,7 @@ jobs:
             dist/mcp-server-linux-x64 \
             dist/mcp-server-linux-arm64 \
             dist/mcp-server-win.exe \
+            dist/server.mjs \
             dist/checksums.txt
 
       # ── Rolling "edge" release ─────────────────────────────────────────────
@@ -125,6 +131,7 @@ jobs:
             dist/mcp-server-linux-x64 \
             dist/mcp-server-linux-arm64 \
             dist/mcp-server-win.exe \
+            dist/server.mjs \
             dist/checksums.txt
 
       # ── Prune old pre-releases ─────────────────────────────────────────────

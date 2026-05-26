@@ -1,5 +1,5 @@
 // =============================================================================
-// src/index.ts - Composition root and transport entry point
+// src/server.ts - Composition root and transport entry point
 //
 // Responsibilities:
 //   - Select which backend to build via the adapter factory registry
@@ -21,14 +21,13 @@
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Variables } from "@modelcontextprotocol/sdk/shared/uriTemplate.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import type {
   Transport,
   TransportSendOptions,
 } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage, MessageExtraInfo } from "@modelcontextprotocol/sdk/types.js";
-import express, { type Request, type Response } from "express";
 import { registerScrumReadTools } from "./tools/scrum-read.ts";
 import { registerScrumWriteTools } from "./tools/scrum-write.ts";
 import { templateResourceUseCase } from "./scrum/template-resource.ts";
@@ -36,7 +35,6 @@ import { type AdapterFactory, createBackend } from "./adapters/factory.ts";
 import { GitHubAdapterFactory } from "./adapters/github/factory.ts";
 import { AdapterError } from "./domain/errors.ts";
 import { log } from "./services/logger.ts";
-import type { Socket } from "node:net";
 import { parseArgs } from "@std/cli/parse-args";
 import { resolve as resolvePath } from "@std/path";
 import { SCRUM_READ_TOOL_NAMES } from "./tools/scrum-read.ts";
@@ -128,7 +126,7 @@ try {
   if (err instanceof Deno.errors.PermissionDenied) {
     console.error(
       "Error: missing required Deno permissions.\n" +
-        "Run with: deno run --allow-env --allow-net --allow-read src/index.ts\n" +
+        "Run with: deno run --allow-env --allow-net --allow-read src/server.ts\n" +
         "Or use the compiled binary which has permissions baked in.",
     );
     Deno.exit(1);
@@ -352,80 +350,109 @@ const runStdio = async (
 };
 
 // ── Streamable HTTP transport ────────────────────────────────────────────────
+//
+// Uses Deno.serve() with WebStandardStreamableHTTPServerTransport — the MCP SDK's
+// native Web Standards transport for Deno/Bun/Cloudflare Workers. No express needed.
+//
+// Body-parsing note: Request bodies can only be consumed once. For a new
+// initialization POST (no session ID), we parse the body here to validate it with
+// isInitializeRequest, then forward it to handleRequest via { parsedBody } so the
+// transport doesn't attempt a second read on the already-consumed stream.
 
-const runHttp = (configPath?: string, projectRoot?: string) => {
-  const app = express();
-  app.use(express.json());
-
-  app.get("/health", (_req: Request, res: Response) => {
-    log.debug("health check", { method: _req.method, url: _req.url });
-    res.status(200).json({ jsonrpc: "2.0", server: "github-projects-mcp-server" });
-    return;
-  });
-
-  const transports: Record<string, StreamableHTTPServerTransport> = {};
-
-  app.post("/mcp", async (req: Request, res: Response) => {
-    const sessionId = req.headers["mcp-session-id"] as string | undefined;
-    let transport: StreamableHTTPServerTransport;
-    if (sessionId && transports[sessionId]) {
-      transport = transports[sessionId];
-    } else if (!sessionId && isInitializeRequest(req.body)) {
-      transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => crypto.randomUUID(),
-        onsessioninitialized: (id: string) => {
-          transports[id] = transport;
-        },
-      });
-
-      transport.onclose = () => {
-        delete transports[transport.sessionId];
-        log.info(`session closed: ${transport.sessionId}`);
-      };
-
-      const server = await createMcpServer(configPath, projectRoot);
-      await server.connect(transport);
-      if (Deno.env.get("TRACE")) wrapTransportLogging(transport, `http:${transport.sessionId}`);
-    } else {
-      res.status(400).json({
-        jsonrpc: "2.0",
-        error: { code: -32000, message: "Bad Request: No valid session ID provided" },
-        id: null,
-      });
-      return;
-    }
-
-    await transport.handleRequest(req, res, req.body);
-  });
-
-  app.get("/mcp", async (req: Request, res: Response) => {
-    const sessionId = req.headers["mcp-session-id"] as string | undefined;
-    if (!sessionId || !transports[sessionId]) {
-      res.status(400).send("Invalid or missing session ID");
-      return;
-    }
-    await transports[sessionId].handleRequest(req, res);
-  });
-
-  app.delete("/mcp", async (req: Request, res: Response) => {
-    const sessionId = req.headers["mcp-session-id"] as string | undefined;
-    if (!sessionId || !transports[sessionId]) {
-      res.status(400).send("Invalid or missing session ID");
-      return;
-    }
-    await transports[sessionId].handleRequest(req, res);
-  });
-
+const runHttp = (configPath?: string, projectRoot?: string): void => {
+  const transports: Record<string, WebStandardStreamableHTTPServerTransport> = {};
   const port = parseInt(Deno.env.get("PORT") || "3000", 10);
-  const httpServer = app.listen(port, () => {
-    log.info(`github-projects-mcp-server listening → http://0.0.0.0:${port}/mcp`);
+
+  Deno.serve({ port }, async (req: Request): Promise<Response> => {
+    const { pathname } = new URL(req.url);
+
+    // ── Health check ──────────────────────────────────────────────────────────
+    if (pathname === "/health" && req.method === "GET") {
+      log.debug("health check", { method: req.method, url: req.url });
+      return Response.json({ jsonrpc: "2.0", server: "github-projects-mcp-server" });
+    }
+
+    // ── MCP endpoint ──────────────────────────────────────────────────────────
+    if (pathname === "/mcp") {
+      const sessionId = req.headers.get("mcp-session-id") ?? undefined;
+
+      if (req.method === "POST") {
+        if (!sessionId) {
+          // No session yet — must be an initialization request.
+          // Parse body once here so we can validate and hand it off via parsedBody.
+          let body: unknown;
+          try {
+            body = await req.json();
+          } catch {
+            return Response.json(
+              {
+                jsonrpc: "2.0",
+                error: { code: -32700, message: "Parse error: invalid JSON" },
+                id: null,
+              },
+              { status: 400 },
+            );
+          }
+
+          if (!isInitializeRequest(body)) {
+            return Response.json(
+              {
+                jsonrpc: "2.0",
+                error: { code: -32000, message: "Bad Request: No valid session ID provided" },
+                id: null,
+              },
+              { status: 400 },
+            );
+          }
+
+          const transport = new WebStandardStreamableHTTPServerTransport({
+            sessionIdGenerator: () => crypto.randomUUID(),
+            onsessioninitialized: (id: string) => {
+              transports[id] = transport;
+            },
+          });
+
+          transport.onclose = () => {
+            if (transport.sessionId) {
+              delete transports[transport.sessionId];
+              log.info(`session closed: ${transport.sessionId}`);
+            }
+          };
+
+          const server = await createMcpServer(configPath, projectRoot);
+          await server.connect(transport);
+          if (Deno.env.get("TRACE")) wrapTransportLogging(transport, `http:${transport.sessionId}`);
+
+          return await transport.handleRequest(req, { parsedBody: body });
+        }
+
+        // Existing session.
+        const transport = transports[sessionId];
+        if (!transport) {
+          return Response.json(
+            {
+              jsonrpc: "2.0",
+              error: { code: -32000, message: "Bad Request: No valid session ID provided" },
+              id: null,
+            },
+            { status: 400 },
+          );
+        }
+        return await transport.handleRequest(req);
+      }
+
+      if (req.method === "GET" || req.method === "DELETE") {
+        if (!sessionId || !transports[sessionId]) {
+          return new Response("Invalid or missing session ID", { status: 400 });
+        }
+        return await transports[sessionId].handleRequest(req);
+      }
+    }
+
+    return new Response("Not Found", { status: 404 });
   });
 
-  const sockets = new Set<Socket>();
-  httpServer.on("connection", (socket: Socket) => {
-    sockets.add(socket);
-    socket.once("close", () => sockets.delete(socket));
-  });
+  log.info(`github-projects-mcp-server listening → http://0.0.0.0:${port}/mcp`);
 };
 
 // ── Entry point ──────────────────────────────────────────────────────────────

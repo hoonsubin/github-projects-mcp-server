@@ -6,20 +6,7 @@
       "env": {
         "MCP_TRANSPORT": "stdio"
       },
-      "alwaysAllow": [
-        "scrum_get_sprint",
-        "scrum_get_backlog",
-        "scrum_get_history",
-        "scrum_get_burndown",
-        "scrum_orient",
-        "scrum_get_story",
-        "scrum_get_board_health",
-        "scrum_find_items",
-        "scrum_get_analytics",
-        "scrum_get_item_detail"
-      ],
-      "timeout": 300,
-      "disabledTools": ["github_graphql"]
+      "timeout": 300
     },
     "memory": {
       "command": "npx",

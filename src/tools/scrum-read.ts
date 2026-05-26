@@ -8,7 +8,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 // ── Tool name constants ────────────────────────────────────────────────────────
 // Single source of truth for every tool this module registers.
-// Imported by src/index.ts for degraded-mode stub registration.
+// Imported by src/server.ts for degraded-mode stub registration.
 
 export const SCRUM_READ_TOOL_NAMES = [
   // Active tools
