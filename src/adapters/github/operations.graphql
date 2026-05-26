@@ -5,18 +5,18 @@
 #
 # TWO AUDIENCES READ THIS FILE
 # ──────────────────────────────────────────────────────────────────────────────
-#   SERVER  — queries.ts parses this file at startup, bundles fragment
+#   SERVER  - queries.ts parses this file at startup, bundles fragment
 #             dependencies per operation, and exports named constants.
-#             Do NOT duplicate strings in queries.ts — edit here instead.
+#             Do NOT duplicate strings in queries.ts - edit here instead.
 #
-#   AGENT   — reads this file via scrum_orient to understand the available
+#   AGENT   - reads this file via scrum_orient to understand the available
 #             query shapes before composing github_graphql calls.
 #             Guidance comments are written for the agent; the server ignores them.
 #
 # NAMING CONVENTIONS
 # ──────────────────────────────────────────────────────────────────────────────
-#   Fragments  — PascalCase noun describing the shape  (ProjectCore, ItemContent)
-#   Operations — Verb + Scope + Entity                 (ListUserProjects, GetIssueDetails)
+#   Fragments  - PascalCase noun describing the shape  (ProjectCore, ItemContent)
+#   Operations - Verb + Scope + Entity                 (ListUserProjects, GetIssueDetails)
 #
 # OWNER TYPE BRANCHING
 # ──────────────────────────────────────────────────────────────────────────────
@@ -81,7 +81,7 @@ fragment ProjectCore on ProjectV2 {
 }
 
 # ── ItemContent ───────────────────────────────────────────────────────────────
-# Content node for a project item — covers Issue, PullRequest, and DraftIssue.
+# Content node for a project item - covers Issue, PullRequest, and DraftIssue.
 #
 # AGENT: DraftIssue has no number, url, state, or milestone.
 # Always check __typename before dereferencing those fields.
@@ -164,7 +164,7 @@ fragment ItemFieldValues on ProjectV2Item {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# QUERIES — Projects
+# QUERIES - Projects
 # ══════════════════════════════════════════════════════════════════════════════
 
 query ListUserProjects($login: String!, $first: Int!, $after: String) {
@@ -256,7 +256,7 @@ query GetOrgProjectFields($login: String!, $number: Int!) {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# QUERIES — Items
+# QUERIES - Items
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── GetUser/OrgProjectItems ────────────────────────────────────────────────────
@@ -327,7 +327,7 @@ query GetItemFields($itemId: ID!) {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# QUERIES — Issue / PR detail
+# QUERIES - Issue / PR detail
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── GetDraftIssueDetails ───────────────────────────────────────────────────────
@@ -464,7 +464,7 @@ query ListIssues(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# QUERIES — Labels
+# QUERIES - Labels
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── GetRepoLabels ──────────────────────────────────────────────────────────────
@@ -481,13 +481,13 @@ query GetRepoLabels($owner: String!, $repo: String!) {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# QUERIES — Milestones
+# QUERIES - Milestones
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── ListMilestones ─────────────────────────────────────────────────────────────
 # Fetch all milestones (open and closed) for a single repository.
 # Called once per tracked repo by EpicService; results are merged and deduplicated.
-# Fetches up to 100 milestones — sufficient for typical project sizes.
+# Fetches up to 100 milestones - sufficient for typical project sizes.
 
 query ListMilestones($owner: String!, $repo: String!) {
   repository(owner: $owner, name: $repo) {
@@ -505,7 +505,7 @@ query ListMilestones($owner: String!, $repo: String!) {
 }
 
 # ══════════════════════════════════════════════════════════════════════════════
-# QUERIES — Discussions (ceremony records)
+# QUERIES - Discussions (ceremony records)
 # ══════════════════════════════════════════════════════════════════════════════
 
 # AGENT: Use when config.yml ceremony_records.backend = "github_discussions".
@@ -548,7 +548,7 @@ query GetDiscussionCategories($owner: String!, $repo: String!) {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# QUERIES — Lookups
+# QUERIES - Lookups
 # ══════════════════════════════════════════════════════════════════════════════
 
 query GetIssueNodeId($owner: String!, $repo: String!, $number: Int!) {
@@ -646,7 +646,7 @@ query GetImpedimentIssues($owner: String!, $repo: String!, $states: [IssueState!
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# QUERIES — Item lookups (internal services)
+# QUERIES - Item lookups (internal services)
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── GetProjectItemById ─────────────────────────────────────────────────────────
@@ -695,7 +695,7 @@ query GetBlockedBy($issueId: ID!) {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# QUERIES — Repository and user lookups
+# QUERIES - Repository and user lookups
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── GetRepo ────────────────────────────────────────────────────────────────────
@@ -719,7 +719,7 @@ query GetUserMilestones($owner: String!, $repo: String!) {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# QUERIES — Field management
+# QUERIES - Field management
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── GetFieldOptions ────────────────────────────────────────────────────────────
@@ -736,7 +736,7 @@ query GetFieldOptions($fieldId: ID!) {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# QUERIES — Bootstrap (config-loader)
+# QUERIES - Bootstrap (config-loader)
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── GetUserProjectFieldsBootstrap ──────────────────────────────────────────────
@@ -797,7 +797,7 @@ query GetOrgProjectFieldsBootstrap($login: String!, $number: Int!) {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# MUTATIONS — Label management
+# MUTATIONS - Label management
 # ══════════════════════════════════════════════════════════════════════════════
 
 mutation CreateLabel($repositoryId: ID!, $name: String!, $color: String!) {
@@ -816,7 +816,7 @@ mutation SetLabels($issueId: ID!, $labelIds: [ID!]!) {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# MUTATIONS — Issue management
+# MUTATIONS - Issue management
 # ══════════════════════════════════════════════════════════════════════════════
 
 mutation CreateIssue(
@@ -847,7 +847,7 @@ mutation SetMilestone($issueId: ID!, $milestoneId: ID!) {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# MUTATIONS — Comment management
+# MUTATIONS - Comment management
 # ══════════════════════════════════════════════════════════════════════════════
 
 mutation AddComment($subjectId: ID!, $body: String!) {
@@ -858,7 +858,7 @@ mutation AddComment($subjectId: ID!, $body: String!) {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# MUTATIONS — Milestone management
+# MUTATIONS - Milestone management
 # ══════════════════════════════════════════════════════════════════════════════
 
 mutation CreateMilestone($repositoryId: ID!, $title: String!) {
@@ -869,7 +869,7 @@ mutation CreateMilestone($repositoryId: ID!, $title: String!) {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# MUTATIONS — Field management
+# MUTATIONS - Field management
 # ══════════════════════════════════════════════════════════════════════════════
 
 mutation UpdateField($projectId: ID!, $fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) {

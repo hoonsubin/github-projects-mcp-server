@@ -16,11 +16,11 @@
     <expected_inputs>
       <input name="requirements">Description of the feature, epic, or user need to be broken into stories</input>
       <input name="vocabulary" required="true">
-        Status, priority, and team maps from scrum_orient — passed by scrum-master in the task message.
+        Status, priority, and team maps from scrum_orient - passed by scrum-master in the task message.
         If absent, call scrum_orient silently before proceeding and extract these maps from the result.
       </input>
       <input name="dor" required="true">
-        Definition of Ready checklist — passed by scrum-master. If absent, read from scrum_orient result.
+        Definition of Ready checklist - passed by scrum-master. If absent, read from scrum_orient result.
       </input>
       <input name="sprint_context" required="false">
         Active sprint reference for optional immediate assignment. May be omitted; stories go to backlog.
@@ -75,10 +75,10 @@
           Acceptance Criteria:
           - [criterion 1]
           - [criterion 2]
-          - [criterion 3 — include at least one error / edge-case path]
+          - [criterion 3 - include at least one error / edge-case path]
         </field>
         <field name="story_type">feature | bug | tech_debt | spike</field>
-        <field name="estimate">Story-point estimate (Fibonacci preferred) — required for DoR</field>
+        <field name="estimate">Story-point estimate (Fibonacci preferred) - required for DoR</field>
         <field name="priority">Canonical key from vocabulary.priority (e.g., p0, p1, p2, p3)</field>
         <field name="epic">Milestone reference if provided in task context</field>
         <field name="assignee">Team member identifier from vocabulary.team if explicitly requested</field>
@@ -148,7 +148,7 @@
           <details>
             Set priority using the canonical key from vocabulary.priority (never a raw display label).
             If sprint_context was provided and the story's estimate fits remaining capacity,
-            set the sprint field. Otherwise leave unassigned — the scrum-master will plan it.
+            set the sprint field. Otherwise leave unassigned - the scrum-master will plan it.
           </details>
         </step>
       </steps>
@@ -161,7 +161,7 @@
         State: how many stories were created, their titles, estimates, and board references.
         Flag: any stories that had DoR gaps acknowledged by the user (scrum-master should note these).
         Flag: any stories left unassigned to a sprint (need planning).
-        Do not ask questions or offer further assistance — the scrum-master resumes from here.
+        Do not ask questions or offer further assistance - the scrum-master resumes from here.
       </completion_output>
     </phase>
 

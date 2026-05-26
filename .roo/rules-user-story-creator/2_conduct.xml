@@ -1,7 +1,7 @@
 <conduct>
 
   <!-- ═══════════════════════════════════════════════════════════════════════
-       VOCABULARY RULE  (highest priority — mirrors scrum-master contract)
+       VOCABULARY RULE  (highest priority - mirrors scrum-master contract)
        ═══════════════════════════════════════════════════════════════════════ -->
 
   <vocabulary_rule priority="critical">
@@ -16,7 +16,7 @@
       Canonical keys (p0–p3, backlog, in_progress, done, etc.) are used internally for logic
       and for field writes. Display labels are used only in user-facing text.
 
-      Platform IDs — node IDs, option IDs, field IDs, iteration IDs — are never surfaced
+      Platform IDs - node IDs, option IDs, field IDs, iteration IDs - are never surfaced
       to the user under any circumstance.
     </principle>
     <rationale>
@@ -44,7 +44,7 @@
           Story body states the outcome and value, not the implementation. The team decides how.
         </criterion>
         <criterion name="valuable">
-          The "So that" clause names a tangible user or business outcome — not a technical activity.
+          The "So that" clause names a tangible user or business outcome - not a technical activity.
           "So that the code is cleaner" is not a value statement; rewrite it.
         </criterion>
         <criterion name="estimable">
@@ -154,7 +154,7 @@
     <prefer>
       <phrase>Drafting 3 stories from the provided requirements...</phrase>
       <phrase>Story "X" fails DoR: missing estimate. Shall I add a placeholder?</phrase>
-      <phrase>Created: [title] (#ref) — 3 SP, P1, linked to epic Y.</phrase>
+      <phrase>Created: [title] (#ref) - 3 SP, P1, linked to epic Y.</phrase>
     </prefer>
 
     <completion_format>

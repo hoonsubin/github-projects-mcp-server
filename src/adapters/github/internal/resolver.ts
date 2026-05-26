@@ -15,9 +15,9 @@ import { GET_PROJECT_ITEM_BY_ID_QUERY } from "../queries.ts";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 /**
- * Resolved story — the node IDs the backend mutations need.
+ * Resolved story - the node IDs the backend mutations need.
  *
- * itemId is the project item node ID (PVTI_...) — branded as GitHubItemId.
+ * itemId is the project item node ID (PVTI_...) - branded as GitHubItemId.
  * issueId / issueNumber are null for DraftIssue items.
  * Write tools that require a real Issue (e.g. addComment) must guard on null
  * and throw a clear error rather than crashing.
@@ -28,7 +28,7 @@ interface ResolvedStory {
   issueNumber: number | null; // user-facing issue number, null for DraftIssues
 }
 
-/** Minimal GitHub client interface — matches what index.ts passes in. */
+/** Minimal GitHub client interface - matches what index.ts passes in. */
 interface GitHubClient {
   graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T>;
 }
@@ -51,8 +51,8 @@ interface ItemByIdResponse {
  * Resolve a SprintRef to a GitHub iteration ID (or null to clear the sprint field).
  * Overload: accepts the strict SprintRef type.
  *
- * - "current"   → config.iterations.active.id — throws SprintNotScheduledError if none
- * - "next"      → config.iterations.next.id   — throws SprintNotScheduledError if none
+ * - "current"   → config.iterations.active.id - throws SprintNotScheduledError if none
+ * - "next"      → config.iterations.next.id   - throws SprintNotScheduledError if none
  * - null        → returns null (clears the sprint field on an item)
  * - SprintName  → case-insensitive title match against config.iterations.all; throws if no match
  */
@@ -69,7 +69,7 @@ export function resolveSprint(
 ): string | null;
 
 /**
- * Implementation — handles both overloads.
+ * Implementation - handles both overloads.
  */
 export function resolveSprint(
   ref: SprintRef | string | null | undefined,
@@ -109,8 +109,8 @@ export function resolveSprint(
     return config.iterations.next.id;
   }
 
-  // For SprintRef (SprintName branded type) — throw on not found.
-  // For plain string — return null on not found (user input may be invalid).
+  // For SprintRef (SprintName branded type) - throw on not found.
+  // For plain string - return null on not found (user input may be invalid).
   const normalised = ref.toLowerCase();
   const match = config.iterations.all.find(
     (iter) => iter.title.toLowerCase() === normalised,
@@ -126,7 +126,7 @@ export function resolveSprint(
 /**
  * Resolve a StoryRef to the GitHub node IDs needed for mutations.
  *
- * Uses ref.id as a project item node ID (PVTI_...) — the same opaque handle
+ * Uses ref.id as a project item node ID (PVTI_...) - the same opaque handle
  * returned by every read tool in Story.ref.id. A single `node()` lookup returns
  * the content type and underlying issue details.
  *
@@ -138,7 +138,7 @@ export const resolveStory = async (
   ref: StoryRef,
   github: GitHubClient,
 ): Promise<ResolvedStory> => {
-  // resolveStory requires a resolved { id } ref — throw early if only { number } is given.
+  // resolveStory requires a resolved { id } ref - throw early if only { number } is given.
   if (!("id" in ref)) {
     throw new GitHubApiError(
       `resolveStory requires a resolved StoryRef with 'id', but received '{ number: ${ref.number} }'.`,
@@ -202,7 +202,7 @@ export const resolveStory = async (
     );
   }
 
-  // Issue — has id and number
+  // Issue - has id and number
   return {
     itemId: node.id as GitHubItemId,
     issueId: content.id as GitHubIssueId,

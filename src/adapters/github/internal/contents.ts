@@ -1,5 +1,5 @@
 // =============================================================================
-// src/adapters/github/internal/contents.ts — GitHub Contents API helpers
+// src/adapters/github/internal/contents.ts - GitHub Contents API helpers
 //
 // Provides file fetching and decoding for the GitHub Contents API.
 // =============================================================================
@@ -32,7 +32,7 @@ interface RepoFileResponse {
  * Decode a base64-encoded file body returned by the GitHub Contents API.
  *
  * GitHub's API includes newline characters in the base64 string for readability.
- * These must be stripped before decoding — atob() rejects strings with whitespace.
+ * These must be stripped before decoding - atob() rejects strings with whitespace.
  */
 const decodeRepoFileContent = (encoded: string): string => atob(encoded.replace(/\s/g, ""));
 
@@ -42,7 +42,7 @@ const decodeRepoFileContent = (encoded: string): string => atob(encoded.replace(
  * Returns the decoded UTF-8 file content as a string.
  *
  * Throws GitHubApiError with an actionable message if:
- *   - The file does not exist (404) — with a hint to add the file or
+ *   - The file does not exist (404) - with a hint to add the file or
  *     set the template path to null in config.yml.
  *   - The path resolves to a directory rather than a file.
  *   - Any other GitHub API error (permissions, rate limit, etc.).

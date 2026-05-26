@@ -1,5 +1,5 @@
 // =============================================================================
-// src/tools/scrum-read.ts — Thin tool handlers delegating to use-case functions
+// src/tools/scrum-read.ts - Thin tool handlers delegating to use-case functions
 //
 // No handler imports graphql, rest, loadConfig, resolveSprint, or any GitHub raw type.
 // =============================================================================
@@ -56,12 +56,12 @@ export const registerScrumReadTools = (
     {
       title: "Orient to Project",
       description:
-        `Entry point — call this FIRST when connecting to a project or starting any workflow.
+        `Entry point - call this FIRST when connecting to a project or starting any workflow.
 
         Returns the current platform state (active sprint dates, field IDs, iteration list)
         and the declared Scrum vocabulary for this project (status options, priority tiers,
         sprint names). The vocabulary values returned here are the exact strings you must
-        pass to write tools — they are project-specific and cannot be guessed.
+        pass to write tools - they are project-specific and cannot be guessed.
 
         No arguments required. Pass {} or omit arguments entirely.`,
       inputSchema: z.object({ _: z.string().optional() }).shape,
@@ -98,8 +98,8 @@ export const registerScrumReadTools = (
         Args:
           ref  { number: integer } | { id: string }
                At least one of number or id is required.
-               number = visible issue number (e.g. 42) — use for direct user-driven lookups
-               id = opaque board item ID from a previous tool response — use this when already held
+               number = visible issue number (e.g. 42) - use for direct user-driven lookups
+               id = opaque board item ID from a previous tool response - use this when already held
 
         Returns: Story object with full body, comments array, and linked PR list.`,
       inputSchema: GetStorySchema.shape,
@@ -160,24 +160,24 @@ export const registerScrumReadTools = (
         or sprint. Optionally include the full dependency graph.
 
         Args:
-          scope  "backlog" | "sprint" | "all" — default: "all"
-          keys   string[] — numeric issue keys to fetch directly, e.g. ["42", "123"]
-          search string — case-insensitive substring match on title + body
-          types  string[] — filter by item type canonical keys (e.g. ["feature", "bug"])
-          statuses string[] — filter by status display names (e.g. ["In Progress"])
-          priority string — filter by priority display name (e.g. "Must")
-          epic_id string — filter by epic/milestone ID
-          labels string[] — require ALL of these labels
-          assignee string — filter by GitHub login
-          estimated boolean — true = estimated only; false = unestimated only
-          sprint_ref "current" | "next" | "<name>" — filter by sprint
-          include_dependencies boolean (default false) — include dependency_map
+          scope  "backlog" | "sprint" | "all" - default: "all"
+          keys   string[] - numeric issue keys to fetch directly, e.g. ["42", "123"]
+          search string - case-insensitive substring match on title + body
+          types  string[] - filter by item type canonical keys (e.g. ["feature", "bug"])
+          statuses string[] - filter by status display names (e.g. ["In Progress"])
+          priority string - filter by priority display name (e.g. "Must")
+          epic_id string - filter by epic/milestone ID
+          labels string[] - require ALL of these labels
+          assignee string - filter by GitHub login
+          estimated boolean - true = estimated only; false = unestimated only
+          sprint_ref "current" | "next" | "<name>" - filter by sprint
+          include_dependencies boolean (default false) - include dependency_map
           limit number (default 50)
 
         Returns: {
           items: ItemListing[],
           scope_summary: { total_count, limit, scope, filters_applied },
-          dependency_map?: DependencyMap  — only if include_dependencies=true
+          dependency_map?: DependencyMap  - only if include_dependencies=true
         }`,
       inputSchema: FindItemsSchema.shape,
       annotations: {
@@ -200,16 +200,16 @@ export const registerScrumReadTools = (
     "scrum_get_analytics",
     {
       title: "Get Sprint Analytics",
-      description: `Unified sprint analytics — burndown + velocity history.
+      description: `Unified sprint analytics - burndown + velocity history.
 
         Args:
-          view   "burndown" | "history" | "both" — default: "both"
+          view   "burndown" | "history" | "both" - default: "both"
                  "burndown" = burndown chart data for the target sprint
                  "history" = completed sprint velocity snapshots
                  "both" = burndown + history
-          sprint_ref "current" | "next" | "<name>" — target sprint for burndown
+          sprint_ref "current" | "next" | "<name>" - target sprint for burndown
                      defaults to "current"
-          history_window number 1-10, default 5 — how many completed sprints
+          history_window number 1-10, default 5 - how many completed sprints
 
         Returns: {
           burndown: BurndownResponse | null,
@@ -241,15 +241,15 @@ export const registerScrumReadTools = (
     "scrum_get_board_health",
     {
       title: "Get Board Health",
-      description: `Board health dashboard — aggregate metrics without item lists.
+      description: `Board health dashboard - aggregate metrics without item lists.
 
         Returns readiness breakdown (by PBI type with overall %), sprint risk counts
         (unestimated/blocked/no-assignee), impediment counts (orphan + open), and
-        ungroomed count. No individual story data — use scrum_find_items
+        ungroomed count. No individual story data - use scrum_find_items
         for item-level queries.
 
         Args:
-          sprint_scope string — "current" | "next" | "<name>" — which sprint to assess
+          sprint_scope string - "current" | "next" | "<name>" - which sprint to assess
                         defaults to "current"
 
         Returns: {
@@ -273,7 +273,7 @@ export const registerScrumReadTools = (
     },
   );
 
-  // ── Deprecated tools — guidance stubs pointing to replacements ───────────────
+  // ── Deprecated tools - guidance stubs pointing to replacements ───────────────
   //
   // These 5 tools have been replaced by the new unified surface above.
   // Each returns a descriptive error message telling the agent which replacement

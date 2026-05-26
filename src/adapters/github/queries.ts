@@ -1,25 +1,30 @@
 // =============================================================================
-// src/adapters/github/queries.ts — GraphQL operation loader
+// src/adapters/github/queries.ts - GraphQL operation loader
 //
 // Auto-loads all named operations from operations.graphql at module init.
-// Do NOT add query strings here — edit operations.graphql instead.
+// Do NOT add query strings here - edit operations.graphql instead.
 //
 // Each exported constant is the full document string for that operation
 // (operation definition + all referenced fragment definitions), ready to
 // send directly to the GitHub GraphQL API.
 //
 // Fails fast at startup if any expected operation name is missing from
-// operations.graphql — no silent drift between the file and this module.
+// operations.graphql - no silent drift between the file and this module.
 // =============================================================================
 
 import { parse, print } from "graphql";
 import type { DocumentNode, FragmentDefinitionNode } from "graphql";
 
 // ── Parse operations.graphql once at module init ──────────────────────────────
+//
+// Using import with { type: "text" } bundles the .graphql file content at
+// compile time (deno compile) so the compiled binary never needs to read
+// it from the filesystem at runtime. This also works correctly with
+// deno run - the import assertion is resolved at load time.
 
-const _source = Deno.readTextFileSync(
-  new URL("./operations.graphql", import.meta.url),
-);
+import _graphqlSource from "./operations.graphql" with { type: "text" };
+
+const _source: string = _graphqlSource;
 const _doc: DocumentNode = parse(_source);
 
 // Index all fragment definitions by name
@@ -101,7 +106,7 @@ const getQuery = (name: string): string => {
 
 // ── Named constants ───────────────────────────────────────────────────────────
 // Each call to getQuery() validates that the operation exists in operations.graphql
-// at startup — throwing immediately if any expected name is absent.
+// at startup - throwing immediately if any expected name is absent.
 
 getQuery("GetUserProjectItems"); // startup validation only; not imported elsewhere
 export const GET_ISSUE_DETAILS_QUERY = getQuery("GetIssueDetails");

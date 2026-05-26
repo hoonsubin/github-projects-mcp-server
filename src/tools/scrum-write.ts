@@ -1,5 +1,5 @@
 // =============================================================================
-// src/tools/scrum-write.ts — Register all scrum_* write tools
+// src/tools/scrum-write.ts - Register all scrum_* write tools
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
@@ -57,7 +57,7 @@ export const registerScrumWriteTools = (
       description: `Idempotently add a new option to an existing board field, or a new repo label.
 
         IMPORTANT CONSTRAINT: this tool can only add options to fields that already exist
-        (status, priority). It cannot create new project fields — that requires a human to
+        (status, priority). It cannot create new project fields - that requires a human to
         act in the GitHub Projects UI.
 
         Use this when scrum_set_field or scrum_create_story fails because a vocabulary value
@@ -67,7 +67,7 @@ export const registerScrumWriteTools = (
           kind   "status_option" | "priority_option" | "label"
           value  display name to add (e.g. "Blocked", "Critical", "tech_debt")
 
-        Safe to call if the value already exists — operation is idempotent.`,
+        Safe to call if the value already exists - operation is idempotent.`,
       inputSchema: AddVocabularySchema.shape,
       annotations: { role: "admin" },
     },
@@ -87,13 +87,13 @@ export const registerScrumWriteTools = (
     {
       title: "Set Board Field",
       description:
-        `Set a single board field on a story. The primary write primitive — use this to move
+        `Set a single board field on a story. The primary write primitive - use this to move
         stories across the board, assign sprints, set points, update priority, assignee, or type.
 
         Call scrum_get_story first if you need to read the current value before overwriting.
 
         Args:
-          ref    { id: string } — story to update (Story.ref.id from any read tool)
+          ref    { id: string } - story to update (Story.ref.id from any read tool)
           field  one of: "status" | "sprint" | "story_points" | "priority" | "assignee" | "type"
           value  shape depends on field:
                    status        → string display name (e.g. "In Progress", "Done")
@@ -101,7 +101,7 @@ export const registerScrumWriteTools = (
                    story_points  → number (e.g. 3, 5, 8)
                    priority      → string display name (e.g. "Must", "Should")
                    assignee      → GitHub login string (e.g. "hoonsubin")
-                   type          → canonical key (e.g. "feature", "bug" — see vocabulary.type in scrum_orient)
+                   type          → canonical key (e.g. "feature", "bug" - see vocabulary.type in scrum_orient)
                  Pass null for any field to clear the value entirely.
 
         Returns: updated Story object.`,
@@ -126,19 +126,19 @@ export const registerScrumWriteTools = (
         `Edit the content fields of a story: title, body, labels, assignees, epic, or dependencies.
         For board fields (status, sprint, story_points, priority, assignee) use scrum_set_field.
 
-        WARNING — labels and assignees REPLACE the full existing set, they do not append.
+        WARNING - labels and assignees REPLACE the full existing set, they do not append.
         Call scrum_get_story first if you want to add a label without removing existing ones.
-        body also replaces the entire body — read first if you intend to append.
+        body also replaces the entire body - read first if you intend to append.
 
         Args:
-          ref        { number: integer } | { id: string } — story to update
-          title      string — new title (omit to leave unchanged)
-          body       string — replacement markdown body (omit to leave unchanged)
-          labels     string[] — REPLACES all existing labels (omit to leave unchanged)
-          assignees  string[] — REPLACES all existing assignees, GitHub logins (omit to leave unchanged)
-          epic       { id: string } | null — EpicRef to assign, or null to detach from epic (omit to leave unchanged)
-          comment    string — Post a comment on the story after updating (omit to skip)
-          blocked_by  StoryRef[] | null — REPLACES all upstream (blocked_by) dependencies; null clears; omit to leave unchanged
+          ref        { number: integer } | { id: string } - story to update
+          title      string - new title (omit to leave unchanged)
+          body       string - replacement markdown body (omit to leave unchanged)
+          labels     string[] - REPLACES all existing labels (omit to leave unchanged)
+          assignees  string[] - REPLACES all existing assignees, GitHub logins (omit to leave unchanged)
+          epic       { id: string } | null - EpicRef to assign, or null to detach from epic (omit to leave unchanged)
+          comment    string - Post a comment on the story after updating (omit to skip)
+          blocked_by  StoryRef[] | null - REPLACES all upstream (blocked_by) dependencies; null clears; omit to leave unchanged
 
         Returns: updated Story object.`,
       inputSchema: UpdateStorySchema.shape,
@@ -173,21 +173,21 @@ export const registerScrumWriteTools = (
         `Create a new story on the project board and optionally assign it to a sprint in one call.
 
         Stories are created as Draft Issues first. If labels or an epic are supplied the draft is
-        automatically promoted to a full Issue so those fields can be applied — this is transparent
+        automatically promoted to a full Issue so those fields can be applied - this is transparent
         to the caller. Board fields (type, priority, sprint, story_points) are applied after creation;
-        if a board field fails the story is still created — check 'partialFailure' in the response.
+        if a board field fails the story is still created - check 'partialFailure' in the response.
 
         Args:
-          title        string (required) — concise one-sentence title
-          body         string (required) — full markdown body; use user-story format + AC checklist
-          type         canonical key (e.g. "feature", "bug") — set via the Type board field
+          title        string (required) - concise one-sentence title
+          body         string (required) - full markdown body; use user-story format + AC checklist
+          type         canonical key (e.g. "feature", "bug") - set via the Type board field
                        Call scrum_orient for vocabulary.type to see valid keys for this project
-          priority     string — vocabulary display name (e.g. "Must"); call scrum_orient for valid values
-          story_points number — Fibonacci estimate (1, 2, 3, 5, 8, 13)
-          labels       string[] — must already exist; check platform_state.labels.existing from scrum_orient
-          epic         { id: string } — EpicRef from scrum_find_items (type=epic).ref.id
-          assignees    string[] — GitHub logins
-          sprint       "current" | "next" | "<sprint-name>" — places on board; omit for backlog
+          priority     string - vocabulary display name (e.g. "Must"); call scrum_orient for valid values
+          story_points number - Fibonacci estimate (1, 2, 3, 5, 8, 13)
+          labels       string[] - must already exist; check platform_state.labels.existing from scrum_orient
+          epic         { id: string } - EpicRef from scrum_find_items (type=epic).ref.id
+          assignees    string[] - GitHub logins
+          sprint       "current" | "next" | "<sprint-name>" - places on board; omit for backlog
 
         Returns: created Story object, or partial-failure shape { story, partialFailure: true, failedFields[] }.`,
       inputSchema: CreateStorySchema.shape,
@@ -224,7 +224,7 @@ export const registerScrumWriteTools = (
         for (const reason of w) failedFields.push({ field: "priority", reason });
       }
 
-      // Step 3: Fetch updated story — getStoryDetail already returns BackendCallResult
+      // Step 3: Fetch updated story - getStoryDetail already returns BackendCallResult
       let storyDetail: Story | Partial<StoryRef>;
       const { value: fetchedDetail, warnings: readWarnings } = await backend.getStoryDetail(
         storyRef,
@@ -259,15 +259,15 @@ export const registerScrumWriteTools = (
         when planning a sprint or moving multiple items at once.
 
         Args:
-          sprint   "current" | "next" | "<sprint-name>" — target sprint
-          stories  StoryRef[] (min 1) — each entry must supply Story.ref.id
+          sprint   "current" | "next" | "<sprint-name>" - target sprint
+          stories  StoryRef[] (min 1) - each entry must supply Story.ref.id
           replace  boolean, default false
                    false = add the listed stories; existing sprint items are untouched
                    true  = CLEAR all current sprint stories first, then assign the list
-                           Use with caution — replace:true removes any story not in your list.
+                           Use with caution - replace:true removes any story not in your list.
 
         Returns: { sprint, assigned: StoryRef[], skipped: [{ ref, reason }] }
-        The operation continues through individual failures — check skipped[] for errors.`,
+        The operation continues through individual failures - check skipped[] for errors.`,
       inputSchema: PlanSprintSchema.shape,
       annotations: { role: "admin" },
     },
@@ -279,7 +279,7 @@ export const registerScrumWriteTools = (
       if (params.replace) {
         if (params.sprint === "all") {
           throw new Error(
-            '"all" is not valid for plan_sprint — use "current", "next", null, or an explicit sprint name.',
+            '"all" is not valid for plan_sprint - use "current", "next", null, or an explicit sprint name.',
           );
         }
         interface BackendWithSprintStories {
@@ -332,11 +332,11 @@ export const registerScrumWriteTools = (
         The impediment will appear in scrum_find_items results filterable by the 'impediment' label.
 
         Args:
-          description  string (required) — full description of the blocker; becomes the story body
+          description  string (required) - full description of the blocker; becomes the story body
                        and the comment posted to the affected story
-          affects      { story: { id } } | { sprint: string } — optional; omit to log a project-level orphan
-          raised_by    string — GitHub login of the person raising it; defaults to Scrum Master
-          priority     string — vocabulary display name (e.g. "Must"); defaults to highest tier
+          affects      { story: { id } } | { sprint: string } - optional; omit to log a project-level orphan
+          raised_by    string - GitHub login of the person raising it; defaults to Scrum Master
+          priority     string - vocabulary display name (e.g. "Must"); defaults to highest tier
 
         Returns: the created impediment Story object.`,
       inputSchema: LogImpedimentSchema.shape,
@@ -416,9 +416,9 @@ export const registerScrumWriteTools = (
       description: `Update an impediment's status and optionally add resolution notes.
 
         Args:
-          ref              { id } — impediment project item ID from scrum_get_board_health or scrum_find_items
-          status           "open" | "in_progress" | "resolved" — new impediment status
-          resolution_notes  string (optional) — notes explaining why this impediment was resolved
+          ref              { id } - impediment project item ID from scrum_get_board_health or scrum_find_items
+          status           "open" | "in_progress" | "resolved" - new impediment status
+          resolution_notes  string (optional) - notes explaining why this impediment was resolved
 
         Returns: the updated ImpedimentListing.`,
       inputSchema: UpdateImpedimentSchema.shape,

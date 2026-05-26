@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Use this template to **raise an impediment** — any blocker that the team cannot resolve
+        Use this template to **raise an impediment** - any blocker that the team cannot resolve
         within a single Daily Scrum and that requires Scrum Master action or escalation.
 
         Impediments are first-class artifacts in this project. They have their own lifecycle
@@ -19,7 +19,7 @@ body:
     id: description
     attributes:
       label: Impediment description
-      description: What is blocking progress? Be specific and factual — no diagnosis needed yet.
+      description: What is blocking progress? Be specific and factual - no diagnosis needed yet.
       placeholder: The GitHub Projects v2 GraphQL API returns a 403 for all `updateProjectV2ItemFieldValue` mutations on the staging token, even though the token has `project` scope.
     validations:
       required: true
@@ -66,10 +66,10 @@ body:
     id: attempted
     attributes:
       label: What has already been tried?
-      description: Avoid duplicating effort — list what was attempted and why it didn't work.
+      description: Avoid duplicating effort - list what was attempted and why it didn't work.
       placeholder: |
-        - Regenerated the token with `project`, `repo`, and `admin:org` scopes — same 403.
-        - Checked GitHub status page — no ongoing incident.
+        - Regenerated the token with `project`, `repo`, and `admin:org` scopes - same 403.
+        - Checked GitHub status page - no ongoing incident.
     validations:
       required: false
 

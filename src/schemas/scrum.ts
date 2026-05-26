@@ -1,10 +1,10 @@
 // =============================================================================
-// src/schemas/scrum.ts — Zod input schemas for all 11 scrum_* tools
+// src/schemas/scrum.ts - Zod input schemas for all 11 scrum_* tools
 //
 // Rules enforced here:
 //   - No GitHub IDs, node IDs, or internal field identifiers appear in these schemas.
 //   - The agent speaks Scrum vocabulary only; the backend translates.
-//   - All tool schemas are strict() — unknown keys are rejected.
+//   - All tool schemas are strict() - unknown keys are rejected.
 //   - Every field carries a .describe() so agents see documentation in the
 //     JSON Schema properties map, not just the Zod source.
 // =============================================================================
@@ -16,7 +16,7 @@ import { toSprintName } from "../domain/types.ts";
 // ── Primitive schemas (shared by multiple tools) ──────────────────────────────
 
 // Accepted as input by any tool that references a story.
-// Every read tool returns Story.ref.id — pass that value here.
+// Every read tool returns Story.ref.id - pass that value here.
 const StoryRefSchema: z.ZodType<{ id: string } | { number: number }> = z.union([
   z.object({
     id: z
@@ -41,7 +41,7 @@ const StoryRefSchema: z.ZodType<{ id: string } | { number: number }> = z.union([
 
 // Accepted as input by any tool that references an epic (Milestone).
 // Derived from the domain EpicRef type to maintain a single source of truth.
-// Every read tool returns EpicRef.id — pass that value here.
+// Every read tool returns EpicRef.id - pass that value here.
 const EpicRefSchema: z.ZodType<EpicRef> = z.object({
   id: z
     .string()
@@ -82,11 +82,11 @@ const ScrumFieldSchema = z
       '"story_points" = effort estimate (number, e.g. 5); ' +
       '"priority" = urgency tier (string display name, e.g. "Must"); ' +
       '"assignee" = GitHub login of the owner (string, e.g. "hoonsubin"); ' +
-      '"type" = story type canonical key (e.g. "feature", "bug" — see vocabulary.type in scrum_orient). ' +
+      '"type" = story type canonical key (e.g. "feature", "bug" - see vocabulary.type in scrum_orient). ' +
       "Call scrum_orient to see all valid vocabulary values.",
   );
 
-// Story type — the canonical key for the Type project board field.
+// Story type - the canonical key for the Type project board field.
 // The valid values are declared in type_mapping in config.yml (e.g. "feature", "bug").
 // Call scrum_orient to see vocabulary.type for the current project's valid values.
 const StoryTypeSchema = z
@@ -96,14 +96,14 @@ const StoryTypeSchema = z
     "Canonical type key declared in type_mapping in config.yml. " +
       'Common examples: "feature", "bug", "tech_debt", "spike", "impediment", "user_story". ' +
       "Call scrum_orient to read vocabulary.type for the exact keys valid in this project. " +
-      "NOTE: use scrum_log_impediment for impediment stories — it handles the full workflow.",
+      "NOTE: use scrum_log_impediment for impediment stories - it handles the full workflow.",
   );
 
 // ── Read tool schemas ─────────────────────────────────────────────────────────
 
-// scrum_orient — no arguments; uses z.object({_:...}).shape inline in the handler
+// scrum_orient - no arguments; uses z.object({_:...}).shape inline in the handler
 
-// scrum_get_story — single story by ref
+// scrum_get_story - single story by ref
 export const GetStorySchema = z
   .object({
     ref: StoryRefSchema.describe(
@@ -115,7 +115,7 @@ export const GetStorySchema = z
 
 // ── New tool schemas (for P6 handlers) ────────────────────────────────────────
 
-// scrum_find_items — unified item search across all PBIs
+// scrum_find_items - unified item search across all PBIs
 export const FindItemsSchema = z
   .object({
     scope: z
@@ -177,7 +177,7 @@ export const FindItemsSchema = z
   })
   .strict();
 
-// scrum_get_analytics — unified sprint analytics (burndown + history)
+// scrum_get_analytics - unified sprint analytics (burndown + history)
 export const GetAnalyticsSchema = z
   .object({
     view: z
@@ -203,7 +203,7 @@ export const GetAnalyticsSchema = z
   })
   .strict();
 
-// scrum_get_board_health — board health dashboard (no item lists)
+// scrum_get_board_health - board health dashboard (no item lists)
 export const GetBoardHealthSchema = z
   .object({
     sprint_scope: z
@@ -219,19 +219,19 @@ export const GetBoardHealthSchema = z
 
 // ── Write tool schemas ────────────────────────────────────────────────────────
 
-// scrum_create_story — create and optionally place on board in one call
+// scrum_create_story - create and optionally place on board in one call
 export const CreateStorySchema = z
   .object({
     title: z
       .string()
       .min(1)
-      .describe("Story title. Keep concise — one sentence describing the deliverable."),
+      .describe("Story title. Keep concise - one sentence describing the deliverable."),
     body: z
       .string()
       .describe(
         "Full markdown body. Recommended format: user-story opener " +
           '("As a [user], I want [goal], so that [benefit].") followed by an ' +
-          "Acceptance Criteria checklist. Required — pass an empty string if minimal.",
+          "Acceptance Criteria checklist. Required - pass an empty string if minimal.",
       ),
     type: StoryTypeSchema,
     priority: z
@@ -239,7 +239,7 @@ export const CreateStorySchema = z
       .optional()
       .describe(
         'Priority vocabulary display name (e.g. "Must", "Should", "Could"). ' +
-          "Must match an existing priority option — call scrum_orient to see valid values.",
+          "Must match an existing priority option - call scrum_orient to see valid values.",
       ),
     story_points: z
       .number()
@@ -249,7 +249,7 @@ export const CreateStorySchema = z
       .array(z.string())
       .optional()
       .describe(
-        "Additional labels to apply. Only pass labels that already exist in the repository — " +
+        "Additional labels to apply. Only pass labels that already exist in the repository - " +
           "check platform_state.labels.existing from scrum_orient first. " +
           "Story type is set via the Type board field, not a label.",
       ),
@@ -267,7 +267,7 @@ export const CreateStorySchema = z
   })
   .strict();
 
-// scrum_update_story — edits content only; for board fields use scrum_set_field
+// scrum_update_story - edits content only; for board fields use scrum_set_field
 export const UpdateStorySchema = z
   .object({
     ref: StoryRefSchema,
@@ -276,21 +276,21 @@ export const UpdateStorySchema = z
       .string()
       .optional()
       .describe(
-        "Replacement markdown body — REPLACES the entire body, does not append. " +
+        "Replacement markdown body - REPLACES the entire body, does not append. " +
           "Call scrum_get_story first if you want to add to the existing body.",
       ),
     labels: z
       .array(z.string())
       .optional()
       .describe(
-        "Replacement label set — REPLACES ALL existing labels. " +
+        "Replacement label set - REPLACES ALL existing labels. " +
           "Call scrum_get_story first to read current labels if you want to add without removing.",
       ),
     assignees: z
       .array(z.string())
       .optional()
       .describe(
-        "Replacement assignee list of GitHub logins — REPLACES ALL existing assignees. " +
+        "Replacement assignee list of GitHub logins - REPLACES ALL existing assignees. " +
           "Call scrum_get_story first to read current assignees if you want to add without removing.",
       ),
     epic: EpicRefSchema
@@ -319,7 +319,7 @@ export const UpdateStorySchema = z
   })
   .strict();
 
-// scrum_set_field — single entry point for all story-level board-field mutations.
+// scrum_set_field - single entry point for all story-level board-field mutations.
 export const SetFieldSchema = z
   .object({
     ref: StoryRefSchema,
@@ -333,13 +333,13 @@ export const SetFieldSchema = z
           "story_points → number (e.g. 3, 5, 8); " +
           'priority → string display name (e.g. "Must", "Should"); ' +
           'assignee → GitHub login string (e.g. "hoonsubin"); ' +
-          'type → canonical key string (e.g. "feature", "bug" — see vocabulary.type in scrum_orient). ' +
+          'type → canonical key string (e.g. "feature", "bug" - see vocabulary.type in scrum_orient). ' +
           "Pass null for any field to clear the value entirely.",
       ),
   })
   .strict();
 
-// scrum_plan_sprint — bulk-assign stories; replace:true clears existing sprint items first
+// scrum_plan_sprint - bulk-assign stories; replace:true clears existing sprint items first
 export const PlanSprintSchema = z
   .object({
     sprint: SprintRefSchema.describe(
@@ -364,12 +364,12 @@ export const PlanSprintSchema = z
       .string()
       .optional()
       .describe(
-        "Sprint goal — a short statement of what the team aims to achieve this sprint.",
+        "Sprint goal - a short statement of what the team aims to achieve this sprint.",
       ),
   })
   .strict();
 
-// scrum_log_impediment — creates a "spike" story with an "impediment" label
+// scrum_log_impediment - creates a "spike" story with an "impediment" label
 // Optionally links to a story or sprint; omit to log a project-level orphan.
 export const LogImpedimentSchema = z
   .object({
@@ -377,7 +377,7 @@ export const LogImpedimentSchema = z
       .string()
       .min(1)
       .describe(
-        "Full description of the blocker. Be specific — this becomes the impediment story body " +
+        "Full description of the blocker. Be specific - this becomes the impediment story body " +
           "and the comment posted to the affected story.",
       ),
     affects: z
@@ -407,7 +407,7 @@ export const LogImpedimentSchema = z
   })
   .strict();
 
-// scrum_update_impediment — update impediment status and resolution notes
+// scrum_update_impediment - update impediment status and resolution notes
 export const UpdateImpedimentSchema = z
   .object({
     ref: z
@@ -429,7 +429,7 @@ export const UpdateImpedimentSchema = z
   })
   .strict();
 
-// scrum_add_vocabulary — idempotent addition of a vocabulary entry to the platform schema.
+// scrum_add_vocabulary - idempotent addition of a vocabulary entry to the platform schema.
 export const AddVocabularySchema = z
   .object({
     kind: z
@@ -438,7 +438,7 @@ export const AddVocabularySchema = z
         '"status_option" = add a new column/state to the Status field; ' +
           '"priority_option" = add a new tier to the Priority field; ' +
           '"label" = add a new repo label. ' +
-          "IMPORTANT: this tool cannot create new project fields — only options within " +
+          "IMPORTANT: this tool cannot create new project fields - only options within " +
           "existing fields. Creating a new field requires a human to act in the GitHub Projects UI.",
       ),
     value: z
@@ -446,7 +446,7 @@ export const AddVocabularySchema = z
       .min(1)
       .describe(
         'Display name of the option or label to add (e.g. "Blocked", "Critical", "tech_debt"). ' +
-          "Safe to call if the value already exists — operation is idempotent.",
+          "Safe to call if the value already exists - operation is idempotent.",
       ),
   })
   .strict();

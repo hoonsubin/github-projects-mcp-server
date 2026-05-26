@@ -1,5 +1,5 @@
 // =============================================================================
-// src/adapters/github/internal/field-value-mutator.ts — Field Value Mutation
+// src/adapters/github/internal/field-value-mutator.ts - Field Value Mutation
 //
 // Single responsibility: handle all mutations for project board fields.
 // Injected into GitHubProjectBackend via constructor (DIP).

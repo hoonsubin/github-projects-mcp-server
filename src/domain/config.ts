@@ -1,9 +1,9 @@
 // =============================================================================
-// src/domain/config.ts — Platform-agnostic Scrum configuration types
+// src/domain/config.ts - Platform-agnostic Scrum configuration types
 //
 // ScrumConfig is the shape of .github/scrum/config.yml as the domain layer
 // sees it. Backend adapter configs (GitHub tokens, project numbers, field
-// mappings) are type-erased here as `Record<string, unknown>` — each adapter
+// mappings) are type-erased here as `Record<string, unknown>` - each adapter
 // casts its own config out of `backends[platform]` without polluting the domain
 // with platform-specific details.
 // =============================================================================
@@ -36,8 +36,8 @@ interface PriorityTier {
 
 /**
  * Semantic metadata for a single canonical workflow state.
- * terminal — counts as "done" for velocity and burndown (exactly one should be true).
- * blocking — indicates the story is impeding sprint flow; used for impediment
+ * terminal - counts as "done" for velocity and burndown (exactly one should be true).
+ * blocking - indicates the story is impeding sprint flow; used for impediment
  *            inference when explicit dependency link data is unavailable.
  */
 interface StatusSemantics {
@@ -66,7 +66,7 @@ export interface ScrumConfig {
     }>;
   };
 
-  /** Platform-neutral Scrum taxonomy — consumed by use-case layer and agent. */
+  /** Platform-neutral Scrum taxonomy - consumed by use-case layer and agent. */
   scrum: {
     sprint?: {
       length_weeks?: number;

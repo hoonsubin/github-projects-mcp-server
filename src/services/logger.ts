@@ -1,11 +1,11 @@
 // =============================================================================
 // src/services/logger.ts
-// Lightweight structured logger — all output goes to stderr so it never
+// Lightweight structured logger - all output goes to stderr so it never
 // interferes with the MCP JSON-RPC stream on stdout (stdio transport).
 //
 // Usage:
-//   DEBUG=1 deno task dev        — enable debug + info + warn + error
-//   (no DEBUG env)               — info + warn + error only
+//   DEBUG=1 deno task dev        - enable debug + info + warn + error
+//   (no DEBUG env)               - info + warn + error only
 //
 // Levels:  debug < info < warn < error
 // =============================================================================
@@ -48,7 +48,7 @@ const write = (level: string, msg: string, extra?: unknown): void => {
 // ---------------------------------------------------------------------------
 
 export const log = {
-  /** True when DEBUG=1 is set — useful for conditional debug work outside this module. */
+  /** True when DEBUG=1 is set - useful for conditional debug work outside this module. */
   isDebug,
 
   /** Low-level tracing: tool calls, GraphQL operations, timing. Only emitted when DEBUG=1. */
@@ -67,7 +67,7 @@ export const log = {
     write("WARN", msg, extra);
   },
 
-  /** Errors — thrown exceptions, API failures, etc. Always emitted. */
+  /** Errors - thrown exceptions, API failures, etc. Always emitted. */
   error(msg: string, extra?: unknown): void {
     write("ERROR", msg, extra);
   },

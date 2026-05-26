@@ -1,5 +1,5 @@
 // =============================================================================
-// src/services/error-enrichment.ts — Error formatting for the framework layer
+// src/services/error-enrichment.ts - Error formatting for the framework layer
 //
 // enrichError is the single point where adapter errors become agent-readable text.
 //
@@ -15,7 +15,7 @@
 import { AdapterError } from "../domain/errors.ts";
 import { PartialResult } from "../domain/types.ts";
 
-// ── enrichError — fatal-error path ──────────────────────────────────────────────
+// ── enrichError - fatal-error path ──────────────────────────────────────────────
 
 /**
  * Format a non-recoverable error into agent-readable text.
@@ -33,7 +33,7 @@ export const enrichError = (err: unknown): string => {
   return err instanceof Error ? `Error: ${err.message}` : `Error: ${String(err)}`;
 };
 
-// ── catchBackend — partial-failure path ─────────────────────────────────────────
+// ── catchBackend - partial-failure path ─────────────────────────────────────────
 
 export interface BackendCallResult<T> extends PartialResult {
   value: T | null;
@@ -43,7 +43,7 @@ export interface BackendCallResult<T> extends PartialResult {
  * Wrap a fallible backend call, converting any AdapterError into a warning
  * string formatted with the backend name prefix.
  *
- * Non-AdapterError exceptions propagate — they are real failures that the
+ * Non-AdapterError exceptions propagate - they are real failures that the
  * handler's catch block will format via enrichError().
  *
  * Usage (use-case layer):
@@ -64,6 +64,6 @@ export const catchBackend = async <T>(
         `\n  → ${err.recovery}`;
       return { value: null, warnings: [warning] };
     }
-    throw err; // non-AdapterError — propagate to the handler
+    throw err; // non-AdapterError - propagate to the handler
   }
 };

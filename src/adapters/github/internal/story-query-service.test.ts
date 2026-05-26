@@ -18,7 +18,7 @@ import type { RuntimeConfig } from "../config-loader.ts";
 
 /** Minimal RuntimeConfig for buildDependencyMap tests. */
 const mockConfig = {
-  scrumConfig: { templates: {} },
+  scrumConfig: { templates: {}, backends: { github: {} } },
   projectId: "PVT_test",
   fields: {
     sprintFieldId: "SPRINT_FIELD",

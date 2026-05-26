@@ -1,9 +1,9 @@
 // =============================================================================
-// src/domain/types.ts — Domain entity types
+// src/domain/types.ts - Domain entity types
 //
 // Pure domain types: the concepts the MCP tool surface exposes to the agent.
 // Nothing here imports from adapters, services, or generated schema files.
-// These types are platform-agnostic — no GitHub field IDs, GraphQL node shapes,
+// These types are platform-agnostic - no GitHub field IDs, GraphQL node shapes,
 // or wire-format details appear here.
 // =============================================================================
 
@@ -14,7 +14,7 @@
  *
  * Assigned by the backend adapter and passed back opaquely by the domain layer.
  * The value of `id` is platform-specific (e.g. PVTI_... on GitHub Projects) but
- * the domain layer never inspects it — it is always treated as an opaque string.
+ * the domain layer never inspects it - it is always treated as an opaque string.
  *
  * This is the single base type for all resolved entity references in the system.
  * No layer other than the adapter that produced it should care about the `id` format.
@@ -29,9 +29,9 @@ export type EntityRef = { readonly id: string };
  * A reference to a Story accepted as tool input.
  *
  * Two forms:
- * - `{ id }` — opaque project-item handle (PVTI_... on GitHub). Returned by every
+ * - `{ id }` - opaque project-item handle (PVTI_... on GitHub). Returned by every
  *   read tool. Prefer this form when the agent already holds a listing entry.
- * - `{ number }` — human-readable issue number (e.g. 42). The adapter resolves
+ * - `{ number }` - human-readable issue number (e.g. 42). The adapter resolves
  *   this to an opaque handle via resolveRef(). Use for direct lookup when the
  *   agent has no prior listing entry for the target item.
  *
@@ -41,7 +41,7 @@ export type StoryRef = EntityRef | { readonly number: number };
 
 /**
  * A reference to an Epic passed as tool input.
- * Always resolved — the agent obtains this from EpicListing.ref or IssueStory.epic.ref
+ * Always resolved - the agent obtains this from EpicListing.ref or IssueStory.epic.ref
  * and passes it back unchanged to story create/update tools.
  *
  * On GitHub: id is the Milestone node ID (MI_...).
@@ -50,7 +50,7 @@ export type EpicRef = EntityRef;
 
 /**
  * A reference to an Impediment passed as tool input.
- * Always resolved — the agent obtains this from ImpedimentListing.ref
+ * Always resolved - the agent obtains this from ImpedimentListing.ref
  * and passes it back to scrum_update_impediment.
  */
 export type ImpedimentRef = EntityRef;
@@ -61,16 +61,16 @@ export type ImpedimentRef = EntityRef;
  * The compound item handle embedded in BacklogItemListing and dependency arrays.
  *
  * Bundles two identifiers the agent needs simultaneously:
- * - `id`  — opaque platform handle. Used in all write tool calls.
- * - `key` — human-readable issue number string (e.g. "42"). Shown to the user
+ * - `id`  - opaque platform handle. Used in all write tool calls.
+ * - `key` - human-readable issue number string (e.g. "42"). Shown to the user
  *            and used as the canonical node key in DependencyMap. Empty string
  *            for Draft Issues (which have no issue number).
  *
  * This type is OUTPUT-ONLY. It is never a valid input to a write tool.
- * To target an item from a listing, pass `{ id: item.ref.id }` — not the
+ * To target an item from a listing, pass `{ id: item.ref.id }` - not the
  * ItemListingRef itself.
  *
- * New type — replaces inline `{ id: string; key: string }` in five locations.
+ * New type - replaces inline `{ id: string; key: string }` in five locations.
  */
 export type ItemListingRef = { readonly id: string; readonly key: string };
 
@@ -131,7 +131,7 @@ export const toSprintName = (name: string): SprintName => name as SprintName;
  * A reference to a sprint.
  * Accepted forms: `"current"`, `"next"`, `null` (= no sprint / clear),
  * or an explicit `SprintName` (e.g. `toSprintName("Sprint 12")`).
- * Note: `"all"` is a query-mode flag for `scrum_get_sprint` only — it is NOT
+ * Note: `"all"` is a query-mode flag for `scrum_get_sprint` only - it is NOT
  * part of `SprintRef` and must be handled before values enter port methods.
  */
 export type SprintRef = "current" | "next" | null | SprintName;
@@ -140,7 +140,7 @@ export type SprintRef = "current" | "next" | null | SprintName;
 
 /**
  * Branded string for human-readable issue identifiers (e.g. "42", "PROJ-123").
- * Always present — unlike nullable `ref.id`, `IssueKey` is guaranteed non-null.
+ * Always present - unlike nullable `ref.id`, `IssueKey` is guaranteed non-null.
  * Used as the key in `DependencyMap` and `DependencyNode`.
  */
 export type IssueKey = string & { readonly _brand: "IssueKey" };
@@ -248,7 +248,7 @@ export const sprintContextFromSprintInfo = (
 
 /**
  * Lightweight epic entry for orient response.
- * Contains only the fields needed for the executive summary — no child stories.
+ * Contains only the fields needed for the executive summary - no child stories.
  */
 export interface EpicSummary {
   ref: EntityRef;
@@ -261,7 +261,7 @@ export interface EpicSummary {
 // ── Board health ───────────────────────────────────────────────────────────────
 
 /**
- * Sprint risk signals — actionable counts the agent uses for intervention.
+ * Sprint risk signals - actionable counts the agent uses for intervention.
  * Structured as an object (not a string enum) so each signal carries
  * a concrete count the agent can act on directly.
  */
@@ -273,7 +273,7 @@ export interface SprintRisk {
 
 /**
  * Board health output for scrum_get_board_health.
- * Aggregated metrics — no individual story data.
+ * Aggregated metrics - no individual story data.
  */
 export interface BacklogHealth {
   readonly readiness: {
@@ -299,7 +299,7 @@ export interface BacklogHealth {
  * Enriched listing entry for story collections.
  * Replaces StoryListing from ports.ts.
  *
- * `key` is always present (non-nullable) — Draft Issues get an empty string.
+ * `key` is always present (non-nullable) - Draft Issues get an empty string.
  */
 export interface BacklogItemListing {
   readonly ref: ItemListingRef;
@@ -349,7 +349,7 @@ export interface DependencyNode {
 
 /**
  * Full dependency graph, keyed by IssueKey.
- * Opt-in — not paid on every list call.
+ * Opt-in - not paid on every list call.
  */
 export type DependencyMap = Record<string, DependencyNode>;
 
@@ -360,7 +360,7 @@ export type DependencyMap = Record<string, DependencyNode>;
  * story_points, priority) are nullable because they may be unset on the board.
  */
 export interface StoryBase {
-  readonly ref: EntityRef; // opaque project-item handle — use in subsequent tool calls
+  readonly ref: EntityRef; // opaque project-item handle - use in subsequent tool calls
   readonly title: string;
   readonly body: string;
   readonly type: ItemType | null; // canonical type key from config (e.g. "feature", "bug"); null when unset
@@ -389,7 +389,7 @@ export type SupportedBackend = typeof SUPPORTED_BACKENDS[keyof typeof SUPPORTED_
 
 /**
  * Backend adapter configurations, keyed by platform name (e.g. "github").
- * Type-erased here — each adapter casts its own entry to its concrete config
+ * Type-erased here - each adapter casts its own entry to its concrete config
  * type (e.g. GitHubBackendConfig). The domain layer has no knowledge of
  * platform-specific fields such as tokens, project numbers, or field mappings.
  */
@@ -435,14 +435,14 @@ export interface BurndownSprintMeta {
   days_remaining: number;
 }
 
-/** One entry in the actual burndown series — one per calendar day. */
+/** One entry in the actual burndown series - one per calendar day. */
 export interface BurndownDayPoint {
   date: string; // YYYY-MM-DD
   remaining_points: number;
   completed_points: number;
 }
 
-/** One entry in the ideal burndown line — one per calendar day. */
+/** One entry in the ideal burndown line - one per calendar day. */
 export interface IdealDayPoint {
   date: string; // YYYY-MM-DD
   remaining_points: number;
@@ -477,7 +477,7 @@ export interface ItemSearchResult {
 
 /**
  * Totals for a sprint snapshot.
- * Discriminated union — narrow on `kind` to access variant-specific fields.
+ * Discriminated union - narrow on `kind` to access variant-specific fields.
  * - "active": totals for an in-progress sprint
  * - "completed": totals for a completed sprint (adds velocity metrics)
  */
@@ -496,9 +496,9 @@ export type SprintTotals =
   };
 
 /**
- * Sprint + item listing — canonical shape for both active and historical sprints.
+ * Sprint + item listing - canonical shape for both active and historical sprints.
  *
- * totals is a SprintTotals discriminated union — narrow on totals.kind
+ * totals is a SprintTotals discriminated union - narrow on totals.kind
  * instead of checking for committed_points presence.
  */
 export interface SprintSnapshot {
@@ -530,7 +530,7 @@ export interface AnalyticsResult {
 
 /**
  * A comment on a story. Shared across domain, port, and adapter layers.
- * Single source of truth — duplicates in ports.ts and adapter/types.ts
+ * Single source of truth - duplicates in ports.ts and adapter/types.ts
  * should import this type instead of defining their own.
  */
 export interface StoryComment {
@@ -542,7 +542,7 @@ export interface StoryComment {
 
 /**
  * A linked artifact (pull request, merge request, patch, etc.) associated
- * with a story. Platform-agnostic — replaces GitHub-specific "linkedPrs"
+ * with a story. Platform-agnostic - replaces GitHub-specific "linkedPrs"
  * terminology in domain and port types.
  */
 export interface LinkedArtifact {
@@ -586,11 +586,11 @@ export interface PartialResult {
  * - `data`: the primary payload (may be null if the adapter call fully failed)
  * - `warnings`: accumulated adapter-error strings from catchBackend() calls
  *
- * Use-case functions NEVER throw AdapterError — they convert them into warnings.
+ * Use-case functions NEVER throw AdapterError - they convert them into warnings.
  * The framework layer unwraps UseCaseResult<T> and formats the response.
  *
  * Non-adapter errors (programming bugs, startup config failures) propagate
- * normally — catchBackend re-throws them.
+ * normally - catchBackend re-throws them.
  */
 export interface UseCaseResult<T> extends PartialResult {
   readonly data: T;
@@ -632,9 +632,9 @@ export interface OrientResult extends PartialResult {
       readonly next: SprintContext | null;
       readonly completed_count: number;
     };
-    /** Active epics — populated by orientUseCase via backend.getEpics(). */
+    /** Active epics - populated by orientUseCase via backend.getEpics(). */
     readonly epics: { readonly active: readonly EpicSummary[]; readonly total_count: number };
-    /** PBI template URIs — built from ITEM_TYPES intersection with scrumConfig.templates. */
+    /** PBI template URIs - built from ITEM_TYPES intersection with scrumConfig.templates. */
     readonly template_uris: TemplateUriMap | null;
   };
   readonly vocabulary: {

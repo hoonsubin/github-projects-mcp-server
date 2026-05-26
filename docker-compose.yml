@@ -14,7 +14,7 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-    # Resource limits — this is a lightweight process
+    # Resource limits - this is a lightweight process
     deploy:
       resources:
         limits:

@@ -1,15 +1,16 @@
 # AGENT.md
 
-Project guidance for all coding agents. Concise by design — linked docs provide depth.
+Project guidance for all coding agents. Concise by design - linked docs provide depth.
 
 ## Reference Documents
 
-- `README.md` — Project vision, domain model, tool surface design.
-- `tasks/TODO.md` — Active work items.
-- `tasks/REFACTORING.md` — Ongoing refactor plan.
-- `docs/proj-diagram.md` — Current module dependency diagram.
+- `README.md` - Project installation.
+- `tasks/TODO.md` - Active work items.
+- `tasks/REFACTORING.md` - Ongoing refactor plan.
+- `docs/proj-diagram.md` - Current module dependency diagram.
+- `docs/ARCHITECTURE.MD` - Project architecture
 
-## Architecture
+## High-Level Architecture
 
 Three layers. Inner layers never import outer.
 
@@ -39,13 +40,13 @@ flowchart TD
   AD -.->|implements Dependency Inversion| PB
 ```
 
-- **Entry:** `src/index.ts` — bootstraps McpServer, registers tools, selects transport.
+- **Entry:** `src/index.ts` - bootstraps McpServer, registers tools, selects transport.
 
 ## Code Style
 
 - **Imports:** Full relative paths with `.ts` extension; no bare specifiers for local modules.
 - **Naming:** `PascalCase` types · `camelCase` functions/vars · `UPPER_SNAKE_CASE` constants.
-- **Functions:** Arrow only — `const fn = (arg: Type): Return => {}`.
+- **Functions:** Arrow only - `const fn = (arg: Type): Return => {}`.
 - **Errors:** Throw `GitHubApiError`; handlers return structured text via format helper.
 - **Zod:** Always `.strict()` on object schemas.
 - **Types:** No inline concrete types; define named types. Compose or extend existing ones.

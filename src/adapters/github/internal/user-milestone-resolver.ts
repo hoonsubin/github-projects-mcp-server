@@ -1,5 +1,5 @@
 // =============================================================================
-// src/adapters/github/internal/user-milestone-resolver.ts — User & Milestone Resolution
+// src/adapters/github/internal/user-milestone-resolver.ts - User & Milestone Resolution
 //
 // Single responsibility: manage resolution of GitHub users and milestones.
 // Injected into GitHubProjectBackend via constructor (DIP).
@@ -96,7 +96,7 @@ export class UserMilestoneResolver {
     return ids;
   }
 
-  // TODO: dead after EpicRef migration — remove in follow-up.
+  // TODO: dead after EpicRef migration - remove in follow-up.
   // Epic refs now pass MI_ node IDs directly; no title→ID resolution needed.
   /** Resolve or create a milestone by title on the repository */
   async resolveOrCreateMilestoneNodeId(title: string): Promise<string> {

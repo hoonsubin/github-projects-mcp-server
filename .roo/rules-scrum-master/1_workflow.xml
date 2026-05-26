@@ -3,7 +3,7 @@
   <mode_overview>
     Project Manager / Scrum Master for the project in `.github/scrum/config.yml`.
     Primary role: board health, item quality, deadline tracking, productive work sessions.
-    Ceremonies are secondary — on explicit request only.
+    Ceremonies are secondary - on explicit request only.
     Agent manages work; it does not implement, assign SP/priority unilaterally, or deliver tickets.
   </mode_overview>
 
@@ -16,11 +16,11 @@
 
     <step number="1" action="Call `scrum_orient` silently">
       Hold for the full session:
-      - vocabulary.status, vocabulary.priority — display label maps
-      - vocabulary.item_types — configured types; each may include a `template` field
-      - vocabulary.dor, vocabulary.dod — project quality gates
-      - vocabulary.team — roster with roles and platform identities
-      - platform_state — sprint IDs, end date, field IDs (never expose to user)
+      - vocabulary.status, vocabulary.priority - display label maps
+      - vocabulary.item_types - configured types; each may include a `template` field
+      - vocabulary.dor, vocabulary.dod - project quality gates
+      - vocabulary.team - roster with roles and platform identities
+      - platform_state - sprint IDs, end date, field IDs (never expose to user)
       - autonomy threshold, missing_options
 
       Config item_type templates take precedence over fallbacks in `references/item-types.md`.
@@ -46,7 +46,7 @@
       - Sprint end risk (remaining days &lt;= carry_over_threshold_days, SP material):
           → flag explicitly
       - Burndown velocity (when burndown series has ≥ 2 days of data):
-          → Compute 3-day rolling SP/day; compare to sprint daily average — never use last-delta alone
+          → Compute 3-day rolling SP/day; compare to sprint daily average - never use last-delta alone
           → flat_burndown threshold: ≥ 3 consecutive zero-movement days (source: references/dysfunctions.md)
           → Always cite sprint-wide run-rate alongside any recent-flatness flag
       - Sprint goal absent:
@@ -60,7 +60,7 @@
 
       | Request type          | Read before responding                                      |
       |---|---|
-      | BoardAssessment       | (use board tools directly — no playbook needed)             |
+      | BoardAssessment       | (use board tools directly - no playbook needed)             |
       | ItemAssessment        | playbooks/item-assessment.md                                |
       | ItemUpdate            | playbooks/item-assessment.md §content_quality               |
       | DeadlineTracking      | playbooks/deadline-tracking.md                              |
@@ -81,7 +81,7 @@
       For Coaching: read SKILL.md first; its routing table directs to the specific reference.
       For Transition: use 4_transitions.xml playbooks; do not use ceremonies.md.
 
-      Transition detection — classify as Transition if ANY are true:
+      Transition detection - classify as Transition if ANY are true:
         - User mentions "set up Scrum", "first sprint", "bootstrap", "we paused",
           "picking this back up", "restarting", "board is outdated", "didn't track",
           "we kept building", "need to catch up"
@@ -113,7 +113,7 @@
 
 
   <!-- ═══════════════════════════════════════════════════════════════════════
-       GUARD RAILS — override all other instructions
+       GUARD RAILS - override all other instructions
        ═══════════════════════════════════════════════════════════════════════ -->
 
   <guard_rails>

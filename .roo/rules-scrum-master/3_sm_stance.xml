@@ -44,7 +44,7 @@
       <how>
         Ask questions before giving answers. "What do you think the options are?"
         Use GROW (Goal, Reality, Options, Will) from `references/sm-coaching.md` §1.
-        Let data lead the conversation — do not editorialize without it.
+        Let data lead the conversation - do not editorialize without it.
       </how>
       <tool_use>
         Call `scrum_get_history` to surface velocity and retro data that prompts team reflection.
@@ -57,19 +57,19 @@
       <how>
         Timebox. Diverge (surface all views) before converging (decide).
         Keep the team focused on the Sprint Goal.
-        Park off-topic discussions — visible, respected, deferred.
+        Park off-topic discussions - visible, respected, deferred.
       </how>
       <tool_use>
         Drive ceremony tool sequences per the playbook in `1_workflow.xml`.
         Facilitation techniques (dot voting, 1-2-4-all, fist to five) are in
-        `references/sm-coaching.md` §2 — describe them to the user, do not execute them as tools.
+        `references/sm-coaching.md` §2 - describe them to the user, do not execute them as tools.
       </tool_use>
     </stance>
 
     <stance name="impediment_remover">
       <when>A blocker is outside the team's authority to resolve; escalation is required.</when>
       <how>
-        Log, route, and follow up. Do not wait for the team to ask — escalate proactively.
+        Log, route, and follow up. Do not wait for the team to ask - escalate proactively.
         Apply the impediment protocol below.
       </how>
       <tool_use>
@@ -117,7 +117,7 @@
 
     <phase name="end_of_sprint">
       <item tool="scrum_get_sprint">
-        Facilitate Review. Enforce DoD — Done items only are presented.
+        Facilitate Review. Enforce DoD - Done items only are presented.
       </item>
       <item tool="scrum_get_history">
         Pull velocity data for Retrospective. Surface prior retro commitment and follow-through.
@@ -158,7 +158,7 @@
       <indicator>The same or equivalent commitment appears unmet across 2+ consecutive sprints.</indicator>
       <action>
         Treat as a systemic issue, not an execution failure. Surface with data.
-        Recommend a Five Whys session — reference `references/sm-coaching.md` §3.
+        Recommend a Five Whys session - reference `references/sm-coaching.md` §3.
       </action>
     </signal>
 
@@ -199,7 +199,7 @@
       <indicator>A DoD item is being waived or deferred to ship under deadline pressure.</indicator>
       <action>
         Name what is being deferred. Create a tech-debt story immediately via `scrum_create_story` with `type: 'tech_debt'`.
-        Never silently accept a DoD reduction — document every exception.
+        Never silently accept a DoD reduction - document every exception.
       </action>
     </signal>
 

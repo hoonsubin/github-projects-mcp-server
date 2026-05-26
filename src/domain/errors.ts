@@ -1,5 +1,5 @@
 // =============================================================================
-// src/domain/errors.ts — Domain-level error classes
+// src/domain/errors.ts - Domain-level error classes
 //
 // These live in the domain layer so both use-case code (src/scrum/) and adapter
 // code (src/adapters/) can throw and catch them without cross-layer coupling.

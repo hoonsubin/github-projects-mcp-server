@@ -1,5 +1,5 @@
 // =============================================================================
-// src/domain/rules/acceptance-criteria.ts — Pure domain rule: AC parsing
+// src/domain/rules/acceptance-criteria.ts - Pure domain rule: AC parsing
 //
 // This module has no imports outside the standard library.
 // =============================================================================

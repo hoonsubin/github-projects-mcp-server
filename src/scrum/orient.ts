@@ -1,8 +1,8 @@
 // =============================================================================
-// src/scrum/orient.ts — orientUseCase
+// src/scrum/orient.ts - orientUseCase
 //
 // Receives backend: ProjectReader and scrumConfig: ScrumConfig.
-// Returns OrientResult from domain/types.ts — the session ground truth.
+// Returns OrientResult from domain/types.ts - the session ground truth.
 // =============================================================================
 
 import type { ProjectReader, SprintInfo } from "./ports.ts";
@@ -24,7 +24,7 @@ const daysSince = (startDate: string): number => {
 
 /**
  * Build a TemplateUriMap from the backend's declared template paths.
- * Only types with a declared template path get a URI — the agent falls back
+ * Only types with a declared template path get a URI - the agent falls back
  * to its own defaults for absent types.
  */
 const buildTemplateUriMap = (typeTemplatePaths: Record<string, string>): TemplateUriMap | null => {
@@ -50,10 +50,10 @@ export const orientUseCase = async (
   const canonicalStatusKeys = Object.keys(scrumConfig.scrum.status);
   const canonicalPriorityKeys = scrumConfig.scrum.priority.map((p) => p.key);
 
-  // ── Hard prerequisites (no catch — let failures propagate) ────────────
+  // ── Hard prerequisites (no catch - let failures propagate) ────────────
   await backend.reload();
 
-  // getPlatformState returns BackendCallResult — warnings are accumulated per
+  // getPlatformState returns BackendCallResult - warnings are accumulated per
   // sub-field (e.g. NOT_IMPLEMENTED for sprint goal). Fatal errors propagate.
   const { value: state, warnings: stateWarnings } = await backend.getPlatformState({
     canonicalStatusKeys,

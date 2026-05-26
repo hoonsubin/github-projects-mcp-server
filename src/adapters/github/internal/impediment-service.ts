@@ -1,5 +1,5 @@
 // =============================================================================
-// src/adapters/github/internal/impediment-service.ts — Impediment Operations
+// src/adapters/github/internal/impediment-service.ts - Impediment Operations
 //
 // Single responsibility: impediment queries and mutations extracted from the facade.
 // Handles createImpediment, getOrphanImpediments, getSprintImpediments, updateImpediment.
@@ -10,7 +10,7 @@
 //
 // Orphan impediments (getOrphanImpediments) carry GitHub Issue node IDs because they
 // are fetched directly from the Issues API and have no project item ID.
-// This is a known adapter-layer leak — see the getOrphanImpediments method docs.
+// This is a known adapter-layer leak - see the getOrphanImpediments method docs.
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
@@ -78,13 +78,13 @@ export class ImpedimentService {
    * Create an impediment by delegating story creation to StoryMutationService.
    *
    * The StoryMutationService handles the full Draft Issue → Type field → optional
-   * conversion flow. The returned ref is the project item ID (PVTI_...) —
+   * conversion flow. The returned ref is the project item ID (PVTI_...) -
    * consistent with every other ref.id in the codebase.
    */
   async createImpediment(
     input: CreateStoryInput,
   ): Promise<{ listing: ImpedimentListing; itemRef: StoryRef }> {
-    // Delegate story creation to the canonical path — Draft Issue + Type board field
+    // Delegate story creation to the canonical path - Draft Issue + Type board field
     const storyRef = await this.storyMutationService.createStory(input);
 
     const listing: ImpedimentListing = {
@@ -178,7 +178,7 @@ export class ImpedimentService {
     const resolved = await resolveStory({ id: ref.id }, this.gh);
     if (!resolved.issueId) {
       throw new GitHubApiError(
-        `Impediment "${ref.id}" is a Draft Issue — it has no underlying GitHub Issue.`,
+        `Impediment "${ref.id}" is a Draft Issue - it has no underlying GitHub Issue.`,
         {
           code: "DRAFT_ISSUE_CONSTRAINT",
           statusCode: 400,

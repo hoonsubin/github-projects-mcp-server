@@ -1,8 +1,8 @@
 // =============================================================================
-// src/adapters/github/backend.ts — GitHubProjectBackend Facade
+// src/adapters/github/backend.ts - GitHubProjectBackend Facade
 //
 // Thin facade: delegates to injected service objects.
-// No business logic lives here — services own their domain.
+// No business logic lives here - services own their domain.
 // Extends AbstractProjectBackend for shared infrastructure (resolveRef, capability
 // checks, optional method defaults). Constructor receives a single
 // GitHubBackendDependencies parameter object (built by the factory).
@@ -67,7 +67,7 @@ export interface GitHubBackendDependencies {
   readonly configReloader: ConfigReloader;
   readonly analyticsService: AnalyticsService;
   readonly boardHealthService: BoardHealthService;
-  /** Pre-resolved display name maps (from GitHubBackendConfig) — no cast needed at call time. */
+  /** Pre-resolved display name maps (from GitHubBackendConfig) - no cast needed at call time. */
   readonly displayConfig: {
     readonly statusDisplay: Record<string, string>;
     readonly priorityDisplay: Record<string, string>;
@@ -227,7 +227,7 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
     return this.deps.configReloader.reload();
   }
 
-  // ── Port methods (P7 — real implementations) ──────────────────────────────
+  // ── Port methods (P7 - real implementations) ──────────────────────────────
 
   findItems(filter: ResolvedItemFilter): Promise<ItemSearchResult> {
     return this.deps.storyQueryService.findItems(filter);

@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Use this template for **technical debt** items — refactors, code health improvements,
+        Use this template for **technical debt** items - refactors, code health improvements,
         dependency upgrades, or architectural clean-up. These items belong on the backlog
         alongside stories and should be estimated and prioritised like any other work.
 
@@ -24,7 +24,7 @@ body:
     id: problem
     attributes:
       label: Problem statement
-      description: What is the current state that needs to change? Be specific — name files, functions, or patterns.
+      description: What is the current state that needs to change? Be specific - name files, functions, or patterns.
       placeholder: |
         `backend.ts` is ~1 200 lines. The `BurndownCalculator` internal service references
         methods that don't exist on it, causing compile errors when the file is touched.
@@ -36,7 +36,7 @@ body:
     attributes:
       label: Root cause
       description: Why did this debt accumulate? (design drift, rushed delivery, changing requirements, etc.)
-      placeholder: Story \#54 created internal service stubs but never completed the delegation — original private methods were left in backend.ts.
+      placeholder: Story \#54 created internal service stubs but never completed the delegation - original private methods were left in backend.ts.
     validations:
       required: true
 
@@ -78,7 +78,7 @@ body:
       label: Proposed approach
       description: How should this be fixed? Outline the key steps or design decisions.
       placeholder: |
-        1. Make `GitHubProjectBackend` a pure Facade — zero logic, all delegation.
+        1. Make `GitHubProjectBackend` a pure Facade - zero logic, all delegation.
         2. Inject services via constructor (DIP).
         3. Delete all original private methods after delegation is wired.
     validations:

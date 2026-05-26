@@ -1,6 +1,6 @@
 /**
  * Pick properties from `source` whose values are not `undefined`.
- * Properties with `null` values ARE included — they represent explicit
+ * Properties with `null` values ARE included - they represent explicit
  * "clear" or "set-to-null" intent (e.g., detaching an epic, clearing
  * dependencies).
  *

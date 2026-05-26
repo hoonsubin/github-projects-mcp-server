@@ -1,5 +1,5 @@
 // =============================================================================
-// src/adapters/github/internal/story-mutation-service.ts — Story Write Operations
+// src/adapters/github/internal/story-mutation-service.ts - Story Write Operations
 //
 // Single responsibility: write-side story mutations extracted from the backend facade.
 // Handles createStory, updateStory, setField, and addComment.
@@ -132,13 +132,13 @@ export class StoryMutationService {
     const hasEpic = input.epic !== undefined;
     const needsFullIssue = hasLabels || hasEpic;
 
-    // Resolve assignee IDs upfront — both the draft and full-issue paths use them.
+    // Resolve assignee IDs upfront - both the draft and full-issue paths use them.
     const assigneeIds = input.assignees
       ? await this.userMilestoneResolver.resolveUserNodeIds(input.assignees)
       : [];
 
     // addProjectV2DraftIssue creates the item and adds it to the project in one
-    // call — no separate addProjectV2ItemById needed.
+    // call - no separate addProjectV2ItemById needed.
     const draftResult = await this.gh.graphql<{
       addProjectV2DraftIssue?: { projectItem?: { id: string } };
     }>(
@@ -172,7 +172,7 @@ export class StoryMutationService {
 
     const storyRef: StoryRef = { id: itemId };
 
-    // Type is a project board field — works on draft issues without conversion.
+    // Type is a project board field - works on draft issues without conversion.
     // Config validation at startup guarantees typeFieldId and typeOptions are populated.
     const optionId = this.config.typeOptions[input.type];
     if (!optionId) {
@@ -212,7 +212,7 @@ export class StoryMutationService {
       }
 
       if (hasEpic) {
-        // EpicRef.id is the GitHub Milestone node ID (MI_...) — no resolution needed.
+        // EpicRef.id is the GitHub Milestone node ID (MI_...) - no resolution needed.
         await this.gh.graphql(
           SET_MILESTONE_MUTATION,
           { issueId, milestoneId: input.epic!.id },
@@ -291,7 +291,7 @@ export class StoryMutationService {
         part: "milestoneId: $milestoneId",
         decl: "$milestoneId: ID",
         name: "milestoneId",
-        // EpicRef.id is the GitHub Milestone node ID (MI_...) — no resolution needed.
+        // EpicRef.id is the GitHub Milestone node ID (MI_...) - no resolution needed.
         value: updates.epic === null ? null : updates.epic.id,
       });
     }
@@ -329,7 +329,7 @@ export class StoryMutationService {
       case "priority":
         return this.fieldValueMutator.setFieldPriority(itemId, value as string | null);
       case "type":
-        // Type is a project board field — works on draft issues without conversion,
+        // Type is a project board field - works on draft issues without conversion,
         // unlike assignee which requires a real Issue.
         return this.fieldValueMutator.setFieldType(itemId, value as string | null);
       case "assignee": {
@@ -341,7 +341,7 @@ export class StoryMutationService {
           `Unknown field: ${field}`,
           {
             code: "MUTATION_FAILED",
-            recovery: "This is a programming error — the field enum should be exhaustive. " +
+            recovery: "This is a programming error - the field enum should be exhaustive. " +
               "Report this issue with the field name.",
             context: { field },
           },
@@ -360,7 +360,7 @@ export class StoryMutationService {
       return;
     }
 
-    // Draft Issue — auto-convert then post via GraphQL (issue number not yet known).
+    // Draft Issue - auto-convert then post via GraphQL (issue number not yet known).
     const issueId = await this.convertDraftToIssue(resolved.itemId);
     await this.gh.graphql(
       ADD_COMMENT_MUTATION,
