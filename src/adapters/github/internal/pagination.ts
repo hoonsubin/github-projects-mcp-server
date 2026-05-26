@@ -105,6 +105,7 @@ const buildItemsQuery = (
           labels(first: 10) { nodes { name color } }
           milestone { id title dueOn }
           repository { name nameWithOwner }
+          blockedBy(first: 10) { nodes { id number title } }
         }
     `);
   }

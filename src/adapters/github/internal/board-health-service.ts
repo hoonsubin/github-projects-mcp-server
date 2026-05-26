@@ -37,17 +37,24 @@ export class BoardHealthService {
   async getBoardHealth(sprintScope: string): Promise<BacklogHealth> {
     const stories = await this.fetchStoriesForScope(sprintScope);
 
+    // Exclude Done items from all active-work metrics — they're already resolved
+    // and inflate risk counts and readiness percentages when included.
+    const ghConfig = this.config.scrumConfig.backends.github as Record<string, unknown>;
+    const statusDisplay = (ghConfig?.status_display ?? {}) as Record<string, string>;
+    const doneDisplayName = statusDisplay["done"] ?? "Done";
+    const activeStories = stories.filter((s) => s.status !== doneDisplayName);
+
     // ── Readiness by type ─────────────────────────────────────────────────
-    const readiness = this.computeReadinessByType(stories);
+    const readiness = this.computeReadinessByType(activeStories);
 
     // ── Sprint risk (count-based) ─────────────────────────────────────────
-    const sprintRisk = this.computeSprintRiskCounts(sprintScope, stories);
+    const sprintRisk = this.computeSprintRiskCounts(sprintScope, activeStories);
 
     // ── Impediments ───────────────────────────────────────────────────────
     const impedimentCounts = await this.computeImpedimentCounts(sprintScope);
 
     // ── Ungroomed count ───────────────────────────────────────────────────
-    const ungroomedCount = stories.filter((story) => {
+    const ungroomedCount = activeStories.filter((story) => {
       const missingType = !story.type;
       const missingEstimate = (story.story_points ?? 0) === 0;
       const missingAc = !/[-*]\s+\[[\s xX]\]/.test(story.body);

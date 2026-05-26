@@ -103,8 +103,17 @@ export interface IssueDetailsInput {
 /** Extract board fields from a field-value node array. */
 const extractBoardFields = (
   nodes: FieldValueNode[],
-  fields: RuntimeConfig["fields"],
+  config: RuntimeConfig,
 ): BoardFields => {
+  const { fields } = config;
+  const ghConfig = config.scrumConfig.backends.github as
+    | { type_mapping?: Record<string, { display: string }> }
+    | undefined;
+  const typeMapping = ghConfig?.type_mapping ?? {};
+  const displayToCanonical = Object.fromEntries(
+    Object.entries(typeMapping).map(([key, entry]) => [entry.display, key]),
+  );
+
   let status: string | null = null;
   let sprint: string | null = null;
   let story_points: number | null = null;
@@ -131,7 +140,7 @@ const extractBoardFields = (
     ) {
       priority = fv.name;
     } else if (fields.typeFieldId && id === fields.typeFieldId && fv.name) {
-      type = fv.name as ItemType;
+      type = (displayToCanonical[fv.name] ?? null) as ItemType | null;
     }
   }
 
@@ -155,7 +164,7 @@ export const buildStoryFromRaw = (
   const content = item.content;
   if (!content) return null;
 
-  const boardFields = extractBoardFields(item.fieldValues.nodes, config.fields);
+  const boardFields = extractBoardFields(item.fieldValues.nodes, config);
 
   // ── DraftIssue branch ───────────────────────────────────────────────────────
   if (content.__typename === "DraftIssue") {
@@ -230,7 +239,7 @@ export const buildEnrichedStory = (
   fieldValueNodes: FieldValueNode[],
   config: RuntimeConfig,
 ): IssueStory => {
-  const boardFields = extractBoardFields(fieldValueNodes, config.fields);
+  const boardFields = extractBoardFields(fieldValueNodes, config);
   // Type comes from the Type board field — not from labels.
   // All repo labels are passed through unfiltered.
   const labels: string[] = issueNode.labels?.nodes.map((l: { name: string }) => l.name) ?? [];
@@ -383,7 +392,7 @@ export const buildBurndownStoryInput = (
 
   const { status, story_points } = extractBoardFields(
     item.fieldValues.nodes,
-    config.fields,
+    config,
   );
 
   return {
