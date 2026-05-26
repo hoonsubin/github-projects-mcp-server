@@ -1,63 +1,63 @@
 name: Release
 
 on:
-    push:
-        tags:
-            - "v[0-9]+.[0-9]+.[0-9]+" # matches v1.0.0, v2.3.1, etc.
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+" # matches v1.0.0, v2.3.1, etc.
 
 permissions:
-    contents: write # required to create releases and upload assets
+  contents: write # required to create releases and upload assets
 
 jobs:
-    release:
-        name: Build & publish
-        runs-on: ubuntu-latest
+  release:
+    name: Build & publish
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-            - name: Set up Deno
-              uses: denoland/setup-deno@v2
-              with:
-                  deno-version: v2.x
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
 
-            # Strip the leading "v" from the tag (v1.2.3 → 1.2.3) for the version string.
-            - name: Derive version
-              id: version
-              run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      # Strip the leading "v" from the tag (v1.2.3 → 1.2.3) for the version string.
+      - name: Derive version
+        id: version
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
-            # Patch the version string directly into source before compiling.
-            # The binary reads Deno.env.get("RELEASE_VERSION") at runtime, but end users
-            # won't set that env var — so we replace the literal in index.ts here so the
-            # correct version is baked into every compiled binary.
-            - name: Patch version into source
-              run: |
-                  sed -i 's/Deno.env.get("RELEASE_VERSION") ?? "dev"/"${{ steps.version.outputs.value }}"/' src/index.ts
+      # Patch the version string directly into source before compiling.
+      # The binary reads Deno.env.get("RELEASE_VERSION") at runtime, but end users
+      # won't set that env var — so we replace the literal in index.ts here so the
+      # correct version is baked into every compiled binary.
+      - name: Patch version into source
+        run: |
+          sed -i 's/Deno.env.get("RELEASE_VERSION") ?? "dev"/"${{ steps.version.outputs.value }}"/' src/index.ts
 
-            # Cross-compile all four platform targets from this single Linux runner.
-            # deno compile embeds the JS bundle into a platform-specific denort binary —
-            # no native toolchain is needed for cross-compilation.
-            - name: Compile all targets
-              run: deno task compile:all
+      # Cross-compile all four platform targets from this single Linux runner.
+      # deno compile embeds the JS bundle into a platform-specific denort binary —
+      # no native toolchain is needed for cross-compilation.
+      - name: Compile all targets
+        run: deno task compile:all
 
-            # Generate sha256 checksums for every binary in dist/.
-            # The checksums file is uploaded as an additional release asset.
-            - name: Generate checksums
-              working-directory: dist
-              run: sha256sum * > checksums.txt
+      # Generate sha256 checksums for every binary in dist/.
+      # The checksums file is uploaded as an additional release asset.
+      - name: Generate checksums
+        working-directory: dist
+        run: sha256sum * > checksums.txt
 
-            # Create the GitHub Release and upload all dist/ files as assets.
-            # --generate-notes pulls PR titles and commit messages since the last tag.
-            - name: Publish release
-              env:
-                  GH_TOKEN: ${{ github.token }}
-              run: |
-                  gh release create "$GITHUB_REF_NAME" \
-                    --title "Release $GITHUB_REF_NAME" \
-                    --generate-notes \
-                    dist/mcp-server-mac-arm64 \
-                    dist/mcp-server-mac-x64 \
-                    dist/mcp-server-linux-x64 \
-                    dist/mcp-server-win.exe \
-                    dist/checksums.txt
+      # Create the GitHub Release and upload all dist/ files as assets.
+      # --generate-notes pulls PR titles and commit messages since the last tag.
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "Release $GITHUB_REF_NAME" \
+            --generate-notes \
+            dist/mcp-server-mac-arm64 \
+            dist/mcp-server-mac-x64 \
+            dist/mcp-server-linux-x64 \
+            dist/mcp-server-win.exe \
+            dist/checksums.txt
