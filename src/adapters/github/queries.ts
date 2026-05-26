@@ -16,10 +16,15 @@ import { parse, print } from "graphql";
 import type { DocumentNode, FragmentDefinitionNode } from "graphql";
 
 // ── Parse operations.graphql once at module init ──────────────────────────────
+//
+// Using import with { type: "text" } bundles the .graphql file content at
+// compile time (deno compile) so the compiled binary never needs to read
+// it from the filesystem at runtime. This also works correctly with
+// deno run — the import assertion is resolved at load time.
 
-const _source = Deno.readTextFileSync(
-  new URL("./operations.graphql", import.meta.url),
-);
+import _graphqlSource from "./operations.graphql" with { type: "text" };
+
+const _source: string = _graphqlSource;
 const _doc: DocumentNode = parse(_source);
 
 // Index all fragment definitions by name
