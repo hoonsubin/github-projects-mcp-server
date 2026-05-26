@@ -5,6 +5,25 @@
 // =============================================================================
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+
+// ── Tool name constants ────────────────────────────────────────────────────────
+// Single source of truth for every tool this module registers.
+// Imported by src/index.ts for degraded-mode stub registration.
+
+export const SCRUM_READ_TOOL_NAMES = [
+  // Active tools
+  "scrum_orient",
+  "scrum_find_items",
+  "scrum_get_item_detail",
+  "scrum_get_board_health",
+  "scrum_get_analytics",
+  // Deprecated redirect stubs (5 tools)
+  "scrum_get_story",
+  "scrum_get_sprint",
+  "scrum_get_history",
+  "scrum_get_burndown",
+  "scrum_get_template",
+] as const;
 import type { FileReaderPort, ProjectBackend } from "../scrum/ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 

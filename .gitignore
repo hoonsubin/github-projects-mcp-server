@@ -8,6 +8,8 @@ deno.lock
 dist/
 build/
 out/
+mcp-server
+mcp-server.exe
 
 # Environment variables
 .env

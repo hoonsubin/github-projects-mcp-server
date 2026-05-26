@@ -2,6 +2,20 @@
 // src/tools/scrum-write.ts — Register all scrum_* write tools
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+
+// ── Tool name constants ────────────────────────────────────────────────────────
+// Single source of truth for every tool this module registers.
+// Imported by src/index.ts for degraded-mode stub registration.
+
+export const SCRUM_WRITE_TOOL_NAMES = [
+  "scrum_add_vocabulary",
+  "scrum_create_story",
+  "scrum_update_story",
+  "scrum_set_field",
+  "scrum_log_impediment",
+  "scrum_update_impediment",
+  "scrum_plan_sprint",
+] as const;
 import type { CreateStoryInput, ProjectBackend, StoryUpdates } from "../scrum/ports.ts";
 import type { Story, StoryRef } from "../domain/types.ts";
 import type { ScrumConfig } from "../domain/config.ts";

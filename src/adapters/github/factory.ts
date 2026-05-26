@@ -11,7 +11,7 @@
 // =============================================================================
 
 import { GITHUB_CAPABILITIES } from "../capabilities.ts";
-import type { AdapterFactory, BackendResult } from "../factory.ts";
+import type { AdapterFactory, AdapterStartupOptions, BackendResult } from "../factory.ts";
 import { loadConfig } from "./config-loader.ts";
 import { GitHubProjectBackend } from "./backend.ts";
 import type { GitHubBackendDependencies } from "./backend.ts";
@@ -42,8 +42,11 @@ import type { GitHubBackendConfig } from "./types.ts";
 export class GitHubAdapterFactory implements AdapterFactory {
   readonly platform = "github";
 
-  async create(): Promise<BackendResult> {
-    const config = await loadConfig({ github: { graphql } });
+  async create(options?: AdapterStartupOptions): Promise<BackendResult> {
+    const config = await loadConfig({
+      github: { graphql },
+      configPath: options?.configPath,
+    });
     const gh = config.scrumConfig.backends.github as GitHubBackendConfig;
     const ghClient = { graphql, rest };
     const { owner } = gh;
@@ -131,7 +134,11 @@ export class GitHubAdapterFactory implements AdapterFactory {
 
     // ── File reader ──────────────────────────────────────────────────────
 
-    const fileReader = new GitHubFileReader(owner, primaryRepo, Deno.cwd());
+    // projectRoot is explicit when --root is given; falls back to Deno.cwd() otherwise.
+    // This keeps template paths (e.g. ".github/ISSUE_TEMPLATE/story.yml") resolving
+    // from the project root regardless of where the binary was invoked from.
+    const localRoot = options?.projectRoot ?? Deno.cwd();
+    const fileReader = new GitHubFileReader(owner, primaryRepo, localRoot);
 
     // ── Facade assembly — single parameter object, no positional args ────
 

@@ -4,7 +4,13 @@
     "start": "deno run --env-file --allow-env --allow-net --allow-read src/index.ts",
     "inspector": "deno run --allow-env --allow-net --allow-read --allow-run src/index.ts",
     "diagram-gen": "deno run --allow-read --allow-env --allow-write scripts/generate-project-diagram.ts --output ./docs/proj-diagram.md --src ./src --include-external",
-    "test": "GITHUB_TOKEN=test-token deno test --allow-env=DEBUG,GITHUB_TOKEN,NODE_ENV --allow-net --allow-read src/"
+    "test": "GITHUB_TOKEN=test-token deno test --allow-env=DEBUG,GITHUB_TOKEN,NODE_ENV --allow-net --allow-read src/",
+    "compile": "deno compile --allow-env --allow-net --allow-read --output mcp-server src/index.ts",
+    "compile:mac:arm64": "deno compile --target aarch64-apple-darwin   --allow-env --allow-net --allow-read --output dist/mcp-server-mac-arm64   src/index.ts",
+    "compile:mac:x64": "deno compile --target x86_64-apple-darwin    --allow-env --allow-net --allow-read --output dist/mcp-server-mac-x64     src/index.ts",
+    "compile:linux:x64": "deno compile --target x86_64-unknown-linux-gnu --allow-env --allow-net --allow-read --output dist/mcp-server-linux-x64  src/index.ts",
+    "compile:win": "deno compile --target x86_64-pc-windows-msvc  --allow-env --allow-net --allow-read --output dist/mcp-server-win.exe     src/index.ts",
+    "compile:all": "deno task compile:mac:arm64 && deno task compile:mac:x64 && deno task compile:linux:x64 && deno task compile:win"
   },
   "imports": {
     "@modelcontextprotocol/inspector": "npm:@modelcontextprotocol/inspector@^0.21.2",

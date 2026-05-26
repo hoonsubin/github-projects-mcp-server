@@ -29,6 +29,87 @@ import { type AdapterFactory, createBackend } from "./adapters/factory.ts";
 import { GitHubAdapterFactory } from "./adapters/github/factory.ts";
 import { log } from "./services/logger.ts";
 import type { Socket } from "node:net";
+import { parseArgs } from "@std/cli/parse-args";
+import { resolve as resolvePath } from "@std/path";
+import { SCRUM_READ_TOOL_NAMES } from "./tools/scrum-read.ts";
+import { SCRUM_WRITE_TOOL_NAMES } from "./tools/scrum-write.ts";
+
+// ── CLI argument parsing ─────────────────────────────────────────────────────
+
+const _cliArgs = parseArgs(Deno.args, {
+  boolean: ["help"],
+  string: ["config", "root"],
+  alias: { h: "help", c: "config", r: "root" },
+});
+
+if (_cliArgs.help) {
+  console.log(`
+github-projects-mcp-server
+
+Usage:
+  mcp-server [options]
+
+Options:
+  --help, -h           Show this help message
+  --config, -c <path>  Path to scrum config YAML
+                       (default: .github/scrum/config.yml)
+  --root, -r <path>    Project root directory for resolving template paths
+                       (default: current working directory)
+                       Required when --config points outside the project root.
+
+Environment variables:
+  GITHUB_TOKEN         GitHub personal access token (required; referenced as
+                       $GITHUB_TOKEN in config backends.github.auth.token)
+  MCP_TRANSPORT        Transport mode: stdio (default) | http
+  PORT                 HTTP port when MCP_TRANSPORT=http (default: 3000)
+  SCRUM_PLATFORM       Platform adapter to use (default: github)
+  DEBUG                Set to 1 for API-level tracing
+  TRACE                Set to 1 for raw JSON-RPC wire tracing
+
+Examples:
+  # Run with default config (must be invoked from the project root):
+  mcp-server
+
+  # Run from anywhere, pointing at a specific project:
+  mcp-server --config /home/user/myproject/.github/scrum/config.yml \\
+             --root   /home/user/myproject
+
+  # Run as HTTP server:
+  MCP_TRANSPORT=http PORT=3000 mcp-server --config ./scrum.yml --root .
+`);
+  Deno.exit(0);
+}
+
+// Resolve config path and root. Both are optional:
+//   configPath  undefined → GitHubAdapterFactory uses its own default
+//   projectRoot undefined → GitHubFileReader uses Deno.cwd()
+const _configPath: string | undefined = _cliArgs.config
+  ? resolvePath(Deno.cwd(), _cliArgs.config)
+  : undefined;
+
+const _projectRoot: string | undefined = _cliArgs.root
+  ? resolvePath(Deno.cwd(), _cliArgs.root)
+  : undefined;
+
+// ── Runtime permission guard ─────────────────────────────────────────────────
+//
+// `deno compile --allow-env ...` bakes permissions into the binary — this
+// guard fires only when someone runs the uncompiled source via `deno run`
+// without the required flags.
+
+try {
+  Deno.env.get("MCP_TRANSPORT"); // canary: throws PermissionDenied without --allow-env
+} catch (err) {
+  if (err instanceof Deno.errors.PermissionDenied) {
+    console.error(
+      "Error: missing required Deno permissions.\n" +
+        "Run with: deno run --allow-env --allow-net --allow-read src/index.ts\n" +
+        "Or use the compiled binary which has permissions baked in.",
+    );
+    Deno.exit(1);
+  }
+  throw err;
+}
 
 // ── Tool-call interceptor ────────────────────────────────────────────────────
 //
@@ -108,12 +189,37 @@ const wrapTransportLogging = (transport: Transport, label: string): void => {
   };
 };
 
+// ── Degraded-mode stub tool registration ─────────────────────────────────────
+//
+// When the config file is missing or unreadable at startup, the server registers
+// stub handlers for every scrum tool. Each stub returns the human-readable
+// error message rather than crashing the MCP session. This allows the MCP client
+// to list tools normally and surface a clear error on every call.
+//
+// SCRUM_READ_TOOL_NAMES and SCRUM_WRITE_TOOL_NAMES are the single source of truth.
+// Never hardcode tool names here.
+
+const ALL_SCRUM_TOOL_NAMES = [...SCRUM_READ_TOOL_NAMES, ...SCRUM_WRITE_TOOL_NAMES];
+
+const registerStubTools = (server: McpServer, errorMessage: string): void => {
+  for (const name of ALL_SCRUM_TOOL_NAMES) {
+    // server.tool() is the MCP SDK convenience method — no description or
+    // annotations needed for stub handlers. It accepts an empty Zod schema {}.
+    server.tool(name, {}, () => ({
+      content: [{ type: "text" as const, text: errorMessage }],
+    }));
+  }
+};
+
 // ── Server factory ───────────────────────────────────────────────────────────
 
-const createMcpServer = async (): Promise<McpServer> => {
+const createMcpServer = async (
+  configPath?: string,
+  projectRoot?: string,
+): Promise<McpServer> => {
   const server = new McpServer({
     name: "github-projects-mcp-server",
-    version: "1.0.0",
+    version: Deno.env.get("RELEASE_VERSION") ?? "dev",
   });
 
   patchToolLogging(server);
@@ -121,7 +227,23 @@ const createMcpServer = async (): Promise<McpServer> => {
   // Use the adapter factory registry to construct the backend.
   // SCRUM_PLATFORM env var controls which platform is selected (default: "github").
   const factories: AdapterFactory[] = [new GitHubAdapterFactory()];
-  const { backend, fileReader, scrumConfig, typeTemplatePaths } = await createBackend(factories);
+
+  let backendResult: Awaited<ReturnType<typeof createBackend>>;
+  try {
+    backendResult = await createBackend(factories, { configPath, projectRoot });
+  } catch (err) {
+    const hint = configPath
+      ? `Config not found or invalid at: ${configPath}`
+      : `Config not found at default path: .github/scrum/config.yml`;
+    const errorMessage = `${hint}\n` +
+      `Pass --config <path> and --root <project-dir> when starting the server.\n` +
+      `Original error: ${err instanceof Error ? err.message : String(err)}`;
+    registerStubTools(server, errorMessage);
+    log.warn("Server started in degraded mode.", { hint });
+    return server;
+  }
+
+  const { backend, fileReader, scrumConfig, typeTemplatePaths } = backendResult;
 
   registerScrumReadTools(server, backend, scrumConfig, fileReader);
   registerScrumWriteTools(server, backend, scrumConfig);
@@ -154,8 +276,11 @@ const createMcpServer = async (): Promise<McpServer> => {
 
 // ── Stdio transport ──────────────────────────────────────────────────────────
 
-const runStdio = async (): Promise<void> => {
-  const server = await createMcpServer();
+const runStdio = async (
+  configPath?: string,
+  projectRoot?: string,
+): Promise<void> => {
+  const server = await createMcpServer(configPath, projectRoot);
   const transport = new StdioServerTransport();
   await server.connect(transport);
   if (Deno.env.get("TRACE")) wrapTransportLogging(transport, "stdio");
@@ -164,7 +289,7 @@ const runStdio = async (): Promise<void> => {
 
 // ── Streamable HTTP transport ────────────────────────────────────────────────
 
-const runHttp = () => {
+const runHttp = (configPath?: string, projectRoot?: string) => {
   const app = express();
   app.use(express.json());
 
@@ -194,7 +319,7 @@ const runHttp = () => {
         log.info(`session closed: ${transport.sessionId}`);
       };
 
-      const server = await createMcpServer();
+      const server = await createMcpServer(configPath, projectRoot);
       await server.connect(transport);
       if (Deno.env.get("TRACE")) wrapTransportLogging(transport, `http:${transport.sessionId}`);
     } else {
@@ -244,9 +369,9 @@ const runHttp = () => {
 const transportType = Deno.env.get("MCP_TRANSPORT") ?? "stdio";
 
 if (transportType === "http") {
-  runHttp();
+  runHttp(_configPath, _projectRoot);
 } else {
-  runStdio().catch((err: unknown) => {
+  runStdio(_configPath, _projectRoot).catch((err: unknown) => {
     log.error("fatal", err);
     Deno.exit(1);
   });

@@ -8,6 +8,29 @@ import type { FileReaderPort, ProjectReader, ProjectWriter } from "../scrum/port
 import type { ScrumConfig } from "../domain/config.ts";
 import type { PlatformCapabilities } from "./capabilities.ts";
 
+// ── AdapterStartupOptions ───────────────────────────────────────────────────
+
+/**
+ * Startup options passed from the composition root to every adapter factory.
+ * All fields are optional; adapters fall back to their own defaults when absent.
+ */
+export interface AdapterStartupOptions {
+  /**
+   * Absolute path to the scrum config YAML.
+   * undefined → adapter uses its platform default (e.g. ".github/scrum/config.yml")
+   */
+  readonly configPath?: string;
+
+  /**
+   * Absolute path to the project root directory.
+   * Used as `localRoot` for file readers so repo-relative paths in the config
+   * (e.g. ".github/ISSUE_TEMPLATE/story.yml") resolve correctly regardless of
+   * the process's working directory.
+   * undefined → adapter uses Deno.cwd()
+   */
+  readonly projectRoot?: string;
+}
+
 // ── AdapterFactory ──────────────────────────────────────────────────────────
 
 /**
@@ -23,7 +46,7 @@ export interface AdapterFactory {
    * Construct the backend and all supporting services.
    * Called once at startup by createBackend().
    */
-  create(): Promise<BackendResult>;
+  create(options?: AdapterStartupOptions): Promise<BackendResult>;
 }
 
 // ── BackendResult ───────────────────────────────────────────────────────────
@@ -79,6 +102,7 @@ export interface BackendResult {
  */
 export const createBackend = async (
   factories: AdapterFactory[],
+  options?: AdapterStartupOptions,
 ): Promise<BackendResult> => {
   const target = Deno.env.get("SCRUM_PLATFORM") ?? "github";
 
@@ -92,5 +116,5 @@ export const createBackend = async (
     );
   }
 
-  return await factory.create();
+  return await factory.create(options);
 };
