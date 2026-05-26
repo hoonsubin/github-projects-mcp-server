@@ -7,6 +7,7 @@
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
+import { type BackendCallResult, catchBackend } from "../../../services/error-enrichment.ts";
 import type * as GH from "../generated/github-types.ts";
 import type { GitHubClient } from "./http-client.ts";
 import { isBacklogItem, PaginatedProjectItemFetcher } from "./pagination.ts";
@@ -240,7 +241,7 @@ export class StoryQueryService {
     );
   }
 
-  async getStoryDetail(ref: StoryRef): Promise<StoryDetail> {
+  async getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>> {
     const resolved = await resolveStory(ref, this.gh);
 
     // Draft Issues have no GitHub Issue node — fetch project item directly
@@ -248,13 +249,25 @@ export class StoryQueryService {
       return this._getDraftIssueDetail(resolved.itemId);
     }
 
-    const [issueData, itemData] = await Promise.all([
+    const warnings: string[] = [];
+
+    // issueData carries body, comments, timeline — optional sub-query
+    const { value: issueData, warnings: issueWarnings } = await catchBackend(() =>
       this.gh.graphql<GetIssueDetailsResponse>(GET_ISSUE_DETAILS_QUERY, {
-        issueId: resolved.issueId,
-      }),
-      this.gh.graphql<GetItemFieldsResponse>(GET_ITEM_FIELDS_QUERY, { itemId: resolved.itemId }),
-    ]);
-    const issue = issueData.node;
+        issueId: resolved.issueId!,
+      })
+    );
+    warnings.push(...issueWarnings);
+
+    // itemData carries custom field values — optional sub-query
+    const { value: itemData, warnings: fieldWarnings } = await catchBackend(() =>
+      this.gh.graphql<GetItemFieldsResponse>(GET_ITEM_FIELDS_QUERY, {
+        itemId: resolved.itemId,
+      })
+    );
+    warnings.push(...fieldWarnings);
+
+    const issue = issueData?.node;
     if (!issue || issue.number === null) {
       throw new GitHubApiError(
         `Issue ${resolved.issueId} could not be fetched.`,
@@ -267,18 +280,20 @@ export class StoryQueryService {
         },
       );
     }
+
     const story = buildEnrichedStory(
       issue,
       resolved.itemId,
-      itemData.node?.fieldValues?.nodes ?? [],
+      itemData?.node?.fieldValues?.nodes ?? [],
       this.config,
     );
-    const comments = buildCommentList(issue.comments?.nodes ?? []);
-    const linked_artifacts = buildLinkedPrList(issue.timelineItems?.nodes ?? []);
-    return { story, comments, linked_artifacts };
+    const comments = issueData ? buildCommentList(issue.comments?.nodes ?? []) : null;
+    const linked_artifacts = issueData ? buildLinkedPrList(issue.timelineItems?.nodes ?? []) : null;
+
+    return { value: { story, comments, linked_artifacts }, warnings };
   }
 
-  private async _getDraftIssueDetail(itemId: string): Promise<StoryDetail> {
+  private async _getDraftIssueDetail(itemId: string): Promise<BackendCallResult<StoryDetail>> {
     /** Query projection of GH.ProjectV2Item for draft issue details. */
     interface GetDraftIssueDetailsQueryNode extends ProjectV2ItemRef {
       content?: unknown;
@@ -328,7 +343,7 @@ export class StoryQueryService {
     }
 
     // Draft Issues have no GitHub Issue node — no comments or linked artifacts available
-    return { story, comments: [], linked_artifacts: [] };
+    return { value: { story, comments: null, linked_artifacts: null }, warnings: [] };
   }
 
   /** Fetch all project items (including issues, PRs, and draft issues). */
@@ -452,6 +467,16 @@ export class StoryQueryService {
         if (iterEntry) {
           return { ...item, sprint: { name: item.sprint.name, ref: { id: iterEntry.id } } };
         }
+        // Sprint name exists but no matching iteration — config is stale
+        throw new GitHubApiError(
+          `Sprint "${item.sprint.name}" has no matching iteration in config.`,
+          {
+            code: "NOT_FOUND",
+            recovery: "The sprint may have been deleted or the config is stale. " +
+              "Call scrum_orient to refresh platform state.",
+            context: { sprintName: item.sprint.name, itemKey: item.ref.key },
+          },
+        );
       }
       return item;
     });

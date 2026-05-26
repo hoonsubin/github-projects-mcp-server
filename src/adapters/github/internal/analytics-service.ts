@@ -5,6 +5,7 @@
 // interface. Called by GitHubProjectBackend.getAnalytics() (P7d).
 // =============================================================================
 
+import { GitHubApiError } from "../errors.ts";
 import { SprintHistoryService } from "./sprint-history-service.ts";
 import { BurndownCalculator } from "./burndown-calculator.ts";
 import { resolveSprint } from "./resolver.ts";
@@ -60,11 +61,19 @@ export class AnalyticsService {
       return { burndown, history: null, window: 0 };
     }
 
-    // both: run both in parallel
-    const [burndown, history] = await Promise.all([
-      this.buildBurndown(query.sprint_ref ?? "current"),
-      this.buildHistory(window),
-    ]);
+    // both: run both independently so one failing doesn't zero out the other.
+    let burndown: BurndownResponse | null = null;
+    let history: SprintSnapshot[] | null = null;
+    try {
+      burndown = await this.buildBurndown(query.sprint_ref ?? "current");
+    } catch (_err) {
+      // burndown stays null — partial analytics with history only
+    }
+    try {
+      history = await this.buildHistory(window);
+    } catch (_err) {
+      // history stays null — partial analytics with burndown only
+    }
     return { burndown, history, window };
   }
 
@@ -132,14 +141,33 @@ export class AnalyticsService {
     sprintRef: string,
   ): Promise<BurndownResponse | null> {
     const sprint = resolveSprint(sprintRef, this.config);
-    if (sprint === null) return null;
+    if (sprint === null) {
+      throw new GitHubApiError(
+        `Sprint "${sprintRef}" could not be resolved to an iteration.`,
+        {
+          code: "NOT_FOUND",
+          recovery: "The sprint may have been deleted or renamed. " +
+            "Call scrum_orient to refresh the iteration list.",
+          context: { sprintRef },
+        },
+      );
+    }
 
     const input = await this.burndownCalculator.getBurndownInput(
       sprintRef as SprintRef,
     );
 
     const iterEntry = this.config.iterations.all.find((i) => i.id === sprint);
-    if (!iterEntry) return null;
+    if (!iterEntry) {
+      throw new GitHubApiError(
+        `Iteration ${sprint} resolved but not found in config iterations list.`,
+        {
+          code: "NOT_FOUND",
+          recovery: "The config may be stale. Call scrum_orient to reload platform state.",
+          context: { sprintId: sprint },
+        },
+      );
+    }
 
     const window = buildSprintWindow(iterEntry);
 

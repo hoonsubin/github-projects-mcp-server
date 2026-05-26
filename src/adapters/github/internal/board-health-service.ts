@@ -151,9 +151,14 @@ export class BoardHealthService {
     const iterationId = resolveSprint(sprintScope, this.config);
     if (iterationId === null) return null;
 
-    const blockedStatus = this.config.statusOptions["blocked"] ?? "Blocked";
+    // statusOptions maps display names → option IDs. Find the display name from
+    // config's status_display map, then compare against story.status (also display name).
+    const ghConfig = this.config.scrumConfig.backends.github as Record<string, unknown>;
+    const statusDisplay = (ghConfig?.status_display ?? {}) as Record<string, string>;
+    const blockedDisplayName = Object.entries(statusDisplay)
+      .find(([canonical]) => canonical === "blocked")?.[1] ?? "Blocked";
     const unestimated = stories.filter((s) => (s.story_points ?? 0) === 0).length;
-    const blocked = stories.filter((s) => s.status === blockedStatus).length;
+    const blocked = stories.filter((s) => s.status === blockedDisplayName).length;
     const noAssignee = stories.filter((s) => s.assignees.length === 0).length;
 
     return {

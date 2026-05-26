@@ -7,6 +7,7 @@
 // =============================================================================
 
 import type { RuntimeConfig } from "./config-loader.ts";
+import { notImplemented } from "./errors.ts";
 import type {
   DependencyEntry,
   ItemType,
@@ -266,7 +267,7 @@ export const buildEnrichedStory = (
 export const buildCommentList = (nodes: CommentInput[]): StoryComment[] =>
   nodes.map((c) => ({
     author: c.author?.login ?? "(ghost)",
-    body: c.body,
+    body: c.body ?? "",
     created_at: c.createdAt,
     url: c.url,
   }));
@@ -301,12 +302,23 @@ export const toSprintInfo = (iter: IterationEntry | null): SprintInfo | null => 
   return {
     id: iter.id,
     name: iter.title,
-    goal: null, // GitHub API does not expose iteration descriptions
+    goal: null,
     startDate: iter.startDate,
     durationDays: iter.duration,
     endDate: endDate.toISOString().slice(0, 10),
   };
 };
+
+/**
+ * Attempt to resolve a sprint goal for the given iteration.
+ * Always throws NOT_IMPLEMENTED — the GitHub Projects API does not expose
+ * iteration descriptions or goals.
+ *
+ * Call via catchBackend so the throw is converted to a warning rather than
+ * aborting the enclosing request.
+ */
+export const resolveSprintGoal = (_iter: IterationEntry): never =>
+  notImplemented("sprint goal", { reason: "GitHub Projects API does not expose iteration goals" });
 
 // ── Dependency ref resolution ──────────────────────────────────────────────────
 

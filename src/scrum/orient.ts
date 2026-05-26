@@ -5,9 +5,9 @@
 // Returns OrientResult from domain/types.ts — the session ground truth.
 // =============================================================================
 
-import type { ProjectReader } from "./ports.ts";
+import type { ProjectReader, SprintInfo } from "./ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
-import type { EpicSummary, OrientResult, TemplateUriMap } from "../domain/types.ts";
+import type { EpicSummary, OrientResult, TemplateUriMap, UseCaseResult } from "../domain/types.ts";
 import { ITEM_TYPES, sprintContextFromSprintInfo } from "../domain/types.ts";
 import { catchBackend } from "../services/error-enrichment.ts";
 
@@ -43,7 +43,7 @@ const buildTemplateUriMap = (typeTemplatePaths: Record<string, string>): Templat
 export const orientUseCase = async (
   backend: ProjectReader,
   scrumConfig: ScrumConfig,
-): Promise<OrientResult> => {
+): Promise<UseCaseResult<OrientResult>> => {
   const warnings: string[] = [];
 
   // Extract canonical keys from domain-level config (no adapter-specific types)
@@ -53,13 +53,16 @@ export const orientUseCase = async (
   // ── Hard prerequisites (no catch — let failures propagate) ────────────
   await backend.reload();
 
-  const state = await backend.getPlatformState({
+  // getPlatformState returns BackendCallResult — warnings are accumulated per
+  // sub-field (e.g. NOT_IMPLEMENTED for sprint goal). Fatal errors propagate.
+  const { value: state, warnings: stateWarnings } = await backend.getPlatformState({
     canonicalStatusKeys,
     canonicalPriorityKeys,
   });
+  warnings.push(...stateWarnings);
 
   // ── Optional: epic enumeration ────────────────────────────────────────
-  const sprintIterationId = state.iterations.active?.id ?? null;
+  const sprintIterationId = state?.iterations.active?.id ?? null;
   const { value: allEpics, warnings: epicWarnings } = await catchBackend(
     () => backend.getEpics(sprintIterationId),
   );
@@ -81,7 +84,7 @@ export const orientUseCase = async (
 
   // ── Optional: work completion percentage ──────────────────────────────
   let workPct = 0;
-  if (state.iterations.active) {
+  if (state?.iterations.active) {
     const activeId = state.iterations.active.id; // narrowed before closure
     const { value: completion, warnings: compWarnings } = await catchBackend(
       () => backend.getSprintCompletion(activeId),
@@ -95,7 +98,7 @@ export const orientUseCase = async (
 
   // Build SprintContext from SprintInfo via the domain factory (pure, no backend call)
   const buildSprintContext = (
-    info: typeof state.iterations.active,
+    info: SprintInfo | null,
   ) => {
     if (!info) return null;
     return sprintContextFromSprintInfo(
@@ -112,7 +115,39 @@ export const orientUseCase = async (
     );
   };
 
-  return {
+  if (!state) {
+    const partialResult: OrientResult = {
+      warnings,
+      platform_state: {
+        fields: {
+          status: { exists: false, options: [], missing_options: [] },
+          sprint: { exists: false },
+          story_points: { exists: false },
+          priority: { exists: false, options: [], missing_options: [] },
+          type_field: { exists: false, configured: false },
+        },
+        missing_options: [],
+        labels: { existing: [], expected: [], missing: [] },
+        iterations: { active: null, next: null, completed_count: 0 },
+        epics: { active: [], total_count: 0 },
+        template_uris: null,
+      },
+      vocabulary: {
+        status: null,
+        priority: null,
+        type: null,
+        story_points: { scale: null, values: null },
+        sprint: { duration_days: null, velocity_window: 5, length_weeks: null },
+        team: null,
+        dor: null,
+        dod: null,
+        autonomy: null,
+      },
+    };
+    return { data: partialResult, warnings };
+  }
+
+  const result: OrientResult = {
     warnings,
     platform_state: {
       fields: {
@@ -175,4 +210,5 @@ export const orientUseCase = async (
         : null,
     },
   };
+  return { data: result, warnings };
 };

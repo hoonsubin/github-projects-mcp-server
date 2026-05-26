@@ -87,7 +87,7 @@ export class BurndownCalculator {
         name: iterEntry.title,
         startDate: iterEntry.startDate,
         endDate: endDate,
-        goal: null, // todo: fix this
+        goal: null, // NOT_IMPLEMENTED: GitHub Projects API does not expose iteration goals
         durationDays: iterEntry.duration,
       },
       stories,

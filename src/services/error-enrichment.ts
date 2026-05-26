@@ -13,6 +13,7 @@
 // =============================================================================
 
 import { AdapterError } from "../domain/errors.ts";
+import { PartialResult } from "../domain/types.ts";
 
 // ── enrichError — fatal-error path ──────────────────────────────────────────────
 
@@ -34,9 +35,8 @@ export const enrichError = (err: unknown): string => {
 
 // ── catchBackend — partial-failure path ─────────────────────────────────────────
 
-export interface BackendCallResult<T> {
+export interface BackendCallResult<T> extends PartialResult {
   value: T | null;
-  warnings: string[];
 }
 
 /**

@@ -155,12 +155,19 @@ export class StoryMutationService {
 
     const itemId = draftResult.addProjectV2DraftIssue?.projectItem?.id;
     if (!itemId) {
-      throw new GitHubApiError("addProjectV2DraftIssue returned no project item.", {
-        code: "MUTATION_FAILED",
-        recovery:
-          "Check that your token has Projects (read/write) permission and that the project " +
-          "number in your configuration is correct, then retry.",
-      });
+      throw new GitHubApiError(
+        "addProjectV2DraftIssue returned no project item.",
+        {
+          code: "MUTATION_FAILED",
+          recovery: "Check that your token has Projects (read/write) permission and that " +
+            "the project number in your configuration is correct, then retry.",
+          context: {
+            projectId: this.config.projectId,
+            title: input.title,
+            responseShape: JSON.stringify(draftResult),
+          },
+        },
+      );
     }
 
     const storyRef: StoryRef = { id: itemId };

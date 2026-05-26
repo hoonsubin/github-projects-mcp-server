@@ -176,11 +176,25 @@ export class LabelResolver {
       const repositoryId = await this.fetchRepoNodeId();
       for (const name of missing) {
         const color = this.hashToColor(name);
-        const createResult = await this.gh.graphql<{ createLabel: { label: { id: string } } }>(
+        const createResult = await this.gh.graphql<{
+          createLabel?: { label?: { id: string } } | null;
+        }>(
           CREATE_LABEL_MUTATION,
           { repositoryId, name, color },
         );
-        resolved.push({ id: createResult.createLabel.label.id, name });
+        const label = createResult.createLabel?.label;
+        if (!label?.id) {
+          throw new GitHubApiError(
+            `Label creation mutation succeeded but returned no label node.`,
+            {
+              code: "MUTATION_FAILED",
+              recovery: "Retry the label creation. If the issue persists, the GitHub API " +
+                "may be returning an unexpected shape — check GitHub status.",
+              context: { name, repositoryId, responseShape: JSON.stringify(createResult) },
+            },
+          );
+        }
+        resolved.push({ id: label.id, name });
       }
     }
 

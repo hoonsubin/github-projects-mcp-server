@@ -7,7 +7,7 @@
 // =============================================================================
 
 import type { FindItemsPort, ItemFilter, ResolvedItemFilter } from "./ports.ts";
-import type { ItemSearchResult } from "../domain/types.ts";
+import type { ItemSearchResult, UseCaseResult } from "../domain/types.ts";
 
 /**
  * Apply defaults to an ItemFilter, producing a ResolvedItemFilter
@@ -36,10 +36,11 @@ const resolveFilter = (filter: ItemFilter): ResolvedItemFilter => ({
  * and delegates to the adapter. The adapter is responsible for translating
  * the filter into platform-specific queries (GraphQL, REST, etc.).
  */
-export const findItemsUseCase = (
+export const findItemsUseCase = async (
   backend: FindItemsPort,
   filter: ItemFilter,
-): Promise<ItemSearchResult> => {
+): Promise<UseCaseResult<ItemSearchResult>> => {
   const resolved = resolveFilter(filter);
-  return backend.findItems(resolved);
+  const data = await backend.findItems(resolved);
+  return { data, warnings: [] };
 };

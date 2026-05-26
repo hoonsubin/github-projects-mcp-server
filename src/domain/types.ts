@@ -559,8 +559,8 @@ export interface LinkedArtifact {
  */
 export interface ItemDetailResult {
   readonly story: Story;
-  readonly comments: readonly StoryComment[];
-  readonly linked_artifacts: readonly LinkedArtifact[];
+  readonly comments: readonly StoryComment[] | null;
+  readonly linked_artifacts: readonly LinkedArtifact[] | null;
   readonly acceptance_criteria: readonly string[]; // parsed from story body
 }
 
@@ -575,6 +575,25 @@ export interface ItemDetailResult {
  */
 export interface PartialResult {
   readonly warnings: readonly string[];
+}
+
+// ── Use-case result wrapper ────────────────────────────────────────────────────
+
+/**
+ * Generic wrapper for use-case function return values.
+ *
+ * Every use-case function returns UseCaseResult<T> instead of raw T.
+ * - `data`: the primary payload (may be null if the adapter call fully failed)
+ * - `warnings`: accumulated adapter-error strings from catchBackend() calls
+ *
+ * Use-case functions NEVER throw AdapterError — they convert them into warnings.
+ * The framework layer unwraps UseCaseResult<T> and formats the response.
+ *
+ * Non-adapter errors (programming bugs, startup config failures) propagate
+ * normally — catchBackend re-throws them.
+ */
+export interface UseCaseResult<T> extends PartialResult {
+  readonly data: T;
 }
 
 // ── Orient output ──────────────────────────────────────────────────────────────

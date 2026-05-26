@@ -15,7 +15,6 @@ import {
   GetStorySchema,
 } from "../schemas/scrum.ts";
 import { z } from "zod";
-import { enrichError } from "../services/error-enrichment.ts";
 
 import { orientUseCase } from "../scrum/orient.ts";
 import { getStoryUseCase } from "../scrum/get-story.ts";
@@ -55,15 +54,9 @@ export const registerScrumReadTools = (
       },
     },
     async () => {
-      try {
-        const result = await orientUseCase(backend, scrumConfig);
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      } catch (err: unknown) {
-        return {
-          content: [{ type: "text", text: enrichError(err) }],
-          isError: true,
-        };
-      }
+      const { data, warnings } = await orientUseCase(backend, scrumConfig);
+      const response = warnings.length > 0 ? { ...data, warnings } : data;
+      return { content: [{ type: "text", text: JSON.stringify(response, null, 2) }] };
     },
   );
 
@@ -92,15 +85,9 @@ export const registerScrumReadTools = (
       },
     },
     async (params: z.infer<typeof GetStorySchema>) => {
-      try {
-        const result = await getStoryUseCase(backend, params.ref);
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      } catch (err: unknown) {
-        return {
-          content: [{ type: "text", text: enrichError(err) }],
-          isError: true,
-        };
-      }
+      const { data, warnings } = await getStoryUseCase(backend, params.ref);
+      const response = warnings.length > 0 ? { ...data, warnings } : data;
+      return { content: [{ type: "text", text: JSON.stringify(response, null, 2) }] };
     },
   );
 
@@ -144,15 +131,9 @@ export const registerScrumReadTools = (
       },
     },
     async (params: z.infer<typeof FindItemsSchema>) => {
-      try {
-        const result = await findItemsUseCase(backend, params);
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      } catch (err: unknown) {
-        return {
-          content: [{ type: "text", text: enrichError(err) }],
-          isError: true,
-        };
-      }
+      const { data, warnings } = await findItemsUseCase(backend, params);
+      const response = warnings.length > 0 ? { ...data, warnings } : data;
+      return { content: [{ type: "text", text: JSON.stringify(response, null, 2) }] };
     },
   );
 
@@ -187,19 +168,13 @@ export const registerScrumReadTools = (
       },
     },
     async (params: z.infer<typeof GetAnalyticsSchema>) => {
-      try {
-        const result = await getAnalyticsUseCase(backend, {
-          view: params.view ?? "both",
-          sprint_ref: params.sprint_ref,
-          history_window: params.history_window,
-        });
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      } catch (err: unknown) {
-        return {
-          content: [{ type: "text", text: enrichError(err) }],
-          isError: true,
-        };
-      }
+      const { data, warnings } = await getAnalyticsUseCase(backend, {
+        view: params.view ?? "both",
+        sprint_ref: params.sprint_ref,
+        history_window: params.history_window,
+      });
+      const response = warnings.length > 0 ? { ...data, warnings } : data;
+      return { content: [{ type: "text", text: JSON.stringify(response, null, 2) }] };
     },
   );
 
@@ -235,15 +210,9 @@ export const registerScrumReadTools = (
       },
     },
     async (params: z.infer<typeof GetBoardHealthSchema>) => {
-      try {
-        const result = await getBoardHealthUseCase(backend, params.sprint_scope);
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      } catch (err: unknown) {
-        return {
-          content: [{ type: "text", text: enrichError(err) }],
-          isError: true,
-        };
-      }
+      const { data, warnings } = await getBoardHealthUseCase(backend, params.sprint_scope);
+      const response = warnings.length > 0 ? { ...data, warnings } : data;
+      return { content: [{ type: "text", text: JSON.stringify(response, null, 2) }] };
     },
   );
 

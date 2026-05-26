@@ -18,6 +18,7 @@ import type {
   StoryUpdates,
   VocabularyKind,
 } from "../scrum/ports.ts";
+import type { BackendCallResult } from "../services/error-enrichment.ts";
 import type {
   AnalyticsResult,
   BacklogHealth,
@@ -93,13 +94,13 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
   abstract getPlatformState(declaredVocabulary: {
     canonicalStatusKeys: string[];
     canonicalPriorityKeys: string[];
-  }): Promise<PlatformState>;
+  }): Promise<BackendCallResult<PlatformState>>;
 
   abstract reload(): Promise<void>;
 
   // ── ProjectReader — story read ───────────────────────────────────────────
 
-  abstract getStoryDetail(ref: StoryRef): Promise<StoryDetail>;
+  abstract getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>>;
 
   abstract getEpics(sprintIterationId?: string | null): Promise<EpicListing[]>;
 

@@ -28,6 +28,7 @@ import type {
   StoryRef,
   TemplateUriMap,
 } from "../domain/types.ts";
+import type { BackendCallResult } from "../services/error-enrichment.ts";
 
 // ── Input types (cross the port boundary) ─────────────────────────────────────
 
@@ -156,8 +157,8 @@ export interface PlatformState {
  */
 export interface StoryDetail {
   story: Story;
-  comments: StoryComment[];
-  linked_artifacts: LinkedArtifact[];
+  comments: StoryComment[] | null;
+  linked_artifacts: LinkedArtifact[] | null;
 }
 
 /**
@@ -270,7 +271,7 @@ export interface EpicPort {
  * Used by: getStoryUseCase
  */
 export interface StoryPort {
-  getStoryDetail(ref: StoryRef): Promise<StoryDetail>;
+  getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>>;
 }
 
 /**
@@ -329,7 +330,7 @@ export interface ProjectReader
   getPlatformState(declaredVocabulary: {
     canonicalStatusKeys: string[];
     canonicalPriorityKeys: string[];
-  }): Promise<PlatformState>;
+  }): Promise<BackendCallResult<PlatformState>>;
 
   /**
    * Compute work completion for a sprint.

@@ -7,7 +7,7 @@
 // =============================================================================
 
 import type { BoardHealthPort } from "./ports.ts";
-import type { BacklogHealth } from "../domain/types.ts";
+import type { BacklogHealth, UseCaseResult } from "../domain/types.ts";
 
 /**
  * Return board health metrics for the given sprint scope.
@@ -15,9 +15,10 @@ import type { BacklogHealth } from "../domain/types.ts";
  * This use-case is a thin bridge — it passes through to the adapter.
  * The adapter computes health metrics behind the BoardHealthPort interface.
  */
-export const getBoardHealthUseCase = (
+export const getBoardHealthUseCase = async (
   backend: BoardHealthPort,
   sprintScope: string,
-): Promise<BacklogHealth> => {
-  return backend.getBoardHealth(sprintScope);
+): Promise<UseCaseResult<BacklogHealth>> => {
+  const data = await backend.getBoardHealth(sprintScope);
+  return { data, warnings: [] };
 };
