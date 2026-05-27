@@ -195,3 +195,182 @@ Implement `SearchQueryBuilder` using the query shape above. Implement `SearchRes
 - Domain types (`BacklogItemListing`, `ItemSearchResult`, `Story`, etc.)
 - `CapabilityMap` structure and `CapabilityError` semantics
 - Agent-facing tool descriptions (except the `scope_summary` shape correction)
+
+---
+
+## Multi-Backend Abstract Design
+
+This section extends the assembly-layer pattern to cover any backend, not just GitHub. The goal is a single abstract contract that makes adding a new backend (Notion, Trello, Linear, etc.) a matter of filling in assembly methods — not redesigning the data flow.
+
+---
+
+### Capability Status Taxonomy
+
+The current `PlatformCapabilities` type uses boolean flags (`canCreateSprints: boolean`). Booleans are insufficient: many operations are possible but require emulation — they work, but with limitations the agent should know about. Replace boolean flags with a three-value enum:
+
+```
+NATIVE      — operation maps directly to a platform API call; full fidelity guaranteed
+EMULATED    — operation is supported by encoding scrum semantics onto available primitives
+              (e.g., item type stored as a special label); some constraints apply
+UNAVAILABLE — operation cannot be expressed on this platform at all
+```
+
+Every field in `PlatformCapabilities` becomes `CapabilityStatus` instead of `boolean`. The abstract base class derives the `CapabilityMap` it returns from `getCapabilities()` directly from these statuses.
+
+Operations with `EMULATED` status must document their emulation contract — specifically the encoding convention the adapter uses, so that the agent's warning message contains enough context to understand what it is getting (or not getting).
+
+---
+
+### Platform Vocabulary Map
+
+Each backend implementation defines a `PlatformVocabularyMap` that describes how Scrum domain concepts translate to and from the platform's native primitives. This map is the adapter's internal contract — the use-case layer never sees it.
+
+```
+PlatformVocabularyMap
+  For each Scrum concept (type, status, sprint, priority, story_points, epic, blocked_by, labels):
+    support: CapabilityStatus
+    encode(ScrumValue) → PlatformValue     // used when writing: scrum → platform
+    decode(PlatformValue) → ScrumValue     // used when reading: platform → scrum
+    constraint?: string                    // optional note on limits (e.g., "AND semantics only for label filters")
+
+  isSpecialLabel(platformLabel: string) → boolean
+    // Returns true if this label encodes scrum metadata (should not pass through as a user label)
+    // e.g., returns true for "[scrum:type:feature]", false for "artwork"
+
+  extractUserLabels(allPlatformLabels: string[]) → string[]
+    // Strips special labels, returns only the ones that belong in BacklogItemListing.labels
+```
+
+The vocabulary map is constructed once per backend configuration and injected into the assembler. When the normalizer maps a raw platform response into a `BacklogItemListing`, it uses `decode()` for each field and `extractUserLabels()` to separate platform metadata from user-facing labels.
+
+---
+
+### Abstract Assembler Contract
+
+The assembler is the assembly layer's entry point. Each backend provides one concrete assembler. The abstract class defines what must be implemented — the concrete class only fills in the platform-specific request building and response normalization.
+
+```
+AbstractAssembler
+  // -- Query assembly (abstract) --
+  assembleItemSearch(filter: ResolvedItemFilter) → PlatformRequest[]
+  assembleItemFetch(id: string) → PlatformRequest
+  assembleItemCreate(draft: ItemDraft) → PlatformRequest[]
+  assembleFieldWrite(id: string, field: string, value: FieldValue) → PlatformRequest[]
+  assembleSprintFetch(sprintRef: string) → PlatformRequest[]
+  assembleAnalyticsFetch(range: AnalyticsRange) → PlatformRequest[]
+
+  // -- Normalization (abstract) --
+  normalizeItemList(rawResponses: PlatformResponse[]) → BacklogItemListing[]
+  normalizeSingleItem(rawResponse: PlatformResponse) → Story
+  normalizeSprintPayload(rawResponses: PlatformResponse[]) → SprintData
+
+  // -- Port method defaults (concrete, provided by abstract class) --
+  //    Each port method calls the corresponding assemble* + normalize* pair.
+  //    Subclasses do NOT override port methods — only assembly and normalization.
+  async findItems(filter: ResolvedItemFilter): Promise<ItemSearchResult>
+  async getStory(id: string): Promise<Story>
+  async createItem(draft: ItemDraft): Promise<Story>
+  async setField(id: string, field: string, value: FieldValue): Promise<void>
+  async getSprint(ref: string): Promise<SprintData>
+  async getAnalytics(range: AnalyticsRange): Promise<AnalyticsData>
+```
+
+`PlatformRequest` is a thin wrapper: `{ method, endpoint, body?, variables? }` — generic enough to represent a GraphQL query, a REST call, or a batch of REST calls. The execution engine (part of each backend's internal infrastructure) handles authentication, rate limiting, and retry — it only knows how to execute `PlatformRequest[]`, not what they mean.
+
+The port method defaults in the abstract class follow this pattern:
+
+```
+findItems(filter):
+  1. requests = this.assembleItemSearch(filter)
+  2. responses = await this.execute(requests)        // execution engine
+  3. items = this.normalizeItemList(responses)
+  4. return { items, scope_summary, warnings: [] }
+```
+
+If any capability required by the operation has status `UNAVAILABLE`, the abstract class throws a `CapabilityUnavailableError` before assembly begins. If the capability is `EMULATED`, it proceeds but appends an emulation notice to `warnings[]`.
+
+---
+
+### Error Decoration Hierarchy
+
+All backend errors extend a common base that carries agent-interpretable metadata alongside the technical message. The agent receives these via `UseCaseResult.warnings[]` (for non-fatal) or as a structured error string in the tool response (for fatal). The agent never sees a raw stack trace.
+
+```
+BackendError (base)
+  capability: string          // which port operation triggered this (e.g., "findItems")
+  platform: string            // backend name (e.g., "trello", "github")
+  recoverySuggestion: string  // what the agent should try or tell the user
+  platformContext?: object    // raw platform error code/message for debugging
+
+BackendAuthError extends BackendError
+  // Token missing, expired, or lacks scope
+  // recoverySuggestion: instructs agent to check SCRUM_GITHUB_TOKEN or equivalent env var
+
+CapabilityUnavailableError extends BackendError
+  // Operation cannot be expressed on this platform
+  // recoverySuggestion: describes what the agent can do instead
+  // Example: "Trello does not support burndown data. Use scrum_get_analytics with
+  //           scope=sprint instead, and present velocity from completed item counts."
+
+CapabilityEmulationWarning extends BackendError (non-fatal, surfaces in warnings[])
+  encodingConvention: string  // how the emulation works, for agent transparency
+  // Example: "Item type is stored as a Trello label with prefix [scrum:type:].
+  //           Type filter applied client-side after fetch."
+
+PlatformConstraintError extends BackendError
+  // Operation succeeded partially or with reduced fidelity
+  // Example: "Trello label filters use OR semantics. Multiple label filters were
+  //           applied as a post-fetch client-side AND filter."
+
+BackendRateLimitError extends BackendError
+  retryAfterMs?: number
+  // recoverySuggestion: "Rate limit reached. Retry in X seconds or reduce query scope."
+```
+
+The abstract class catches raw HTTP/GraphQL errors from the execution engine and re-throws them as decorated `BackendError` subclasses. Concrete assemblers do not need to handle raw errors — they only produce requests. The execution engine emits raw failures; the abstract class's `execute()` wrapper translates them.
+
+---
+
+### Trello: Concrete Vocabulary Mapping
+
+Trello has no native Scrum concepts. The adapter maps everything onto Trello's four primitives: cards, lists, labels, and custom fields.
+
+| Scrum Concept   | Trello Primitive       | Status              | Encoding Convention                                                        |
+| --------------- | ---------------------- | ------------------- | -------------------------------------------------------------------------- |
+| `type`          | Label with prefix      | EMULATED            | `[scrum:type:user_story]`, `[scrum:type:bug]`, etc. One per card; required |
+| `status`        | List (column) position | NATIVE              | List name maps to status name; configured in `scrum_config.yaml`           |
+| `sprint`        | Dropdown custom field  | NATIVE (with setup) | Field named "Sprint"; created by `scrum_add_vocabulary` if absent          |
+| `priority`      | Dropdown custom field  | NATIVE (with setup) | Field named "Priority"; values must match configured priorities            |
+| `story_points`  | Number custom field    | NATIVE (with setup) | Field named "Story Points"                                                 |
+| `epic`          | Text custom field      | EMULATED            | Field named "Epic"; stores epic card ID as string                          |
+| `blocked_by`    | Checklist item         | EMULATED            | Checklist named "Blocked By"; each item is a card short link               |
+| `labels` (user) | Non-special labels     | NATIVE              | Any label not matching `[scrum:*]` prefix passes through unchanged         |
+| Burndown        | —                      | UNAVAILABLE         | No date-ranged completion data in Trello API                               |
+| Comments        | Card comments          | NATIVE              | Direct mapping                                                             |
+| Attachments     | Card attachments       | NATIVE              | Direct mapping                                                             |
+
+**Label separation:** `isSpecialLabel(label)` returns true for any label whose name matches `/^\[scrum:[a-z]+:[a-z_]+\]$/`. `extractUserLabels()` strips these and returns the remainder. When writing, the assembler sets exactly one `[scrum:type:X]` label and leaves user labels untouched.
+
+**Status mapping:** The Trello adapter's vocabulary map holds a `listNameToStatus` table populated from `scrum_config.yaml`. `decode(listName)` returns the canonical status string. Lists not in the table are treated as unknown status and passed through in `custom_fields` rather than dropped.
+
+**Sprint/priority/story_points:** These require custom fields to exist on the board. The assembler checks for their presence during initialization. If any are missing, `getCapabilities()` returns `UNAVAILABLE` for those operations and `CapabilityUnavailableError.recoverySuggestion` instructs the agent to call `scrum_add_vocabulary` to create them.
+
+**Dependency tracking:** The checklist emulation is write-capable but has no integrity guarantees — if the linked card is deleted, the checklist item becomes a dead reference. The assembler surfaces this via `CapabilityEmulationWarning` on any call that reads or writes `blocked_by`.
+
+---
+
+### What a New Backend Must Implement
+
+To add a backend, a developer implements one concrete class and one vocabulary map. Nothing else changes.
+
+**Required:**
+
+1. A concrete `PlatformVocabularyMap` implementation — maps all Scrum concepts to platform primitives, implements `isSpecialLabel()` and `extractUserLabels()`.
+
+2. A concrete `Assembler` extending `AbstractAssembler` — implements all `assemble*` methods (producing `PlatformRequest[]`) and all `normalize*` methods (consuming `PlatformResponse[]` and returning domain types). Uses the vocabulary map for all encode/decode calls.
+
+3. An execution engine — takes `PlatformRequest[]`, handles auth, pagination, and rate limiting for that platform, returns `PlatformResponse[]`. Emits raw platform errors that the abstract class's `execute()` wrapper translates into `BackendError` subclasses.
+
+4. A `getCapabilities()` implementation — returns the `CapabilityMap` reflecting the concrete vocabulary map's support statuses.
+
+**Not required:** Port interface changes, use-case changes, tool handler changes, Zod schema changes, domain type changes. The use-case layer calls `backend.findItems(filter)` and receives `ItemSearchResult` — it has no visibility into whether the backend is GitHub, Trello, or anything else.
