@@ -86,6 +86,15 @@ export interface ScrumConfig {
   definition_of_ready?: string[];
   definition_of_done?: string[];
 
+  /**
+   * The key inside `BacklogItemListing.custom_fields` that holds deadline / due-date values.
+   * When set, the agent uses this key for overdue detection and deadline tracking.
+   * Absent when the project does not track deadlines via a custom field.
+   * Must match the exact GitHub custom field name (case-sensitive).
+   * Example: "Due Date"
+   */
+  deadline_field?: string;
+
   /** Ceremony artifact template paths, or null for agent skill defaults. */
   templates?: Partial<Record<ArtifactType, string | null>>;
 

@@ -99,14 +99,70 @@ baseline for coaching when no project config exists.*
 
 ---
 
+## Backlog management operations
+
+### Backlog health definition
+
+A healthy backlog satisfies all of the following:
+- Top-N items (N ≥ 1.5× velocity in SP) are DoR-complete
+- No single item exceeds ~40% of sprint velocity without a split plan
+- Fewer than 15% of sprint-candidate items have no estimate
+- No item in the top 20 has been untouched for 2+ sprints
+
+When asked "is our backlog in good shape?" — evaluate against these four criteria, not just list items.
+
+### Velocity-based throughput forecasting
+
+`sprints_to_clear = remaining_backlog_SP / avg_velocity`
+
+Fetch `avg_velocity` from `scrum_get_analytics(view: "history", history_window: velocity_window)`.
+Use the mean of completed sprint velocities. Flag when `sprints_to_clear > planning_horizon`
+(e.g., more than 6 sprints of backlog work for a 3-month horizon).
+
+### Sprint capacity quick reference
+
+`capacity_SP = available_days × focus_factor × avg_SP_per_dev_day`
+
+Focus factor: 0.6–0.7 for teams with regular meetings and reviews; 0.7–0.8 for solo or async-heavy work.
+Use this to sanity-check proposed sprint scope before committing — no tool call required.
+
+### DoR completeness check (on-demand)
+
+Run this sequence when asked to assess whether the backlog is ready for planning:
+
+1. `scrum_find_items(scope: "backlog")` — load items in unrefined or "ready" state
+2. For each item: check body for AC presence, check `story_points` for non-null, check type vs content signals
+3. Produce a gap table: item number | title | gap description
+4. Offer `scrum_update_story` to fill each gap inline on confirmation
+5. After fixes: restate which items are now DoR-complete and which remain blocked
+
+Priority stack validation: confirm top-N items (N = sprint capacity in items) are all DoR-complete
+before recommending a planning session. If >30% of top-N fail: flag as refinement debt first.
+
+### Icebox and staleness management
+
+An item is a staleness candidate when ALL are true:
+- No field has been updated in 60+ days
+- It is not in the active sprint
+- It has no open dependencies on it
+
+When a staleness candidate is found, surface it with three options:
+1. Re-confirm intent — update the description to reset the staleness signal
+2. Move to icebox — add an "icebox" label; leave open but de-prioritised
+3. Close as won't-do — add a brief rationale comment, then close
+
+Never silently archive or delete. Every disposition is human-confirmed.
+
+---
+
 ## When `scrum_*` tools are available
 
 For any coaching response that references project metrics, call the relevant read tool first.
 Reference files provide frameworks, never data.
 
-- Velocity, completion trends, retro history → call `scrum_get_history` first
-- Burndown or sprint progress → call `scrum_get_burndown` or `scrum_get_sprint` first
-- Current sprint state → call `scrum_get_sprint` first
+- Velocity, completion trends, retro history → call `scrum_get_analytics` first
+- Burndown or sprint progress → call `scrum_get_analytics` first
+- Current sprint state → call `scrum_find_items(scope: "sprint")` or `scrum_get_board_health`
 - Board vocabulary, field gaps, item type templates → call `scrum_orient` first
 
 ---
@@ -124,7 +180,8 @@ Operational playbooks live in `playbooks/`. The workflow rules (`1_workflow.xml`
 | `playbooks/delivery-verification.md` | AC verification via research subtask, Done gate |
 | `playbooks/recommendation.md` | Weighted next-ticket recommendation |
 | `playbooks/audit-logging.md` | When and how to add item comments |
-| `playbooks/ceremonies.md` | Sprint planning, standup, refinement, review, retrospective |
+| `playbooks/ceremony-backlog-transitions.md` | Pre/post-ceremony backlog operations (DoR check, carry-over, retro story, refinement) |
+| `playbooks/transitions.md` | Project setup, stale recovery, board catchup (on-demand only) |
 
 ---
 
@@ -135,7 +192,7 @@ Read only the file and section the request requires. Do not load speculatively.
 | Request involves… | Read |
 |---|---|
 | Item type mismatch criteria, fallback body formats, mismatch signals | `references/item-types.md` |
-| Drafting a ceremony document (planning board, standup log, review notes, retro, DoR/DoD, PBI) | `references/templates-ceremonies.md` |
+| Drafting a ceremony document (planning board, standup log, review notes, retro, DoR/DoD, PBI) | `references/templates-ceremonies.md` (describe to human; do not run the ceremony) |
 | Drafting a management artifact (velocity tracker, charter, release roadmap, capacity calendar, impediment log, decision log) | `references/templates-management.md` |
 | Coaching a person — GROW, SBI, powerful questions | `references/sm-coaching.md` §Coaching models |
 | Facilitation technique needed (dot voting, 1-2-4-all, timeboxing, fist to five) | `references/sm-coaching.md` §Facilitation |

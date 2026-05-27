@@ -31,26 +31,50 @@
       Block write ops targeting gap fields until resolved.
     </step>
 
-    <step number="3" action="Proactive board health check (active sprint only)">
-      Run immediately without being asked. Read the referenced playbook for each trigger.
+    <step number="3" action="Proactive board health check — task-driven loading">
+      Load board health only for sessions where a full board view adds value.
+      Do NOT call `scrum_get_board_health` for single-item lookups or targeted writes.
+
+      Minimum tool call matrix — load only what the session type requires:
+
+      | Session type                                          | scrum_orient | +scrum_get_board_health | +scrum_find_items         |
+      |---|---|---|---|
+      | Single item lookup                                    | ✓            | ✗                       | ✗                         |
+      | Targeted field write (named item)                     | ✓            | ✗                       | ✗                         |
+      | Impediment update / resolution                        | ✓            | ✗                       | ✓ (types: ["impediment"]) |
+      | Recommendation request                                | ✓            | ✓                       | ✓ (scope: "sprint")       |
+      | Ceremony / Planning / Retrospective                   | ✓            | ✓                       | ✓                         |
+      | Ambiguous intent                                      | ✓            | ✓                       | ✗ (defer until needed)    |
+
+      When board health IS loaded, check the following triggers.
       All playbook paths are relative to `.roo/skills/scrum-master/`.
 
-      - Overdue items (expected_delivery_date &lt; today, non-terminal status):
-          → read `playbooks/deadline-tracking.md` §overdue_item for each
+      - Overdue items — deadline detection via custom_fields:
+          Check `platform_state.deadline_field` from `scrum_orient` (null when not configured).
+          If non-null: load sprint items via `scrum_find_items`; for each item check
+          `item.custom_fields[platform_state.deadline_field] &lt; today` with non-terminal status.
+          → read `playbooks/deadline-tracking.md` §overdue_item for each match.
+          If null: omit overdue detection; skip this trigger silently.
       - Item type mismatches (declared type vs. body content signals):
           → read `playbooks/item-assessment.md` §type_classification for each
       - Blocked items with no logged impediment:
-          → `scrum_get_backlog` labels:["impediment"]; log missing ones via `scrum_log_impediment`
-      - In-progress items missing start_date or expected_delivery_date:
-          → flag; offer to set
+          → `scrum_find_items(types: ["impediment"])` to list open impediments;
+            log missing ones via `scrum_log_impediment`
+      - In-progress items missing a deadline (when deadline_field is configured):
+          → flag; offer to set the `platform_state.deadline_field` custom field
       - Sprint end risk (remaining days &lt;= carry_over_threshold_days, SP material):
           → flag explicitly
       - Burndown velocity (when burndown series has ≥ 2 days of data):
           → Compute 3-day rolling SP/day; compare to sprint daily average - never use last-delta alone
           → flat_burndown threshold: ≥ 3 consecutive zero-movement days (source: references/dysfunctions.md)
           → Always cite sprint-wide run-rate alongside any recent-flatness flag
-      - Sprint goal absent:
-          → surface before any ceremony
+      - Sprint goal:
+          → Read `platform_state.iterations.active.goal` from `scrum_orient`.
+          → If goal is null AND the platform does NOT support goal persistence (server returns null
+            regardless of what the team has stated), do not surface the no_sprint_goal dysfunction
+            signal. Instead, offer to capture the goal as a comment on the sprint's first active item.
+          → Only fire the no_sprint_goal signal when the platform supports goal tracking and the
+            field is empty.
 
       Report all findings as a brief pre-check summary before parsing the user's request.
     </step>
@@ -73,22 +97,17 @@
       | ItemBreakdown         | SKILL.md → references/advanced-practices.md §Story splitting |
       | EpicOrganization      | (sprint context from scrum_orient; board tools directly)    |
       | ImpedimentLog         | playbooks/audit-logging.md + scrum_log_impediment           |
+      | ImpedimentResolution  | playbooks/impediment-lifecycle.md §resolution               |
       | SprintReport          | SKILL.md → references/templates-management.md               |
       | Coaching              | SKILL.md → routing table → specific reference file          |
-      | Ceremony              | playbooks/ceremonies.md                                     |
-      | Transition            | 4_transitions.xml                                           |
+      | Ceremony              | playbooks/ceremony-backlog-transitions.md                   |
+      | Transition            | playbooks/transitions.md                                    |
 
       For Coaching: read SKILL.md first; its routing table directs to the specific reference.
-      For Transition: use 4_transitions.xml playbooks; do not use ceremonies.md.
-
-      Transition detection - classify as Transition if ANY are true:
-        - User mentions "set up Scrum", "first sprint", "bootstrap", "we paused",
-          "picking this back up", "restarting", "board is outdated", "didn't track",
-          "we kept building", "need to catch up"
-        - scrum_orient returns missing field mappings or no iteration history
-        - Board has items but no sprint assignments and no sprint history
-        - In-progress items have dates older than 3× the configured sprint length
-        - User confirms development happened but the board does not reflect it
+      For Ceremony: load ceremony-backlog-transitions.md; it covers pre/post-ceremony backlog
+        operations only. Full ceremony facilitation is out of scope.
+      For Transition: load playbooks/transitions.md on explicit human request only (project
+        setup, board recovery, restart). Detection triggers are documented in that file.
 
       Stance definitions: `3_sm_stance.xml`.
       GUARD: Never classify as requiring direct implementation. → ImplementationHandoff.

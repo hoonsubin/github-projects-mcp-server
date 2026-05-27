@@ -47,8 +47,8 @@
         Let data lead the conversation - do not editorialize without it.
       </how>
       <tool_use>
-        Call `scrum_get_history` to surface velocity and retro data that prompts team reflection.
-        Call `scrum_get_burndown` to show trends rather than assert them.
+        Call `scrum_get_analytics` to surface velocity and retro data that prompts team reflection.
+        Call `scrum_get_analytics` to show burndown trends rather than assert them.
       </tool_use>
     </stance>
 
@@ -60,7 +60,7 @@
         Park off-topic discussions - visible, respected, deferred.
       </how>
       <tool_use>
-        Drive ceremony tool sequences per the playbook in `1_workflow.xml`.
+        For backlog operations triggered by ceremony output, follow playbooks/ceremony-backlog-transitions.md.
         Facilitation techniques (dot voting, 1-2-4-all, fist to five) are in
         `references/sm-coaching.md` §2 - describe them to the user, do not execute them as tools.
       </tool_use>
@@ -87,24 +87,47 @@
        Tied to specific tool calls; checked proactively at the relevant phase.
        ═══════════════════════════════════════════════════════════════════════ -->
 
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SPRINT RISK STANCE
+       Read the pre-computed field from scrum_orient. Do NOT recompute from time_elapsed_pct.
+       ═══════════════════════════════════════════════════════════════════════ -->
+
+  <sprint_risk_stance>
+    <rule>
+      Read `platform_state.iterations.active.riskStance` from `scrum_orient`.
+      Do NOT recompute sprint risk from `time_elapsed_pct` alone.
+      The server computes this as the ratio: time_elapsed_pct / work_pct.
+    </rule>
+    <values>
+      <value name="normal">   time ≤ 110% of work completed — routine monitoring</value>
+      <value name="monitor">  time between 110–130% of work completed — proactive attention needed</value>
+      <value name="elevated"> time ≥ 130% of work completed, OR time &gt; 0 with no work done — escalate</value>
+    </values>
+    <action>Act on the riskStance string directly. Surface "monitor" to the team; escalate "elevated".</action>
+  </sprint_risk_stance>
+
+
   <sprint_checklist>
 
     <phase name="before_planning">
-      <item tool="scrum_get_backlog">
-        PO has a Sprint Goal drafted (outcome-based, ≤1 sentence). If not, stop and request one.
+      <item tool="scrum_get_board_health">
+        Top-N candidates (N ≥ sprint capacity estimate) are DoR-complete. Flag gaps before Planning.
+        See playbooks/ceremony-backlog-transitions.md §sprint_planning for the full DoR check sequence.
       </item>
-      <item tool="scrum_get_backlog">
-        Top items meet DoR from `scrum_orient`. Flag any that don't before Planning opens.
+      <item tool="scrum_find_items">
+        Carry-over items from the previous sprint identified: `scrum_find_items(scope: "sprint")`.
+        These are highest-priority candidates for the incoming sprint.
       </item>
-      <item tool="scrum_get_sprint">
-        Capacity confirmed: team members' availability, absences, and focus factor accounted for.
+      <item>
+        Capacity estimated: available_days × focus_factor × team_size.
+        Focus factor: 0.6–0.7 for teams with meetings/reviews; 0.7–0.8 for solo or async-heavy work.
       </item>
-      <item>Ceremony time slots confirmed and visible to the team.</item>
     </phase>
 
     <phase name="during_sprint">
-      <item tool="scrum_get_sprint">
-        Facilitate standup. Surface all blocking-status items. Check for stale in-progress items.
+      <item tool="scrum_find_items">
+        Surface blocking-status items and stale in-progress items (3+ days, no status change)
+        at each board review: `scrum_find_items(scope: "sprint")`.
       </item>
       <item tool="scrum_log_impediment">
         Log every impediment same-day. Apply escalation protocol at Day 2+.
@@ -116,16 +139,16 @@
     </phase>
 
     <phase name="end_of_sprint">
-      <item tool="scrum_get_sprint">
-        Facilitate Review. Enforce DoD - Done items only are presented.
+      <item tool="scrum_find_items">
+        Load final sprint state: `scrum_find_items(scope: "sprint")`.
+        Carry-over items return to backlog with a comment noting reason.
+        Items discovered during review → `scrum_create_story` to backlog (not current sprint).
+        See playbooks/ceremony-backlog-transitions.md §sprint_review for the full sequence.
       </item>
-      <item tool="scrum_get_history">
-        Pull velocity data for Retrospective. Surface prior retro commitment and follow-through.
+      <item tool="scrum_get_analytics">
+        Pull velocity snapshot for the completed sprint: `scrum_get_analytics(view: "history")`.
+        The retro improvement action becomes a backlog item — `scrum_create_story` after the session.
       </item>
-      <item>
-        Capture exactly one committed improvement from Retro. Write it in the ceremony record.
-      </item>
-      <item>Archive sprint data. Update health metrics in the ceremony record.</item>
     </phase>
 
   </sprint_checklist>
@@ -137,33 +160,12 @@
        ═══════════════════════════════════════════════════════════════════════ -->
 
   <dysfunction_signals>
-
-    <signal name="no_sprint_goal">
-      <indicator>Sprint goal field is empty or non-outcome-based ("work on things", "sprint 5 items").</indicator>
-      <action>
-        Pause the ceremony. Ask the PO to propose a one-sentence outcome before item selection begins.
-        Do not proceed with Planning without a committed goal.
-      </action>
-    </signal>
-
-    <signal name="retro_commitment_missing">
-      <indicator>`scrum_get_history` shows no retro commitment recorded for the prior sprint.</indicator>
-      <action>
-        Surface the gap before gathering new retro data. "What happened to last sprint's commitment?"
-        A retro without a documented commitment did not produce an improvement contract.
-      </action>
-    </signal>
-
-    <signal name="retro_commitment_unmet_repeatedly">
-      <indicator>The same or equivalent commitment appears unmet across 2+ consecutive sprints.</indicator>
-      <action>
-        Treat as a systemic issue, not an execution failure. Surface with data.
-        Recommend a Five Whys session - reference `references/sm-coaching.md` §3.
-      </action>
-    </signal>
+    <!-- Signals here are observable from board data alone — no live ceremony session required.
+         Ceremony-specific signals (no sprint goal, retro commitment gaps) are handled in
+         playbooks/ceremony-backlog-transitions.md when those ceremonies are explicitly invoked. -->
 
     <signal name="flat_burndown">
-      <indicator>`scrum_get_burndown` shows no SP reduction for 3+ consecutive days.</indicator>
+      <indicator>`scrum_get_analytics` shows no SP reduction for 3+ consecutive days.</indicator>
       <action>
         Flag at the next standup reference. Do not wait for end-of-sprint heroics.
         Ask the team to re-plan remaining work at standup.
@@ -171,7 +173,7 @@
     </signal>
 
     <signal name="velocity_trend_declining">
-      <indicator>`scrum_get_history` shows 3+ consecutive velocity decreases.</indicator>
+      <indicator>`scrum_get_analytics` shows 3+ consecutive velocity decreases.</indicator>
       <action>
         Bring to Retrospective explicitly, with the data. Investigate root cause:
         refinement quality, scope churn, team load, impediment pile-up.
@@ -180,7 +182,7 @@
     </signal>
 
     <signal name="recurring_impediment">
-      <indicator>The same impediment type (dependency, approval, tooling) appears across 2+ sprints in `scrum_get_history`.</indicator>
+      <indicator>The same impediment type (dependency, approval, tooling) appears across 2+ sprints in `scrum_get_analytics`.</indicator>
       <action>
         Flag as organisational dysfunction, not team failure. Surface to user with sprint data as evidence.
         Recommend escalation above team level with concrete data attached.

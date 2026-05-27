@@ -131,6 +131,7 @@ export const orientUseCase = async (
         iterations: { active: null, next: null, completed_count: 0 },
         epics: { active: [], total_count: 0 },
         template_uris: null,
+        deadline_field: scrumConfig.deadline_field ?? null,
       },
       vocabulary: {
         status: null,
@@ -183,6 +184,7 @@ export const orientUseCase = async (
         total_count: allEpics?.length ?? 0,
       },
       template_uris: buildTemplateUriMap(state.vocabulary.typeTemplatePaths),
+      deadline_field: scrumConfig.deadline_field ?? null,
     },
     vocabulary: {
       status: state.vocabulary.statusDisplay,

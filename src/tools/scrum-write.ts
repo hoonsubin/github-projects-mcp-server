@@ -2,20 +2,6 @@
 // src/tools/scrum-write.ts - Register all scrum_* write tools
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-
-// ── Tool name constants ────────────────────────────────────────────────────────
-// Single source of truth for every tool this module registers.
-// Imported by src/server.ts for degraded-mode stub registration.
-
-export const SCRUM_WRITE_TOOL_NAMES = [
-  "scrum_add_vocabulary",
-  "scrum_create_story",
-  "scrum_update_story",
-  "scrum_set_field",
-  "scrum_log_impediment",
-  "scrum_update_impediment",
-  "scrum_plan_sprint",
-] as const;
 import type { CreateStoryInput, ProjectBackend, StoryUpdates } from "../scrum/ports.ts";
 import type { Story, StoryRef } from "../domain/types.ts";
 import type { ScrumConfig } from "../domain/config.ts";
@@ -32,6 +18,20 @@ import {
 import { catchBackend } from "../services/error-enrichment.ts";
 import { pickDefined } from "../services/pick-defined.ts";
 import { z } from "zod";
+
+// ── Tool name constants ────────────────────────────────────────────────────────
+// Single source of truth for every tool this module registers.
+// Imported by src/server.ts for degraded-mode stub registration.
+
+export const SCRUM_WRITE_TOOL_NAMES = [
+  "scrum_add_vocabulary",
+  "scrum_create_story",
+  "scrum_update_story",
+  "scrum_set_field",
+  "scrum_log_impediment",
+  "scrum_update_impediment",
+  "scrum_plan_sprint",
+] as const;
 
 // ── Helper types ──────────────────────────────────────────────────────────────
 
@@ -96,10 +96,13 @@ export const registerScrumWriteTools = (
           ref    { id: string } - story to update (Story.ref.id from any read tool)
           field  one of: "status" | "sprint" | "story_points" | "priority" | "assignee" | "type"
           value  shape depends on field:
-                   status        → string display name (e.g. "In Progress", "Done")
+                   status        → MUST be resolved from vocabulary.status in scrum_orient.
+                                   Never pass display names like "Done" or "In Progress" literally —
+                                   the project may use "Completed", "Closed", or any custom label.
+                                   Always resolve: vocabulary.status["done"] → pass that exact string.
                    sprint        → "current" | "next" | "<sprint-name>" | null  (null clears)
                    story_points  → number (e.g. 3, 5, 8)
-                   priority      → string display name (e.g. "Must", "Should")
+                   priority      → string display name from vocabulary.priority in scrum_orient
                    assignee      → GitHub login string (e.g. "hoonsubin")
                    type          → canonical key (e.g. "feature", "bug" - see vocabulary.type in scrum_orient)
                  Pass null for any field to clear the value entirely.
@@ -126,9 +129,11 @@ export const registerScrumWriteTools = (
         `Edit the content fields of a story: title, body, labels, assignees, epic, or dependencies.
         For board fields (status, sprint, story_points, priority, assignee) use scrum_set_field.
 
-        WARNING - labels and assignees REPLACE the full existing set, they do not append.
-        Call scrum_get_story first if you want to add a label without removing existing ones.
-        body also replaces the entire body - read first if you intend to append.
+        WARNING — labels and assignees REPLACE the full existing set, they do not append.
+        To add one label without losing the rest: call scrum_get_item_detail first, merge the
+        new label into the existing labels array, then pass the merged set here.
+        Same applies to assignees — always read first unless intent is to replace wholesale.
+        body also replaces the entire body — read first if you intend to append content.
 
         Args:
           ref        { number: integer } | { id: string } - story to update

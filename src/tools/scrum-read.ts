@@ -5,22 +5,8 @@
 // =============================================================================
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-
-// ── Tool name constants ────────────────────────────────────────────────────────
-// Single source of truth for every tool this module registers.
-// Imported by src/server.ts for degraded-mode stub registration.
-
-export const SCRUM_READ_TOOL_NAMES = [
-  // Active tools
-  "scrum_orient",
-  "scrum_find_items",
-  "scrum_get_item_detail",
-  "scrum_get_board_health",
-  "scrum_get_analytics",
-] as const;
 import type { FileReaderPort, ProjectBackend } from "../scrum/ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
-
 import {
   FindItemsSchema,
   GetAnalyticsSchema,
@@ -34,6 +20,19 @@ import { getStoryUseCase } from "../scrum/get-story.ts";
 import { findItemsUseCase } from "../scrum/find-items.ts";
 import { getAnalyticsUseCase } from "../scrum/get-analytics.ts";
 import { getBoardHealthUseCase } from "../scrum/get-board-health.ts";
+
+// ── Tool name constants ────────────────────────────────────────────────────────
+// Single source of truth for every tool this module registers.
+// Imported by src/server.ts for degraded-mode stub registration.
+
+export const SCRUM_READ_TOOL_NAMES = [
+  // Active tools
+  "scrum_orient",
+  "scrum_find_items",
+  "scrum_get_item_detail",
+  "scrum_get_board_health",
+  "scrum_get_analytics",
+] as const;
 
 // ── Tool registration ──────────────────────────────────────────────────────────
 
@@ -56,6 +55,14 @@ export const registerScrumReadTools = (
         and the declared Scrum vocabulary for this project (status options, priority tiers,
         sprint names). The vocabulary values returned here are the exact strings you must
         pass to write tools - they are project-specific and cannot be guessed.
+
+        Key fields to cache for the session:
+          platform_state.deadline_field — null when the project does not track deadlines via a
+            custom field. When non-null, it is the exact key to use when reading deadline values
+            from item.custom_fields[deadline_field]. Do not re-orient just to retrieve this value.
+          vocabulary.sprint.velocity_window — preferred history window for scrum_get_analytics calls.
+          vocabulary.status — canonical key → display label map; always resolve status values from
+            here before passing to scrum_set_field. Never hardcode strings like "Done" or "In Progress".
 
         No arguments required. Pass {} or omit arguments entirely.`,
       inputSchema: z.object({ _: z.string().optional() }).shape,
@@ -118,25 +125,34 @@ export const registerScrumReadTools = (
         Search by scope, keys, text, type, status, priority, epic, labels, assignee,
         or sprint. Optionally include the full dependency graph.
 
+        scope vs sprint_ref — two distinct filters, use the right one:
+          scope: "sprint"        → items in the CURRENT active sprint ("what's in this sprint")
+          sprint_ref: "Sprint 3" → items in a named or historical sprint (retro, cross-sprint queries)
+          These are orthogonal. scope sets the query domain; sprint_ref targets a specific iteration.
+
         Args:
           scope  "backlog" | "sprint" | "all" - default: "all"
-          keys   string[] - numeric issue keys to fetch directly, e.g. ["42", "123"]
+          keys   string[] - fetch specific items by issue number; MUST be strings: ["42", "123"] not [42, 123]
           search string - case-insensitive substring match on title + body
-          types  string[] - filter by item type canonical keys (e.g. ["feature", "bug"])
+          types  string[] - filter by item type canonical keys (e.g. ["feature", "bug", "impediment"])
           statuses string[] - filter by status display names (e.g. ["In Progress"])
           priority string - filter by priority display name (e.g. "Must")
           epic_id string - filter by epic/milestone ID
           labels string[] - require ALL of these labels
           assignee string - filter by GitHub login
           estimated boolean - true = estimated only; false = unestimated only
-          sprint_ref "current" | "next" | "<name>" - filter by sprint
-          include_dependencies boolean (default false) - include dependency_map
+          sprint_ref "current" | "next" | "<name>" - filter by sprint (named or historical)
+          include_dependencies boolean (default false) - include dependency_map.
+                   EXPENSIVE: triggers a full graph traversal. Only pass true for ReadinessCheck
+                   (verify all blocked_by items are Done before sprint entry) or SprintReport
+                   (count items with unresolved upstream dependencies). Default false for all other queries.
           limit number (default 50)
 
         Returns: {
-          items: ItemListing[],
-          scope_summary: { total_count, limit, scope, filters_applied },
-          dependency_map?: DependencyMap  - only if include_dependencies=true
+          items: BacklogItemListing[],
+          total_count: number,           ← top-level field, NOT inside scope_summary
+          scope_summary: { sprint_count: number | null, backlog_count: number | null },
+          dependency_map: DependencyMap | null  - populated only when include_dependencies=true
         }`,
       inputSchema: FindItemsSchema.shape,
       annotations: {
@@ -160,6 +176,14 @@ export const registerScrumReadTools = (
     {
       title: "Get Sprint Analytics",
       description: `Unified sprint analytics - burndown + velocity history.
+
+        Always pass view explicitly — default "both" fetches more data than most calls need:
+          "burndown" → standup / daily monitoring (current sprint progress only)
+          "history"  → velocity question, retrospective preparation (completed sprints only)
+          "both"     → sprint report, full board assessment
+
+        Set history_window from vocabulary.sprint.velocity_window in scrum_orient (default 5 if absent).
+        Do not leave it at the server default when the config declares a preferred window.
 
         Args:
           view   "burndown" | "history" | "both" - default: "both"

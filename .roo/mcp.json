@@ -1,54 +1,84 @@
 {
-  "mcpServers": {
-    "scrum-master": {
-      "command": "deno",
-      "args": ["task", "start"],
-      "env": {
-        "MCP_TRANSPORT": "stdio"
-      },
-      "timeout": 300
-    },
-    "memory": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-memory"],
-      "alwaysAllow": [
-        "create_entities",
-        "create_relations",
-        "add_observations",
-        "read_graph",
-        "search_nodes",
-        "open_nodes"
-      ],
-      "disabled": true
-    },
-    "github": {
-      "command": "github-mcp-server",
-      "args": ["stdio"],
-      "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "${env:GITHUB_TOKEN}"
-      },
-      "alwaysAllow": ["pull_request_read", "issue_read"],
-      "disabled": true
-    },
-    "mempalace": {
-      "command": "mempalace-mcp",
-      "args": [],
-      "disabled": false,
-      "alwaysAllow": ["mempalace_search", "mempalace_kg_add"]
-    },
-    "sequentialthinking": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
-      "alwaysAllow": ["sequentialthinking"]
-    },
-    "searxng": {
-      "command": "npx",
-      "args": ["-y", "mcp-searxng"],
-      "env": {
-        "SEARXNG_URL": "http://127.0.0.1:8080"
-      },
-      "alwaysAllow": ["searxng_web_search", "web_url_read"],
-      "disabled": false
-    }
-  }
+	"mcpServers": {
+		"scrum-master": {
+			"command": "deno",
+			"args": [
+				"task",
+				"start"
+			],
+			"env": {
+				"MCP_TRANSPORT": "stdio"
+			},
+			"timeout": 300,
+			"alwaysAllow": [
+				"scrum_orient",
+				"scrum_get_board_health",
+				"scrum_find_items"
+			]
+		},
+		"memory": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@modelcontextprotocol/server-memory"
+			],
+			"alwaysAllow": [
+				"create_entities",
+				"create_relations",
+				"add_observations",
+				"read_graph",
+				"search_nodes",
+				"open_nodes"
+			],
+			"disabled": true
+		},
+		"github": {
+			"command": "github-mcp-server",
+			"args": [
+				"stdio"
+			],
+			"env": {
+				"GITHUB_PERSONAL_ACCESS_TOKEN": "${env:GITHUB_TOKEN}"
+			},
+			"alwaysAllow": [
+				"pull_request_read",
+				"issue_read"
+			],
+			"disabled": true
+		},
+		"mempalace": {
+			"command": "mempalace-mcp",
+			"args": [],
+			"disabled": false,
+			"alwaysAllow": [
+				"mempalace_search",
+				"mempalace_kg_add"
+			]
+		},
+		"sequentialthinking": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@modelcontextprotocol/server-sequential-thinking"
+			],
+			"alwaysAllow": [
+				"sequentialthinking"
+			]
+		},
+		"searxng": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"mcp-searxng"
+			],
+			"env": {
+				"SEARXNG_URL": "http://127.0.0.1:8080"
+			},
+			"alwaysAllow": [
+				"searxng_web_search",
+				"web_url_read"
+			],
+			"disabled": false
+		}
+	}
 }
