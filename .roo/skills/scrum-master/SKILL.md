@@ -4,32 +4,16 @@ description: >
   Project Manager / Scrum Master skill for solo-work environments.
   Covers board management, item health, deadline tracking, implementation handoff,
   delivery verification, estimation guidance, and coaching.
-  When the scrum-master mode is active, this file is the routing index for
-  reference files. Read it when the request type is Coaching, ItemAssessment,
-  StoryPoints, or when a concept is needed that the mode's playbooks do not address.
+  Read this file when the request type is Coaching, ItemAssessment, StoryPoints,
+  or when a concept needs more depth than the mode's playbooks provide.
 ---
 
 # Scrum Master Skill
 
-## Operating context
-
-This agent operates primarily as a **solo-work project manager**:
-- The human (or another agent) is executing the work. The SM's job is to keep the board
-  clean, items well-formed, and the next action always clear.
-- Ceremonies exist and are supported, but they are **not the primary function**.
-  The agent facilitates them only when explicitly requested.
-- The SM does not implement tickets, assign story points unilaterally, or deliver tasks.
-  It manages, coaches, documents, and hands off.
-
-Ground every answer in **Transparency · Inspection · Adaptation**.
-
----
-
 ## Item type taxonomy
 
-Item types are loaded from `vocabulary.item_types` via `scrum_orient`. The list below is
-the **canonical baseline** for coaching and mismatch detection. For full mismatch criteria,
-format rules, and fallback templates, read `references/item-types.md`.
+Types are loaded from `vocabulary.item_types` via `scrum_orient`. For full mismatch criteria,
+format rules, and fallback templates read `references/item-types.md`.
 
 | Type | Core signal | Key format requirement |
 |---|---|---|
@@ -39,140 +23,74 @@ format rules, and fallback templates, read `references/item-types.md`.
 | `tech_debt` | Internal quality improvement | Debt description + cost of deferral |
 | `impediment` | Blocking factor | What it blocks + who owns resolution |
 
-When the declared type does not match the content signals above, surface a mismatch flag
-to the human. Do not auto-reclassify.
+When declared type does not match content signals: surface a mismatch flag. Do not auto-reclassify.
+Config templates take precedence. Fall back to `references/item-types.md` only when no config template exists.
 
-**Config templates take precedence.** If `vocabulary.item_types` contains a `template` for
-a type, use it. Fall back to `references/item-types.md` canonical formats only when no
-config template exists.
+## Estimation scale
 
----
-
-## Estimation scale guidance
-
-Story points and priority are **independent dimensions**. Conflating them is a common
-dysfunction — surface it when you see it.
+SP and priority are independent dimensions. Conflating them is a dysfunction — surface it when seen.
 
 | Dimension | What it measures | Who decides |
 |---|---|---|
 | Story points | Effort / complexity / uncertainty | Human (after SM provides reasoned range) |
 | Priority | Business / delivery value | Human (PO or equivalent) |
 
-A high-priority item may be 1 point. A 13-point item may be medium priority.
-When both are large AND high-priority, that is a signal to split the item.
-
-When providing an estimation range: ask the human to describe scope, complexity,
-and unknowns first. Apply `references/advanced-practices.md` §Estimation to anchor
-the range. State what would push the estimate up or down. The human commits the final value.
-
----
-
 ## Quality gates
 
-**Definition of Ready** — an item enters Planning only if ALL are true:
-1. Written in the format required for its type (see item type taxonomy above)
+**Definition of Ready** — item enters Planning only if ALL are true:
+1. Written in the format required for its type
 2. Acceptance criteria defined, specific, and testable
 3. Estimated by the team
 4. Dependencies identified and de-risked
 5. Completable within one sprint
 
-**Definition of Done** — an increment is Done only if ALL are true:
-1. All acceptance criteria met and verified (via DeliveryVerification if in doubt)
-2. Code reviewed (or self-reviewed if solo) and approved
+**Definition of Done** — increment is Done only if ALL are true:
+1. All AC met and verified (via DeliveryVerification if in doubt)
+2. Code reviewed and approved
 3. Tests written and passing
 4. No new linting or type errors introduced
 5. Documentation updated if public behaviour changed
 
-*Project-specific DoR and DoD live in `.github/scrum/config.yml` and are returned by
-`scrum_orient`. Use those when operating on the board; use the above as the canonical
-baseline for coaching when no project config exists.*
+*Project-specific DoR/DoD from `.github/scrum/config.yml` (returned by `scrum_orient`) take precedence.*
 
----
+## Backlog management
 
-## Backlog signals
-
-**DEEP** (signals for the SM when reviewing backlog health):
-`Detailed appropriately · Estimated · Emergent · Prioritised`
-
-**INVEST** (signals for a well-formed story):
-`Independent · Negotiable · Valuable · Estimable · Small · Testable`
-
----
-
-## Backlog management operations
-
-### Backlog health definition
-
-A healthy backlog satisfies all of the following:
+**Healthy backlog criteria:**
 - Top-N items (N ≥ 1.5× velocity in SP) are DoR-complete
 - No single item exceeds ~40% of sprint velocity without a split plan
 - Fewer than 15% of sprint-candidate items have no estimate
-- No item in the top 20 has been untouched for 2+ sprints
+- No item in the top 20 untouched for 2+ sprints
 
-When asked "is our backlog in good shape?" — evaluate against these four criteria, not just list items.
+**Throughput forecast:** `sprints_to_clear = remaining_backlog_SP / avg_velocity`
+Flag when `sprints_to_clear > planning_horizon`.
 
-### Velocity-based throughput forecasting
+**Sprint capacity:** `capacity_SP = available_days × focus_factor × avg_SP_per_dev_day`
+Focus factor: 0.6–0.7 (meetings/reviews); 0.7–0.8 (solo/async-heavy).
 
-`sprints_to_clear = remaining_backlog_SP / avg_velocity`
-
-Fetch `avg_velocity` from `scrum_get_analytics(view: "history", history_window: velocity_window)`.
-Use the mean of completed sprint velocities. Flag when `sprints_to_clear > planning_horizon`
-(e.g., more than 6 sprints of backlog work for a 3-month horizon).
-
-### Sprint capacity quick reference
-
-`capacity_SP = available_days × focus_factor × avg_SP_per_dev_day`
-
-Focus factor: 0.6–0.7 for teams with regular meetings and reviews; 0.7–0.8 for solo or async-heavy work.
-Use this to sanity-check proposed sprint scope before committing — no tool call required.
-
-### DoR completeness check (on-demand)
-
-Run this sequence when asked to assess whether the backlog is ready for planning:
-
-1. `scrum_find_items(scope: "backlog")` — load items in unrefined or "ready" state
-2. For each item: check body for AC presence, check `story_points` for non-null, check type vs content signals
-3. Produce a gap table: item number | title | gap description
+**DoR completeness check sequence:**
+1. `scrum_find_items(scope: "backlog")`
+2. Per item: check body for AC, `story_points` for non-null, type vs. content signals
+3. Produce gap table: item number | title | gap
 4. Offer `scrum_update_story` to fill each gap inline on confirmation
-5. After fixes: restate which items are now DoR-complete and which remain blocked
+5. Restate which items are DoR-complete and which remain blocked
 
-Priority stack validation: confirm top-N items (N = sprint capacity in items) are all DoR-complete
-before recommending a planning session. If >30% of top-N fail: flag as refinement debt first.
-
-### Icebox and staleness management
-
-An item is a staleness candidate when ALL are true:
-- No field has been updated in 60+ days
-- It is not in the active sprint
-- It has no open dependencies on it
-
-When a staleness candidate is found, surface it with three options:
-1. Re-confirm intent — update the description to reset the staleness signal
-2. Move to icebox — add an "icebox" label; leave open but de-prioritised
-3. Close as won't-do — add a brief rationale comment, then close
-
-Never silently archive or delete. Every disposition is human-confirmed.
-
----
+**Staleness:** item is a staleness candidate when: no field updated in 60+ days AND not in active
+sprint AND no open dependencies on it. Surface with three options: re-confirm intent / icebox /
+close as won't-do. Never silently archive or delete.
 
 ## When `scrum_*` tools are available
 
-For any coaching response that references project metrics, call the relevant read tool first.
-Reference files provide frameworks, never data.
-
-- Velocity, completion trends, retro history → call `scrum_get_analytics` first
-- Burndown or sprint progress → call `scrum_get_analytics` first
-- Current sprint state → call `scrum_find_items(scope: "sprint")` or `scrum_get_board_health`
-- Board vocabulary, field gaps, item type templates → call `scrum_orient` first
-
----
+For any coaching response referencing project metrics, call the relevant read tool first.
+- Velocity, completion trends → `scrum_get_analytics` first
+- Burndown / sprint progress → `scrum_get_analytics` first
+- Current sprint state → `scrum_find_items(scope: "sprint")` or `scrum_get_board_health`
+- Board vocabulary, field gaps, item type templates → `scrum_orient` first
 
 ## Playbook routing
 
-Operational playbooks live in `playbooks/`. The workflow rules (`1_workflow.xml`) specify which playbook to read for each request type — do not load them speculatively.
-
 | Playbook | Covers |
 |---|---|
+| `playbooks/item-creation.md` | Full gate protocol: duplicate scan, content draft, field confirmation (SP · priority · epic · sprint · labels), creation manifest, post-creation audit |
 | `playbooks/item-assessment.md` | Type classification, DoR/DoD checks, content quality |
 | `playbooks/deadline-tracking.md` | Overdue items, sprint end risk |
 | `playbooks/story-points.md` | Estimation guidance, priority vs. SP distinction |
@@ -180,31 +98,31 @@ Operational playbooks live in `playbooks/`. The workflow rules (`1_workflow.xml`
 | `playbooks/delivery-verification.md` | AC verification via research subtask, Done gate |
 | `playbooks/recommendation.md` | Weighted next-ticket recommendation |
 | `playbooks/audit-logging.md` | When and how to add item comments |
-| `playbooks/ceremony-backlog-transitions.md` | Pre/post-ceremony backlog operations (DoR check, carry-over, retro story, refinement) |
+| `playbooks/ceremony-backlog-transitions.md` | Pre/post-ceremony backlog operations |
 | `playbooks/transitions.md` | Project setup, stale recovery, board catchup (on-demand only) |
 
----
-
-## Reference routing table
+## Reference routing
 
 Read only the file and section the request requires. Do not load speculatively.
 
 | Request involves… | Read |
 |---|---|
-| Item type mismatch criteria, fallback body formats, mismatch signals | `references/item-types.md` |
-| Drafting a ceremony document (planning board, standup log, review notes, retro, DoR/DoD, PBI) | `references/templates-ceremonies.md` (describe to human; do not run the ceremony) |
-| Drafting a management artifact (velocity tracker, charter, release roadmap, capacity calendar, impediment log, decision log) | `references/templates-management.md` |
-| Coaching a person — GROW, SBI, powerful questions | `references/sm-coaching.md` §Coaching models |
-| Facilitation technique needed (dot voting, 1-2-4-all, timeboxing, fist to five) | `references/sm-coaching.md` §Facilitation |
-| Choosing a retrospective format | `references/sm-coaching.md` §Retrospective formats |
+| Item type mismatch criteria, fallback body formats | `references/item-types.md` |
+| AC quality rules (minimum count, error path, observable behaviour) | `references/item-types.md §ac_quality` |
+| INVEST criteria, story splitting, estimation methods | `references/advanced-practices.md` |
+| Ceremony document drafting | `references/templates-ceremonies.md` |
+| Management artifact drafting | `references/templates-management.md` |
+| Coaching — GROW, SBI, powerful questions | `references/sm-coaching.md` §Coaching models |
+| Facilitation technique | `references/sm-coaching.md` §Facilitation techniques |
+| Retrospective format selection | `references/sm-coaching.md` §Retrospective formats |
 | Conflict between team members | `references/sm-coaching.md` §Conflict resolution |
 | Team health metrics or SM self-assessment | `references/sm-coaching.md` §Team health, §SM self-assessment |
-| Remote / distributed team or onboarding a new team | `references/sm-coaching.md` §Remote SM, §Onboarding |
-| Introducing Scrum to an ongoing project, Sprint 0 vs Sprint 1, first sprint setup, v1 DoD | `references/sm-coaching.md` §Bootstrap |
-| Resuming a paused project, restart retrospective, re-baseline velocity, calibration sprint | `references/sm-coaching.md` §Stale recovery |
-| Board is outdated, reconciling board with actual progress, solo or informal team catchup | `references/sm-coaching.md` §Board catchup |
-| Diagnosing an anti-pattern or naming a dysfunction | `references/dysfunctions.md` |
-| Estimation methods, velocity calculation, capacity formula | `references/advanced-practices.md` §Estimation, §Velocity |
-| Story splitting or story mapping | `references/advanced-practices.md` §Story splitting |
-| Scaling Scrum (Scrum of Scrums, SAFe, LeSS) | `references/advanced-practices.md` §Scaling |
-| Game studio, art pipeline, publisher, milestone, multi-discipline team | `references/game-development.md` |
+| Remote / distributed team or onboarding | `references/sm-coaching.md` §Remote, §Onboarding |
+| Introducing Scrum, Sprint 0 vs 1, first sprint, v1 DoD | `references/sm-coaching.md` §Bootstrap |
+| Resuming a paused project, re-baseline velocity | `references/sm-coaching.md` §Stale recovery |
+| Board outdated, reconciling board with actual progress | `references/sm-coaching.md` §Board catchup |
+| Anti-pattern or dysfunction diagnosis | `references/dysfunctions.md` |
+| Velocity calculation, capacity formula | `references/advanced-practices.md` §Velocity |
+| Story splitting or mapping | `references/advanced-practices.md` §Story splitting |
+| Scaling Scrum | `references/advanced-practices.md` §Scaling |
+| Game studio, art pipeline, publisher milestones | `references/game-development.md` |

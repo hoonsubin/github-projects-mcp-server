@@ -1,38 +1,12 @@
 # Item Types Reference
 
-This file defines the canonical fallback formats and mismatch detection criteria for each
-item type. It is used when:
-
-1. **Drafting or reviewing item content** and no `template` is configured for that type
-   in `vocabulary.item_types` from `scrum_orient`.
-2. **Detecting type mismatches** during the board health check or `item_assessment_playbook`.
-
-> **Config templates always win.** If `vocabulary.item_types` contains a `template` for a
-> given type, use it. The formats below are fallbacks only.
-
----
-
-## Template precedence rule
-
-```
-scrum_orient → vocabulary.item_types[type].template  (use if present)
-  ↓ not present
-references/item-types.md canonical format            (use as fallback)
-```
-
----
+> Config templates always win. If `vocabulary.item_types` contains a `template` for a given type, use it. The formats below are fallbacks only.
 
 ## Item types
 
-Item types are loaded dynamically from `scrum_orient`. The entries below cover the canonical
-baseline types. If the project config defines additional types not listed here, treat them
-as `user_story` for format purposes unless the config template specifies otherwise.
-
----
-
 ### `user_story`
 
-**Purpose:** A user-facing, outcome-oriented unit of work that delivers value to an end user.
+**Purpose:** User-facing, outcome-oriented unit of work that delivers value to an end user.
 
 **Mismatch signals (flag if present):**
 - Body describes investigation, research, or a technical spike with no user-facing outcome
@@ -53,8 +27,6 @@ As a [type of user], I want [goal] so that [benefit].
 ## Notes
 [Dependencies, constraints, or open questions]
 ```
-
----
 
 ### `bug`
 
@@ -90,12 +62,9 @@ As a [type of user], I want [goal] so that [benefit].
 - [ ] [The specific behaviour that confirms the bug is resolved]
 ```
 
----
-
 ### `spike`
 
-**Purpose:** A time-boxed investigation to resolve an unknown or evaluate an option.
-The output is a finding, a decision, or a recommendation — not working code or a feature.
+**Purpose:** Time-boxed investigation to resolve an unknown or evaluate an option. Output is a finding, decision, or recommendation — not working code or a feature.
 
 **Mismatch signals (flag if present):**
 - AC describes a deliverable (code, feature, UI) rather than a decision or document
@@ -124,12 +93,9 @@ The output is a finding, a decision, or a recommendation — not working code or
 [Where the findings will be recorded — e.g., comment on this item, ADR, wiki page]
 ```
 
----
-
 ### `tech_debt`
 
-**Purpose:** Captures an internal quality improvement that reduces future cost or risk.
-Does not deliver user-facing value directly.
+**Purpose:** Captures an internal quality improvement that reduces future cost or risk. Does not deliver user-facing value directly.
 
 **Mismatch signals (flag if present):**
 - Describes a user-facing feature or behaviour change → likely a `user_story`
@@ -158,12 +124,9 @@ Does not deliver user-facing value directly.
 [Affected modules, files, or systems]
 ```
 
----
-
 ### `impediment`
 
-**Purpose:** Tracks a blocking factor that prevents work from progressing.
-May be technical, organisational, or external.
+**Purpose:** Tracks a blocking factor that prevents work from progressing. May be technical, organisational, or external.
 
 **Mismatch signals (flag if present):**
 - Describes work to be done rather than a factor blocking work → likely a `user_story` or `task`
@@ -195,7 +158,40 @@ May be technical, organisational, or external.
 | [date] | Impediment logged |
 ```
 
----
+## §ac_quality — Acceptance criteria quality rules
+
+### user_story
+
+**Minimum count:** At least 3 criteria per story: 1+ happy path, 1+ error or edge case path, additional criteria for any other significant variation in behaviour.
+
+**Observable behaviour only:** Each criterion must describe something a person or automated test can directly observe — not an internal system action.
+- ✓ "The user sees an error message stating their session has expired."
+- ✗ "The auth service returns a 401 status code." ← internal, not user-observable
+- ✓ "The export file downloads as `report-2024-01.csv` with correct column headers."
+- ✗ "The CSV serialiser formats the output correctly." ← describes implementation
+
+**No compound conditions:** Each criterion is one assertion. If the word "and" joins two observable outcomes, split into two separate criteria.
+- ✗ "The form resets and the user sees a success toast." → split into two criteria
+
+**Testability gate:** If a criterion cannot be answered with a clear pass/fail by someone who has never seen the code, rewrite it. Vague words that fail this gate: "correctly", "properly", "appropriately", "as expected", "works", "handles".
+
+If any of these rules are violated in a draft, surface the specific failing criteria and offer rewrites before proceeding to Phase 3. Do not advance to field confirmation while AC is not quality-compliant.
+
+### bug
+
+**Minimum count:** At least 1 criterion — the specific, observable behaviour that confirms the bug is resolved. Generic criteria ("the bug is fixed") do not qualify.
+
+**Regression path:** When the bug has a known repro path, the AC should confirm that the exact reproduction steps from the bug description now produce the expected (not actual) behaviour.
+
+### tech_debt
+
+**Minimum count:** At least 2 criteria: 1 technical outcome criterion (the improved state is measurable or observable in code/tests) and 1 regression guard (existing behaviour is preserved — tests pass, no new failures).
+
+**No user-facing scope creep:** AC should not describe new user-visible behaviour. If a criterion does, the item has drifted into `user_story` territory — surface a type mismatch flag.
+
+### spike
+
+Spikes do not use standard AC. Their "Definition of Done" section replaces AC. The done criteria must describe a deliverable artefact (document, ADR, prototype, decision record) — not code or a feature. If the spike output section describes working software, flag a type mismatch: this should be a `user_story` or `tech_debt`.
 
 ## Reclassification protocol
 

@@ -1,8 +1,6 @@
 # Scrum Dysfunctions & Anti-Patterns
 
-*Game-studio-specific anti-patterns → `game-development.md` §7.*
-
----
+*Game-studio-specific anti-patterns: `game-development.md` §7.*
 
 ## Role dysfunctions
 
@@ -33,8 +31,6 @@
 | Siloed specialists | "Not my job"; handoffs over collaboration | Cross-train; mob programming; T-shape |
 | Over-commitment spiral | Consistently takes more than completes | 3-sprint avg velocity + 20% buffer |
 | No self-organisation | Always waits for SM/PO direction | SM stops answering "what should I do?"; team walks the board |
-
----
 
 ## Ceremony dysfunctions
 
@@ -74,8 +70,6 @@
 | Blame sessions | Norms set up front; "processes, not people" |
 | No committed action | One measurable commitment, every retro |
 
----
-
 ## Artifact dysfunctions
 
 | Dysfunction | Fix |
@@ -87,19 +81,11 @@
 | DoD lowered for deadline | Tech-debt item instead; never lower |
 | Burndown flat 3+ days | SM escalates; re-plan remaining work at standup |
 
----
-
 ## Team dysfunctions
 
-### Low psychological safety
-**Signs:** no one speaks in retros; blockers reported late or hidden; mistakes covered up.
-**Fixes:** SM sets explicit norms each retro; PO thanks team for surfacing bad news; celebrate learnings from failures.
+**Low psychological safety** — Signs: no one speaks in retros; blockers reported late or hidden; mistakes covered up. Fixes: SM sets explicit norms each retro; PO thanks team for surfacing bad news; celebrate learnings from failures.
 
-### Knowledge concentration
-**Signs:** one person is the only one who can do a critical thing; velocity collapses when they're absent.
-**Fixes:** pair on critical paths; "truck number" exercise; rotate ownership.
-
----
+**Knowledge concentration** — Signs: one person is the only one who can do a critical thing; velocity collapses when they're absent. Fixes: pair on critical paths; "truck number" exercise; rotate ownership.
 
 ## Organisational dysfunctions
 
