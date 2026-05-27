@@ -108,7 +108,6 @@ const getQuery = (name: string): string => {
 // Each call to getQuery() validates that the operation exists in operations.graphql
 // at startup - throwing immediately if any expected name is absent.
 
-getQuery("GetUserProjectItems"); // startup validation only; not imported elsewhere
 export const GET_ISSUE_DETAILS_QUERY = getQuery("GetIssueDetails");
 export const GET_ITEM_FIELDS_QUERY = getQuery("GetItemFields");
 export const GET_DRAFT_ISSUE_DETAILS_QUERY = getQuery("GetDraftIssueDetails");
@@ -127,7 +126,6 @@ export const GET_BLOCKED_BY_QUERY = getQuery("GetBlockedBy");
 
 // ── Repository and user lookups ────────────────────────────────────────────────
 export const GET_REPO_QUERY = getQuery("GetRepo");
-export const GET_USER_MILESTONES_QUERY = getQuery("GetUserMilestones");
 
 // ── Field management queries ───────────────────────────────────────────────────
 export const GET_FIELD_OPTIONS_QUERY = getQuery("GetFieldOptions");
@@ -150,9 +148,6 @@ export const SET_MILESTONE_MUTATION = getQuery("SetMilestone");
 
 // ── Comment mutations ──────────────────────────────────────────────────────────
 export const ADD_COMMENT_MUTATION = getQuery("AddComment");
-
-// ── Milestone mutations ────────────────────────────────────────────────────────
-export const CREATE_MILESTONE_MUTATION = getQuery("CreateMilestone");
 
 // ── Field management mutations ─────────────────────────────────────────────────
 export const UPDATE_FIELD_MUTATION = getQuery("UpdateField");

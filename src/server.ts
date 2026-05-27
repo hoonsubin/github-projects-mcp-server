@@ -274,7 +274,7 @@ const createMcpServer = async (
 
   const { backend, fileReader, scrumConfig, typeTemplatePaths } = backendResult;
 
-  registerScrumReadTools(server, backend, scrumConfig, fileReader);
+  registerScrumReadTools(server, backend, scrumConfig);
   registerScrumWriteTools(server, backend, scrumConfig);
 
   if (fileReader) {

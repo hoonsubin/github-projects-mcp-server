@@ -705,18 +705,6 @@ query GetRepo($owner: String!, $repo: String!) {
   repository(owner: $owner, name: $repo) { id }
 }
 
-# ── GetUserMilestones ──────────────────────────────────────────────────────────
-# Fetch open milestones for a repository.
-# Used by user-milestone-resolver.ts for milestone title-to-ID resolution.
-
-query GetUserMilestones($owner: String!, $repo: String!) {
-  repository(owner: $owner, name: $repo) {
-    milestones(first: 100, states: [OPEN]) {
-      nodes { id title }
-    }
-  }
-}
-
 
 # ══════════════════════════════════════════════════════════════════════════════
 # QUERIES - Field management
@@ -853,17 +841,6 @@ mutation SetMilestone($issueId: ID!, $milestoneId: ID!) {
 mutation AddComment($subjectId: ID!, $body: String!) {
   addComment(input: { subjectId: $subjectId, body: $body }) {
     commentEdge { node { id } }
-  }
-}
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# MUTATIONS - Milestone management
-# ══════════════════════════════════════════════════════════════════════════════
-
-mutation CreateMilestone($repositoryId: ID!, $title: String!) {
-  createMilestone(input: { repositoryId: $repositoryId, title: $title }) {
-    milestone { id }
   }
 }
 
