@@ -61,10 +61,11 @@ export const orientUseCase = async (
   });
   warnings.push(...stateWarnings);
 
-  // ── Optional: epic enumeration ────────────────────────────────────────
-  const sprintIterationId = state?.iterations.active?.id ?? null;
+  // ── Optional: current active epic enumeration ────────────────────────────────────────
+  // Pass the SprintRef "current" rather than the raw iteration ID so the adapter
+  // can resolve it via semantic reference (resolveSprint performs title-based lookup).
   const { value: allEpics, warnings: epicWarnings } = await catchBackend(
-    () => backend.getEpics(sprintIterationId),
+    () => backend.getEpics("current"),
   );
   warnings.push(...epicWarnings);
 

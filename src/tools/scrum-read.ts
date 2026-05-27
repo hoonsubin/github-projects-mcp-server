@@ -116,6 +116,8 @@ export const registerScrumReadTools = (
 
   // ── scrum_find_items ───────────────────────────────────────────────────────
 
+  // todo: improve this tool so epic can be a search scope
+  // the search argument and method should also be improved so it's more generalized and flexible
   server.registerTool(
     "scrum_find_items",
     {
