@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/diagram/tool-surface/DomainTypeExtractor.ts
+// scripts/diagram/DomainTypeExtractor.ts
 //
 // Extracts class/relationship info from plain TypeScript source files.
 // Handles: interface, type alias (union, branded, object), enum, const tuple.
@@ -9,6 +9,7 @@
 // =============================================================================
 
 import * as ts from "typescript";
+import type { ParsedModule } from "./ParsedModule.ts";
 import type { ExtractedClass, ExtractedRelationship, NamespaceName } from "./types.ts";
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -16,45 +17,26 @@ import type { ExtractedClass, ExtractedRelationship, NamespaceName } from "./typ
 export interface DomainExtractorResult {
   classes: ExtractedClass[];
   relationships: ExtractedRelationship[];
-  /**
-   * Warnings emitted during extraction.
-   * Each entry describes an inline anonymous type that should be a named type
-   * instead — anonymous object literals embedded in unions/intersections
-   * violate the single-responsibility principle for types and also force
-   * the diagram generator to invent ad-hoc bracket notation because Mermaid
-   * cannot represent curly braces inside a class body.
-   */
   warnings: string[];
-  /**
-   * Names of classes that triggered at least one clean-code warning.
-   * The diagram generator uses this set to apply the "warning" colour style
-   * (red text / red border) to those nodes.
-   */
   warningNodes: Set<string>;
 }
 
 /**
- * Parse a TypeScript source file and return all types it declares as
- * ExtractedClass objects, plus the relationships between them.
+ * Parse a TypeScript source file (already loaded as a ParsedModule) and return
+ * all types it declares as ExtractedClass objects, plus the relationships between them.
  *
- * Call this once per file; aggregate results across files before generating.
- *
- * @param filePath  Absolute path (used as sourceFile label only — file is not
- *                  read from disk; pass the content separately).
- * @param source    Raw TypeScript source text.
+ * @param module    Already-parsed module instance (avoids duplicate ts.createSourceFile).
  * @param namespace Which Mermaid namespace to assign all extracted classes to.
  * @param knownNames Optional set of type names already collected from other
  *                   files — used to suppress relationship arrows to unknowns.
- *                   Pass an empty set on the first pass; populate and re-run
- *                   on the second pass.
  */
-export function extractDomainTypes(
-  filePath: string,
-  source: string,
+export const extractDomainTypes = (
+  module: ParsedModule,
   namespace: NamespaceName,
   knownNames: Set<string> = new Set(),
-): DomainExtractorResult {
-  const sourceFile = ts.createSourceFile(filePath, source, ts.ScriptTarget.Latest, true);
+): DomainExtractorResult => {
+  const sourceFile = module.getModuleSource();
+  const filePath = module.filePathName;
 
   const classes: ExtractedClass[] = [];
   const relationships: ExtractedRelationship[] = [];
@@ -65,11 +47,25 @@ export function extractDomainTypes(
     if (!isExported(node)) return;
 
     if (ts.isInterfaceDeclaration(node)) {
-      const { cls, rels } = extractInterface(node, namespace, filePath, knownNames, warnings, warningNodes);
+      const { cls, rels } = extractInterface(
+        node,
+        namespace,
+        filePath,
+        knownNames,
+        warnings,
+        warningNodes,
+      );
       classes.push(cls);
       relationships.push(...rels);
     } else if (ts.isTypeAliasDeclaration(node)) {
-      const result = extractTypeAlias(node, namespace, filePath, knownNames, warnings, warningNodes);
+      const result = extractTypeAlias(
+        node,
+        namespace,
+        filePath,
+        knownNames,
+        warnings,
+        warningNodes,
+      );
       if (result) {
         classes.push(result.cls);
         relationships.push(...result.rels);
@@ -77,14 +73,13 @@ export function extractDomainTypes(
     } else if (ts.isEnumDeclaration(node)) {
       classes.push(extractEnum(node, namespace, filePath));
     } else if (ts.isVariableStatement(node)) {
-      // Handles:  export const ITEM_TYPES = ["bug", "feature", ...] as const
       const result = extractConstTuple(node, namespace, filePath);
       if (result) classes.push(result);
     }
   });
 
   return { classes, relationships, warnings, warningNodes };
-}
+};
 
 // ── Helpers: node classification ──────────────────────────────────────────────
 
@@ -158,11 +153,10 @@ function extractTypeAlias(
   const name = node.name.text;
   const rels: ExtractedRelationship[] = [];
 
-  // Union type: "current" | "next" | null | SprintName  →  <<union>>
+  // Union type
   if (ts.isUnionTypeNode(node.type)) {
     const members = node.type.types.map((t) => formatTypeNode(t, warnings, name, warningNodes));
 
-    // Add relationship arrows to named members that are in the known set
     for (const ref of collectTypeRefs(node.type)) {
       if (known.has(ref) && ref !== name) {
         rels.push({ from: name, to: ref, arrow: "-->", label: ref.toLowerCase() + "-variant" });
@@ -175,7 +169,7 @@ function extractTypeAlias(
     };
   }
 
-  // Branded string: `string & { readonly _brand: "Foo" }`  →  <<branded>>
+  // Branded string
   if (ts.isIntersectionTypeNode(node.type)) {
     const text = sanitizeForMermaid(node.type.getText().replace(/\s+/g, " ").trim());
     return {
@@ -190,30 +184,32 @@ function extractTypeAlias(
     };
   }
 
-  // Simple type reference alias (e.g. `type EpicRef = EntityRef`)
+  // Simple type reference alias
   if (ts.isTypeReferenceNode(node.type)) {
     const target = node.type.typeName.getText();
     if (known.has(target)) {
       rels.push({ from: name, to: target, arrow: "--|>", label: "same shape" });
     }
-    // Don't emit a separate class for a pure alias — the arrow is sufficient.
-    // Return null to skip class emission.
     return null;
   }
 
-  // Template literal type (e.g. `scrum://template/${ItemType}`)  →  skip
+  // Template literal type → skip
   if (ts.isTemplateLiteralTypeNode(node.type)) {
     return null;
   }
 
-  // Object type literal: `{ readonly id: string }` → treat as minimal class
+  // Object type literal → treat as minimal class
   if (ts.isTypeLiteralNode(node.type)) {
     const members: string[] = [];
     for (const member of node.type.members) {
       if (ts.isPropertySignature(member) && member.type) {
         const mName = getNodeText(member.name);
         const optional = member.questionToken ? " opt" : "";
-        members.push(`+${mName} : ${formatTypeNode(member.type, warnings, `${name}.${mName}`, warningNodes)}${optional}`);
+        members.push(
+          `+${mName} : ${
+            formatTypeNode(member.type, warnings, `${name}.${mName}`, warningNodes)
+          }${optional}`,
+        );
       }
     }
     return {
@@ -222,7 +218,6 @@ function extractTypeAlias(
     };
   }
 
-  // Conditional / mapped / utility types → skip (too complex to render usefully)
   return null;
 }
 
@@ -239,10 +234,6 @@ function extractEnum(
 }
 
 // ── Const tuple extraction ────────────────────────────────────────────────────
-//
-// Handles: export const ITEM_TYPES = ["bug", "feature", ...] as const
-// These serve as enumerations in the codebase even though TS represents them
-// as const assertions on array literals.
 
 function extractConstTuple(
   node: ts.VariableStatement,
@@ -253,7 +244,6 @@ function extractConstTuple(
     const name = decl.name.getText();
     const init = decl.initializer;
 
-    // Look for: ... = [...] as const
     if (
       init &&
       ts.isAsExpression(init) &&
@@ -272,12 +262,6 @@ function extractConstTuple(
 }
 
 // ── Type node → display string ────────────────────────────────────────────────
-//
-// Converts a TypeScript AST TypeNode into a human-readable string suitable
-// for Mermaid class member lines.  Does NOT need the type-checker.
-//
-// @param warnings  Collector for clean-code violations (inline anonymous types).
-// @param context   Human-readable location for the warning message, e.g. "StoryRef.number".
 
 function formatTypeNode(
   typeNode: ts.TypeNode,
@@ -285,109 +269,100 @@ function formatTypeNode(
   context = "<unknown>",
   warningNodes = new Set<string>(),
 ): string {
-  // Named reference (EntityRef, string, number, boolean, …)
   if (ts.isTypeReferenceNode(typeNode)) {
     const name = typeNode.typeName.getText();
-    // Generic: Record<K, V>, Partial<T>, …
     if (typeNode.typeArguments?.length) {
       const args = typeNode.typeArguments
         .map((a) => formatTypeNode(a, warnings, context, warningNodes))
         .join(",");
-      return `${name}~${args}~`; // Mermaid uses ~ for generics
+      return `${name}~${args}~`;
     }
     return name;
   }
 
-  // Primitive keywords
   switch (typeNode.kind) {
-    case ts.SyntaxKind.StringKeyword:    return "string";
-    case ts.SyntaxKind.NumberKeyword:    return "number";
-    case ts.SyntaxKind.BooleanKeyword:   return "boolean";
-    case ts.SyntaxKind.NullKeyword:      return "null";
-    case ts.SyntaxKind.UndefinedKeyword: return "undefined";
-    case ts.SyntaxKind.UnknownKeyword:   return "unknown";
-    case ts.SyntaxKind.VoidKeyword:      return "void";
-    case ts.SyntaxKind.AnyKeyword:       return "any";
+    case ts.SyntaxKind.StringKeyword:
+      return "string";
+    case ts.SyntaxKind.NumberKeyword:
+      return "number";
+    case ts.SyntaxKind.BooleanKeyword:
+      return "boolean";
+    case ts.SyntaxKind.NullKeyword:
+      return "null";
+    case ts.SyntaxKind.UndefinedKeyword:
+      return "undefined";
+    case ts.SyntaxKind.UnknownKeyword:
+      return "unknown";
+    case ts.SyntaxKind.VoidKeyword:
+      return "void";
+    case ts.SyntaxKind.AnyKeyword:
+      return "any";
   }
 
-  // Array:  T[]
   if (ts.isArrayTypeNode(typeNode)) {
     return `${formatTypeNode(typeNode.elementType, warnings, context, warningNodes)}[]`;
   }
 
-  // Union:  A | B | null  →  "A or B or null"
   if (ts.isUnionTypeNode(typeNode)) {
     return typeNode.types
       .map((t) => formatTypeNode(t, warnings, context, warningNodes))
       .join(" or ");
   }
 
-  // Intersection:  A & B  →  "A and B"
   if (ts.isIntersectionTypeNode(typeNode)) {
     return typeNode.types
       .map((t) => formatTypeNode(t, warnings, context, warningNodes))
       .join(" and ");
   }
 
-  // Literal:  "current"  →  current
   if (ts.isLiteralTypeNode(typeNode)) {
     const lit = typeNode.literal;
     if (ts.isStringLiteral(lit)) return lit.text;
     if (ts.isNumericLiteral(lit)) return lit.text;
-    if (lit.kind === ts.SyntaxKind.NullKeyword)  return "null";
-    if (lit.kind === ts.SyntaxKind.TrueKeyword)  return "true";
+    if (lit.kind === ts.SyntaxKind.NullKeyword) return "null";
+    if (lit.kind === ts.SyntaxKind.TrueKeyword) return "true";
     if (lit.kind === ts.SyntaxKind.FalseKeyword) return "false";
   }
 
-  // Parenthesized:  (A | B)
   if (ts.isParenthesizedTypeNode(typeNode)) {
     return `(${formatTypeNode(typeNode.type, warnings, context, warningNodes)})`;
   }
 
-  // Object literal:  { foo: string }
-  // ── Mermaid cannot represent curly braces inside a class body, so we use
-  //    square brackets instead.  We also emit a warning because an inline
-  //    anonymous object type is a clean-code violation: it should be extracted
-  //    into a named type so it can be referenced, documented, and reused.
   if (ts.isTypeLiteralNode(typeNode)) {
     const raw = typeNode.getText().replace(/\s+/g, " ").trim();
-    // Record the owning class so the generator can flag it with the warning style.
     warningNodes.add(context.split(".")[0]);
     warnings.push(
       `[clean-code] Inline anonymous object type at "${context}": ${raw}\n` +
-      `  → Extract to a named type so it can be referenced, documented, and reused.`,
+        `  → Extract to a named type so it can be referenced, documented, and reused.`,
     );
     const props = typeNode.members
       .filter(ts.isPropertySignature)
       .map((m) => {
         const mName = getNodeText(m.name);
-        const mType = m.type ? formatTypeNode(m.type, warnings, `${context}.${mName}`, warningNodes) : "unknown";
+        const mType = m.type
+          ? formatTypeNode(m.type, warnings, `${context}.${mName}`, warningNodes)
+          : "unknown";
         return `${mName}: ${mType}`;
       });
-    // Use [ ] — Mermaid has no escape sequence for { }
     return `[ ${props.join(", ")} ]`;
   }
 
-  // Tuple:  [A, B]
   if (ts.isTupleTypeNode(typeNode)) {
-    return `[${typeNode.elements
-      .map((e) => formatTypeNode(e as ts.TypeNode, warnings, context, warningNodes))
-      .join(", ")}]`;
+    return `[${
+      typeNode.elements
+        .map((e) => formatTypeNode(e as ts.TypeNode, warnings, context, warningNodes))
+        .join(", ")
+    }]`;
   }
 
-  // Template literal:  `scrum://template/${ItemType}`  →  abbreviated
   if (ts.isTemplateLiteralTypeNode(typeNode)) {
     return "string";
   }
 
-  // Fallback: emit raw source text (may contain newlines — collapse and sanitize)
   return sanitizeForMermaid(typeNode.getText().replace(/\s+/g, " ").trim());
 }
 
 // ── Type reference collector ──────────────────────────────────────────────────
-//
-// Walks a TypeNode recursively and returns all TypeReferenceNode names found.
-// Used to decide which association arrows to emit.
 
 function collectTypeRefs(typeNode: ts.TypeNode): string[] {
   const refs: string[] = [];
@@ -415,18 +390,11 @@ function collectTypeRefs(typeNode: ts.TypeNode): string[] {
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
-/**
- * Replace characters that Mermaid cannot represent inside a class body.
- * Mermaid has no escape sequence for curly braces — they are syntax tokens
- * used to delimit the class body itself.  Square brackets are safe and
- * visually convey "object shape" well enough for diagram purposes.
- */
 function sanitizeForMermaid(text: string): string {
   return text.replace(/\{/g, "[").replace(/\}/g, "]");
 }
 
 function getNodeText(node: ts.Node): string {
-  // PropertyName can be Identifier, StringLiteral, NumericLiteral, ComputedPropertyName
   if (ts.isIdentifier(node)) return node.text;
   if (ts.isStringLiteral(node)) return node.text;
   if (ts.isNumericLiteral(node)) return node.text;

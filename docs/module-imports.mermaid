@@ -1,390 +1,448 @@
-
-```mermaid
 classDiagram
     direction LR
 
     namespace Use-Case {
-            class orient.ts:::scrum {
-                +orientUseCase()
-            }
-            class get-analytics.ts:::scrum {
-                +getAnalyticsUseCase()
-            }
-            class find-items.ts:::scrum {
-                +findItemsUseCase()
-            }
-            class listing-mappers.ts:::scrum {
-                +toItemListing()
-                +historyEntryToItemListing()
-            }
-            class sprint-math.ts:::scrum {
-                +computeSprintEndDate()
-                +buildSprintMeta()
-                +groupStoriesByStatus()
-                +computeSprintTotals()
-                +buildSprintWindow()
-                +buildIdealLine()
-                +buildDaySeries()
-                %% Unused: buildSprintMeta, groupStoriesByStatus, computeSprintTotals
-            }
-            class get-story.ts:::scrum {
-                +getStoryUseCase()
-            }
-            class get-board-health.ts:::scrum {
-                +getBoardHealthUseCase()
-            }
-            class ports.ts:::scrum {
-                type SearchScope
-                interface ItemFilter
-                interface ResolvedItemFilter
-                interface AnalyticsQuery
-                interface SprintInfo
-                interface FieldPresence
-                interface FieldWithOptions
-                type DisplayMap
-                interface PlatformState
-                interface StoryDetail
-                interface BurndownStoryInput
-                interface SprintHistoryEntry
-                interface BurndownInput
-                interface CompletionMap
-                interface CreateStoryInput
-                interface StoryUpdates
-                type VocabularyKind
-                interface StoryListing
-                interface ImpedimentListing
-                interface EpicPort
-                interface StoryPort
-                interface FindItemsPort
-                interface AnalyticsPort
-                interface BoardHealthPort
-                interface ImpedimentPort
-                interface FileReaderPort
-                interface ProjectReader
-                interface ProjectWriter
-                interface ProjectBackend
-                %% Unused: SearchScope, FieldPresence, FieldWithOptions, DisplayMap, StoryListing, EpicPort
-            }
-            class update-impediment.ts:::scrum {
-                +updateImpedimentUseCase()
-                %% Unused: updateImpedimentUseCase
-            }
-            class config-helpers.ts:::scrum {
-                +resolveP0PriorityDisplay()
-                +resolveTerminalDisplay()
-                %% Unused: resolveTerminalDisplay
-            }
-            class template-resource.ts:::scrum {
-                +templateResourceUseCase()
-            }
-            class errors.ts:::domain {
-                +assertNever()
-                class AdapterError
-            }
-            class types.ts:::domain {
-                type EntityRef
-                type StoryRef
-                type EpicRef
-                type ImpedimentRef
-                type ItemListingRef
-                interface EpicListing
-                interface DependencyEntry
-                +var ITEM_TYPES
-                type ItemType
-                type SprintName
-                +toSprintName()
-                type SprintRef
-                type IssueKey
-                +toIssueKey()
-                type ScrumTemplateUri
-                type TemplateUriMap
-                type SprintRiskStance
-                interface SprintContext
-                +sprintContextFromSprintInfo()
-                interface EpicSummary
-                interface SprintRisk
-                interface BacklogHealth
-                interface BacklogItemListing
-                type ItemListing
-                interface DependencyNode
-                type DependencyMap
-                interface StoryBase
-                +var SUPPORTED_BACKENDS
-                type SupportedBackend
-                type AdapterBackend
-                type Story
-                interface IterationEntry
-                interface BurndownResponse
-                interface BurndownSprintMeta
-                interface BurndownDayPoint
-                interface IdealDayPoint
-                interface BurndownStory
-                interface ItemSearchResult
-                type SprintTotals
-                interface SprintSnapshot
-                interface AnalyticsResult
-                interface StoryComment
-                interface LinkedArtifact
-                interface ItemDetailResult
-                interface PartialResult
-                interface UseCaseResult
-                interface OrientResult
-                %% Unused: SprintName, ScrumTemplateUri, SprintRiskStance, SprintContext, ItemListing, SUPPORTED_BACKENDS
-            }
-            class acceptance-criteria.ts:::rules {
-                +parseAcceptanceCriteria()
-            }
-            class readiness.ts:::rules {
-                +computeReadinessSummary()
-            }
-            class config.ts:::domain {
-                type ArtifactType
-                interface ScrumConfig
-                %% Unused: ArtifactType
-            }
-            class error-enrichment.ts:::services {
-                +enrichError()
-                interface BackendCallResult
-                +catchBackend()
-                %% Unused: enrichError
-            }
-            class logger.ts:::services {
-                +var log
-            }
-            class pick-defined.ts:::services {
-                +pickDefined()
-            }
+
+        class orient.ts:::scrum {
+            +orientUseCase()
+        }
+
+        class get-analytics.ts:::scrum {
+            +getAnalyticsUseCase()
+        }
+
+        class find-items.ts:::scrum {
+            +findItemsUseCase()
+        }
+
+        class listing-mappers.ts:::scrum {
+            +toItemListing()
+            +historyEntryToItemListing()
+        }
+
+        class sprint-math.ts:::scrum {
+            +computeSprintEndDate()
+            +buildSprintMeta()
+            +groupStoriesByStatus()
+            +computeSprintTotals()
+            +buildSprintWindow()
+            +buildIdealLine()
+            +buildDaySeries()
+            %% Unused: buildSprintMeta, groupStoriesByStatus, computeSprintTotals
+        }
+
+        class get-story.ts:::scrum {
+            +getStoryUseCase()
+        }
+
+        class get-board-health.ts:::scrum {
+            +getBoardHealthUseCase()
+        }
+
+        class ports.ts:::scrum {
+            type SearchScope
+            interface ItemFilter
+            interface ResolvedItemFilter
+            interface AnalyticsQuery
+            interface SprintInfo
+            interface FieldPresence
+            interface FieldWithOptions
+            type DisplayMap
+            interface PlatformState
+            interface StoryDetail
+            interface BurndownStoryInput
+            interface SprintHistoryEntry
+            interface BurndownInput
+            interface CompletionMap
+            interface CreateStoryInput
+            interface StoryUpdates
+            type VocabularyKind
+            interface StoryListing
+            interface ImpedimentListing
+            interface EpicPort
+            interface StoryPort
+            interface FindItemsPort
+            interface AnalyticsPort
+            interface BoardHealthPort
+            interface ImpedimentPort
+            interface FileReaderPort
+            interface ProjectReader
+            interface ProjectWriter
+            interface ProjectBackend
+            %% Unused: SearchScope, FieldPresence, FieldWithOptions, DisplayMap, StoryListing, EpicPort
+        }
+
+        class update-impediment.ts:::scrum {
+            +updateImpedimentUseCase()
+            %% Unused: updateImpedimentUseCase
+        }
+
+        class config-helpers.ts:::scrum {
+            +resolveP0PriorityDisplay()
+            +resolveTerminalDisplay()
+            %% Unused: resolveTerminalDisplay
+        }
+
+        class template-resource.ts:::scrum {
+            +templateResourceUseCase()
+        }
+
+        class errors.ts:::domain {
+            +assertNever()
+            class AdapterError
+        }
+
+        class types.ts:::domain {
+            type EntityRef
+            type StoryRef
+            type EpicRef
+            type ImpedimentRef
+            type ItemListingRef
+            interface EpicListing
+            interface DependencyEntry
+            +var ITEM_TYPES
+            type ItemType
+            type SprintName
+            +toSprintName()
+            type SprintRef
+            type IssueKey
+            +toIssueKey()
+            type ScrumTemplateUri
+            type TemplateUriMap
+            type SprintRiskStance
+            interface SprintContext
+            +sprintContextFromSprintInfo()
+            interface EpicSummary
+            interface SprintRisk
+            interface BacklogHealth
+            interface BacklogItemListing
+            type ItemListing
+            interface DependencyNode
+            type DependencyMap
+            interface StoryBase
+            +var SUPPORTED_BACKENDS
+            type SupportedBackend
+            type AdapterBackend
+            type Story
+            interface IterationEntry
+            interface BurndownResponse
+            interface BurndownSprintMeta
+            interface BurndownDayPoint
+            interface IdealDayPoint
+            interface BurndownStory
+            interface ItemSearchResult
+            type SprintTotals
+            interface SprintSnapshot
+            interface AnalyticsResult
+            interface StoryComment
+            interface LinkedArtifact
+            interface ItemDetailResult
+            interface PartialResult
+            interface UseCaseResult
+            interface OrientResult
+            %% Unused: SprintName, ScrumTemplateUri, SprintRiskStance, SprintContext, ItemListing, SUPPORTED_BACKENDS
+        }
+
+        class acceptance-criteria.ts:::rules {
+            +parseAcceptanceCriteria()
+        }
+
+        class readiness.ts:::rules {
+            +computeReadinessSummary()
+        }
+
+        class config.ts:::domain {
+            type ArtifactType
+            interface ScrumConfig
+            %% Unused: ArtifactType
+        }
+
+        class error-enrichment.ts:::services {
+            +enrichError()
+            interface BackendCallResult
+            +catchBackend()
+            %% Unused: enrichError
+        }
+
+        class logger.ts:::services {
+            +var log
+        }
+
+        class pick-defined.ts:::services {
+            +pickDefined()
+        }
+
     }
+
     namespace Framework {
-            class scrum-read.ts:::tools {
-                +var SCRUM_READ_TOOL_NAMES
-                +registerScrumReadTools()
-            }
-            class scrum-write.ts:::tools {
-                +var SCRUM_WRITE_TOOL_NAMES
-                +registerScrumWriteTools()
-            }
-            class scrum.ts:::schemas {
-                +var GetStorySchema
-                +var FindItemsSchema
-                +var GetAnalyticsSchema
-                +var GetBoardHealthSchema
-                +var CreateStorySchema
-                +var UpdateStorySchema
-                +var SetFieldSchema
-                +var PlanSprintSchema
-                +var LogImpedimentSchema
-                +var UpdateImpedimentSchema
-                +var AddVocabularySchema
-            }
-            class inputs.ts:::schemas {
-                +var GraphQLQuerySchema
-                %% Unused: GraphQLQuerySchema
-            }
+
+        class scrum-read.ts:::tools {
+            +var SCRUM_READ_TOOL_NAMES
+            +registerScrumReadTools()
+        }
+
+        class scrum-write.ts:::tools {
+            +var SCRUM_WRITE_TOOL_NAMES
+            +registerScrumWriteTools()
+        }
+
+        class scrum.ts:::schemas {
+            +var GetStorySchema
+            +var FindItemsSchema
+            +var GetAnalyticsSchema
+            +var GetBoardHealthSchema
+            +var CreateStorySchema
+            +var UpdateStorySchema
+            +var SetFieldSchema
+            +var PlanSprintSchema
+            +var LogImpedimentSchema
+            +var UpdateImpedimentSchema
+            +var AddVocabularySchema
+        }
+
+        class inputs.ts:::schemas {
+            +var GraphQLQuerySchema
+            %% Unused: GraphQLQuerySchema
+        }
+
     }
+
     namespace Other {
-            class _deno-shim.node.ts:::src {
-                +addEventListener() void
-                +var Deno
-                %% Unused: addEventListener, Deno
-            }
-            class server.ts:::src {
-            }
+
+        class _deno-shim.node.ts:::src {
+            +addEventListener() void
+            +var Deno
+            %% Unused: addEventListener, Deno
+        }
+
+        class server.ts:::src {
+        }
+
     }
+
     namespace Adapter {
-            class capabilities.ts:::adapters {
-                interface PlatformCapabilities
-                +PlatformCapabilities GITHUB_CAPABILITIES
-            }
-            class factory.ts:::adapters {
-                interface AdapterStartupOptions
-                interface AdapterFactory
-                interface BackendResult
-                +createBackend()
-            }
-            class errors.ts:::github {
-                type GitHubErrorCode
-                +assertNever()
-                class GitHubApiError
-                +notImplemented()
-                %% Unused: GitHubErrorCode, assertNever
-            }
-            class queries.ts:::github {
-                +var GET_ISSUE_DETAILS_QUERY
-                +var GET_ITEM_FIELDS_QUERY
-                +var GET_DRAFT_ISSUE_DETAILS_QUERY
-                +var GET_REPO_LABELS_QUERY
-                +var GET_IMPEDIMENT_ISSUES_QUERY
-                +var LIST_MILESTONES_QUERY
-                +var GET_USER_NODE_ID
-                +var ADD_PROJECT_ITEM_MUTATION
-                +var CLEAR_ITEM_FIELD_MUTATION
-                +var UPDATE_ITEM_FIELD_MUTATION
-                +var GET_PROJECT_ITEM_BY_ID_QUERY
-                +var GET_ISSUE_BY_ID_QUERY
-                +var GET_BLOCKED_BY_QUERY
-                +var GET_REPO_QUERY
-                +var GET_USER_MILESTONES_QUERY
-                +var GET_FIELD_OPTIONS_QUERY
-                +var GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY
-                +var GET_ORG_PROJECT_FIELDS_BOOTSTRAP_QUERY
-                +var CREATE_LABEL_MUTATION
-                +var REPLACE_ISSUE_LABELS_MUTATION
-                +var SET_LABELS_MUTATION
-                +var CREATE_ISSUE_MUTATION
-                +var CLOSE_ISSUE_MUTATION
-                +var CLEAR_ASSIGNEES_MUTATION
-                +var SET_ASSIGNEE_MUTATION
-                +var SET_MILESTONE_MUTATION
-                +var ADD_COMMENT_MUTATION
-                +var CREATE_MILESTONE_MUTATION
-                +var UPDATE_FIELD_MUTATION
-                +var CONVERT_DRAFT_ISSUE_MUTATION
-                +var ADD_DRAFT_ISSUE_MUTATION
-                %% Unused: ADD_PROJECT_ITEM_MUTATION, CREATE_ISSUE_MUTATION
-            }
-            class mappers.ts:::github {
-                interface IssueDetailsInput
-                +buildStoryFromRaw()
-                +buildEnrichedStory()
-                +buildCommentList()
-                +buildLinkedPrList()
-                +toSprintInfo()
-                +resolveSprintGoal()
-                +resolveDependencyRefs()
-                +buildBurndownStoryInput()
-            }
-            class config-reloader.ts:::internal {
-                class ConfigReloader
-            }
-            class burndown-calculator.ts:::internal {
-                class BurndownCalculator
-            }
-            class epic-service.ts:::internal {
-                class EpicService
-            }
-            class analytics-service.ts:::internal {
-                class AnalyticsService
-            }
-            class pagination.ts:::internal {
-                class PaginatedProjectItemFetcher
-                +isBacklogItem()
-            }
-            class resolver.ts:::internal {
-                +resolveSprint() string | null
-                +resolveSprint() string | null
-                +resolveSprint() string | null
-                +resolveStory()
-            }
-            class field-value-mutator.ts:::internal {
-                class FieldValueMutator
-            }
-            class user-milestone-resolver.ts:::internal {
-                class UserMilestoneResolver
-            }
-            class label-resolver.ts:::internal {
-                interface GitHubLabel
-                interface RepoNodeIdProvider
-                class LabelResolver
-                %% Unused: GitHubLabel
-            }
-            class sprint-history-service.ts:::internal {
-                class SprintHistoryService
-            }
-            class file-reader.ts:::internal {
-                class GitHubFileReader
-            }
-            class vocabulary-manager.ts:::internal {
-                class VocabularyManager
-            }
-            class story-mutation-service.ts:::internal {
-                class StoryMutationService
-            }
-            class board-health-service.ts:::internal {
-                class BoardHealthService
-            }
-            class contents.ts:::internal {
-                +fetchRepoFile()
-            }
-            class story-query-service.ts:::internal {
-                +buildDependencyMap()
-                class StoryQueryService
-                %% Unused: buildDependencyMap
-            }
-            class http-client.ts:::internal {
-                interface RestResponse
-                interface GitHubClient
-                +graphql()
-                +rest()
-                %% Unused: RestResponse
-            }
-            class impediment-service.ts:::internal {
-                class ImpedimentService
-            }
-            class factory.ts:::github {
-                class GitHubAdapterFactory
-            }
-            class types.ts:::github {
-                type GitHubItemId
-                type GitHubIssueId
-                type GitHubMilestoneId
-                +toEntityRef()
-                interface GitHubBackendConfig
-                interface GraphQLResponse
-                type ItemContentType
-                type IssueIdentity
-                type PrIdentity
-                type PrDiscriminator
-                type PrState
-                type IssueState
-                type MilestoneRef
-                type IssueRef
-                type LabelRef
-                type LabelNameOnly
-                type UserLogin
-                type CommentProjection
-                type TimelinePrSource
-                type SelectFieldOption
-                type SelectFieldNode
-                type PageInfoRef
-                type ProjectV2Ref
-                type ProjectV2ItemRef
-                interface ProjectItemIssueContent
-                interface ProjectItemPRContent
-                interface ProjectItemDraftContent
-                interface ProjectItem
-                type FieldValueField
-                type FieldValueUser
-                type FieldValueUserNodes
-                type FieldValueLabel
-                type FieldValueLabelNodes
-                type FieldValueMilestone
-                type FieldValueRepository
-                type AssigneeNodes
-                type LabelColorNodes
-                type IssueRefNode
-                type MilestoneRefNode
-                interface ItemFieldValue
-                interface FieldValueNode
-                interface BoardFields
-                interface LinkedPr
-                interface DraftStory
-                interface IssueStory
-                %% Unused: GitHubMilestoneId, toEntityRef, ItemContentType, IssueIdentity, PrIdentity, PrDiscriminator, PrState, IssueState, IssueRef, LabelRef, FieldValueField, FieldValueUser, FieldValueUserNodes, FieldValueLabel, FieldValueLabelNodes, FieldValueMilestone, FieldValueRepository, LabelColorNodes
-            }
-            class config-loader.ts:::github {
-                interface RuntimeConfig
-                +loadConfig()
-            }
-            class backend.ts:::github {
-                interface GitHubBackendDependencies
-                class GitHubProjectBackend
-            }
-            class abstract-backend.ts:::adapters {
-                class UnsupportedCapabilityError
-                class AbstractProjectBackend
-                %% Unused: UnsupportedCapabilityError
-            }
+
+        class capabilities.ts:::adapters {
+            interface PlatformCapabilities
+            +PlatformCapabilities GITHUB_CAPABILITIES
+        }
+
+        class factory.ts:::adapters {
+            interface AdapterStartupOptions
+            interface AdapterFactory
+            interface BackendResult
+            +createBackend()
+        }
+
+        class errors.ts:::github {
+            type GitHubErrorCode
+            +assertNever()
+            class GitHubApiError
+            +notImplemented()
+            %% Unused: GitHubErrorCode, assertNever
+        }
+
+        class queries.ts:::github {
+            +var GET_ISSUE_DETAILS_QUERY
+            +var GET_ITEM_FIELDS_QUERY
+            +var GET_DRAFT_ISSUE_DETAILS_QUERY
+            +var GET_REPO_LABELS_QUERY
+            +var GET_IMPEDIMENT_ISSUES_QUERY
+            +var LIST_MILESTONES_QUERY
+            +var GET_USER_NODE_ID
+            +var ADD_PROJECT_ITEM_MUTATION
+            +var CLEAR_ITEM_FIELD_MUTATION
+            +var UPDATE_ITEM_FIELD_MUTATION
+            +var GET_PROJECT_ITEM_BY_ID_QUERY
+            +var GET_ISSUE_BY_ID_QUERY
+            +var GET_BLOCKED_BY_QUERY
+            +var GET_REPO_QUERY
+            +var GET_USER_MILESTONES_QUERY
+            +var GET_FIELD_OPTIONS_QUERY
+            +var GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY
+            +var GET_ORG_PROJECT_FIELDS_BOOTSTRAP_QUERY
+            +var CREATE_LABEL_MUTATION
+            +var REPLACE_ISSUE_LABELS_MUTATION
+            +var SET_LABELS_MUTATION
+            +var CREATE_ISSUE_MUTATION
+            +var CLOSE_ISSUE_MUTATION
+            +var CLEAR_ASSIGNEES_MUTATION
+            +var SET_ASSIGNEE_MUTATION
+            +var SET_MILESTONE_MUTATION
+            +var ADD_COMMENT_MUTATION
+            +var CREATE_MILESTONE_MUTATION
+            +var UPDATE_FIELD_MUTATION
+            +var CONVERT_DRAFT_ISSUE_MUTATION
+            +var ADD_DRAFT_ISSUE_MUTATION
+            %% Unused: ADD_PROJECT_ITEM_MUTATION, CREATE_ISSUE_MUTATION
+        }
+
+        class mappers.ts:::github {
+            interface IssueDetailsInput
+            +buildStoryFromRaw()
+            +buildEnrichedStory()
+            +buildCommentList()
+            +buildLinkedPrList()
+            +toSprintInfo()
+            +resolveSprintGoal()
+            +resolveDependencyRefs()
+            +buildBurndownStoryInput()
+        }
+
+        class config-reloader.ts:::internal {
+            class ConfigReloader
+        }
+
+        class burndown-calculator.ts:::internal {
+            class BurndownCalculator
+        }
+
+        class epic-service.ts:::internal {
+            class EpicService
+        }
+
+        class analytics-service.ts:::internal {
+            class AnalyticsService
+        }
+
+        class pagination.ts:::internal {
+            class PaginatedProjectItemFetcher
+            +isBacklogItem()
+        }
+
+        class resolver.ts:::internal {
+            +resolveSprint() string | null
+            +resolveSprint() string | null
+            +resolveSprint() string | null
+            +resolveStory()
+        }
+
+        class field-value-mutator.ts:::internal {
+            class FieldValueMutator
+        }
+
+        class user-milestone-resolver.ts:::internal {
+            class UserMilestoneResolver
+        }
+
+        class label-resolver.ts:::internal {
+            interface GitHubLabel
+            interface RepoNodeIdProvider
+            class LabelResolver
+            %% Unused: GitHubLabel
+        }
+
+        class sprint-history-service.ts:::internal {
+            class SprintHistoryService
+        }
+
+        class file-reader.ts:::internal {
+            class GitHubFileReader
+        }
+
+        class vocabulary-manager.ts:::internal {
+            class VocabularyManager
+        }
+
+        class story-mutation-service.ts:::internal {
+            class StoryMutationService
+        }
+
+        class board-health-service.ts:::internal {
+            class BoardHealthService
+        }
+
+        class contents.ts:::internal {
+            +fetchRepoFile()
+        }
+
+        class story-query-service.ts:::internal {
+            +buildDependencyMap()
+            class StoryQueryService
+            %% Unused: buildDependencyMap
+        }
+
+        class http-client.ts:::internal {
+            interface RestResponse
+            interface GitHubClient
+            +graphql()
+            +rest()
+            %% Unused: RestResponse
+        }
+
+        class impediment-service.ts:::internal {
+            class ImpedimentService
+        }
+
+        class factory.ts:::github {
+            class GitHubAdapterFactory
+        }
+
+        class types.ts:::github {
+            type GitHubItemId
+            type GitHubIssueId
+            type GitHubMilestoneId
+            +toEntityRef()
+            interface GitHubBackendConfig
+            interface GraphQLResponse
+            type ItemContentType
+            type IssueIdentity
+            type PrIdentity
+            type PrDiscriminator
+            type PrState
+            type IssueState
+            type MilestoneRef
+            type IssueRef
+            type LabelRef
+            type LabelNameOnly
+            type UserLogin
+            type CommentProjection
+            type TimelinePrSource
+            type SelectFieldOption
+            type SelectFieldNode
+            type PageInfoRef
+            type ProjectV2Ref
+            type ProjectV2ItemRef
+            interface ProjectItemIssueContent
+            interface ProjectItemPRContent
+            interface ProjectItemDraftContent
+            interface ProjectItem
+            type FieldValueField
+            type FieldValueUser
+            type FieldValueUserNodes
+            type FieldValueLabel
+            type FieldValueLabelNodes
+            type FieldValueMilestone
+            type FieldValueRepository
+            type AssigneeNodes
+            type LabelColorNodes
+            type IssueRefNode
+            type MilestoneRefNode
+            interface ItemFieldValue
+            interface FieldValueNode
+            interface BoardFields
+            interface LinkedPr
+            interface DraftStory
+            interface IssueStory
+            %% Unused: GitHubMilestoneId, toEntityRef, ItemContentType, IssueIdentity, PrIdentity, PrDiscriminator, PrState, IssueState, IssueRef, LabelRef, FieldValueField, FieldValueUser, FieldValueUserNodes, FieldValueLabel, FieldValueLabelNodes, FieldValueMilestone, FieldValueRepository, LabelColorNodes
+        }
+
+        class config-loader.ts:::github {
+            interface RuntimeConfig
+            +loadConfig()
+        }
+
+        class backend.ts:::github {
+            interface GitHubBackendDependencies
+            class GitHubProjectBackend
+        }
+
+        class abstract-backend.ts:::adapters {
+            class UnsupportedCapabilityError
+            class AbstractProjectBackend
+            %% Unused: UnsupportedCapabilityError
+        }
+
     }
 
     orient.ts --> ports.ts : "imports"
@@ -610,4 +668,3 @@ classDiagram
     classDef domain fill:#0ff,stroke:#333,stroke-width:2px,color:#000;
     classDef rules fill:#f0f,stroke:#333,stroke-width:2px,color:#000;
     classDef services fill:#0f0,stroke:#333,stroke-width:2px,color:#000;
-```
