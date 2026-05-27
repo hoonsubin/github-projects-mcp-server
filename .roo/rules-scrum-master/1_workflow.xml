@@ -100,108 +100,20 @@
       | ImpedimentResolution  | playbooks/impediment-lifecycle.md §resolution               |
       | SprintReport          | SKILL.md → references/templates-management.md               |
       | Coaching              | SKILL.md → routing table → specific reference file          |
-      | Ceremony              | playbooks/ceremonies.md                                     |
-      | Transition            | 4_transitions.xml                                           |
+      | Ceremony              | playbooks/ceremony-backlog-transitions.md                   |
+      | Transition            | playbooks/transitions.md                                    |
 
       For Coaching: read SKILL.md first; its routing table directs to the specific reference.
-      For Transition: use 4_transitions.xml playbooks; do not use ceremonies.md.
-
-      Transition detection - classify as Transition if ANY are true:
-        - User mentions "set up Scrum", "first sprint", "bootstrap", "we paused",
-          "picking this back up", "restarting", "board is outdated", "didn't track",
-          "we kept building", "need to catch up"
-        - scrum_orient returns missing field mappings or no iteration history
-        - Board has items but no sprint assignments and no sprint history
-        - In-progress items have dates older than 3× the configured sprint length
-        - User confirms development happened but the board does not reflect it
+      For Ceremony: load ceremony-backlog-transitions.md; it covers pre/post-ceremony backlog
+        operations only. Full ceremony facilitation is out of scope.
+      For Transition: load playbooks/transitions.md on explicit human request only (project
+        setup, board recovery, restart). Detection triggers are documented in that file.
 
       Stance definitions: `3_sm_stance.xml`.
       GUARD: Never classify as requiring direct implementation. → ImplementationHandoff.
     </step>
 
   </session_start>
-
-
-  <!-- ═══════════════════════════════════════════════════════════════════════
-       ITEM LOOKUP PATTERNS
-       Use the minimum-scope tool. Never dump the full board to resolve a reference.
-       ═══════════════════════════════════════════════════════════════════════ -->
-
-  <item_lookup_patterns>
-
-    <pattern name="single_item_full_detail">
-      Single item — body, comments, AC, linked PRs:
-        `scrum_get_item_detail(ref: { number: N })`
-      Never call a board-listing tool to resolve a human-readable ticket number.
-    </pattern>
-
-    <pattern name="multi_item_by_number">
-      Multiple items by issue number:
-        `scrum_find_items(keys: ["42", "123"])`
-      IMPORTANT: keys are numeric STRING arrays, not integers — pass ["42"], not [42].
-    </pattern>
-
-    <pattern name="current_sprint_items">
-      Items in the current active sprint:
-        `scrum_find_items(scope: "sprint")`
-      Returns items whose sprint = platform_state.iterations.active from scrum_orient.
-    </pattern>
-
-    <pattern name="named_or_historical_sprint">
-      Items in a specific or completed sprint:
-        `scrum_find_items(sprint_ref: "Sprint 3")`
-      Use sprint_ref (not scope) for retrospective or cross-sprint queries.
-    </pattern>
-
-    <pattern name="scope_vs_sprint_ref">
-      Two overlapping sprint filters — pick the right one:
-      - `scope: "sprint"`     → current active sprint only (use for "what's in this sprint")
-      - `sprint_ref: "<name>" → named sprint, any state including completed (use for retro / cross-sprint)
-    </pattern>
-
-    <pattern name="impediment_listings">
-      Impediment counts (health view only):
-        `scrum_get_board_health` → returns impediments: { open_count, orphan_count }
-        NOTE: NO ref.id here — counts only.
-      Impediment listings with refs (for linking / logging):
-        `scrum_find_items(types: ["impediment"])` → returns items with ref.id
-    </pattern>
-
-    <pattern name="template_resources">
-      Templates are MCP resources, NOT a tool call.
-      GUARD: Before accessing any template, check platform_state.template_uris from scrum_orient.
-      Only access scrum://template/{type} for types present in that map.
-      Example: if template_uris.sprint_planning exists → read MCP resource scrum://template/sprint_planning
-    </pattern>
-
-    <pattern name="dependency_graph">
-      To fetch items with dependency information:
-        `scrum_find_items(include_dependencies: true)`
-      Unresolved dependencies appear as DependencyNode entries with resolved: false.
-      Use these as fetch-or-skip signals for dependent work.
-      When to opt in:
-        - ReadinessCheck: pass include_dependencies: true to verify all blocked_by items are Done
-          before marking a story sprint-ready. Do not mark an item ready if any upstream dep is non-terminal.
-        - SprintReport: pass include_dependencies: true to count how many sprint items have
-          unresolved upstream dependencies blocking completion.
-      Default (false) for all other lookups — the opt-in is expensive; don't pay it speculatively.
-    </pattern>
-
-    <pattern name="analytics_view_selection">
-      Always pass `view` explicitly to `scrum_get_analytics` — default "both" fetches more than needed:
-
-      | Context                                               | view parameter   |
-      |---|---|
-      | Standup / daily monitoring                            | "burndown"       |
-      | Velocity question / retrospective preparation         | "history"        |
-      | Sprint report / full board assessment                 | "both"           |
-
-      Also set `history_window` explicitly for history views: use `velocity_window` from
-      `vocabulary.sprint` in scrum_orient (default 5 if absent). Do not leave it at the
-      server default when the config declares a preferred window.
-    </pattern>
-
-  </item_lookup_patterns>
 
 
   <!-- ═══════════════════════════════════════════════════════════════════════

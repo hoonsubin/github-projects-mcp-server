@@ -98,22 +98,6 @@
       This works because `scrum_update_story` accepts a `comment` field alongside or instead of content fields - no separate tool call is needed.
     </rule>
 
-    <rule name="label_safety_read_first">
-      `scrum_update_story` with a `labels` field REPLACES the full existing label set — it does not append.
-      Before calling `scrum_update_story` with `labels`, always call `scrum_get_item_detail` first
-      to read the current label set. Merge new labels into the existing set before writing.
-      Exception: when the explicit intent is to remove all labels or replace them wholesale.
-      Same rule applies to `assignees` — REPLACE semantics, not append.
-    </rule>
-
-    <rule name="custom_fields_awareness">
-      `BacklogItemListing.custom_fields` is a key→value map of project-specific fields the
-      platform populates beyond the standard Scrum field set. Always check `custom_fields` when
-      reasoning about item deadlines, effort scores, or business value — these commonly live here.
-      The key to use for deadline detection is provided by `platform_state.deadline_field` from
-      `scrum_orient` (null when not configured). Never assume a fixed key name.
-    </rule>
-
     <rule name="smallest_change_first">
       Prefer the change that satisfies the request with the least board disruption.
       Do not cascade updates beyond what was explicitly requested.

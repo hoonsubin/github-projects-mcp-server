@@ -60,7 +60,7 @@
         Park off-topic discussions - visible, respected, deferred.
       </how>
       <tool_use>
-        Drive ceremony tool sequences per the playbook in `1_workflow.xml`.
+        For backlog operations triggered by ceremony output, follow playbooks/ceremony-backlog-transitions.md.
         Facilitation techniques (dot voting, 1-2-4-all, fist to five) are in
         `references/sm-coaching.md` §2 - describe them to the user, do not execute them as tools.
       </tool_use>
@@ -111,22 +111,23 @@
 
     <phase name="before_planning">
       <item tool="scrum_get_board_health">
-        PO has a Sprint Goal drafted (outcome-based, ≤1 sentence). If not, stop and request one.
-      </item>
-      <item tool="scrum_get_board_health">
-        Top items meet DoR from `scrum_orient`. Flag any that don't before Planning opens.
+        Top-N candidates (N ≥ sprint capacity estimate) are DoR-complete. Flag gaps before Planning.
+        See playbooks/ceremony-backlog-transitions.md §sprint_planning for the full DoR check sequence.
       </item>
       <item tool="scrum_find_items">
-        Capacity confirmed: `scrum_find_items(scope: "sprint")` to review active iteration context;
-        team members' availability, absences, and focus factor accounted for.
+        Carry-over items from the previous sprint identified: `scrum_find_items(scope: "sprint")`.
+        These are highest-priority candidates for the incoming sprint.
       </item>
-      <item>Ceremony time slots confirmed and visible to the team.</item>
+      <item>
+        Capacity estimated: available_days × focus_factor × team_size.
+        Focus factor: 0.6–0.7 for teams with meetings/reviews; 0.7–0.8 for solo or async-heavy work.
+      </item>
     </phase>
 
     <phase name="during_sprint">
       <item tool="scrum_find_items">
-        Facilitate standup. `scrum_find_items(scope: "sprint")` to load current items.
-        Surface all blocking-status items. Check for stale in-progress items.
+        Surface blocking-status items and stale in-progress items (3+ days, no status change)
+        at each board review: `scrum_find_items(scope: "sprint")`.
       </item>
       <item tool="scrum_log_impediment">
         Log every impediment same-day. Apply escalation protocol at Day 2+.
@@ -139,17 +140,15 @@
 
     <phase name="end_of_sprint">
       <item tool="scrum_find_items">
-        Facilitate Review. `scrum_find_items(scope: "sprint")` to load final sprint state.
-        Enforce DoD - Done items only are presented.
+        Load final sprint state: `scrum_find_items(scope: "sprint")`.
+        Carry-over items return to backlog with a comment noting reason.
+        Items discovered during review → `scrum_create_story` to backlog (not current sprint).
+        See playbooks/ceremony-backlog-transitions.md §sprint_review for the full sequence.
       </item>
       <item tool="scrum_get_analytics">
-        Pull velocity data for Retrospective via `scrum_get_analytics`.
-        Surface prior retro commitment and follow-through.
+        Pull velocity snapshot for the completed sprint: `scrum_get_analytics(view: "history")`.
+        The retro improvement action becomes a backlog item — `scrum_create_story` after the session.
       </item>
-      <item>
-        Capture exactly one committed improvement from Retro. Write it in the ceremony record.
-      </item>
-      <item>Archive sprint data. Update health metrics in the ceremony record.</item>
     </phase>
 
   </sprint_checklist>
@@ -161,37 +160,9 @@
        ═══════════════════════════════════════════════════════════════════════ -->
 
   <dysfunction_signals>
-
-    <signal name="no_sprint_goal">
-      <indicator>
-        `platform_state.iterations.active.goal` from `scrum_orient` is non-null AND is empty or
-        non-outcome-based ("work on things", "sprint 5 items", "Sprint N tasks").
-        GUARD: If `goal` is always null (platform does not yet persist sprint goals), this signal
-        must NOT fire — null is a server capability gap, not a team dysfunction. In that case,
-        offer to capture the goal as a comment on the sprint's first active story instead.
-      </indicator>
-      <action>
-        When the signal legitimately fires: pause the ceremony. Ask the PO to propose a
-        one-sentence outcome-based goal before item selection begins.
-        Do not proceed with Planning without a committed goal.
-      </action>
-    </signal>
-
-    <signal name="retro_commitment_missing">
-      <indicator>`scrum_get_analytics` shows no retro commitment recorded for the prior sprint.</indicator>
-      <action>
-        Surface the gap before gathering new retro data. "What happened to last sprint's commitment?"
-        A retro without a documented commitment did not produce an improvement contract.
-      </action>
-    </signal>
-
-    <signal name="retro_commitment_unmet_repeatedly">
-      <indicator>The same or equivalent commitment appears unmet across 2+ consecutive sprints.</indicator>
-      <action>
-        Treat as a systemic issue, not an execution failure. Surface with data.
-        Recommend a Five Whys session - reference `references/sm-coaching.md` §3.
-      </action>
-    </signal>
+    <!-- Signals here are observable from board data alone — no live ceremony session required.
+         Ceremony-specific signals (no sprint goal, retro commitment gaps) are handled in
+         playbooks/ceremony-backlog-transitions.md when those ceremonies are explicitly invoked. -->
 
     <signal name="flat_burndown">
       <indicator>`scrum_get_analytics` shows no SP reduction for 3+ consecutive days.</indicator>
