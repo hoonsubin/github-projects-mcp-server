@@ -5,7 +5,8 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CreateStoryInput, ProjectBackend, StoryUpdates } from "../scrum/ports.ts";
 import type { Story, StoryRef } from "../domain/types.ts";
 import type { ScrumConfig } from "../domain/config.ts";
-import { resolveP0PriorityDisplay } from "../scrum/config-helpers.ts";
+import { resolveHighestPriorityDisplay } from "../scrum/config-helpers.ts";
+import { updateImpedimentUseCase } from "../scrum/update-impediment.ts";
 import {
   AddVocabularySchema,
   CreateStorySchema,
@@ -33,14 +34,6 @@ export const SCRUM_WRITE_TOOL_NAMES = [
   "scrum_plan_sprint",
 ] as const;
 
-// ── Helper types ──────────────────────────────────────────────────────────────
-
-interface PartialFailureResult {
-  story: Story | StoryRef;
-  partialFailure: true;
-  failedFields: Array<{ field: string; reason: string }>;
-}
-
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export const registerScrumWriteTools = (
@@ -48,7 +41,7 @@ export const registerScrumWriteTools = (
   backend: ProjectBackend,
   scrumConfig: ScrumConfig,
 ): void => {
-  const p0PriorityDisplay = resolveP0PriorityDisplay(scrumConfig);
+  const p0PriorityDisplay = resolveHighestPriorityDisplay(scrumConfig);
 
   server.registerTool(
     "scrum_add_vocabulary",
@@ -169,6 +162,14 @@ export const registerScrumWriteTools = (
       return { content: [{ type: "text", text: JSON.stringify(detail?.story, null, 2) }] };
     },
   );
+
+  // ── Helper type for scrum_create_story partial-failure pattern ──────────────
+
+  interface PartialFailureResult {
+    story: Story | StoryRef;
+    partialFailure: true;
+    failedFields: Array<{ field: string; reason: string }>;
+  }
 
   server.registerTool(
     "scrum_create_story",
@@ -429,7 +430,8 @@ export const registerScrumWriteTools = (
       annotations: { role: "admin" },
     },
     async (params: z.infer<typeof UpdateImpedimentSchema>) => {
-      const result = await backend.updateImpediment(
+      const result = await updateImpedimentUseCase(
+        backend,
         params.ref,
         params.status,
         params.resolution_notes,

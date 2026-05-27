@@ -32,22 +32,6 @@ export type GitHubErrorCode =
   | "NETWORK_ERROR" // timeout or TCP/network failure
   | "HTTP_ERROR"; // non-2xx catch-all
 
-// ── Exhaustiveness helper ──────────────────────────────────────────────────────
-
-/**
- * Use at the default branch of any switch(err.code) to get a compile-time
- * guarantee that all GitHubErrorCode values are handled.
- *
- *   switch (err.code) {
- *     case "NOT_FOUND": ...
- *     ...
- *     default: assertNever(err.code);
- *   }
- */
-export const assertNever = (x: never): never => {
-  throw new Error(`Unhandled GitHubErrorCode: ${String(x)}`);
-};
-
 // ── Parameter object ───────────────────────────────────────────────────────────
 
 interface GitHubApiErrorParams {

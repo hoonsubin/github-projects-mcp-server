@@ -16,13 +16,13 @@ import type { ScrumConfig } from "../domain/config.ts";
  * Falls back to "Done" when no terminal key is configured.
  */
 /**
- * Resolve the p0 (highest-tier) priority display label from config.
+ * Resolve the highest-tier priority display label from config.
  *
  * Looks up the first priority key from scrum.priority (index 0) and maps it
  * through backends.github.priority_display to get the platform-specific label.
  * Falls back to "Must" when no priority tiers are configured.
  */
-export const resolveP0PriorityDisplay = (config: ScrumConfig): string => {
+export const resolveHighestPriorityDisplay = (config: ScrumConfig): string => {
   const p0Key = config.scrum.priority?.[0]?.key ?? "p0";
   const priorityDisplay = config.priority_display ?? {};
   return priorityDisplay[p0Key] ?? "Must";

@@ -6,6 +6,7 @@
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
+import { assertNever } from "../../../domain/errors.ts";
 import type { GitHubClient } from "./http-client.ts";
 import { resolveStory } from "./resolver.ts";
 import { LabelResolver } from "./label-resolver.ts";
@@ -337,15 +338,7 @@ export class StoryMutationService {
         return this.fieldValueMutator.setFieldAssignee(assigneeIssueId, value as string | null);
       }
       default:
-        throw new GitHubApiError(
-          `Unknown field: ${field}`,
-          {
-            code: "MUTATION_FAILED",
-            recovery: "This is a programming error - the field enum should be exhaustive. " +
-              "Report this issue with the field name.",
-            context: { field },
-          },
-        );
+        return assertNever(field, `Unknown field: ${field}`);
     }
   }
 
