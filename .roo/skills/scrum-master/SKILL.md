@@ -104,9 +104,9 @@ baseline for coaching when no project config exists.*
 For any coaching response that references project metrics, call the relevant read tool first.
 Reference files provide frameworks, never data.
 
-- Velocity, completion trends, retro history → call `scrum_get_history` first
-- Burndown or sprint progress → call `scrum_get_burndown` or `scrum_get_sprint` first
-- Current sprint state → call `scrum_get_sprint` first
+- Velocity, completion trends, retro history → call `scrum_get_analytics` first
+- Burndown or sprint progress → call `scrum_get_analytics` first
+- Current sprint state → call `scrum_find_items(scope: "sprint")` or `scrum_get_board_health`
 - Board vocabulary, field gaps, item type templates → call `scrum_orient` first
 
 ---

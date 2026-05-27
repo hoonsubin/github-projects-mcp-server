@@ -31,26 +31,50 @@
       Block write ops targeting gap fields until resolved.
     </step>
 
-    <step number="3" action="Proactive board health check (active sprint only)">
-      Run immediately without being asked. Read the referenced playbook for each trigger.
+    <step number="3" action="Proactive board health check — task-driven loading">
+      Load board health only for sessions where a full board view adds value.
+      Do NOT call `scrum_get_board_health` for single-item lookups or targeted writes.
+
+      Minimum tool call matrix — load only what the session type requires:
+
+      | Session type                                          | scrum_orient | +scrum_get_board_health | +scrum_find_items         |
+      |---|---|---|---|
+      | Single item lookup                                    | ✓            | ✗                       | ✗                         |
+      | Targeted field write (named item)                     | ✓            | ✗                       | ✗                         |
+      | Impediment update / resolution                        | ✓            | ✗                       | ✓ (types: ["impediment"]) |
+      | Recommendation request                                | ✓            | ✓                       | ✓ (scope: "sprint")       |
+      | Ceremony / Planning / Retrospective                   | ✓            | ✓                       | ✓                         |
+      | Ambiguous intent                                      | ✓            | ✓                       | ✗ (defer until needed)    |
+
+      When board health IS loaded, check the following triggers.
       All playbook paths are relative to `.roo/skills/scrum-master/`.
 
-      - Overdue items (expected_delivery_date &lt; today, non-terminal status):
-          → read `playbooks/deadline-tracking.md` §overdue_item for each
+      - Overdue items — deadline detection via custom_fields:
+          Check `platform_state.deadline_field` from `scrum_orient` (null when not configured).
+          If non-null: load sprint items via `scrum_find_items`; for each item check
+          `item.custom_fields[platform_state.deadline_field] &lt; today` with non-terminal status.
+          → read `playbooks/deadline-tracking.md` §overdue_item for each match.
+          If null: omit overdue detection; skip this trigger silently.
       - Item type mismatches (declared type vs. body content signals):
           → read `playbooks/item-assessment.md` §type_classification for each
       - Blocked items with no logged impediment:
-          → `scrum_get_backlog` labels:["impediment"]; log missing ones via `scrum_log_impediment`
-      - In-progress items missing start_date or expected_delivery_date:
-          → flag; offer to set
+          → `scrum_find_items(types: ["impediment"])` to list open impediments;
+            log missing ones via `scrum_log_impediment`
+      - In-progress items missing a deadline (when deadline_field is configured):
+          → flag; offer to set the `platform_state.deadline_field` custom field
       - Sprint end risk (remaining days &lt;= carry_over_threshold_days, SP material):
           → flag explicitly
       - Burndown velocity (when burndown series has ≥ 2 days of data):
           → Compute 3-day rolling SP/day; compare to sprint daily average - never use last-delta alone
           → flat_burndown threshold: ≥ 3 consecutive zero-movement days (source: references/dysfunctions.md)
           → Always cite sprint-wide run-rate alongside any recent-flatness flag
-      - Sprint goal absent:
-          → surface before any ceremony
+      - Sprint goal:
+          → Read `platform_state.iterations.active.goal` from `scrum_orient`.
+          → If goal is null AND the platform does NOT support goal persistence (server returns null
+            regardless of what the team has stated), do not surface the no_sprint_goal dysfunction
+            signal. Instead, offer to capture the goal as a comment on the sprint's first active item.
+          → Only fire the no_sprint_goal signal when the platform supports goal tracking and the
+            field is empty.
 
       Report all findings as a brief pre-check summary before parsing the user's request.
     </step>
@@ -73,6 +97,7 @@
       | ItemBreakdown         | SKILL.md → references/advanced-practices.md §Story splitting |
       | EpicOrganization      | (sprint context from scrum_orient; board tools directly)    |
       | ImpedimentLog         | playbooks/audit-logging.md + scrum_log_impediment           |
+      | ImpedimentResolution  | playbooks/impediment-lifecycle.md §resolution               |
       | SprintReport          | SKILL.md → references/templates-management.md               |
       | Coaching              | SKILL.md → routing table → specific reference file          |
       | Ceremony              | playbooks/ceremonies.md                                     |
@@ -95,6 +120,88 @@
     </step>
 
   </session_start>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       ITEM LOOKUP PATTERNS
+       Use the minimum-scope tool. Never dump the full board to resolve a reference.
+       ═══════════════════════════════════════════════════════════════════════ -->
+
+  <item_lookup_patterns>
+
+    <pattern name="single_item_full_detail">
+      Single item — body, comments, AC, linked PRs:
+        `scrum_get_item_detail(ref: { number: N })`
+      Never call a board-listing tool to resolve a human-readable ticket number.
+    </pattern>
+
+    <pattern name="multi_item_by_number">
+      Multiple items by issue number:
+        `scrum_find_items(keys: ["42", "123"])`
+      IMPORTANT: keys are numeric STRING arrays, not integers — pass ["42"], not [42].
+    </pattern>
+
+    <pattern name="current_sprint_items">
+      Items in the current active sprint:
+        `scrum_find_items(scope: "sprint")`
+      Returns items whose sprint = platform_state.iterations.active from scrum_orient.
+    </pattern>
+
+    <pattern name="named_or_historical_sprint">
+      Items in a specific or completed sprint:
+        `scrum_find_items(sprint_ref: "Sprint 3")`
+      Use sprint_ref (not scope) for retrospective or cross-sprint queries.
+    </pattern>
+
+    <pattern name="scope_vs_sprint_ref">
+      Two overlapping sprint filters — pick the right one:
+      - `scope: "sprint"`     → current active sprint only (use for "what's in this sprint")
+      - `sprint_ref: "<name>" → named sprint, any state including completed (use for retro / cross-sprint)
+    </pattern>
+
+    <pattern name="impediment_listings">
+      Impediment counts (health view only):
+        `scrum_get_board_health` → returns impediments: { open_count, orphan_count }
+        NOTE: NO ref.id here — counts only.
+      Impediment listings with refs (for linking / logging):
+        `scrum_find_items(types: ["impediment"])` → returns items with ref.id
+    </pattern>
+
+    <pattern name="template_resources">
+      Templates are MCP resources, NOT a tool call.
+      GUARD: Before accessing any template, check platform_state.template_uris from scrum_orient.
+      Only access scrum://template/{type} for types present in that map.
+      Example: if template_uris.sprint_planning exists → read MCP resource scrum://template/sprint_planning
+    </pattern>
+
+    <pattern name="dependency_graph">
+      To fetch items with dependency information:
+        `scrum_find_items(include_dependencies: true)`
+      Unresolved dependencies appear as DependencyNode entries with resolved: false.
+      Use these as fetch-or-skip signals for dependent work.
+      When to opt in:
+        - ReadinessCheck: pass include_dependencies: true to verify all blocked_by items are Done
+          before marking a story sprint-ready. Do not mark an item ready if any upstream dep is non-terminal.
+        - SprintReport: pass include_dependencies: true to count how many sprint items have
+          unresolved upstream dependencies blocking completion.
+      Default (false) for all other lookups — the opt-in is expensive; don't pay it speculatively.
+    </pattern>
+
+    <pattern name="analytics_view_selection">
+      Always pass `view` explicitly to `scrum_get_analytics` — default "both" fetches more than needed:
+
+      | Context                                               | view parameter   |
+      |---|---|
+      | Standup / daily monitoring                            | "burndown"       |
+      | Velocity question / retrospective preparation         | "history"        |
+      | Sprint report / full board assessment                 | "both"           |
+
+      Also set `history_window` explicitly for history views: use `velocity_window` from
+      `vocabulary.sprint` in scrum_orient (default 5 if absent). Do not leave it at the
+      server default when the config declares a preferred window.
+    </pattern>
+
+  </item_lookup_patterns>
 
 
   <!-- ═══════════════════════════════════════════════════════════════════════

@@ -5,22 +5,8 @@
 // =============================================================================
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-
-// ── Tool name constants ────────────────────────────────────────────────────────
-// Single source of truth for every tool this module registers.
-// Imported by src/server.ts for degraded-mode stub registration.
-
-export const SCRUM_READ_TOOL_NAMES = [
-  // Active tools
-  "scrum_orient",
-  "scrum_find_items",
-  "scrum_get_item_detail",
-  "scrum_get_board_health",
-  "scrum_get_analytics",
-] as const;
 import type { FileReaderPort, ProjectBackend } from "../scrum/ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
-
 import {
   FindItemsSchema,
   GetAnalyticsSchema,
@@ -34,6 +20,19 @@ import { getStoryUseCase } from "../scrum/get-story.ts";
 import { findItemsUseCase } from "../scrum/find-items.ts";
 import { getAnalyticsUseCase } from "../scrum/get-analytics.ts";
 import { getBoardHealthUseCase } from "../scrum/get-board-health.ts";
+
+// ── Tool name constants ────────────────────────────────────────────────────────
+// Single source of truth for every tool this module registers.
+// Imported by src/server.ts for degraded-mode stub registration.
+
+export const SCRUM_READ_TOOL_NAMES = [
+  // Active tools
+  "scrum_orient",
+  "scrum_find_items",
+  "scrum_get_item_detail",
+  "scrum_get_board_health",
+  "scrum_get_analytics",
+] as const;
 
 // ── Tool registration ──────────────────────────────────────────────────────────
 
@@ -134,9 +133,10 @@ export const registerScrumReadTools = (
           limit number (default 50)
 
         Returns: {
-          items: ItemListing[],
-          scope_summary: { total_count, limit, scope, filters_applied },
-          dependency_map?: DependencyMap  - only if include_dependencies=true
+          items: BacklogItemListing[],
+          total_count: number,
+          scope_summary: { sprint_count: number | null, backlog_count: number | null },
+          dependency_map: DependencyMap | null  - populated only when include_dependencies=true
         }`,
       inputSchema: FindItemsSchema.shape,
       annotations: {

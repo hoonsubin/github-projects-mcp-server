@@ -69,7 +69,7 @@ const SprintRefSchema = z
       "null = backlog / clear sprint assignment, " +
       'or an exact sprint name string (e.g. "Sprint 5"). ' +
       "Use scrum_orient to see all valid sprint names. " +
-      'NOTE: "all" is only meaningful for scrum_get_sprint; other tools resolve it to null.',
+      'NOTE: "all" is only meaningful for scrum_find_items; other tools resolve it to null.',
   );
 
 // The six board fields the agent can write via scrum_set_field.
@@ -103,7 +103,7 @@ const StoryTypeSchema = z
 
 // scrum_orient - no arguments; uses z.object({_:...}).shape inline in the handler
 
-// scrum_get_story - single story by ref
+// scrum_get_item_detail - single story by ref
 export const GetStorySchema = z
   .object({
     ref: StoryRefSchema.describe(
@@ -277,21 +277,21 @@ export const UpdateStorySchema = z
       .optional()
       .describe(
         "Replacement markdown body - REPLACES the entire body, does not append. " +
-          "Call scrum_get_story first if you want to add to the existing body.",
+          "Call scrum_get_item_detail first if you want to add to the existing body.",
       ),
     labels: z
       .array(z.string())
       .optional()
       .describe(
         "Replacement label set - REPLACES ALL existing labels. " +
-          "Call scrum_get_story first to read current labels if you want to add without removing.",
+          "Call scrum_get_item_detail first to read current labels if you want to add without removing.",
       ),
     assignees: z
       .array(z.string())
       .optional()
       .describe(
         "Replacement assignee list of GitHub logins - REPLACES ALL existing assignees. " +
-          "Call scrum_get_story first to read current assignees if you want to add without removing.",
+          "Call scrum_get_item_detail first to read current assignees if you want to add without removing.",
       ),
     epic: EpicRefSchema
       .or(z.null())
@@ -415,7 +415,7 @@ export const UpdateImpedimentSchema = z
         id: z
           .string()
           .describe(
-            "Impediment ID as returned by scrum_get_board_health.impediments[].ref.id or scrum_find_items (type=impediment).ref.id.",
+            "Impediment ID as returned by scrum_find_items(types: ['impediment']).items[].ref.id.",
           ),
       })
       .describe("Reference to the impediment to update."),

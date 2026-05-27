@@ -137,14 +137,18 @@
       <lump>Agent-driven. Call tools first, present findings, then ask one focused question.</lump>
       <actions>
         <action>Call `scrum_orient` and read `.github/scrum/config.yml` to assess configuration completeness.</action>
-        <action>Call `scrum_get_backlog` to load all existing items.</action>
+        <action>Call `scrum_get_board_health` for a board overview, then `scrum_find_items` to load all existing items.</action>
         <action>Present inventory: "I found [N] items. [X] appear in-progress, [Y] in a backlog state,
           [Z] have no status. Here's the breakdown: [list titles and current status]."</action>
       </actions>
       <question>"Do any of these items reflect work that's already done, or work that's no longer relevant?"</question>
       <branches>
         <branch condition="done items identified">
-          Mark as Done via `scrum_set_field` with `field: 'status'` and `value: 'Done'`. Note for velocity reconstruction in Phase 3.
+          Mark as Done via `scrum_set_field` with `field: 'status'` and the value that maps
+          to the `done` canonical key in `vocabulary.status` from `scrum_orient`.
+          NEVER hardcode the string "Done" — the project may use "Completed", "Closed", or any
+          other display name. Always resolve: vocabulary.status["done"] → display name → pass as value.
+          Note for velocity reconstruction in Phase 3.
         </branch>
         <branch condition="irrelevant items identified">
           Label as icebox or archive. Never delete - preserve history.
@@ -240,7 +244,8 @@
         Sprint 1 is the right call if the team already has enough context to commit."</question>
       <actions>
         <action>Call `scrum_plan_sprint` with the agreed scope and a proposed Sprint Goal.</action>
-        <action>Call `scrum_get_template` for sprint_planning artifact to record the session.</action>
+        <action>Check `platform_state.template_uris` from `scrum_orient`; if `sprint_planning` is present,
+          access MCP resource `scrum://template/sprint_planning` to record the session.</action>
         <action>If Sprint 0: set a lightweight goal - "By end of this sprint, we have a working
           board, agreed DoD, and a calibrated velocity estimate."</action>
       </actions>
@@ -264,7 +269,7 @@
         <q>"Have any team members joined or left since the project was active?"</q>
       </questions>
       <actions>
-        <action>Call `scrum_get_history` to find the last active sprint and its velocity.</action>
+        <action>Call `scrum_get_analytics` to find the last active sprint and its velocity.</action>
         <action>Compute pause length: (today − last sprint end date) / sprint length = sprints elapsed.</action>
       </actions>
       <branches>
@@ -324,8 +329,8 @@
         Apply story_review_protocol to any item whose scope or type may have changed.
       </description>
       <actions>
-        <action>Call `scrum_get_sprint` (last active sprint) to load in-progress items.</action>
-        <action>Call `scrum_get_backlog` for remaining items.</action>
+        <action>Call `scrum_find_items(scope: "sprint")` to load in-progress sprint items.</action>
+        <action>Call `scrum_find_items` (no scope filter) for remaining backlog items.</action>
         <action>For each in-progress item, offer four options:
           "Resume as-is / Re-estimate (context changed) / Defer to backlog / Close as won't-do."</action>
         <action>Apply story_review_protocol to any item the human is uncertain about.</action>
@@ -340,7 +345,8 @@
           1. "What caused the pause - and what have we learned from it?"
           2. "What's different now that makes this restart viable?"
           3. "What one change would prevent the same thing from happening again?"
-          Capture one committed change. Use `scrum_get_template` for retrospective artifact.
+          Capture one committed change. Check `platform_state.template_uris` from `scrum_orient`;
+          if `retrospective` is present, access MCP resource `scrum://template/retrospective`.
         </branch>
       </branches>
     </phase>
@@ -357,7 +363,8 @@
         <action>Call `scrum_plan_sprint` with a conservative scope (60–70% of estimated velocity).</action>
         <action>Set a calibration Sprint Goal: "Prove the team can deliver a working increment
           in one sprint." Output-focused, not feature-maximising.</action>
-        <action>Call `scrum_get_template` for sprint_planning artifact.</action>
+        <action>Check `platform_state.template_uris` from `scrum_orient`; if `sprint_planning` is present,
+          access MCP resource `scrum://template/sprint_planning`.</action>
       </actions>
     </phase>
 
@@ -381,7 +388,8 @@
           or even just memory?"</q>
       </questions>
       <actions>
-        <action>Call `scrum_get_backlog` and `scrum_get_sprint` to load current board state.</action>
+        <action>Call `scrum_get_board_health` for a board overview, then `scrum_find_items(scope: "sprint")`
+          for active sprint items and `scrum_find_items` for the full backlog.</action>
         <action>Present inventory: "The board shows [N] items, most last touched [date range].
           [X] are in-progress, [Y] are in backlog, [Z] have no sprint assigned.
           Let's reconcile this with what actually happened."</action>
@@ -410,8 +418,10 @@
         Rough groupings are fine - we don't need exact dates."</question>
       <actions>
         <action>For each item the human describes as completed:
-          (a) Find a matching board item → mark Done via `scrum_set_field` with `field: 'status'` and `value: 'Done'`.
-          (b) No matching item → create a new item and immediately mark Done.
+          (a) Find a matching board item → mark done via `scrum_set_field` with `field: 'status'`
+              and the display name mapped from `vocabulary.status["done"]` (from `scrum_orient`).
+              NEVER pass the string "Done" literally — always resolve from the vocabulary map.
+          (b) No matching item → create a new item and immediately mark done (same resolution).
               This reconstructs history without inventing fictional sprints.
           (c) Item was partially completed → update the body to reflect current state;
               split remaining work into a new open item.</action>
@@ -475,7 +485,8 @@
         </branch>
       </branches>
       <actions>
-        <action>Call `scrum_get_template` for sprint_planning artifact when planning begins.</action>
+        <action>Check `platform_state.template_uris` from `scrum_orient`; if `sprint_planning` is present,
+          access MCP resource `scrum://template/sprint_planning` when planning begins.</action>
       </actions>
     </phase>
 
@@ -497,8 +508,11 @@
       and confirm before writing. These affect all board operations downstream.</rule>
     <rule>Write `definition_of_ready` and `definition_of_done` as YAML lists, one criterion
       per line. Add a comment `# v1 - [date]` when first written.</rule>
-    <rule>After any write to config.yml, call `scrum_orient` again to confirm the changes
-      are valid and no new configuration gaps were introduced.</rule>
+    <rule>After writing field mappings (`backends.*.field_mapping.*`, `status_display`,
+      `priority_display`, `type_mapping`) to config.yml, call `scrum_orient` again — these
+      writes change live board option resolution and the cached state must be refreshed.
+      For metadata-only writes (definition_of_ready, definition_of_done, sprint length,
+      team roster, deadline_field) a re-orient is NOT needed; skip it to reduce tool calls.</rule>
     <rule>If a field value in config.yml requires a platform-specific ID (node ID, field ID,
       option ID), fetch the ID via `scrum_orient` or relevant tool - never ask the human for it.</rule>
   </config_write_guidance>

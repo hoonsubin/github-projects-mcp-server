@@ -110,7 +110,14 @@ export interface DependencyEntry {
  * Keep in sync with config.yml `type_mapping` keys.
  * todo: make the item types be dynamically populated based on the scrum config file properties
  */
-export const ITEM_TYPES = ["bug", "feature", "tech_debt", "spike", "user_story"] as const;
+export const ITEM_TYPES = [
+  "bug",
+  "feature",
+  "tech_debt",
+  "spike",
+  "user_story",
+  "impediment",
+] as const;
 
 /** Union of all PBI item type strings. */
 export type ItemType = (typeof ITEM_TYPES)[number];
@@ -636,6 +643,12 @@ export interface OrientResult extends PartialResult {
     readonly epics: { readonly active: readonly EpicSummary[]; readonly total_count: number };
     /** PBI template URIs - built from ITEM_TYPES intersection with scrumConfig.templates. */
     readonly template_uris: TemplateUriMap | null;
+    /**
+     * The `custom_fields` key that holds deadline / due-date values on BacklogItemListing.
+     * Sourced from `deadline_field` in config.yml. Null when not configured.
+     * The agent uses this for overdue detection: item.custom_fields[deadline_field] < today.
+     */
+    readonly deadline_field: string | null;
   };
   readonly vocabulary: {
     readonly status: Record<string, string> | null;

@@ -1,6 +1,6 @@
 # Deadline Tracking Playbook
 
-Load sprint items via `scrum_get_sprint` or `scrum_get_backlog` as needed.
+Load sprint items via `scrum_find_items(scope: "sprint")` or `scrum_get_board_health` as needed.
 
 ---
 

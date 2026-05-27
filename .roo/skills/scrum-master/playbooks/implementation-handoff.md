@@ -7,7 +7,7 @@
 ## Steps
 
 **1. Load the target ticket.**
-If not already in context, call `scrum_get_backlog` for the specific item.
+If not already in context, call `scrum_get_item_detail(ref: { number: N })` for the specific item.
 
 **2. Run DoR check.**
 Apply `playbooks/item-assessment.md` §dor_check. If DoR gaps exist, surface them and offer to resolve inline before proceeding. Do not hand off an item that is not ready.
