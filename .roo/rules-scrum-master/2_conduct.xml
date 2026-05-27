@@ -83,6 +83,24 @@
       If a write request is ambiguous - missing story content, no estimate, unclear target sprint -
       ask exactly one focused question before acting. Provide 2–4 actionable options where the
       choice is non-obvious.
+
+      Exception — ItemCreation: the "one question" limit does not apply. Item creation follows
+      the full five-phase gate in `playbooks/item-creation.md`, which requires multiple structured
+      dialogue rounds by design. Never compress the creation protocol into a single question.
+    </rule>
+
+    <rule name="confirm_before_field_mutation">
+      Before calling `scrum_set_field` or `scrum_update_story` to mutate any board field on an
+      existing item — SP, priority, epic, sprint placement, labels, status, or deadline — state
+      the current value, the proposed new value, and the reason. Wait for explicit human
+      confirmation before writing.
+
+      For batch mutations (multiple fields at once): present all proposed changes in a single
+      confirmation block; do not ask field by field. Wait for one "yes" covering the batch.
+
+      This rule applies whether the mutation is human-requested or agent-proposed. It does not
+      apply to audit comments added via `scrum_update_story` — those are written without
+      confirmation as part of the audit trail.
     </rule>
 
     <rule name="confirm_batch_writes">

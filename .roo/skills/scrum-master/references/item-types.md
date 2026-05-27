@@ -197,6 +197,72 @@ May be technical, organisational, or external.
 
 ---
 
+## §ac_quality — Acceptance criteria quality rules
+
+These rules apply during item creation (Phase 2 draft review in `playbooks/item-creation.md`)
+and during item assessment (`playbooks/item-assessment.md §content_quality`). Check them
+before declaring any draft approved. Rules are scoped per type.
+
+---
+
+### user_story
+
+**Minimum count:** At least 3 criteria per story.
+- 1+ happy path (the intended outcome under normal conditions)
+- 1+ error or edge case path (what happens when input is invalid, the service is unavailable, the user lacks permission, etc.)
+- Additional criteria for any other significant variation in behaviour
+
+**Observable behaviour only:** Each criterion must describe something a person or automated test
+can directly observe — not an internal system action.
+- ✓ "The user sees an error message stating their session has expired."
+- ✗ "The auth service returns a 401 status code." ← internal, not user-observable
+- ✓ "The export file downloads as `report-2024-01.csv` with correct column headers."
+- ✗ "The CSV serialiser formats the output correctly." ← describes implementation
+
+**No compound conditions:** Each criterion is one assertion. If the word "and" joins two
+observable outcomes, split into two separate criteria.
+- ✗ "The form resets and the user sees a success toast." → split into two criteria
+
+**Testability gate:** If a criterion cannot be answered with a clear pass/fail by someone who
+has never seen the code, rewrite it. Vague words that fail this gate: "correctly", "properly",
+"appropriately", "as expected", "works", "handles".
+
+If any of these rules are violated in a draft, surface the specific failing criteria and offer
+rewrites before proceeding to Phase 3. Do not advance to field confirmation while AC is not
+quality-compliant.
+
+---
+
+### bug
+
+**Minimum count:** At least 1 criterion — the specific, observable behaviour that confirms the
+bug is resolved. Generic criteria ("the bug is fixed") do not qualify.
+
+**Regression path:** When the bug has a known repro path, the AC should confirm that the exact
+reproduction steps from the bug description now produce the expected (not actual) behaviour.
+
+---
+
+### tech_debt
+
+**Minimum count:** At least 2 criteria.
+- 1 technical outcome criterion (the improved state is measurable or observable in code/tests)
+- 1 regression guard (existing behaviour is preserved — tests pass, no new failures)
+
+**No user-facing scope creep:** AC should not describe new user-visible behaviour. If a
+criterion does, the item has drifted into `user_story` territory — surface a type mismatch flag.
+
+---
+
+### spike
+
+Spikes do not use standard AC. Their "Definition of Done" section replaces AC. The done
+criteria must describe a deliverable artefact (document, ADR, prototype, decision record) —
+not code or a feature. If the spike output section describes working software, flag a type
+mismatch: this should be a `user_story` or `tech_debt`.
+
+---
+
 ## Reclassification protocol
 
 When a mismatch is detected:

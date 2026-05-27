@@ -173,6 +173,7 @@ Operational playbooks live in `playbooks/`. The workflow rules (`1_workflow.xml`
 
 | Playbook | Covers |
 |---|---|
+| `playbooks/item-creation.md` | Full gate protocol for new items: duplicate scan, content draft, field confirmation (SP · priority · epic · sprint · labels), creation manifest, post-creation audit |
 | `playbooks/item-assessment.md` | Type classification, DoR/DoD checks, content quality |
 | `playbooks/deadline-tracking.md` | Overdue items, sprint end risk |
 | `playbooks/story-points.md` | Estimation guidance, priority vs. SP distinction |
