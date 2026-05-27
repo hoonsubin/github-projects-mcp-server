@@ -123,6 +123,12 @@ export type RelationshipArrow =
   | "-->" // association / field reference
   | "--|>" // inheritance / "same shape as"
   | "--*" // composition
-  | "..>"; // dependency / usage
+  | "..>" // dependency / usage
+  | "..|>"; // implementation (class implements interface)
 
-export type NamespaceName = "TypeScriptTypes" | "ZodSchemas" | "ToolSurface";
+export type NamespaceName =
+  | "TypeScriptTypes"
+  | "ZodSchemas"
+  | "ToolSurface"
+  | "UseCaseLayer"
+  | "AdapterLayer";

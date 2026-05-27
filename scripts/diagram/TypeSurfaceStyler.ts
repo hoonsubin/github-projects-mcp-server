@@ -11,6 +11,8 @@ const NAMESPACE_ORDER: NamespaceName[] = [
   "TypeScriptTypes",
   "ZodSchemas",
   "ToolSurface",
+  "UseCaseLayer",
+  "AdapterLayer",
 ];
 
 // ── Colour definitions ────────────────────────────────────────────────────────
@@ -50,6 +52,8 @@ const NS_PREFIX: Record<NamespaceName, string> = {
   TypeScriptTypes: "ts",
   ZodSchemas: "zod",
   ToolSurface: "tool",
+  UseCaseLayer: "uc",
+  AdapterLayer: "ad",
 };
 
 const STEREO_SLUG: Record<string, string> = {

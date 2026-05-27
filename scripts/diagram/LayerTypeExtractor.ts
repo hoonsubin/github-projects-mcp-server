@@ -1,11 +1,13 @@
 // =============================================================================
-// scripts/diagram/DomainTypeExtractor.ts
+// scripts/diagram/LayerTypeExtractor.ts
 //
-// Extracts class/relationship info from plain TypeScript source files.
-// Handles: interface, type alias (union, branded, object), enum, const tuple.
+// Extracts class/relationship info from use-case and adapter layer source files.
+// Handles: class (abstract + concrete), interface, type alias, enum, const tuple.
 //
-// Uses the TypeScript Compiler API (ts.*) at the AST node level — no type
-// checker required, so we don't need to build a full Program.
+// Adds class support (extends, implements, constructors, methods, properties) on
+// top of the existing DomainTypeExtractor constructs.
+//
+// Uses shared TypeNodeHelpers from helpers.ts for type-node formatting.
 // =============================================================================
 
 import * as ts from "typescript";
@@ -23,15 +25,14 @@ export interface DomainExtractorResult {
 }
 
 /**
- * Parse a TypeScript source file (already loaded as a ParsedModule) and return
- * all types it declares as ExtractedClass objects, plus the relationships between them.
+ * Parse a TypeScript source file (use-case or adapter layer) and return all
+ * classes, interfaces, types, and enums as ExtractedClass objects, plus the
+ * relationships between them.
  *
- * @param module    Already-parsed module instance (avoids duplicate ts.createSourceFile).
- * @param namespace Which Mermaid namespace to assign all extracted classes to.
- * @param knownNames Optional set of type names already collected from other
- *                   files — used to suppress relationship arrows to unknowns.
+ * Handles class declarations (constructor, methods, properties, extends,
+ * implements) in addition to all constructs from extractDomainTypes().
  */
-export const extractDomainTypes = (
+export const extractLayerTypes = (
   module: ParsedModule,
   namespace: NamespaceName,
   knownNames: Set<string> = new Set(),
@@ -47,7 +48,20 @@ export const extractDomainTypes = (
   ts.forEachChild(sourceFile, (node) => {
     if (!isExported(node)) return;
 
-    if (ts.isInterfaceDeclaration(node)) {
+    if (ts.isClassDeclaration(node)) {
+      const { cls, rels } = extractClass(
+        node,
+        namespace,
+        filePath,
+        knownNames,
+        warnings,
+        warningNodes,
+      );
+      if (cls) {
+        classes.push(cls);
+        relationships.push(...rels);
+      }
+    } else if (ts.isInterfaceDeclaration(node)) {
       const { cls, rels } = extractInterface(
         node,
         namespace,
@@ -84,21 +98,153 @@ export const extractDomainTypes = (
 
 // ── Helpers: node classification ──────────────────────────────────────────────
 
-function isExported(node: ts.Node): boolean {
+const isExported = (node: ts.Node): boolean => {
   const mods = (node as { modifiers?: ts.NodeArray<ts.Modifier> }).modifiers;
   return mods?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ?? false;
-}
+};
+
+const isAbstract = (node: ts.ClassDeclaration): boolean => {
+  const mods = node.modifiers;
+  return mods?.some((m) => m.kind === ts.SyntaxKind.AbstractKeyword) ?? false;
+};
+
+// ── Class extraction ──────────────────────────────────────────────────────────
+
+const extractClass = (
+  node: ts.ClassDeclaration,
+  namespace: NamespaceName,
+  sourceFile: string,
+  known: Set<string>,
+  warnings: string[],
+  warningNodes: Set<string>,
+): { cls: ExtractedClass | null; rels: ExtractedRelationship[] } => {
+  if (!node.name) return { cls: null, rels: [] };
+
+  const name = node.name.text;
+  const members: string[] = [];
+  const rels: ExtractedRelationship[] = [];
+  const abstract = isAbstract(node);
+
+  // ── heritage clauses: extends + implements ─────────────────────────────
+  for (const clause of node.heritageClauses ?? []) {
+    const isExtends = clause.token === ts.SyntaxKind.ExtendsKeyword;
+    const isImplements = clause.token === ts.SyntaxKind.ImplementsKeyword;
+
+    for (const type of clause.types) {
+      const targetName = type.expression.getText();
+      if (!known.has(targetName)) continue;
+
+      if (isExtends) {
+        rels.push({ from: name, to: targetName, arrow: "--|>", label: "extends" });
+      } else if (isImplements) {
+        rels.push({ from: name, to: targetName, arrow: "..|>", label: "implements" });
+      }
+    }
+  }
+
+  // ── Member extraction ─────────────────────────────────────────────────
+  for (const member of node.members) {
+    if (ts.isConstructorDeclaration(member)) {
+      // Render as: +constructor(param1: Type, param2: Type)
+      const params = member.parameters
+        .map((p) => formatParameter(p, warnings, `${name}.constructor`, warningNodes))
+        .join(", ");
+      members.push(`+constructor(${params})`);
+
+      // Collect type refs from parameter types
+      for (const p of member.parameters) {
+        if (p.type) {
+          for (const ref of collectTypeRefs(p.type)) {
+            if (known.has(ref) && ref !== name) {
+              rels.push({ from: name, to: ref, arrow: "-->", label: "constructor" });
+            }
+          }
+        }
+      }
+    } else if (ts.isMethodDeclaration(member)) {
+      if (!ts.isIdentifier(member.name)) continue;
+
+      const methodName = member.name.text;
+      const params = member.parameters
+        .map((p) => formatParameter(p, warnings, `${name}.${methodName}`, warningNodes))
+        .join(", ");
+
+      if (member.type) {
+        const returnType = formatTypeNode(
+          member.type,
+          warnings,
+          `${name}.${methodName}`,
+          warningNodes,
+        );
+        members.push(`+${methodName}(${params}) : ${returnType}`);
+
+        // Collect type refs from return type
+        for (const ref of collectTypeRefs(member.type)) {
+          if (known.has(ref) && ref !== name) {
+            rels.push({ from: name, to: ref, arrow: "-->", label: methodName });
+          }
+        }
+      } else {
+        members.push(`+${methodName}(${params})`);
+      }
+
+      // Collect type refs from parameter types
+      for (const p of member.parameters) {
+        if (p.type) {
+          for (const ref of collectTypeRefs(p.type)) {
+            if (known.has(ref) && ref !== name) {
+              rels.push({ from: name, to: ref, arrow: "-->", label: methodName });
+            }
+          }
+        }
+      }
+    } else if (ts.isPropertyDeclaration(member)) {
+      const propName = getNodeText(member.name);
+      const optional = member.questionToken ? " opt" : "";
+
+      if (member.type) {
+        const typeStr = formatTypeNode(
+          member.type,
+          warnings,
+          `${name}.${propName}`,
+          warningNodes,
+        );
+        members.push(`+${propName} : ${typeStr}${optional}`);
+
+        for (const ref of collectTypeRefs(member.type)) {
+          if (known.has(ref) && ref !== name) {
+            rels.push({ from: name, to: ref, arrow: "-->", label: propName });
+          }
+        }
+      } else {
+        // Property without type annotation (has initializer)
+        members.push(`+${propName}`);
+      }
+    }
+  }
+
+  return {
+    cls: {
+      name,
+      stereotype: abstract ? "abstract" : "class",
+      members,
+      namespace,
+      sourceFile,
+    },
+    rels,
+  };
+};
 
 // ── Interface extraction ──────────────────────────────────────────────────────
 
-function extractInterface(
+const extractInterface = (
   node: ts.InterfaceDeclaration,
   namespace: NamespaceName,
   sourceFile: string,
   known: Set<string>,
   warnings: string[],
   warningNodes: Set<string>,
-): { cls: ExtractedClass; rels: ExtractedRelationship[] } {
+): { cls: ExtractedClass; rels: ExtractedRelationship[] } => {
   const name = node.name.text;
   const members: string[] = [];
   const rels: ExtractedRelationship[] = [];
@@ -124,7 +270,6 @@ function extractInterface(
       const typeStr = formatTypeNode(member.type, warnings, `${name}.${memberName}`, warningNodes);
       members.push(`+${memberName} : ${typeStr}${optional}`);
 
-      // Emit association arrows for each named type referenced in this member
       for (const ref of collectTypeRefs(member.type)) {
         if (known.has(ref) && ref !== name) {
           rels.push({ from: name, to: ref, arrow: "-->", label: memberName });
@@ -139,18 +284,18 @@ function extractInterface(
     cls: { name, stereotype: "interface", members, namespace, sourceFile },
     rels,
   };
-}
+};
 
 // ── Type alias extraction ─────────────────────────────────────────────────────
 
-function extractTypeAlias(
+const extractTypeAlias = (
   node: ts.TypeAliasDeclaration,
   namespace: NamespaceName,
   sourceFile: string,
   known: Set<string>,
   warnings: string[],
   warningNodes: Set<string>,
-): { cls: ExtractedClass; rels: ExtractedRelationship[] } | null {
+): { cls: ExtractedClass; rels: ExtractedRelationship[] } | null => {
   const name = node.name.text;
   const rels: ExtractedRelationship[] = [];
 
@@ -174,13 +319,7 @@ function extractTypeAlias(
   if (ts.isIntersectionTypeNode(node.type)) {
     const text = sanitizeForMermaid(node.type.getText().replace(/\s+/g, " ").trim());
     return {
-      cls: {
-        name,
-        stereotype: "branded",
-        members: [text],
-        namespace,
-        sourceFile,
-      },
+      cls: { name, stereotype: "branded", members: [text], namespace, sourceFile },
       rels: [],
     };
   }
@@ -220,27 +359,27 @@ function extractTypeAlias(
   }
 
   return null;
-}
+};
 
 // ── Enum extraction ───────────────────────────────────────────────────────────
 
-function extractEnum(
+const extractEnum = (
   node: ts.EnumDeclaration,
   namespace: NamespaceName,
   sourceFile: string,
-): ExtractedClass {
+): ExtractedClass => {
   const name = node.name.text;
   const members = node.members.map((m) => getNodeText(m.name));
   return { name, stereotype: "enumeration", members, namespace, sourceFile };
-}
+};
 
 // ── Const tuple extraction ────────────────────────────────────────────────────
 
-function extractConstTuple(
+const extractConstTuple = (
   node: ts.VariableStatement,
   namespace: NamespaceName,
   sourceFile: string,
-): ExtractedClass | null {
+): ExtractedClass | null => {
   for (const decl of node.declarationList.declarations) {
     const name = decl.name.getText();
     const init = decl.initializer;
@@ -260,4 +399,25 @@ function extractConstTuple(
     }
   }
   return null;
-}
+};
+
+// ── Parameter formatting ──────────────────────────────────────────────────────
+
+/**
+ * Format a single TS parameter node for display.
+ *   `name: Type` for typed params, `name` for untyped, `name?` for optional.
+ */
+const formatParameter = (
+  param: ts.ParameterDeclaration,
+  warnings: string[],
+  context: string,
+  warningNodes: Set<string>,
+): string => {
+  const name = getNodeText(param.name);
+  const optional = param.questionToken ? "?" : "";
+  if (param.type) {
+    const typeStr = formatTypeNode(param.type, warnings, context, warningNodes);
+    return `${name}${optional}: ${typeStr}`;
+  }
+  return `${name}${optional}`;
+};

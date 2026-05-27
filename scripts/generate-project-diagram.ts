@@ -1,10 +1,11 @@
 // =============================================================================
-// scripts/generate-project-diagram.ts - Generate class diagram from TypeScript exports
+// scripts/generate-project-diagram.ts - Generate class diagrams from TypeScript exports
 //
 // Scans .ts files in /src, extracts exports with type info via TS Compiler API,
-// detects dependencies, and outputs two Mermaid classDiagram artifacts:
+// detects dependencies, and outputs three Mermaid classDiagram artifacts:
 //   1. module-imports.mermaid  — module-per-class import dependency diagram
 //   2. type-surface.mermaid    — namespaced type-surface diagram (Zod schemas + tools)
+//   3. layer-surface.mermaid   — use-case + adapter layer class diagram with relationships
 // =============================================================================
 
 // ── Imports: diagram utilities ─────────────────────────────────────────────────
@@ -26,6 +27,11 @@ import { type ExtractorFn, twoPassExtract } from "./diagram/twoPassExtract.ts";
 import { extractDomainTypes } from "./diagram/DomainTypeExtractor.ts";
 import { extractZodSchemas } from "./diagram/ZodSchemaExtractor.ts";
 import { extractToolRegistrations } from "./diagram/ToolRegistrationExtractor.ts";
+
+// Layer-surface generators
+import { LayerSurfaceStyler } from "./diagram/LayerSurfaceStyler.ts";
+import { LayerSurfaceGenerator } from "./diagram/LayerSurfaceGenerator.ts";
+import { extractLayerTypes } from "./diagram/LayerTypeExtractor.ts";
 
 // ── Defaults ───────────────────────────────────────────────────────────────────
 const DEFAULT_OUTPUT_DIR = "./docs/";
@@ -74,6 +80,13 @@ const CONFIG = {
     "scrum_update_impediment": ["Story"],
     "scrum_add_vocabulary": ["Story"],
   } as Record<string, string[]>,
+} as const;
+
+// ── Layer-surface CONFIG (directory-prefix based) ──────────────────────────────
+
+const LAYER_GRAPH_CONFIG = {
+  useCasePrefixes: ["./src/scrum/", "./src/domain/"],
+  adapterPrefixes: ["./src/adapters/"],
 } as const;
 
 // ── CLI ────────────────────────────────────────────────────────────────────────
@@ -258,6 +271,43 @@ const generateTypeSurfaceDiagram = (
   return { diagram, warnings };
 };
 
+// ── Layer-surface diagram generation ───────────────────────────────────────────
+
+const generateLayerSurfaceDiagram = (
+  modules: ParsedModule[],
+): { diagram: string; warnings: string[] } => {
+  const useCaseModules = modules.filter((m) =>
+    LAYER_GRAPH_CONFIG.useCasePrefixes.some((p) => m.filePathName.startsWith(p))
+  );
+  const adapterModules = modules.filter((m) =>
+    LAYER_GRAPH_CONFIG.adapterPrefixes.some((p) => m.filePathName.startsWith(p))
+  );
+
+  console.log(`  Use-case layer: ${useCaseModules.length} modules`);
+  console.log(`  Adapter layer: ${adapterModules.length} modules`);
+
+  const extractors: ExtractorFn[] = [
+    ...useCaseModules.map((mod) => (known: Set<string>) =>
+      extractLayerTypes(mod, "UseCaseLayer", known)
+    ),
+    ...adapterModules.map((mod) => (known: Set<string>) =>
+      extractLayerTypes(mod, "AdapterLayer", known)
+    ),
+  ];
+
+  const { classes, relationships, warnings, warningNodes } = twoPassExtract(extractors);
+
+  console.log(
+    `  Extracted ${classes.length} classes/types and ${relationships.length} relationships`,
+  );
+
+  const styler = new LayerSurfaceStyler(classes, warningNodes);
+  const generator = new LayerSurfaceGenerator(classes, relationships, styler);
+  const diagram = generator.generate();
+
+  return { diagram, warnings };
+};
+
 // ── Report generation ──────────────────────────────────────────────────────────
 
 const generateMarkdownReport = (
@@ -350,6 +400,17 @@ const main = async (): Promise<void> => {
     }
   }
 
+  // ── Layer-surface diagram ────────────────────────────────────────────────
+  console.log("Generating layer-surface diagram...");
+  const { diagram: layerSurfaceDiagram, warnings: lsw } = generateLayerSurfaceDiagram(modules);
+
+  if (lsw.length > 0) {
+    console.log(`\n⚠  ${lsw.length} clean-code warning(s):`);
+    for (const w of lsw) {
+      console.warn(`\n  ${w}`);
+    }
+  }
+
   console.log("Generating report...");
   const mdReportBody = generateMarkdownReport(unusedExports, moduleImportDiagram, args.output);
 
@@ -372,10 +433,16 @@ const main = async (): Promise<void> => {
     "type-surface.mermaid",
     args.output,
   );
+  const layerSurfaceObj = new GeneratedArtifact(
+    layerSurfaceDiagram,
+    "layer-surface.mermaid",
+    args.output,
+  );
 
   await reportObj.saveArtifact();
   await moduleDiagramObj.saveArtifact();
   await typeSurfaceObj.saveArtifact();
+  await layerSurfaceObj.saveArtifact();
   console.log(`Saved to ${args.output}`);
 };
 
