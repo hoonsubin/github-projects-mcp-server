@@ -23,12 +23,10 @@ classDiagram
         class sprint-math.ts:::scrum {
             +computeSprintEndDate()
             +buildSprintMeta()
-            +groupStoriesByStatus()
-            +computeSprintTotals()
             +buildSprintWindow()
             +buildIdealLine()
             +buildDaySeries()
-            %% Unused: buildSprintMeta, groupStoriesByStatus, computeSprintTotals
+            %% Unused: buildSprintMeta
         }
 
         class get-story.ts:::scrum {
@@ -81,11 +79,10 @@ classDiagram
 
         class update-impediment.ts:::scrum {
             +updateImpedimentUseCase()
-            %% Unused: updateImpedimentUseCase
         }
 
         class config-helpers.ts:::scrum {
-            +resolveP0PriorityDisplay()
+            +resolveHighestPriorityDisplay()
             +resolveTerminalDisplay()
             %% Unused: resolveTerminalDisplay
         }
@@ -252,10 +249,9 @@ classDiagram
 
         class errors.ts:::github {
             type GitHubErrorCode
-            +assertNever()
             class GitHubApiError
             +notImplemented()
-            %% Unused: GitHubErrorCode, assertNever
+            %% Unused: GitHubErrorCode
         }
 
         class queries.ts:::github {
@@ -273,7 +269,6 @@ classDiagram
             +var GET_ISSUE_BY_ID_QUERY
             +var GET_BLOCKED_BY_QUERY
             +var GET_REPO_QUERY
-            +var GET_USER_MILESTONES_QUERY
             +var GET_FIELD_OPTIONS_QUERY
             +var GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY
             +var GET_ORG_PROJECT_FIELDS_BOOTSTRAP_QUERY
@@ -286,7 +281,6 @@ classDiagram
             +var SET_ASSIGNEE_MUTATION
             +var SET_MILESTONE_MUTATION
             +var ADD_COMMENT_MUTATION
-            +var CREATE_MILESTONE_MUTATION
             +var UPDATE_FIELD_MUTATION
             +var CONVERT_DRAFT_ISSUE_MUTATION
             +var ADD_DRAFT_ISSUE_MUTATION
@@ -502,6 +496,7 @@ classDiagram
     scrum-write.ts --> types.ts : "imports"
     scrum-write.ts --> config.ts : "imports"
     scrum-write.ts --> config-helpers.ts : "imports"
+    scrum-write.ts --> update-impediment.ts : "imports"
     scrum-write.ts --> scrum.ts : "imports"
     scrum-write.ts --> error-enrichment.ts : "imports"
     scrum-write.ts --> pick-defined.ts : "imports"
@@ -536,6 +531,7 @@ classDiagram
     mappers.ts --> config-loader.ts : "imports"
     mappers.ts --> errors.ts : "imports"
     mappers.ts --> types.ts : "imports"
+    mappers.ts --> sprint-math.ts : "imports"
     mappers.ts --> ports.ts : "imports"
     config-reloader.ts --> config-loader.ts : "imports"
     config-reloader.ts --> http-client.ts : "imports"
@@ -583,7 +579,6 @@ classDiagram
     user-milestone-resolver.ts --> http-client.ts : "imports"
     user-milestone-resolver.ts --> label-resolver.ts : "imports"
     user-milestone-resolver.ts --> queries.ts : "imports"
-    user-milestone-resolver.ts --> types.ts : "imports"
     label-resolver.ts --> errors.ts : "imports"
     label-resolver.ts --> http-client.ts : "imports"
     label-resolver.ts --> queries.ts : "imports"

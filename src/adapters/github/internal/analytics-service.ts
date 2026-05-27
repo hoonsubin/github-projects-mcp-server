@@ -9,7 +9,6 @@ import { GitHubApiError } from "../errors.ts";
 import { SprintHistoryService } from "./sprint-history-service.ts";
 import { BurndownCalculator } from "./burndown-calculator.ts";
 import { resolveSprint } from "./resolver.ts";
-import { computeSprintEndDate as _computeSprintEndDate } from "../../../scrum/sprint-math.ts";
 import { buildDaySeries, buildIdealLine, buildSprintWindow } from "../../../scrum/sprint-math.ts";
 import { historyEntryToItemListing } from "../../../scrum/listing-mappers.ts";
 import type { RuntimeConfig } from "../config-loader.ts";

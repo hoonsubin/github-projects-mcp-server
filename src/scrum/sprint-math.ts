@@ -4,7 +4,7 @@
 // All functions depend only on domain types - no RuntimeConfig or GitHub types.
 // =============================================================================
 
-import type { BurndownDayPoint, IdealDayPoint, IterationEntry, Story } from "../domain/types.ts";
+import type { BurndownDayPoint, IdealDayPoint, IterationEntry } from "../domain/types.ts";
 import type { BurndownStoryInput } from "./ports.ts";
 
 // ── Shared date utility ────────────────────────────────────────────────────────
@@ -60,74 +60,6 @@ export const buildSprintMeta = (iterEntry: IterationEntry | null): {
     days_remaining: daysRemaining,
   };
 };
-
-// ── Story grouping ─────────────────────────────────────────────────────────────
-
-/**
- * Group stories by status, ordered by the team's declared status vocabulary.
- * Statuses not in the vocabulary are appended at the end.
- */
-export const groupStoriesByStatus = (
-  stories: Story[],
-  statusOrder: string[],
-): Array<{ status: string; stories: Story[]; points_sum: number }> => {
-  const groupMap = new Map<string, Story[]>();
-  for (const story of stories) {
-    const key = story.status ?? "(No Status)";
-    if (!groupMap.has(key)) groupMap.set(key, []);
-    const group = groupMap.get(key);
-    if (group) group.push(story);
-  }
-
-  const orderedGroups: Array<{ status: string; stories: Story[]; points_sum: number }> = [];
-
-  for (const statusName of statusOrder) {
-    const groupStories = groupMap.get(statusName);
-    if (!groupStories) continue;
-    orderedGroups.push({
-      status: statusName,
-      stories: groupStories,
-      points_sum: groupStories.reduce((acc, s) => acc + (s.story_points ?? 0), 0),
-    });
-  }
-
-  // Append unknown statuses
-  const knownStatuses = new Set(statusOrder);
-  for (const [status, groupStories] of groupMap) {
-    if (!knownStatuses.has(status)) {
-      orderedGroups.push({
-        status,
-        stories: groupStories,
-        points_sum: groupStories.reduce((acc, s) => acc + (s.story_points ?? 0), 0),
-      });
-    }
-  }
-
-  return orderedGroups;
-};
-
-/**
- * Compute sprint point totals using vocabulary-based status identification.
- */
-export const computeSprintTotals = (
-  stories: Story[],
-  doneDisplay: string,
-  inProgressDisplay: string,
-  blockedDisplay: string,
-): {
-  committed_points: number;
-  completed_points: number;
-  in_flight_points: number;
-  blocked_points: number;
-} => ({
-  committed_points: stories.reduce((acc, s) => acc + (s.story_points ?? 0), 0),
-  completed_points: stories.filter((s) => s.status === doneDisplay)
-    .reduce((acc, s) => acc + (s.story_points ?? 0), 0),
-  in_flight_points: stories.filter((s) => s.status === inProgressDisplay)
-    .reduce((acc, s) => acc + (s.story_points ?? 0), 0),
-  blocked_points: stories.filter((s) => s.status === blockedDisplay)
-    .reduce((acc, s) => acc + (s.story_points ?? 0), 0),
-});
 
 // ── Sprint window ──────────────────────────────────────────────────────────────
 

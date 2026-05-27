@@ -15,6 +15,7 @@ import type {
   StoryBase,
   StoryComment,
 } from "../../domain/types.ts";
+import { computeSprintEndDate } from "../../scrum/sprint-math.ts";
 import type { BurndownStoryInput, SprintInfo } from "../../scrum/ports.ts";
 import type {
   AssigneeNodes,
@@ -306,15 +307,13 @@ export const buildLinkedPrList = (nodes: TimelineItemInput[]): LinkedPr[] =>
  */
 export const toSprintInfo = (iter: IterationEntry | null): SprintInfo | null => {
   if (!iter) return null;
-  const endDate = new Date(iter.startDate);
-  endDate.setDate(endDate.getDate() + iter.duration);
   return {
     id: iter.id,
     name: iter.title,
     goal: null,
     startDate: iter.startDate,
     durationDays: iter.duration,
-    endDate: endDate.toISOString().slice(0, 10),
+    endDate: computeSprintEndDate(iter.startDate, iter.duration),
   };
 };
 
