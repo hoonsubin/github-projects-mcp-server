@@ -18,12 +18,12 @@ import type {
   AnalyticsResult,
   BurndownDayPoint,
   BurndownResponse,
-  BurndownSprintMeta,
   BurndownStory,
   IdealDayPoint,
   SprintRef,
   SprintSnapshot,
   SprintTotals,
+  SprintWindowMeta,
 } from "../../../domain/types.ts";
 
 // ── AnalyticsService class ────────────────────────────────────────────────────
@@ -199,7 +199,7 @@ export class AnalyticsService {
       completed_at: completions.get(s.number) ?? null,
     }));
 
-    const meta: BurndownSprintMeta = {
+    const meta: SprintWindowMeta = {
       name: input.sprint.name,
       start_date: input.sprint.startDate,
       end_date: input.sprint.endDate,

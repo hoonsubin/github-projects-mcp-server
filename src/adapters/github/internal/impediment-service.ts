@@ -16,6 +16,7 @@
 import { GitHubApiError } from "../errors.ts";
 import type * as GH from "../generated/github-types.ts";
 import type { GitHubClient } from "./http-client.ts";
+import type { ImpedimentStatus } from "../../../domain/types.ts";
 import { resolveSprint, resolveStory } from "./resolver.ts";
 import { LabelResolver } from "./label-resolver.ts";
 import { StoryMutationService } from "./story-mutation-service.ts";
@@ -186,7 +187,7 @@ export class ImpedimentService {
 
   async updateImpediment(
     ref: ImpedimentRef,
-    status: "open" | "in_progress" | "resolved",
+    status: ImpedimentStatus,
     resolutionNotes?: string,
   ): Promise<ImpedimentListing> {
     // Resolve the project item ID (PVTI_...) to the underlying GitHub Issue node ID (I_...).
@@ -293,8 +294,9 @@ export class ImpedimentService {
       resolvedAt = closedAt;
     }
 
-    const impedimentStatus: "open" | "in_progress" | "resolved" =
-      issue.closed || status === "resolved" ? "resolved" : status;
+    const impedimentStatus: ImpedimentStatus = issue.closed || status === "resolved"
+      ? "resolved"
+      : status;
 
     return {
       ref,

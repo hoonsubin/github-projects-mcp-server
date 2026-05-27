@@ -8,7 +8,10 @@
 // with platform-specific details.
 // =============================================================================
 
-import { AdapterBackend } from "./types.ts";
+import { AdapterBackend, type TeamRole } from "./types.ts";
+
+/** Agent autonomy level. */
+export type AutonomyLevel = "conservative" | "standard" | "full";
 // ── Ceremony artifact type ────────────────────────────────────────────────────
 
 /**
@@ -55,13 +58,13 @@ export interface ScrumConfig {
     agent?: {
       name?: string;
       autonomy?: {
-        level: "conservative" | "standard" | "full";
+        level: AutonomyLevel;
         require_confirmation_above_n_items?: number;
       };
     };
     team?: Array<{
       name: string;
-      role: "scrum_master" | "product_owner" | "developer";
+      role: TeamRole;
       contact?: string;
     }>;
   };
@@ -109,7 +112,7 @@ export interface ScrumConfig {
   /** Canonical status key → platform display name (e.g. "done" → "Done"). */
   status_display?: Record<string, string>;
   /** Canonical priority key → platform display name (e.g. "p0" → "Must"). */
-  priority_display?: Record<string, string>;
+  priority_display?: Record<PriorityTier["key"], string>;
 
   backends: AdapterBackend;
 }

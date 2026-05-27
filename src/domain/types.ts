@@ -48,12 +48,21 @@ export type StoryRef = EntityRef | { readonly number: number };
  */
 export type EpicRef = EntityRef;
 
+/** Epic reference bundled with its display name. */
+export type EpicRefWithName = { readonly ref: EpicRef; readonly name: string };
+
 /**
  * A reference to an Impediment passed as tool input.
  * Always resolved - the agent obtains this from ImpedimentListing.ref
  * and passes it back to scrum_update_impediment.
  */
 export type ImpedimentRef = EntityRef;
+
+/** Lifecycle status for an impediment. */
+export type ImpedimentStatus = "open" | "in_progress" | "resolved";
+
+/** Const tuple for Zod z.enum(IMPEDIMENT_STATUSES). */
+export const IMPEDIMENT_STATUSES = ["open", "in_progress", "resolved"] as const;
 
 // ── Output ref (server → agent, listing context only) ────────────────────────
 
@@ -74,6 +83,9 @@ export type ImpedimentRef = EntityRef;
  */
 export type ItemListingRef = { readonly id: string; readonly key: string };
 
+/** Lifecycle status for an epic. */
+export type EpicStatus = "open" | "in_progress" | "done";
+
 /**
  * Lightweight epic entry for planning contexts.
  * Returned by scrum_find_items alongside StoryListing[].
@@ -85,7 +97,7 @@ export interface EpicListing {
   readonly name: string;
   readonly description: string | null;
   readonly priority: string | null; // team's vocabulary value, or null
-  readonly status: "open" | "in_progress" | "done" | null;
+  readonly status: EpicStatus | null;
   readonly story_count: number; // total stories under this epic (all statuses)
   readonly open_item_count: number; // stories with status ≠ "done" / "closed"
 }
@@ -185,16 +197,11 @@ export type SprintRiskStance = "normal" | "monitor" | "elevated";
  * Sprint with time-progress fields.
  * Built by `sprintContextFromSprintInfo()` at the port boundary.
  */
-export interface SprintContext {
+export interface SprintContext extends SprintWindowMeta {
   id: string;
-  name: string;
   // todo: sprint goals are not implemented yet
   goal: string | null;
-  start_date: string;
-  end_date: string;
-  duration_days: number;
   days_elapsed: number;
-  days_remaining: number;
   time_elapsed_pct: number; // 0-100
   riskStance: SprintRiskStance;
 }
@@ -261,7 +268,7 @@ export interface EpicSummary {
   ref: EntityRef;
   name: string;
   description: string | null;
-  status: "open" | "in_progress" | "done" | null;
+  status: EpicStatus | null;
   open_item_count: number;
 }
 
@@ -278,6 +285,9 @@ export interface SprintRisk {
   readonly no_assignee_count: number;
 }
 
+/** Per-type readiness breakdown: ready, not_ready, total counts. */
+export type ReadinessBreakdown = { ready: number; not_ready: number; total: number };
+
 /**
  * Board health output for scrum_get_board_health.
  * Aggregated metrics - no individual story data.
@@ -286,7 +296,7 @@ export interface BacklogHealth {
   readonly readiness: {
     /** Per-PBI-type breakdown of ready vs not-ready items. */
     /** Per-type breakdown of ready vs not-ready items. Uses `string` key to accommodate untyped items. */
-    readonly by_type: Record<string, { ready: number; not_ready: number; total: number }>;
+    readonly by_type: Record<string, ReadinessBreakdown>;
     /** Percentage of all items meeting Definition of Ready (0-100). */
     readonly overall_pct: number;
   };
@@ -321,7 +331,7 @@ export interface BacklogItemListing {
     readonly name: string | null;
     readonly ref: EntityRef;
   };
-  readonly epic: { readonly ref: EpicRef; readonly name: string } | null;
+  readonly epic: EpicRefWithName | null;
   /** Keys of items that block this one (must be Done first). */
   readonly blocked_by: ReadonlyArray<ItemListingRef>;
   /** Keys of items this one blocks (reverse dependency). Populated by adapter. */
@@ -384,7 +394,7 @@ export interface StoryBase {
   readonly kind: string | null; // content type discriminator (e.g. "issue", "draft", "pr")
   readonly key: string | null; // human-readable issue number; null for draft items
   readonly url: string | null; // canonical URL in the backend UI; null for draft items
-  readonly epic: { readonly ref: EpicRef; readonly name: string } | null;
+  readonly epic: EpicRefWithName | null;
 }
 
 export const SUPPORTED_BACKENDS = {
@@ -423,23 +433,26 @@ export interface IterationEntry {
 
 // ── Burndown types (scrum_get_burndown) ───────────────────────────────────────
 
+/** Strategy used to derive burndown data. */
+export type DataSource = "audit_log" | "issue_close_proxy";
+
+/** Metadata describing a sprint time window. */
+export interface SprintWindowMeta {
+  readonly name: string;
+  readonly start_date: string;
+  readonly end_date: string;
+  readonly duration_days: number;
+  readonly days_remaining: number;
+}
+
 /** Response shape for scrum_get_burndown. */
 export interface BurndownResponse {
-  readonly sprint: BurndownSprintMeta;
-  readonly data_source: "audit_log" | "issue_close_proxy";
+  readonly sprint: SprintWindowMeta;
+  readonly data_source: DataSource;
   readonly warning?: string;
   readonly series: readonly BurndownDayPoint[];
   readonly ideal: readonly IdealDayPoint[];
   readonly stories: readonly BurndownStory[];
-}
-
-/** Sprint window metadata returned alongside the burndown series. */
-export interface BurndownSprintMeta {
-  name: string;
-  start_date: string; // YYYY-MM-DD
-  end_date: string; // YYYY-MM-DD
-  duration_days: number;
-  days_remaining: number;
 }
 
 /** One entry in the actual burndown series - one per calendar day. */
@@ -502,6 +515,9 @@ export type SprintTotals =
     completed_points: number;
   };
 
+/** Discriminant for SprintTotals discriminated union. Derived — stays in sync automatically. */
+export type SprintTotalsKind = SprintTotals["kind"];
+
 /**
  * Sprint + item listing - canonical shape for both active and historical sprints.
  *
@@ -509,13 +525,7 @@ export type SprintTotals =
  * instead of checking for committed_points presence.
  */
 export interface SprintSnapshot {
-  readonly sprint: {
-    readonly name: string;
-    readonly start_date: string;
-    readonly end_date: string;
-    readonly duration_days: number;
-    readonly days_remaining: number;
-  };
+  readonly sprint: SprintWindowMeta;
   readonly items: readonly BacklogItemListing[];
   readonly total_count: number;
   readonly totals: SprintTotals;
@@ -605,6 +615,9 @@ export interface UseCaseResult<T> extends PartialResult {
 
 // ── Orient output ──────────────────────────────────────────────────────────────
 
+/** Scrum team role in the project vocabulary. */
+export type TeamRole = "scrum_master" | "product_owner" | "developer";
+
 /**
  * Exported output type for scrum_orient.
  * Extends PartialResult because orientUseCase wraps fallible backend calls
@@ -666,7 +679,7 @@ export interface OrientResult extends PartialResult {
     readonly team:
       | readonly {
         readonly name: string;
-        readonly role: "scrum_master" | "product_owner" | "developer";
+        readonly role: TeamRole;
         readonly contact?: string;
       }[]
       | null;

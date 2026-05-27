@@ -12,7 +12,7 @@ import { type SelectFieldOption } from "../types.ts";
 import { type GitHubClient } from "./http-client.ts";
 import { LabelResolver } from "./label-resolver.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
-import type { VocabularyKind } from "../../../scrum/ports.ts";
+import type { CreateResult, VocabularyKind } from "../../../scrum/ports.ts";
 import { GET_FIELD_OPTIONS_QUERY, UPDATE_FIELD_MUTATION } from "../queries.ts";
 
 // ── Helper types ─────────────────────────────────────────────────────────────
@@ -52,7 +52,7 @@ export class VocabularyManager {
   }
 
   /** Add a new vocabulary option (status or priority) */
-  async addVocabulary(kind: VocabularyKind, value: string): Promise<{ created: boolean }> {
+  async addVocabulary(kind: VocabularyKind, value: string): Promise<CreateResult> {
     switch (kind) {
       case "status_option":
         return await this.addStatusOption(value);
@@ -65,7 +65,7 @@ export class VocabularyManager {
     }
   }
 
-  private async addStatusOption(value: string): Promise<{ created: boolean }> {
+  private async addStatusOption(value: string): Promise<CreateResult> {
     const fieldId = this.config.fields.statusFieldId;
     if (!fieldId) {
       throw new GitHubApiError(
@@ -81,7 +81,7 @@ export class VocabularyManager {
     return await this.addSingleSelectOption(fieldId, value);
   }
 
-  private async addPriorityOption(value: string): Promise<{ created: boolean }> {
+  private async addPriorityOption(value: string): Promise<CreateResult> {
     const fieldId = this.config.fields.priorityFieldId;
     if (!fieldId) {
       throw new GitHubApiError(
@@ -100,7 +100,7 @@ export class VocabularyManager {
   private async addSingleSelectOption(
     fieldId: string,
     value: string,
-  ): Promise<{ created: boolean }> {
+  ): Promise<CreateResult> {
     const fieldData = await this.gh.graphql<GetFieldOptionsResponse>(
       GET_FIELD_OPTIONS_QUERY,
       { fieldId },

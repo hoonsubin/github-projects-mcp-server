@@ -72,12 +72,15 @@ export const toEntityRef = (itemId: GitHubItemId): EntityRef => ({ id: itemId })
  * All values here are platform-specific - the use-case layer never reads this directly.
  * Auth values are $ENV_VAR references resolved by the config loader at startup.
  */
+/** GitHub account type. */
+export type OwnerType = "user" | "org";
+
 export interface GitHubBackendConfig {
   auth: {
     token: string; // resolved from $GITHUB_TOKEN or literal value
   };
   owner: string;
-  owner_type: "user" | "org";
+  owner_type: OwnerType;
   project_number: number;
   tracked_repos: string[];
   /** Platform identity for team members. `ref` cross-references project.team[].name. */

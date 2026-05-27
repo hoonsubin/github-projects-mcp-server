@@ -8,12 +8,14 @@
 import type { PlatformCapabilities } from "./capabilities.ts";
 import type {
   AnalyticsQuery,
+  CreateResult,
   CreateStoryInput,
   ImpedimentListing,
   PlatformState,
   ProjectReader,
   ProjectWriter,
   ResolvedItemFilter,
+  ScrumField,
   StoryDetail,
   StoryUpdates,
   VocabularyKind,
@@ -24,6 +26,7 @@ import type {
   BacklogHealth,
   EpicListing,
   ImpedimentRef,
+  ImpedimentStatus,
   ItemSearchResult,
   SprintRef,
   StoryRef,
@@ -147,7 +150,7 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
 
   abstract setField(
     ref: StoryRef,
-    field: "status" | "sprint" | "story_points" | "priority" | "assignee" | "type",
+    field: ScrumField,
     value: string | number | SprintRef | null,
   ): Promise<void>;
 
@@ -156,7 +159,7 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
   abstract addVocabulary(
     kind: VocabularyKind,
     value: string,
-  ): Promise<{ created: boolean }>;
+  ): Promise<CreateResult>;
 
   // ── Optional ProjectWriter operations ────────────────────────────────────
 
@@ -180,7 +183,7 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
    */
   updateImpediment(
     _ref: ImpedimentRef,
-    _status: "open" | "in_progress" | "resolved",
+    _status: ImpedimentStatus,
     _resolutionNotes?: string,
   ): Promise<ImpedimentListing> {
     throw new UnsupportedCapabilityError(this.capabilities.platform, "updateImpediment");

@@ -20,7 +20,7 @@ import {
   SET_MILESTONE_MUTATION,
 } from "../queries.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
-import type { CreateStoryInput, StoryUpdates } from "../../../scrum/ports.ts";
+import type { CreateStoryInput, ScrumField, StoryUpdates } from "../../../scrum/ports.ts";
 import type { SprintRef, StoryRef } from "../../../domain/types.ts";
 
 // ── Dependency mutation helpers ──────────────────────────────────────────────
@@ -313,7 +313,7 @@ export class StoryMutationService {
 
   async setField(
     ref: StoryRef,
-    field: "status" | "sprint" | "story_points" | "priority" | "assignee" | "type",
+    field: ScrumField,
     value: string | number | SprintRef | null,
   ): Promise<void> {
     const resolved = await resolveStory(ref, this.gh);

@@ -9,6 +9,7 @@ import { GitHubApiError } from "../errors.ts";
 import { GitHubClient } from "./http-client.ts";
 import { CREATE_LABEL_MUTATION, GET_REPO_LABELS_QUERY, GET_REPO_QUERY } from "../queries.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
+import type { CreateResult } from "../../../scrum/ports.ts";
 
 // ── Helper types ─────────────────────────────────────────────────────────────
 
@@ -202,7 +203,7 @@ export class LabelResolver {
   }
 
   /** Add a label to the repo (used by vocabulary management) */
-  async addLabel(value: string): Promise<{ created: boolean }> {
+  async addLabel(value: string): Promise<CreateResult> {
     const existingLabels = await this.fetchAllLabels();
     const existingNames: string[] = existingLabels.map((l) => l.name);
     if (existingNames.includes(value)) {

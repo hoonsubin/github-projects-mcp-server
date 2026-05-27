@@ -19,6 +19,7 @@ import type {
   EpicRef,
   EpicSummary,
   ImpedimentRef,
+  ImpedimentStatus,
   ItemListingRef,
   ItemSearchResult,
   LinkedArtifact,
@@ -33,7 +34,28 @@ import type { BackendCallResult } from "../services/error-enrichment.ts";
 // ── Input types (cross the port boundary) ─────────────────────────────────────
 
 /** Search scope for item queries. */
-export type SearchScope = "backlog" | "sprint" | "all";
+export const SEARCH_SCOPES = ["backlog", "sprint", "all"] as const;
+
+export type SearchScope = (typeof SEARCH_SCOPES)[number];
+
+/** Writable board fields on a story. */
+export const SCRUM_FIELDS = [
+  "status",
+  "sprint",
+  "story_points",
+  "priority",
+  "assignee",
+  "type",
+] as const;
+
+/** Board field to update via setField. */
+export type ScrumField = (typeof SCRUM_FIELDS)[number];
+
+/** Which analytics view to return. */
+export const ANALYTICS_VIEWS = ["burndown", "history", "both"] as const;
+
+/** Analytics view selector. */
+export type AnalyticsView = (typeof ANALYTICS_VIEWS)[number];
 
 /**
  * Input filter for findItems port method.
@@ -82,7 +104,7 @@ export interface ResolvedItemFilter {
  * Defined at the port boundary because it's an input type, not a domain type.
  */
 export interface AnalyticsQuery {
-  readonly view: "burndown" | "history" | "both";
+  readonly view: AnalyticsView;
   readonly sprint_ref?: string | null;
   readonly history_window?: number; // 1-10, used when view includes history
 }
@@ -216,7 +238,12 @@ export interface StoryUpdates {
   readonly blocked_by?: readonly StoryRef[] | null; // null clears all; omit to leave unchanged
 }
 
-export type VocabularyKind = "status_option" | "priority_option" | "label";
+export const VOCABULARY_KINDS = ["status_option", "priority_option", "label"] as const;
+
+export type VocabularyKind = (typeof VOCABULARY_KINDS)[number];
+
+/** Result of an idempotent create operation. */
+export type CreateResult = { readonly created: boolean };
 
 // ── Listing types (SprintSnapshot items) ────────────────────────────────────────
 
@@ -250,7 +277,7 @@ export interface StoryListing {
 export interface ImpedimentListing {
   readonly ref: ImpedimentRef;
   readonly description: string;
-  readonly status: "open" | "in_progress" | "resolved";
+  readonly status: ImpedimentStatus;
   readonly raised_by: string | null;
   readonly raised_at: string;
   readonly resolved_at: string | null;
@@ -307,7 +334,7 @@ export interface ImpedimentPort {
   getOrphanImpediments(): Promise<ImpedimentListing[]>;
   updateImpediment(
     ref: ImpedimentRef,
-    status: "open" | "in_progress" | "resolved",
+    status: ImpedimentStatus,
     resolutionNotes?: string,
   ): Promise<ImpedimentListing>;
 }
@@ -363,14 +390,14 @@ export interface ProjectWriter {
     // scrum config, and the code will keep an internal default to check 'readiness'
     // the language model should be flexible enough to map dynamic fields with its purpose
     // even without explicit instruction for each cases (assuming the user's prompt is reasonable)
-    field: "status" | "sprint" | "story_points" | "priority" | "assignee" | "type",
+    field: ScrumField,
     value: string | number | SprintRef | null,
   ): Promise<void>;
   addComment(ref: StoryRef, body: string): Promise<void>;
   addVocabulary(
     kind: VocabularyKind,
     value: string,
-  ): Promise<{ created: boolean }>;
+  ): Promise<CreateResult>;
 }
 
 /**
