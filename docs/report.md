@@ -34,12 +34,10 @@ classDiagram
         class sprint-math.ts:::scrum {
             +computeSprintEndDate()
             +buildSprintMeta()
-            +groupStoriesByStatus()
-            +computeSprintTotals()
             +buildSprintWindow()
             +buildIdealLine()
             +buildDaySeries()
-            %% Unused: buildSprintMeta, groupStoriesByStatus, computeSprintTotals
+            %% Unused: buildSprintMeta
         }
 
         class get-story.ts:::scrum {
@@ -92,11 +90,10 @@ classDiagram
 
         class update-impediment.ts:::scrum {
             +updateImpedimentUseCase()
-            %% Unused: updateImpedimentUseCase
         }
 
         class config-helpers.ts:::scrum {
-            +resolveP0PriorityDisplay()
+            +resolveHighestPriorityDisplay()
             +resolveTerminalDisplay()
             %% Unused: resolveTerminalDisplay
         }
@@ -263,10 +260,9 @@ classDiagram
 
         class errors.ts:::github {
             type GitHubErrorCode
-            +assertNever()
             class GitHubApiError
             +notImplemented()
-            %% Unused: GitHubErrorCode, assertNever
+            %% Unused: GitHubErrorCode
         }
 
         class queries.ts:::github {
@@ -284,7 +280,6 @@ classDiagram
             +var GET_ISSUE_BY_ID_QUERY
             +var GET_BLOCKED_BY_QUERY
             +var GET_REPO_QUERY
-            +var GET_USER_MILESTONES_QUERY
             +var GET_FIELD_OPTIONS_QUERY
             +var GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY
             +var GET_ORG_PROJECT_FIELDS_BOOTSTRAP_QUERY
@@ -297,7 +292,6 @@ classDiagram
             +var SET_ASSIGNEE_MUTATION
             +var SET_MILESTONE_MUTATION
             +var ADD_COMMENT_MUTATION
-            +var CREATE_MILESTONE_MUTATION
             +var UPDATE_FIELD_MUTATION
             +var CONVERT_DRAFT_ISSUE_MUTATION
             +var ADD_DRAFT_ISSUE_MUTATION
@@ -513,6 +507,7 @@ classDiagram
     scrum-write.ts --> types.ts : "imports"
     scrum-write.ts --> config.ts : "imports"
     scrum-write.ts --> config-helpers.ts : "imports"
+    scrum-write.ts --> update-impediment.ts : "imports"
     scrum-write.ts --> scrum.ts : "imports"
     scrum-write.ts --> error-enrichment.ts : "imports"
     scrum-write.ts --> pick-defined.ts : "imports"
@@ -547,6 +542,7 @@ classDiagram
     mappers.ts --> config-loader.ts : "imports"
     mappers.ts --> errors.ts : "imports"
     mappers.ts --> types.ts : "imports"
+    mappers.ts --> sprint-math.ts : "imports"
     mappers.ts --> ports.ts : "imports"
     config-reloader.ts --> config-loader.ts : "imports"
     config-reloader.ts --> http-client.ts : "imports"
@@ -594,7 +590,6 @@ classDiagram
     user-milestone-resolver.ts --> http-client.ts : "imports"
     user-milestone-resolver.ts --> label-resolver.ts : "imports"
     user-milestone-resolver.ts --> queries.ts : "imports"
-    user-milestone-resolver.ts --> types.ts : "imports"
     label-resolver.ts --> errors.ts : "imports"
     label-resolver.ts --> http-client.ts : "imports"
     label-resolver.ts --> queries.ts : "imports"
@@ -708,8 +703,6 @@ The following exports are never directly imported by other modules in the codeba
 | Module | Export | Kind |
 |---|---|---|
 | [`./src/scrum/sprint-math.ts`](src/scrum/sprint-math.ts) | `buildSprintMeta` | `function` |
-| [`./src/scrum/sprint-math.ts`](src/scrum/sprint-math.ts) | `groupStoriesByStatus` | `function` |
-| [`./src/scrum/sprint-math.ts`](src/scrum/sprint-math.ts) | `computeSprintTotals` | `function` |
 | [`./src/scrum/ports.ts`](src/scrum/ports.ts) | `SearchScope` | `type` |
 | [`./src/scrum/ports.ts`](src/scrum/ports.ts) | `AnalyticsView` | `type` |
 | [`./src/scrum/ports.ts`](src/scrum/ports.ts) | `FieldPresence` | `interface` |
@@ -717,13 +710,11 @@ The following exports are never directly imported by other modules in the codeba
 | [`./src/scrum/ports.ts`](src/scrum/ports.ts) | `DisplayMap` | `type` |
 | [`./src/scrum/ports.ts`](src/scrum/ports.ts) | `StoryListing` | `interface` |
 | [`./src/scrum/ports.ts`](src/scrum/ports.ts) | `EpicPort` | `interface` |
-| [`./src/scrum/update-impediment.ts`](src/scrum/update-impediment.ts) | `updateImpedimentUseCase` | `function` |
 | [`./src/scrum/config-helpers.ts`](src/scrum/config-helpers.ts) | `resolveTerminalDisplay` | `function` |
 | [`./src/_deno-shim.node.ts`](src/_deno-shim.node.ts) | `addEventListener` | `function` |
 | [`./src/_deno-shim.node.ts`](src/_deno-shim.node.ts) | `Deno` | `var` |
 | [`./src/schemas/inputs.ts`](src/schemas/inputs.ts) | `GraphQLQuerySchema` | `var` |
 | [`./src/adapters/github/errors.ts`](src/adapters/github/errors.ts) | `GitHubErrorCode` | `type` |
-| [`./src/adapters/github/errors.ts`](src/adapters/github/errors.ts) | `assertNever` | `function` |
 | [`./src/adapters/github/queries.ts`](src/adapters/github/queries.ts) | `ADD_PROJECT_ITEM_MUTATION` | `var` |
 | [`./src/adapters/github/queries.ts`](src/adapters/github/queries.ts) | `CREATE_ISSUE_MUTATION` | `var` |
 | [`./src/adapters/github/internal/label-resolver.ts`](src/adapters/github/internal/label-resolver.ts) | `GitHubLabel` | `interface` |

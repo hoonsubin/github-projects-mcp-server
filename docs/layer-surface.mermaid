@@ -740,7 +740,6 @@ classDiagram
             +constructor(gh: GitHubClient, owner: string, repo: string, repoNodeIdProvider: RepoNodeIdProvider)
             +resolveUserNodeId(login: string) : Promise~string~
             +resolveUserNodeIds(logins: readonly string[]) : Promise~string[]~
-            +resolveOrCreateMilestoneNodeId(title: string) : Promise~string~
         }
 
         class GitHubLabel:::ad_interface {
