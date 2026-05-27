@@ -5,7 +5,7 @@
 // =============================================================================
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { FileReaderPort, ProjectBackend } from "../scrum/ports.ts";
+import type { ProjectBackend } from "../scrum/ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 import {
   FindItemsSchema,
@@ -40,7 +40,6 @@ export const registerScrumReadTools = (
   server: McpServer,
   backend: ProjectBackend,
   scrumConfig: ScrumConfig,
-  _fileReader: FileReaderPort | null,
 ): void => {
   // ── scrum_orient ───────────────────────────────────────────────────────────
 

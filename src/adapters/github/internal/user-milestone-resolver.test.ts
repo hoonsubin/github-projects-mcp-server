@@ -1,8 +1,7 @@
 // =============================================================================
 // src/adapters/github/internal/user-milestone-resolver.test.ts
 //
-// Unit tests for UserMilestoneResolver: resolveUserNodeId, resolveUserNodeIds,
-// and resolveOrCreateMilestoneNodeId.
+// Unit tests for UserMilestoneResolver: resolveUserNodeId and resolveUserNodeIds.
 // Mocks all injected dependencies via a queue-based GitHubClient spy.
 // =============================================================================
 
@@ -24,51 +23,6 @@ const USER_NULL = { user: null };
 
 /** User undefined — {} (no user key at all) */
 const USER_UNDEF = {};
-
-/** Milestones found — { repository: { milestones: { nodes: [{ id: "MI_1", title: "Sprint Goal" }] } } } */
-const MILESTONES_FOUND = {
-  repository: {
-    milestones: {
-      nodes: [{ id: "MI_1", title: "Sprint Goal" }],
-    },
-  },
-};
-
-/** Milestones empty — { repository: { milestones: { nodes: [] } } } */
-const MILESTONES_EMPTY = {
-  repository: {
-    milestones: {
-      nodes: [],
-    },
-  },
-};
-
-/** Milestones null — { repository: { milestones: null } } (nodes defaults to []) */
-const MILESTONES_NULL = {
-  repository: {
-    milestones: null,
-  },
-};
-
-/** Milestones undefined repository — { repository: null } */
-const MILESTONES_UNDEF = {
-  repository: null,
-};
-
-/** Milestone created — { createMilestone: { milestone: { id: "MI_new" } } } */
-const MILESTONE_CREATED = {
-  createMilestone: {
-    milestone: { id: "MI_new" },
-  },
-};
-
-/** Milestone create mutation returned null — { createMilestone: null } */
-const MILESTONE_CREATE_NULL = { createMilestone: null };
-
-/** Milestone create mutation returned null milestone — { createMilestone: { milestone: null } } */
-const MILESTONE_CREATE_MILESTONE_NULL = {
-  createMilestone: { milestone: null },
-};
 
 // =============================================================================
 // GitHubClient spy — queue-based to handle sequential graphql calls
@@ -151,10 +105,6 @@ const givenUserExists = (spy: GitHubClientSpy): void => {
 
 const givenUserNotFound = (spy: GitHubClientSpy): void => {
   spy.enqueue(USER_NULL);
-};
-
-const givenMilestoneNotFound = (spy: GitHubClientSpy): void => {
-  spy.enqueue(MILESTONES_EMPTY, MILESTONE_CREATED);
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -345,175 +295,5 @@ Deno.test({
 
     assertEquals(nodeIds, ["MDQ6VXNlcjE="]);
     assertEquals(gh.graphqlCalls.length, 1);
-  },
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Group C — resolveOrCreateMilestoneNodeId
-// ═══════════════════════════════════════════════════════════════════════════════
-
-Deno.test({
-  name: "resolveOrCreateMilestoneNodeId - returns existing milestone ID (exact match)",
-  async fn() {
-    const { resolver, gh } = createResolver();
-    gh.enqueue(MILESTONES_FOUND);
-
-    const milestoneId = await resolver.resolveOrCreateMilestoneNodeId(
-      "Sprint Goal",
-    );
-
-    assertEquals(milestoneId, "MI_1");
-    assertEquals(gh.graphqlCalls.length, 1);
-  },
-});
-
-Deno.test({
-  name: "resolveOrCreateMilestoneNodeId - matches case-insensitively",
-  async fn() {
-    const { resolver, gh } = createResolver();
-    gh.enqueue(MILESTONES_FOUND);
-
-    const milestoneId = await resolver.resolveOrCreateMilestoneNodeId(
-      "sprint goal",
-    );
-
-    assertEquals(milestoneId, "MI_1");
-  },
-});
-
-Deno.test({
-  name: "resolveOrCreateMilestoneNodeId - passes correct owner/repo variables",
-  async fn() {
-    const { resolver, gh } = createResolver();
-    gh.enqueue(MILESTONES_FOUND);
-
-    await resolver.resolveOrCreateMilestoneNodeId("Sprint Goal");
-
-    assertEquals(gh.graphqlCalls[0].variables.owner, "test-owner");
-    assertEquals(gh.graphqlCalls[0].variables.repo, "test-repo");
-  },
-});
-
-Deno.test({
-  name: "resolveOrCreateMilestoneNodeId - creates milestone when not found",
-  async fn() {
-    const { resolver, gh } = createResolver();
-    givenMilestoneNotFound(gh);
-
-    const milestoneId = await resolver.resolveOrCreateMilestoneNodeId(
-      "New Milestone",
-    );
-
-    assertEquals(milestoneId, "MI_new");
-    assertEquals(gh.graphqlCalls.length, 2);
-  },
-});
-
-Deno.test({
-  name: "resolveOrCreateMilestoneNodeId - passes correct title and repositoryId to create mutation",
-  async fn() {
-    const { resolver, gh } = createResolver();
-    givenMilestoneNotFound(gh);
-
-    await resolver.resolveOrCreateMilestoneNodeId("New Milestone");
-
-    assertEquals(gh.graphqlCalls[1].variables.title, "New Milestone");
-    assertEquals(
-      gh.graphqlCalls[1].variables.repositoryId,
-      "R_repo1",
-    );
-  },
-});
-
-Deno.test({
-  name: "resolveOrCreateMilestoneNodeId - handles null milestones gracefully (defaults to [])",
-  async fn() {
-    const { resolver, gh } = createResolver();
-    // MILESTONES_NULL has milestones: null → nodes defaults to [] → falls through to create
-    gh.enqueue(MILESTONES_NULL, MILESTONE_CREATED);
-
-    const milestoneId = await resolver.resolveOrCreateMilestoneNodeId(
-      "New Milestone",
-    );
-
-    assertEquals(milestoneId, "MI_new");
-    assertEquals(gh.graphqlCalls.length, 2);
-  },
-});
-
-Deno.test({
-  name: "resolveOrCreateMilestoneNodeId - handles missing repository gracefully",
-  async fn() {
-    const { resolver, gh } = createResolver();
-    // MILESTONES_UNDEF has repository: null → nodes defaults to [] → falls through to create
-    gh.enqueue(MILESTONES_UNDEF, MILESTONE_CREATED);
-
-    const milestoneId = await resolver.resolveOrCreateMilestoneNodeId(
-      "New Milestone",
-    );
-
-    assertEquals(milestoneId, "MI_new");
-    assertEquals(gh.graphqlCalls.length, 2);
-  },
-});
-
-Deno.test({
-  name: "resolveOrCreateMilestoneNodeId - throws when createMilestone is null",
-  async fn() {
-    const { resolver, gh } = createResolver();
-    gh.enqueue(MILESTONES_EMPTY, MILESTONE_CREATE_NULL);
-
-    await assertRejects(
-      () => resolver.resolveOrCreateMilestoneNodeId("New Milestone"),
-      Error,
-    );
-
-    assertEquals(gh.graphqlCalls.length, 2);
-  },
-});
-
-Deno.test({
-  name: "resolveOrCreateMilestoneNodeId - throws when createMilestone.milestone is null",
-  async fn() {
-    const { resolver, gh } = createResolver();
-    gh.enqueue(MILESTONES_EMPTY, MILESTONE_CREATE_MILESTONE_NULL);
-
-    await assertRejects(
-      () => resolver.resolveOrCreateMilestoneNodeId("New Milestone"),
-      Error,
-    );
-
-    assertEquals(gh.graphqlCalls.length, 2);
-  },
-});
-
-Deno.test({
-  name: "resolveOrCreateMilestoneNodeId - propagates error when fetchRepoNodeId fails",
-  async fn() {
-    const failingProvider: RepoNodeIdProvider = {
-      fetchRepoNodeId(): Promise<string> {
-        return Promise.reject(
-          new GitHubApiError("Repo node ID resolution failed", {
-            code: "NOT_FOUND",
-            recovery: "Verify the repository exists.",
-            statusCode: 404,
-          }),
-        );
-      },
-    };
-    const gh = createGhSpy();
-    // First call (milestones query) must succeed so we reach fetchRepoNodeId
-    gh.enqueue(MILESTONES_EMPTY);
-    const resolver = new UserMilestoneResolver(
-      gh,
-      "test-owner",
-      "test-repo",
-      failingProvider,
-    );
-
-    await assertRejects(
-      () => resolver.resolveOrCreateMilestoneNodeId("New Milestone"),
-      GitHubApiError,
-    );
   },
 });

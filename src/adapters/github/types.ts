@@ -266,9 +266,6 @@ export interface ProjectItem {
 // Sub-shapes are grounded in GH.* types via Pick; the flat scalar fields
 // (iterationId, title, startDate, duration, text, number, date, name, color,
 // optionId) are derived from the respective GH.ProjectV2ItemField*Value types.
-//
-// TODO: replace with a proper discriminated union aligned to the per-type
-// generated interfaces once extractBoardFields is refactored.
 
 /** Query projection of GH.ProjectV2FieldCommon - we only fetch id + name. */
 export type FieldValueField = Required<Pick<GH.ProjectV2FieldCommon, "id" | "name">>;
