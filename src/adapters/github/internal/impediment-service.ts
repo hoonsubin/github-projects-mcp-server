@@ -146,11 +146,27 @@ export class ImpedimentService {
       return fv?.iterationId === iterationId;
     });
 
-    // Filter to Issues with the "impediment" label, map to ImpedimentListing
+    // Filter to Issues with the Type board field set to "impediment"
+    const impedimentOptionId = this.config.typeOptions["impediment"];
+    if (!impedimentOptionId) {
+      throw new GitHubApiError(
+        `"impediment" type option not found in config.typeOptions. ` +
+          `Valid type keys: ${Object.keys(this.config.typeOptions).join(", ")}. ` +
+          `Add "impediment" to type_mapping in your config file.`,
+        {
+          code: "OPTION_NOT_FOUND",
+          recovery: "Check your config type_mapping for an 'impediment' entry.",
+          context: { valid: Object.keys(this.config.typeOptions) },
+        },
+      );
+    }
     return sprintItems
       .filter((item) =>
         item.content?.__typename === "Issue" &&
-        item.content.labels.nodes.some((l) => l.name === "impediment")
+        item.fieldValues.nodes.some((v) =>
+          v.field?.id === this.config.fields.typeFieldId &&
+          "optionId" in v && v.optionId === impedimentOptionId
+        )
       )
       .map((item) => {
         const issue = item.content as ProjectItemIssueContent;

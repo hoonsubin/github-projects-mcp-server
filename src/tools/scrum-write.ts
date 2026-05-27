@@ -368,7 +368,6 @@ export const registerScrumWriteTools = (
         body: bodyParts.join("\n"),
         type: "impediment",
         priority: params.priority ?? p0PriorityDisplay,
-        labels: ["impediment"],
       };
       const { listing: impediment, itemRef } = await backend.createImpediment(impedimentInput);
 

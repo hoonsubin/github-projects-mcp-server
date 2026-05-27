@@ -53,7 +53,7 @@ export type EpicRef = EntityRef;
  * Always resolved - the agent obtains this from ImpedimentListing.ref
  * and passes it back to scrum_update_impediment.
  */
-export type ImpedimentRef = EntityRef;
+export type ImpedimentRef = StoryRef;
 
 // ── Output ref (server → agent, listing context only) ────────────────────────
 
