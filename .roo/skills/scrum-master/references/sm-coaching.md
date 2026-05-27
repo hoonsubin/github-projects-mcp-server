@@ -1,12 +1,8 @@
 # SM Coaching, Facilitation & Team Health
 
----
-
 ## Coaching models
 
 ### GROW (Goal → Reality → Options → Will)
-
-Use when an individual or team knows something is wrong but can't find the path forward.
 
 | Phase | Questions |
 |---|---|
@@ -15,7 +11,7 @@ Use when an individual or team knows something is wrong but can't find the path 
 | Options | "What could you do?" / "What if the constraint didn't exist?" |
 | Will | "What will you do next?" / "When?" / "What support do you need?" |
 
-**Rule:** in coaching mode, ask questions — don't provide answers. "What should I do?" → "What do *you* think the options are?"
+In coaching mode, ask questions — don't provide answers. "What should I do?" → "What do *you* think the options are?"
 
 ### Powerful questions
 - "What's the worst that could happen if you tried that?"
@@ -30,8 +26,6 @@ Use when an individual or team knows something is wrong but can't find the path 
 
 Describe observable behaviour only — no labels ("you're disorganised").
 
----
-
 ## Facilitation techniques
 
 | Technique | How | Best for |
@@ -43,11 +37,7 @@ Describe observable behaviour only — no labels ("you're disorganised").
 | **Parking Lot** | Visible list of off-scope items; review at close | Off-topic tangents |
 | **Fist to Five** | 0=block, 1–2=concerns, 3=acceptable, 4=good, 5=enthusiastic | Consent on proposals |
 
----
-
 ## Retrospective formats
-
-Choose by team mood and sprint context.
 
 | Format | Best for | Structure |
 |---|---|---|
@@ -59,11 +49,7 @@ Choose by team mood and sprint context.
 | **Timeline** | Longer sprints; post-mortems | Events on a timeline with mood indicators |
 | **KALM** | Process-heavy teams wanting tuning over overhaul | Keep / Add / Less / More |
 
----
-
 ## Conflict resolution
-
-### Identify the type first
 
 | Type | Sign | SM approach |
 |---|---|---|
@@ -71,15 +57,13 @@ Choose by team mood and sprint context.
 | Process | Disagreement on *how* | Restate Goal; "what process serves the goal?" |
 | Relationship | Personal friction; blame | Separate people from problem; SBI; 1:1 first |
 
-### De-escalation in ceremonies
+De-escalation in ceremonies:
 1. Pause: "5-minute break."
 2. Validate: "I can see this matters to both of you."
 3. Redirect: "What outcome do we both want?"
 4. Unresolved → close meeting; schedule structured 1:1 or mediated session.
 
-**SM is not a judge.** Facilitate the team to its own decision. Genuinely stuck → Dot Voting or Fist to Five, or: "Try Alice's approach for one sprint, then evaluate."
-
----
+SM is not a judge. Facilitate the team to its own decision. Genuinely stuck → Dot Voting or Fist to Five, or: "Try Alice's approach for one sprint, then evaluate."
 
 ## Team health metrics
 
@@ -98,13 +82,11 @@ Choose by team mood and sprint context.
 | Team satisfaction (1–5) | | | Anonymous |
 ```
 
-**Self-report questions** (end of retro, anonymous):
+Self-report questions (end of retro, anonymous):
 - "1–5: how safe do you feel raising problems in this team?"
 - "1–5: how satisfied with how we worked this sprint?"
 
 Three consecutive ↓ in any metric → bring to retro explicitly.
-
----
 
 ## Remote / distributed SM
 
@@ -115,13 +97,10 @@ Three consecutive ↓ in any metric → bring to retro explicitly.
 | Review | Video + screen share; record for absent stakeholders |
 | Retro | Shared markdown doc; virtual stickies or 1-2-4-All in writing rounds |
 
-**Remote SM tips:**
 - Over-communicate decisions, retro commitments, and impediments in writing — visibility replaces presence
 - Camera-on norms: propose and model, don't mandate
 - "Office hours": 30-min daily open slot; reduces async pile-up
 - Watch for silent voices in video — use written rounds before verbal in 1-2-4-All
-
----
 
 ## Onboarding a new team
 
@@ -134,11 +113,9 @@ Three consecutive ↓ in any metric → bring to retro explicitly.
 
 *Game-studio onboarding (beachhead pattern, split-and-seed, cargo-cult-Scrum risk): see `game-development.md` §9.*
 
----
-
 ## SM self-assessment
 
-**Green signals** (aim for all):
+Green signals (aim for all):
 - Talking <20% of time in ceremonies
 - Asking questions before giving answers
 - Team solves problems before bringing them to SM
@@ -146,49 +123,33 @@ Three consecutive ↓ in any metric → bring to retro explicitly.
 - Last retro commitment followed through
 - Members feel safe raising bad news
 
-**Red flags** (seek coaching yourself if any are yes):
+Red flags (seek coaching yourself if any are yes):
 - Regularly assigning tasks to specific developers
 - Reporting individual performance up the chain
 - Ceremonies run over timebox without anyone noticing
 - You feel indispensable to the team's operation
 
----
-
 ## Bootstrap: Introducing Scrum to an ongoing project
 
 ### Sprint 0 vs. Sprint 1
 
-**Sprint 0** — use when the team needs a setup sprint before committing to delivery:
-- Tooling, board configuration, and working agreements aren't yet in place
-- DoD and DoR have never been discussed
-- The team hasn't worked together in a Scrum cadence before
+**Sprint 0** — use when tooling, board configuration, and working agreements aren't in place; DoD and DoR have never been discussed; or the team hasn't worked together in a Scrum cadence before. Goal: "By end of this sprint, we have a working board, agreed DoD, and a calibrated velocity estimate." Keep it to 1 week. Sprint 0 produces no product increment — it produces a team ready to commit.
 
-Sprint 0 goal: "By end of this sprint, we have a working board, agreed DoD, and a calibrated velocity estimate." Keep it short (1 week). Sprint 0 produces no product increment — it produces a team ready to commit.
-
-**Sprint 1** — use when:
-- The board is functional, DoD/DoR are written (even minimally), and the team has context
-- The project has been running informally and just needs structure applied
-
-When in doubt, prefer Sprint 1. Sprint 0 is a crutch that teams extend indefinitely.
+**Sprint 1** — use when the board is functional, DoD/DoR are written (even minimally), and the team has context; or the project has been running informally and just needs structure applied. When in doubt, prefer Sprint 1. Sprint 0 is a crutch that teams extend indefinitely.
 
 ### v1 DoD principle
 
-Write the simplest DoD the team will actually respect. A DoD with 3 criteria followed is worth more than one with 10 criteria ignored. Start with: code reviewed, AC verified, deployed to staging. Add criteria in retro as the team proves the baseline.
-
-**Never write an aspirational DoD** — "100% test coverage" on a project with no tests is a fiction. Write what's true now and upgrade it.
+Write the simplest DoD the team will actually respect. A DoD with 3 criteria followed is worth more than one with 10 criteria ignored. Start with: code reviewed, AC verified, deployed to staging. Add criteria in retro as the team proves the baseline. Never write an aspirational DoD — "100% test coverage" on a project with no tests is a fiction. Write what's true now and upgrade it.
 
 ### Velocity baseline from informal history
 
-When formal sprint data doesn't exist, reconstruct from memory and evidence:
 1. Ask: "What did the team complete in the last 4–6 weeks?" (Rough answer is fine.)
-2. Divide by elapsed weeks, then multiply by sprint length to get items/sprint.
-3. Estimate story points by asking the team to size the completed items relatively to each other.
+2. Divide by elapsed weeks, multiply by sprint length → items/sprint.
+3. Ask the team to size those completed items relative to each other for a story-point estimate.
 4. Use the result as a provisional planning number. Label it as bootstrapped.
 5. Revisit after Sprint 2 — by then, real data exists.
 
-If no throughput data exists at all: start with the capacity formula and treat Sprint 1 as a calibration sprint. The point of Sprint 1 is a reliable velocity reading, not maximum output.
-
----
+If no throughput data exists: start with the capacity formula; treat Sprint 1 as a calibration sprint. The point is a reliable velocity reading, not maximum output.
 
 ## Stale recovery: Re-orienting after a pause
 
@@ -205,50 +166,19 @@ Capture the one committed change. If the root cause isn't resolved, don't restar
 
 | Pause duration | Team changed? | Velocity decision |
 |---|---|---|
-| ≤ 2 sprint lengths | No | Use last known velocity — it's still valid |
-| ≤ 2 sprint lengths | Yes | Adjust for capacity change; use last velocity as reference |
+| ≤ 2 sprint lengths | No | Use last known velocity |
+| ≤ 2 sprint lengths | Yes | Adjust for capacity change; last velocity as reference |
 | > 2 sprint lengths | No | Confirm with team; treat as suspect; calibration sprint |
 | > 2 sprint lengths | Yes | Re-baseline from scratch via capacity formula |
 
-When re-baselining: Capacity = Available Days × Focus Factor (0.65) × Team Size.
+Capacity = Available Days × Focus Factor (0.65) × Team Size.
 
 ### The calibration sprint
 
-The first sprint back is not about output — it's about proving the team can deliver again. Design it deliberately:
+The first sprint back is not about output — it's about proving the team can deliver again:
 - Commit to 60–70% of estimated capacity
 - Choose items the team knows well — no new technology or high-risk unknowns
 - Sprint Goal: "Deliver one complete, releasable increment"
 - Retro question: "Was the commit realistic? What would we adjust?"
 
 Under-committing on the calibration sprint is not weakness — it's accurate. Teams that over-commit on restart sprint 1 and miss it lose confidence twice.
-
----
-
-## Board catchup: Reconciling a board with actual progress
-
-### Reconciliation philosophy
-
-The board must reflect reality before it can guide future work. A board showing 12 items "In Progress" from three months ago is not a planning tool — it's noise. The first job is to make the board true, not to make it look good.
-
-**Principle: reconstruct without fiction.** Mark completed work as Done directly — do not create fake sprint records to house it. History is useful; invented structure is not.
-
-**Principle: approximate is fine.** Reconstructed dates and estimates don't need to be exact. A board that's 80% accurate and 100% current is more useful than a perfect historical record that's two months old.
-
-### What to do with each type of undocumented work
-
-| What happened | Board action |
-|---|---|
-| Item completed as described | Find on board → mark Done |
-| Item completed with different scope | Update body → mark Done → split remainder into new open item |
-| Work done that was never on the board | Create new item → immediately mark Done |
-| Item started but not finished | Update body to reflect current partial state; re-estimate if needed |
-| Item no longer relevant | Archive / icebox — never delete |
-
-### Solo and informal team adaptations
-
-For teams of 1–3 with no prior process:
-- **Skip Sprint 0** — go straight to Sprint 1 after the board is clean
-- **Lighter DoR** — solo devs don't need formal estimation before starting; a clear outcome statement is enough
-- **Shorter sprints** — 1-week sprints give faster feedback loops for small teams
-- **Combined planning + review** — for solo devs, a 30-min weekly "what did I do / what's next" session covers both ceremonies
-- **Velocity in items, not points** — story points are a team estimation tool; solo devs can track items completed per sprint and convert later if the team grows

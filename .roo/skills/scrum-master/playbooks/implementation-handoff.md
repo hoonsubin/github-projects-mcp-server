@@ -1,35 +1,29 @@
 # Implementation Handoff Playbook
 
-> **Guard:** Do not write, edit, or execute implementation code. Do not deliver the ticket. Hand off with a complete brief; execution belongs to architecture or code mode.
-
----
+Guard: never write, edit, or execute implementation code. Hand off with a complete brief.
 
 ## Steps
 
-**1. Load the target ticket.**
-If not already in context, call `scrum_get_item_detail(ref: { number: N })` for the specific item.
+1. Load the target ticket: `scrum_get_story(ref: { number: N })`.
 
-**2. Run DoR check.**
-Apply `playbooks/item-assessment.md` §dor_check. If DoR gaps exist, surface them and offer to resolve inline before proceeding. Do not hand off an item that is not ready.
+2. Run DoR check via `playbooks/item-assessment.md §dor_check`. Surface gaps; offer to resolve
+   inline before proceeding. Do not hand off a non-ready item.
 
-**3. Draft an implementation strategy.**
-- Break the deliverable into logical phases (e.g., data model → API layer → UI → tests)
-- Identify sub-tasks; create them via `scrum_update_story` or equivalent sub-task tool
-- Identify architectural decisions or unknowns → flag each as a candidate spike
-- Identify upstream dependencies; verify their resolution status on the board
-- Note the DoD checklist applicable to this specific item type
+3. Draft implementation strategy:
+   - Break deliverable into logical phases (data model → API → UI → tests)
+   - Identify sub-tasks; create via `scrum_update_story` or sub-task tool
+   - Flag architectural decisions or unknowns as spike candidates
+   - Verify upstream dependency resolution status on the board
+   - Note the DoD checklist for this item type
 
-**4. Present the strategy for human review.**
-Wait for explicit approval before any mode switch.
+4. Present strategy for human review. Wait for explicit approval before switching modes.
 
-**5. On approval, construct the hand-off brief and switch modes.**
+5. On approval, construct hand-off brief and switch modes. Brief must contain:
+   - Ticket ID, title, board link
+   - Agreed implementation strategy (phases and sub-tasks in order)
+   - Sub-task IDs created on the board
+   - Known unknowns, risks, open spikes that must resolve first
+   - DoD checklist for this item
+   - Constraints or decisions the implementing agent must respect
 
-The brief must contain:
-- Ticket ID, title, and board link
-- Agreed implementation strategy (phases and sub-tasks in order)
-- Sub-task IDs created on the board
-- Known unknowns, risks, and any open spikes that must be resolved first
-- DoD checklist for this item
-- Any constraints or decisions the implementing agent must respect
-
-Switch to the appropriate mode (architect or code) with this brief as context.
+   Switch to architect or code mode with this brief as context.

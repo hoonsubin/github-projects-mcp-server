@@ -1,21 +1,15 @@
 # Advanced Scrum Practices
 
-*Retrospective formats → `sm-coaching.md`. Game-specific scaling → `game-development.md` §6.*
-
----
-
 ## Estimation
 
 | Method | When | How |
 |---|---|---|
-| **Planning Poker** | Sprint-ready items | Each member secretly picks (Fibonacci); reveal simultaneously; outliers explain; re-vote to consensus. **Never average.** |
+| **Planning Poker** | Sprint-ready items | Each member secretly picks (Fibonacci); reveal simultaneously; outliers explain; re-vote to consensus. Never average. |
 | **T-shirt sizing** | Epics / roadmap | XS, S, M, L, XL — relative, no points; for rough roadmap before items are sprint-ready |
 | **Three-point** | High-risk items | O=optimistic, P=pessimistic, M=most likely → Expected = (O + 4M + P) / 6 |
 | **Spikes** | Can't estimate until investigated | Time-boxed research story; output is *knowledge*, not increment |
 
 **Three Amigos** — before estimating: convene PO (what) + Developer (how) + Tester (what could go wrong). Surfaces hidden AC. Game variant: add discipline-specific reps (artist, designer, audio).
-
----
 
 ## Velocity & capacity
 
@@ -27,21 +21,17 @@ Adjusted Capacity = Raw Capacity × Focus Factor × (1 - Buffer)
 Buffer: stable team 10% / new team or domain 20% / high interrupt rate 25–30%
 ```
 
-- Track SP **completed** (not started) per sprint, last 3–5 sprints
-- Use the **average** as planning velocity, never the highest
+- Track SP completed (not started) per sprint, last 3–5 sprints
+- Use the average as planning velocity, never the highest
 - Erratic velocity → investigate root cause (scope creep, refinement quality, churn)
-- **Velocity is not a performance metric.** Rewarding higher velocity creates SP inflation. Compare velocity to itself over time, never between teams.
+- Velocity is not a performance metric. Rewarding higher velocity creates SP inflation. Compare velocity to itself over time, never between teams.
 - Consistently finishing early → reduce buffer. Consistently not finishing → increase buffer *or* reduce commitment until root cause is fixed.
-
----
 
 ## Backlog refinement
 
 ### INVEST — well-formed story checklist
 
-Use this to evaluate a story before sprint commitment or as a drafting quality gate during
-`playbooks/item-creation.md` Phase 2. A story that fails any criterion should be flagged and
-fixed before creation, not after.
+Evaluate a story before sprint commitment or as a drafting quality gate during `playbooks/item-creation.md` Phase 2. A story that fails any criterion should be flagged and fixed before creation, not after.
 
 | Letter | Signal | Failure pattern to flag |
 |---|---|---|
@@ -73,8 +63,6 @@ Cost of Delay = User-Business Value + Time Criticality + Risk Reduction/Opportun
 ```
 Higher WSJF = higher priority.
 
----
-
 ## Story splitting & mapping
 
 ### Splitting patterns
@@ -98,8 +86,6 @@ Two axes: **horizontal** = user activities in workflow order (backbone); **verti
 4. Under each task, smallest-value stories (20 min)
 5. Slice lines: MVP / Full Release / Future (20 min)
 
----
-
 ## Scaling Scrum
 
 | Framework | When | Key mechanism |
@@ -108,4 +94,4 @@ Two axes: **horizontal** = user activities in workflow order (backbone); **verti
 | **SAFe** | 5–12 teams (Agile Release Trains) | PI Planning replaces Sprint Planning at scale; adds Lean Portfolio Management |
 | **LeSS** | Multiple teams, one product backlog | One PO, one Product Backlog; closer to vanilla Scrum than SAFe |
 
-**When to scale:** only when one team can't deliver fast enough. Premature scaling adds coordination overhead without value. Default: one team first.
+When to scale: only when one team can't deliver fast enough. Premature scaling adds coordination overhead without value. Default: one team first.

@@ -1,178 +1,100 @@
 # Item Creation Playbook
 
-Applies whenever the agent receives a request to create a new backlog item — including
-requests phrased as "add a story", "log a bug", "capture this as a ticket", or any
-equivalent. This playbook defines a strict five-phase gate protocol. No call to
-`scrum_create_story` is permitted until all phases are complete and the human has explicitly
-confirmed every field value. The agent proposes; the human decides.
+Applies whenever a request creates a new backlog item. No call to `scrum_create_story` is
+permitted until all five phases are complete and the human has explicitly confirmed every field.
+The agent proposes; the human decides. The same confirmation principle applies to field mutations
+on existing items — see §field_mutation.
 
-The same confirmation principle applies to field mutations on existing items — see
-§field_mutation at the end of this playbook.
+## Phase 1 — Duplicate scan (mandatory before drafting)
 
----
-
-## Phase 1 — Duplicate scan (mandatory before drafting anything)
-
-Before writing a single word of item content, scan the board for semantically similar
-existing items.
-
-1. Call `scrum_get_backlog` to load open backlog items.
-2. If a sprint is active, also call `scrum_get_sprint` to include in-progress items.
-3. Compare titles and type against the requested item for semantic overlap — same outcome,
-   same problem domain, same component, or a subset/superset relationship.
-4. If one or more matches are found, surface them and stop:
-
+1. `scrum_get_backlog` — load open backlog items.
+2. If sprint active: `scrum_get_sprint` — include in-progress items.
+3. Compare titles and type for semantic overlap (same outcome, problem domain, component, or
+   subset/superset relationship).
+4. If matches found, stop and surface:
    > "Before I draft this, I found [N] item(s) that may overlap:
    > — #[ID]: [Title] ([status display label])
-   > — #[ID]: [Title] ([status display label])
-   >
-   > Is this a new item, a duplicate of one of these, or a related-but-distinct piece of work?"
-
-5. **Duplicate confirmed** → do not create. Offer to update or link the existing item instead.
-6. **Distinct confirmed** → note the human's confirmation and continue to Phase 2.
-7. **No matches found** → continue to Phase 2 silently (no need to report the clean scan).
-
----
+   > Is this a new item, a duplicate, or a related-but-distinct piece of work?"
+5. Duplicate confirmed → do not create. Offer to update or link the existing item.
+6. Distinct confirmed → proceed to Phase 2.
+7. No matches → proceed silently.
 
 ## Phase 2 — Draft item content
 
-1. If the item type was not stated, ask before drafting:
-
-   > "What type is this item? Options: [list vocabulary.item_types keys from orient data]"
-
-2. Load `vocabulary.item_types[type].template` from the orient data held in session.
-   If no config template exists for this type, fall back to `references/item-types.md`
-   canonical format for that type.
-
-3. Draft a complete item body using the template. Fill every section. Where information
-   is genuinely unknown, write `[TBD — describe X]` rather than omitting the section.
-
-4. **Run AC quality check before presenting the draft.** Read `references/item-types.md §ac_quality`
-   for the rules that apply to this item type, then evaluate every acceptance criterion in the draft
-   against them. Fix any violations inline — do not surface a draft that already fails the quality
-   rules. Specifically verify:
-   - Minimum criterion count is met (type-specific; user_story requires ≥ 3 including an error path)
+1. If item type not stated, ask before drafting:
+   > "What type? Options: [list vocabulary.item_types keys from orient data]"
+2. Load `vocabulary.item_types[type].template`. If absent, use `references/item-types.md` fallback.
+3. Draft a complete body. Mark unknown sections `[TBD — describe X]`; do not omit them.
+4. Run AC quality check before presenting. Read `references/item-types.md §ac_quality` for the
+   rules applicable to this type, then verify every criterion in the draft:
+   - Minimum count met (user_story: ≥3 including an error path)
    - Each criterion describes observable behaviour, not internal system actions
-   - No criterion contains compound conditions ("and" joining two observable outcomes)
+   - No compound conditions ("and" joining two observable outcomes)
    - No vague words: "correctly", "properly", "appropriately", "as expected", "works", "handles"
-
-5. Present the draft to the human, including a brief AC quality summary:
-
-   > "Here's a draft. AC: [N] criteria — [happy path summary], [error path summary].
-   > Does this capture what you have in mind, or should we adjust
-   > the title, body, or acceptance criteria?"
-
-6. Revise iteratively until the human approves the content. Re-run the AC quality check
-   after any revision that touches the criteria. Do not advance to Phase 3
-   while the content is still under discussion — field assignment on a moving target
-   creates rework.
-
----
+   Fix any violations inline before presenting.
+5. Present with AC summary:
+   > "Here's a draft. AC: [N] criteria — [happy path], [error path].
+   > Does this capture what you have in mind?"
+6. Revise until human approves content. Re-run AC quality check after any revision touching
+   criteria. Do not advance to Phase 3 while content is still under discussion.
 
 ## Phase 3 — Field confirmation
 
-Once the content is approved, present **all four field questions in a single structured
-block**. Do not split them across separate messages — one round trip is efficient and
-respectful of the human's time.
-
-Use this format exactly, substituting live values from the orient data:
+Once content is approved, present all five fields in a single block:
 
 ---
-
-**Before I create this item, I need your input on four fields:**
+**Before I create this item, I need your input on five fields:**
 
 **1 · Story Points**
-Based on [one-sentence scope/complexity summary], my suggested range is **[N]–[M] points**
-because [brief reasoning].
-↑ Higher if: [factor that increases uncertainty or scope]
-↓ Lower if: [factor that reduces uncertainty or scope]
-→ What SP value do you want? (or "skip" to leave unestimated for now)
+Based on [scope/complexity summary], my suggested range is **[N]–[M] points** because [reasoning].
+↑ Higher if: [factor] · ↓ Lower if: [factor]
+→ What SP value? (or "skip" to leave unestimated)
 
 **2 · Priority**
-→ Which priority? Options: [list vocabulary.priority display labels in order p0→p3]
+→ Options: [list vocabulary.priority display labels p0→p3]
 
 **3 · Epic / Milestone**
-→ Should this be linked to an epic? Available: [list epic/milestone names from orient data,
-   or "none configured" if the platform has no milestones]
-   (or "none" to leave unlinked)
+→ Options: [list epic/milestone names from orient data, or "none configured"]
 
 **4 · Sprint placement**
-→ Where should this go?
-   a) Backlog (default for new work)
-   b) Active sprint: "[sprint name]" — only for critical production incidents
-   c) A future sprint — specify which one
-   Note: mid-sprint scope injection should only happen for critical production incidents.
-   Everything else goes to the backlog, regardless of priority.
+→ a) Backlog (default)  b) Active sprint "[sprint name]" — critical incidents only  c) Future sprint
+Note: mid-sprint injection only for critical production incidents.
 
 **5 · Labels**
-→ Which labels should be applied? Available: [list label options from vocabulary]
-   (or "none")
+→ Options: [list label options from vocabulary] (or "none")
 
 ---
 
-Wait for the human's explicit response to all five dimensions. Do not infer, assume, or
-apply a default for any field the human does not address — ask again specifically for
-any field left unanswered before proceeding to Phase 4.
+Wait for explicit responses to all five. Do not infer defaults. If a field is left unanswered,
+ask specifically about it before proceeding to Phase 4.
 
----
+## Phase 4 — Creation gate
 
-## Phase 4 — Creation gate (final confirmation)
-
-Before calling `scrum_create_story`, read the complete field manifest back to the human
-and wait for an explicit "yes" or "confirm":
+Read the full manifest back and wait for explicit "confirm":
 
 > "Creating this item with:
-> — Title: [title]
-> — Type: [type display label]
-> — SP: [value] (or "unestimated")
-> — Priority: [display label]
-> — Epic: [name] (or "none")
-> — Sprint: [sprint name] (or "backlog")
-> — Labels: [list] (or "none")
->
+> — Title: [title] · Type: [type] · SP: [value or "unestimated"]
+> — Priority: [label] · Epic: [name or "none"] · Sprint: [name or "backlog"] · Labels: [list or "none"]
 > Confirm to proceed?"
 
-Only call `scrum_create_story` after receiving explicit confirmation. If the human adjusts
-any value at this stage, update the manifest and present it again before creating.
-
----
+Only call `scrum_create_story` after confirmation. If human adjusts any value, update the
+manifest and present again before creating.
 
 ## Phase 5 — Post-creation
 
-After `scrum_create_story` returns successfully:
-
-1. Report the created item: ID, title, and where it was placed.
-2. If `scrum_create_story` did not set all confirmed fields directly, apply the remaining
-   ones via `scrum_set_field` immediately — do not leave fields in a partially-set state.
-3. Add an audit comment via `scrum_update_story` recording the item's initial field state
-   (SP, priority, epic, sprint, labels) and that it was created this session.
-   Format per `playbooks/audit-logging.md`.
-4. If the item landed in the backlog, offer a DoR check:
-
-   > "This item is now in the backlog. Want me to run a DoR check before your next
-   > refinement session?"
-
----
+1. Report created item: ID, title, placement.
+2. Apply any confirmed fields not set by `scrum_create_story` via `scrum_set_field` immediately.
+3. Add audit comment via `scrum_update_story` recording initial field state (per `audit-logging.md`).
+4. If landed in backlog, offer DoR check:
+   > "Item is now in the backlog. Want me to run a DoR check before your next refinement?"
 
 ## §field_mutation — Confirming field changes on existing items
 
-When the human requests a field change on an existing item — or when the agent proposes
-one proactively — the same confirmation principle applies: **propose, then wait for
-explicit approval before writing**.
+Before calling `scrum_set_field` or `scrum_update_story` to mutate any field on an existing item:
+1. State current and proposed values and reason:
+   > "I'd like to update [field] on #[ID] from [current] to [new] because [reason]. Confirm?"
+2. For SP and priority: never suggest without reasoning (see `playbooks/story-points.md §estimation_guidance`).
+3. Wait for explicit confirmation before writing.
+4. After writing: add audit comment per `playbooks/audit-logging.md` if the change type is logged there.
 
-For every proposed field mutation:
-
-1. State the current value and the proposed new value:
-   > "I'd like to update [field] on #[ID] from [current value] to [new value]
-   > because [one-sentence reason]. Confirm?"
-
-2. For SP and priority specifically: never suggest a value without reasoning (see
-   `playbooks/story-points.md §estimation_guidance`).
-
-3. Wait for explicit confirmation. Do not apply the change speculatively.
-
-4. After writing: add an audit comment per `playbooks/audit-logging.md` if the change
-   type appears in that playbook's "When to log" table.
-
-**Batch mutations:** If multiple fields need to change at once, list them all in a single
-confirmation block (same pattern as Phase 4 above) rather than asking one field at a time.
+Batch mutations: list all proposed changes in one confirmation block; wait for one "yes".
