@@ -169,6 +169,10 @@ classDiagram
             label
         }
 
+        class CreateResult:::uc_type {
+            +created : boolean
+        }
+
         class StoryListing:::uc_interface {
             <<interface>>
             +ref : ItemListingRef
@@ -359,9 +363,15 @@ classDiagram
             +no_assignee_count : number
         }
 
+        class ReadinessBreakdown:::uc_type {
+            +ready : number
+            +not_ready : number
+            +total : number
+        }
+
         class BacklogHealth:::uc_interface_warn {
             <<interface>>
-            +readiness : [ by_type: Record~string,[ ready: number, not_ready: number, total: number ]~, overall_pct: number ]
+            +readiness : [ by_type: Record~string,ReadinessBreakdown~, overall_pct: number ]
             +sprint_risk : SprintRisk or null
             +impediments : [ orphan_count: number, open_count: number ]
             +ungroomed_count : number
@@ -551,6 +561,13 @@ classDiagram
             +vocabulary : [ status: Record~string,string~ or null, priority: Record~string,string~ or null, type: Record~string,string~ or null, story_points: [ scale: string or null, values: readonly number[] or null ], sprint: [ duration_days: number or null, velocity_window: number, length_weeks: number or null ], team: readonly [ readonly name: string; readonly role: TeamRole; readonly contact?: string; ][] or null, dor: readonly string[] or null, dod: readonly string[] or null, autonomy: [ require_confirmation_above_n_items: number or null ] or null ]
         }
 
+        class AutonomyLevel:::uc_union {
+            <<union>>
+            conservative
+            standard
+            full
+        }
+
         class ArtifactType:::uc_union {
             <<union>>
             sprint_review
@@ -562,7 +579,7 @@ classDiagram
 
         class ScrumConfig:::uc_interface_warn {
             <<interface>>
-            +project : [ name: string, agent: [ name: string, autonomy: [ level: conservative or standard or full, require_confirmation_above_n_items: number ] ], team: Array~[ name: string, role: TeamRole, contact: string ]~ ]
+            +project : [ name: string, agent: [ name: string, autonomy: [ level: AutonomyLevel, require_confirmation_above_n_items: number ] ], team: Array~[ name: string, role: TeamRole, contact: string ]~ ]
             +scrum : [ sprint: [ length_weeks: number, start_day: string, story_point_scale: string, story_point_values: number[], velocity_window: number, carry_over_threshold_days: number ], priority: PriorityTier[], status: Record~string,StatusSemantics~ ]
             +definition_of_ready : string[] opt
             +definition_of_done : string[] opt
@@ -570,7 +587,7 @@ classDiagram
             +templates : Partial~Record~ArtifactType,string or null~~ opt
             +ceremony_records : [ backend: string, discussion_category: string, issue_label: string, file_path: string ] opt
             +status_display : Record~string,string~ opt
-            +priority_display : Record~string,string~ opt
+            +priority_display : Record~PriorityTier["key"],string~ opt
             +backends : AdapterBackend
         }
 
@@ -690,7 +707,7 @@ classDiagram
             +query : string
             +login : string
             +projectNumber : number
-            +ownerType : user or org
+            +ownerType : OwnerType
             +constructor(config: RuntimeConfig, github: [  ], options: ItemFetchConfig)
             +getTotalCount() : number
             +hasMore() : boolean
@@ -752,7 +769,7 @@ classDiagram
             +resolveExistingLabelNodeIds(names: readonly string[]) : Promise~string[]~
             +resolveOrCreateLabel(name: string) : Promise~string or null~
             +resolveOrCreateBatch(names: string[]) : Promise~Array~[ id: string, name: string ]~~
-            +addLabel(value: string) : Promise~[ created: boolean ]~
+            +addLabel(value: string) : Promise~CreateResult~
             +hashToColor(name: string) : string
         }
 
@@ -769,7 +786,7 @@ classDiagram
             +fetchRepoFile(path: string) : Promise~string~
         }
 
-        class VocabularyManager:::ad_class_warn {
+        class VocabularyManager:::ad_class {
             <<class>>
             +config : RuntimeConfig
             +gh : GitHubClient
@@ -777,10 +794,10 @@ classDiagram
             +owner : string
             +repo : string
             +constructor(config: RuntimeConfig, gh: GitHubClient, labelResolver: LabelResolver, owner: string, repo: string)
-            +addVocabulary(kind: VocabularyKind, value: string) : Promise~[ created: boolean ]~
-            +addStatusOption(value: string) : Promise~[ created: boolean ]~
-            +addPriorityOption(value: string) : Promise~[ created: boolean ]~
-            +addSingleSelectOption(fieldId: string, value: string) : Promise~[ created: boolean ]~
+            +addVocabulary(kind: VocabularyKind, value: string) : Promise~CreateResult~
+            +addStatusOption(value: string) : Promise~CreateResult~
+            +addPriorityOption(value: string) : Promise~CreateResult~
+            +addSingleSelectOption(fieldId: string, value: string) : Promise~CreateResult~
         }
 
         class StoryMutationService:::ad_class {
@@ -797,7 +814,7 @@ classDiagram
             <<class>>
             +constructor(config: RuntimeConfig, storyQueryService: StoryQueryService, impedimentService: ImpedimentService)
             +getBoardHealth(sprintScope: string) : Promise~BacklogHealth~
-            +computeReadinessByType(stories: readonly Story[]) : [ by_type: Record~string,[ ready: number, not_ready: number, total: number ]~, overall_pct: number ]
+            +computeReadinessByType(stories: readonly Story[]) : [ by_type: Record~string,ReadinessBreakdown~, overall_pct: number ]
             +fetchStoriesForScope(sprintScope: string) : Promise~Story[]~
             +computeSprintRiskCounts(sprintScope: string, stories: readonly Story[]) : SprintRisk or null
             +computeImpedimentCounts(sprintScope: string) : Promise~[ orphan_count: number, open_count: number ]~
@@ -867,11 +884,17 @@ classDiagram
             string & [ readonly _brand: "GitHubMilestoneId" ]
         }
 
+        class OwnerType:::ad_union {
+            <<union>>
+            user
+            org
+        }
+
         class GitHubBackendConfig:::ad_interface_warn {
             <<interface>>
             +auth : [ token: string ]
             +owner : string
-            +owner_type : user or org
+            +owner_type : OwnerType
             +project_number : number
             +tracked_repos : string[]
             +team : Array~[ ref: string, login: string ]~ opt
@@ -1063,7 +1086,7 @@ classDiagram
             +updateStory(ref: StoryRef, updates: StoryUpdates) : Promise~void~
             +setField(ref: StoryRef, field: ScrumField, value: string or number or SprintRef or null) : Promise~void~
             +addComment(ref: StoryRef, body: string) : Promise~void~
-            +addVocabulary(kind: VocabularyKind, value: string) : Promise~[ created: boolean ]~
+            +addVocabulary(kind: VocabularyKind, value: string) : Promise~CreateResult~
             +getOrphanImpediments() : Promise~ImpedimentListing[]~
             +getSprintImpediments(sprint: SprintRef) : Promise~ImpedimentListing[]~
             +updateImpediment(ref: ImpedimentRef, status: ImpedimentStatus, resolutionNotes?: string) : Promise~ImpedimentListing~
@@ -1096,7 +1119,7 @@ classDiagram
             +updateStory(ref: StoryRef, updates: StoryUpdates) : Promise~void~
             +setField(ref: StoryRef, field: ScrumField, value: string or number or SprintRef or null) : Promise~void~
             +addComment(ref: StoryRef, body: string) : Promise~void~
-            +addVocabulary(kind: VocabularyKind, value: string) : Promise~[ created: boolean ]~
+            +addVocabulary(kind: VocabularyKind, value: string) : Promise~CreateResult~
             +createImpediment(_input: CreateStoryInput) : Promise~[ listing: ImpedimentListing, itemRef: StoryRef ]~
             +updateImpediment(_ref: ImpedimentRef, _status: ImpedimentStatus, _resolutionNotes?: string) : Promise~ImpedimentListing~
             +resolveRef(ref: StoryRef) : Promise~StoryRef~
@@ -1136,6 +1159,7 @@ classDiagram
     SprintContext --> SprintRiskStance : riskStance
     EpicSummary --> EntityRef : ref
     EpicSummary --> EpicStatus : status
+    BacklogHealth --> ReadinessBreakdown : readiness
     BacklogHealth --> SprintRisk : sprint_risk
     BacklogItemListing --> ItemListingRef : ref
     BacklogItemListing --> EntityRef : sprint
@@ -1153,6 +1177,7 @@ classDiagram
     UseCaseResult --|> PartialResult : extends
     OrientResult --|> PartialResult : extends
     OrientResult --> SprintContext : platform_state
+    ScrumConfig --> AutonomyLevel : project
     ScrumConfig --> TeamRole : project
     ScrumConfig --> ArtifactType : templates
     BackendResult --> ProjectReader : backend
@@ -1181,6 +1206,7 @@ classDiagram
     AnalyticsService --> SprintSnapshot : buildHistory
     AnalyticsService --> BurndownResponse : buildBurndown
     PaginatedProjectItemFetcher --> ProjectItem : buffer
+    PaginatedProjectItemFetcher --> OwnerType : ownerType
     PaginatedProjectItemFetcher --> RuntimeConfig : constructor
     FieldValueMutator --> RuntimeConfig : config
     FieldValueMutator --> GitHubClient : gh
@@ -1191,6 +1217,7 @@ classDiagram
     LabelResolver --> RuntimeConfig : config
     LabelResolver --> GitHubClient : gh
     LabelResolver --> GitHubLabel : fetchAllLabels
+    LabelResolver --> CreateResult : addLabel
     SprintHistoryService --> RuntimeConfig : constructor
     SprintHistoryService --> GitHubClient : constructor
     SprintHistoryService --> SprintHistoryEntry : getCompletedSprintHistory
@@ -1198,6 +1225,7 @@ classDiagram
     VocabularyManager --> RuntimeConfig : config
     VocabularyManager --> GitHubClient : gh
     VocabularyManager --> LabelResolver : labelResolver
+    VocabularyManager --> CreateResult : addVocabulary
     StoryMutationService --> RuntimeConfig : constructor
     StoryMutationService --> GitHubClient : constructor
     StoryMutationService --> LabelResolver : constructor
@@ -1211,6 +1239,7 @@ classDiagram
     BoardHealthService --> StoryQueryService : constructor
     BoardHealthService --> ImpedimentService : constructor
     BoardHealthService --> BacklogHealth : getBoardHealth
+    BoardHealthService --> ReadinessBreakdown : computeReadinessByType
     BoardHealthService --> SprintRisk : computeSprintRiskCounts
     StoryQueryService --> RuntimeConfig : constructor
     StoryQueryService --> GitHubClient : constructor
@@ -1233,6 +1262,7 @@ classDiagram
     GitHubAdapterFactory ..|> AdapterFactory : implements
     GitHubAdapterFactory --> BackendResult : create
     GitHubAdapterFactory --> AdapterStartupOptions : create
+    GitHubBackendConfig --> OwnerType : owner_type
     ProjectItemIssueContent --> AssigneeNodes : assignees
     ProjectItemIssueContent --> LabelColorNodes : labels
     ProjectItemPRContent --> AssigneeNodes : assignees
@@ -1276,6 +1306,7 @@ classDiagram
     GitHubProjectBackend --> ImpedimentListing : createImpediment
     GitHubProjectBackend --> StoryUpdates : updateStory
     GitHubProjectBackend --> SprintRef : setField
+    GitHubProjectBackend --> CreateResult : addVocabulary
     GitHubProjectBackend --> ImpedimentStatus : updateImpediment
     UnsupportedCapabilityError --|> AdapterError : extends
     AbstractProjectBackend ..|> ProjectReader : implements
@@ -1294,6 +1325,7 @@ classDiagram
     AbstractProjectBackend --> SprintRef : getSprintImpediments
     AbstractProjectBackend --> CreateStoryInput : createStory
     AbstractProjectBackend --> StoryUpdates : updateStory
+    AbstractProjectBackend --> CreateResult : addVocabulary
     AbstractProjectBackend --> ImpedimentStatus : updateImpediment
 
     classDef ad_abstract fill:#d1fae5,stroke:#14b8a6,color:#134e4a

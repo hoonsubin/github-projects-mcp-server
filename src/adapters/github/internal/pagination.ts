@@ -17,6 +17,7 @@ import type { RuntimeConfig } from "../config-loader.ts";
 import type {
   GitHubBackendConfig,
   ItemFieldValue,
+  OwnerType,
   PageInfoRef,
   ProjectItem,
   ProjectItemDraftContent,
@@ -91,7 +92,7 @@ type RawContent =
  * Only includes content types and field values the caller needs.
  */
 const buildItemsQuery = (
-  ownerType: "user" | "org",
+  ownerType: OwnerType,
   config: ItemFetchConfig,
 ): string => {
   // Build content fragment based on what's requested
@@ -232,7 +233,7 @@ export class PaginatedProjectItemFetcher {
   private query: string;
   private login: string;
   private projectNumber: number;
-  private ownerType: "user" | "org";
+  private ownerType: OwnerType;
 
   /**
    * Create a new paginated fetcher.

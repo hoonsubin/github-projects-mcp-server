@@ -8,6 +8,7 @@
 import type { PlatformCapabilities } from "./capabilities.ts";
 import type {
   AnalyticsQuery,
+  CreateResult,
   CreateStoryInput,
   ImpedimentListing,
   PlatformState,
@@ -158,7 +159,7 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
   abstract addVocabulary(
     kind: VocabularyKind,
     value: string,
-  ): Promise<{ created: boolean }>;
+  ): Promise<CreateResult>;
 
   // ── Optional ProjectWriter operations ────────────────────────────────────
 

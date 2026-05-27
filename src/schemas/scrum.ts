@@ -10,7 +10,7 @@
 // =============================================================================
 
 import { z } from "zod";
-import type { EpicRef } from "../domain/types.ts";
+import type { EpicRef, StoryRef } from "../domain/types.ts";
 import { IMPEDIMENT_STATUSES, toSprintName } from "../domain/types.ts";
 import { ANALYTICS_VIEWS, SCRUM_FIELDS, SEARCH_SCOPES, VOCABULARY_KINDS } from "../scrum/ports.ts";
 
@@ -18,7 +18,7 @@ import { ANALYTICS_VIEWS, SCRUM_FIELDS, SEARCH_SCOPES, VOCABULARY_KINDS } from "
 
 // Accepted as input by any tool that references a story.
 // Every read tool returns Story.ref.id - pass that value here.
-const StoryRefSchema: z.ZodType<{ id: string } | { number: number }> = z.union([
+const StoryRefSchema: z.ZodType<StoryRef> = z.union([
   z.object({
     id: z
       .string()

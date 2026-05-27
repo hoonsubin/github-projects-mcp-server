@@ -121,9 +121,15 @@ classDiagram
             +no_assignee_count : number
         }
 
+        class ReadinessBreakdown:::ts_type {
+            +ready : number
+            +not_ready : number
+            +total : number
+        }
+
         class BacklogHealth:::ts_interface_warn {
             <<interface>>
-            +readiness : [ by_type: Record~string,[ ready: number, not_ready: number, total: number ]~, overall_pct: number ]
+            +readiness : [ by_type: Record~string,ReadinessBreakdown~, overall_pct: number ]
             +sprint_risk : SprintRisk or null
             +impediments : [ orphan_count: number, open_count: number ]
             +ungroomed_count : number
@@ -480,6 +486,7 @@ classDiagram
     SprintContext --> SprintRiskStance : riskStance
     EpicSummary --> EntityRef : ref
     EpicSummary --> EpicStatus : status
+    BacklogHealth --> ReadinessBreakdown : readiness
     BacklogHealth --> SprintRisk : sprint_risk
     BacklogItemListing --> ItemListingRef : ref
     BacklogItemListing --> EntityRef : sprint

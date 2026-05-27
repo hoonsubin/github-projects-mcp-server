@@ -25,6 +25,7 @@ import { BoardHealthService } from "./internal/board-health-service.ts";
 import { resolveSprintGoal } from "./mappers.ts";
 import type {
   AnalyticsQuery,
+  CreateResult,
   CreateStoryInput,
   ImpedimentListing,
   PlatformState,
@@ -289,7 +290,7 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
     return this.deps.storyMutationService.addComment(resolved, body);
   }
 
-  addVocabulary(kind: VocabularyKind, value: string): Promise<{ created: boolean }> {
+  addVocabulary(kind: VocabularyKind, value: string): Promise<CreateResult> {
     return this.deps.vocabularyManager.addVocabulary(kind, value);
   }
 

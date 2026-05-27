@@ -74,6 +74,7 @@ classDiagram
             interface StoryUpdates
             +var VOCABULARY_KINDS
             type VocabularyKind
+            type CreateResult
             interface StoryListing
             interface ImpedimentListing
             interface EpicPort
@@ -135,6 +136,7 @@ classDiagram
             +sprintContextFromSprintInfo()
             interface EpicSummary
             interface SprintRisk
+            type ReadinessBreakdown
             interface BacklogHealth
             interface BacklogItemListing
             type ItemListing
@@ -176,9 +178,10 @@ classDiagram
         }
 
         class config.ts:::domain {
+            type AutonomyLevel
             type ArtifactType
             interface ScrumConfig
-            %% Unused: ArtifactType
+            %% Unused: AutonomyLevel, ArtifactType
         }
 
         class error-enrichment.ts:::services {
@@ -407,6 +410,7 @@ classDiagram
             type GitHubIssueId
             type GitHubMilestoneId
             +toEntityRef()
+            type OwnerType
             interface GitHubBackendConfig
             interface GraphQLResponse
             type ItemContentType
@@ -595,6 +599,7 @@ classDiagram
     label-resolver.ts --> http-client.ts : "imports"
     label-resolver.ts --> queries.ts : "imports"
     label-resolver.ts --> config-loader.ts : "imports"
+    label-resolver.ts --> ports.ts : "imports"
     sprint-history-service.ts --> errors.ts : "imports"
     sprint-history-service.ts --> http-client.ts : "imports"
     sprint-history-service.ts --> pagination.ts : "imports"
@@ -753,6 +758,7 @@ The following exports are never directly imported by other modules in the codeba
 | [`./src/domain/types.ts`](src/domain/types.ts) | `SUPPORTED_BACKENDS` | `var` |
 | [`./src/domain/types.ts`](src/domain/types.ts) | `DataSource` | `type` |
 | [`./src/domain/types.ts`](src/domain/types.ts) | `SprintTotalsKind` | `type` |
+| [`./src/domain/config.ts`](src/domain/config.ts) | `AutonomyLevel` | `type` |
 | [`./src/domain/config.ts`](src/domain/config.ts) | `ArtifactType` | `type` |
 | [`./src/services/error-enrichment.ts`](src/services/error-enrichment.ts) | `enrichError` | `function` |
 

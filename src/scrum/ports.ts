@@ -242,6 +242,9 @@ export const VOCABULARY_KINDS = ["status_option", "priority_option", "label"] as
 
 export type VocabularyKind = (typeof VOCABULARY_KINDS)[number];
 
+/** Result of an idempotent create operation. */
+export type CreateResult = { readonly created: boolean };
+
 // ── Listing types (SprintSnapshot items) ────────────────────────────────────────
 
 /**
@@ -394,7 +397,7 @@ export interface ProjectWriter {
   addVocabulary(
     kind: VocabularyKind,
     value: string,
-  ): Promise<{ created: boolean }>;
+  ): Promise<CreateResult>;
 }
 
 /**

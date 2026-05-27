@@ -285,6 +285,9 @@ export interface SprintRisk {
   readonly no_assignee_count: number;
 }
 
+/** Per-type readiness breakdown: ready, not_ready, total counts. */
+export type ReadinessBreakdown = { ready: number; not_ready: number; total: number };
+
 /**
  * Board health output for scrum_get_board_health.
  * Aggregated metrics - no individual story data.
@@ -293,7 +296,7 @@ export interface BacklogHealth {
   readonly readiness: {
     /** Per-PBI-type breakdown of ready vs not-ready items. */
     /** Per-type breakdown of ready vs not-ready items. Uses `string` key to accommodate untyped items. */
-    readonly by_type: Record<string, { ready: number; not_ready: number; total: number }>;
+    readonly by_type: Record<string, ReadinessBreakdown>;
     /** Percentage of all items meeting Definition of Ready (0-100). */
     readonly overall_pct: number;
   };

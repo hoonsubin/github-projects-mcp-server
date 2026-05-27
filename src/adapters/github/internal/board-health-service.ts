@@ -11,6 +11,7 @@ import { resolveSprint } from "./resolver.ts";
 import { buildStoryFromRaw } from "../mappers.ts";
 import { computeReadinessSummary } from "../../../domain/rules/readiness.ts";
 import { ITEM_TYPES } from "../../../domain/types.ts";
+import type { ReadinessBreakdown } from "../../../domain/types.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { ImpedimentListing } from "../../../scrum/ports.ts";
 import type { BacklogHealth, SprintRef, SprintRisk, Story } from "../../../domain/types.ts";
@@ -80,10 +81,10 @@ export class BoardHealthService {
   private computeReadinessByType(
     stories: readonly Story[],
   ): {
-    by_type: Record<string, { ready: number; not_ready: number; total: number }>;
+    by_type: Record<string, ReadinessBreakdown>;
     overall_pct: number;
   } {
-    const readinessByType: Record<string, { ready: number; not_ready: number; total: number }> = {};
+    const readinessByType: Record<string, ReadinessBreakdown> = {};
     let totalReady = 0;
     let totalNotReady = 0;
 
