@@ -5,12 +5,12 @@
 // =============================================================================
 
 import type { ImpedimentListing, ImpedimentPort } from "./ports.ts";
-import type { ImpedimentRef } from "../domain/types.ts";
+import type { ImpedimentRef, ImpedimentStatus } from "../domain/types.ts";
 
 export const updateImpedimentUseCase = async (
   backend: ImpedimentPort,
   ref: ImpedimentRef,
-  status: "open" | "in_progress" | "resolved",
+  status: ImpedimentStatus,
   resolutionNotes?: string,
 ): Promise<ImpedimentListing> => {
   // Delegate to backend; the use case itself is thin

@@ -12,9 +12,35 @@ classDiagram
             [ number: number ]
         }
 
+        class EpicRefWithName:::ts_type {
+            +ref : EpicRef
+            +name : string
+        }
+
+        class ImpedimentStatus:::ts_union {
+            <<union>>
+            open
+            in_progress
+            resolved
+        }
+
+        class IMPEDIMENT_STATUSES:::ts_tuple {
+            <<const-tuple>>
+            open
+            in_progress
+            resolved
+        }
+
         class ItemListingRef:::ts_type {
             +id : string
             +key : string
+        }
+
+        class EpicStatus:::ts_union {
+            <<union>>
+            open
+            in_progress
+            done
         }
 
         class EpicListing:::ts_interface {
@@ -23,7 +49,7 @@ classDiagram
             +name : string
             +description : string or null
             +priority : string or null
-            +status : open or in_progress or done or null
+            +status : EpicStatus or null
             +story_count : number
             +open_item_count : number
         }
@@ -73,13 +99,8 @@ classDiagram
         class SprintContext:::ts_interface {
             <<interface>>
             +id : string
-            +name : string
             +goal : string or null
-            +start_date : string
-            +end_date : string
-            +duration_days : number
             +days_elapsed : number
-            +days_remaining : number
             +time_elapsed_pct : number
             +riskStance : SprintRiskStance
         }
@@ -89,7 +110,7 @@ classDiagram
             +ref : EntityRef
             +name : string
             +description : string or null
-            +status : open or in_progress or done or null
+            +status : EpicStatus or null
             +open_item_count : number
         }
 
@@ -119,7 +140,7 @@ classDiagram
             +assignees : readonly string[]
             +labels : readonly string[]
             +sprint : [ name: string or null, ref: EntityRef ]
-            +epic : [ ref: EpicRef, name: string ] or null
+            +epic : EpicRefWithName or null
             +blocked_by : ReadonlyArray~ItemListingRef~
             +blocks : ReadonlyArray~ItemListingRef~
             +custom_fields : Record~string,string or number or boolean or null~
@@ -139,7 +160,7 @@ classDiagram
             +blocked_by : IssueKey[]
         }
 
-        class StoryBase:::ts_interface_warn {
+        class StoryBase:::ts_interface {
             <<interface>>
             +ref : EntityRef
             +title : string
@@ -157,7 +178,7 @@ classDiagram
             +kind : string or null
             +key : string or null
             +url : string or null
-            +epic : [ ref: EpicRef, name: string ] or null
+            +epic : EpicRefWithName or null
         }
 
         class IterationEntry:::ts_interface {
@@ -168,23 +189,29 @@ classDiagram
             +duration : number
         }
 
-        class BurndownResponse:::ts_interface {
-            <<interface>>
-            +sprint : BurndownSprintMeta
-            +data_source : audit_log or issue_close_proxy
-            +warning : string opt
-            +series : readonly BurndownDayPoint[]
-            +ideal : readonly IdealDayPoint[]
-            +stories : readonly BurndownStory[]
+        class DataSource:::ts_union {
+            <<union>>
+            audit_log
+            issue_close_proxy
         }
 
-        class BurndownSprintMeta:::ts_interface {
+        class SprintWindowMeta:::ts_interface {
             <<interface>>
             +name : string
             +start_date : string
             +end_date : string
             +duration_days : number
             +days_remaining : number
+        }
+
+        class BurndownResponse:::ts_interface {
+            <<interface>>
+            +sprint : SprintWindowMeta
+            +data_source : DataSource
+            +warning : string opt
+            +series : readonly BurndownDayPoint[]
+            +ideal : readonly IdealDayPoint[]
+            +stories : readonly BurndownStory[]
         }
 
         class BurndownDayPoint:::ts_interface {
@@ -223,9 +250,9 @@ classDiagram
             [ kind: completed, by_status: Record~string,number~, story_points: number, committed_points: number, completed_points: number ]
         }
 
-        class SprintSnapshot:::ts_interface_warn {
+        class SprintSnapshot:::ts_interface {
             <<interface>>
-            +sprint : [ name: string, start_date: string, end_date: string, duration_days: number, days_remaining: number ]
+            +sprint : SprintWindowMeta
             +items : readonly BacklogItemListing[]
             +total_count : number
             +totals : SprintTotals
@@ -273,10 +300,17 @@ classDiagram
             +data : T
         }
 
+        class TeamRole:::ts_union {
+            <<union>>
+            scrum_master
+            product_owner
+            developer
+        }
+
         class OrientResult:::ts_interface_warn {
             <<interface>>
             +platform_state : [ fields: [ status: [ exists: boolean, options: readonly string[], missing_options: readonly string[] ], sprint: [ exists: boolean ], story_points: [ exists: boolean ], priority: [ exists: boolean, options: readonly string[], missing_options: readonly string[] ], type_field: [ exists: boolean, configured: boolean ] ], missing_options: readonly string[], labels: [ existing: readonly string[], expected: readonly string[], missing: readonly string[] ], iterations: [ active: SprintContext or null, next: SprintContext or null, completed_count: number ], epics: [ active: readonly EpicSummary[], total_count: number ], template_uris: TemplateUriMap or null, deadline_field: string or null ]
-            +vocabulary : [ status: Record~string,string~ or null, priority: Record~string,string~ or null, type: Record~string,string~ or null, story_points: [ scale: string or null, values: readonly number[] or null ], sprint: [ duration_days: number or null, velocity_window: number, length_weeks: number or null ], team: readonly [ readonly name: string; readonly role: "scrum_master" | "product_owner" | "developer"; readonly contact?: string; ][] or null, dor: readonly string[] or null, dod: readonly string[] or null, autonomy: [ require_confirmation_above_n_items: number or null ] or null ]
+            +vocabulary : [ status: Record~string,string~ or null, priority: Record~string,string~ or null, type: Record~string,string~ or null, story_points: [ scale: string or null, values: readonly number[] or null ], sprint: [ duration_days: number or null, velocity_window: number, length_weeks: number or null ], team: readonly [ readonly name: string; readonly role: TeamRole; readonly contact?: string; ][] or null, dor: readonly string[] or null, dod: readonly string[] or null, autonomy: [ require_confirmation_above_n_items: number or null ] or null ]
         }
 
     }
@@ -290,7 +324,7 @@ classDiagram
 
         class FindItemsArgs:::zod_args {
             <<Arguments>>
-            +scope : backlog or sprint or all opt
+            +scope : enum opt
             +keys : string[] opt
             +search : string opt
             +types : string[] opt
@@ -307,7 +341,7 @@ classDiagram
 
         class GetAnalyticsArgs:::zod_args {
             <<Arguments>>
-            +view : burndown or history or both opt
+            +view : enum opt
             +sprint_ref : SprintRef opt
             +history_window : number opt
         }
@@ -368,13 +402,13 @@ classDiagram
         class UpdateImpedimentArgs:::zod_args {
             <<Arguments>>
             +ref : object
-            +status : open or in_progress or resolved
+            +status : enum
             +resolution_notes : string opt
         }
 
         class AddVocabularyArgs:::zod_args {
             <<Arguments>>
-            +kind : status_option or priority_option or label
+            +kind : enum
             +value : string
         }
 
@@ -439,17 +473,24 @@ classDiagram
     }
 
     StoryRef --> EntityRef : entityref-variant
+    EpicListing --> EpicStatus : status
     DependencyEntry --> EntityRef : ref
     SprintRef --> SprintName : sprintname-variant
+    SprintContext --|> SprintWindowMeta : extends
     SprintContext --> SprintRiskStance : riskStance
     EpicSummary --> EntityRef : ref
+    EpicSummary --> EpicStatus : status
     BacklogHealth --> SprintRisk : sprint_risk
     BacklogItemListing --> ItemListingRef : ref
     BacklogItemListing --> EntityRef : sprint
+    BacklogItemListing --> EpicRefWithName : epic
     DependencyNode --> IssueKey : key
     StoryBase --> EntityRef : ref
-    BurndownResponse --> BurndownSprintMeta : sprint
+    StoryBase --> EpicRefWithName : epic
+    BurndownResponse --> SprintWindowMeta : sprint
+    BurndownResponse --> DataSource : data_source
     ItemSearchResult --> BacklogItemListing : items
+    SprintSnapshot --> SprintWindowMeta : sprint
     SprintSnapshot --> SprintTotals : totals
     AnalyticsResult --> BurndownResponse : burndown
     AnalyticsResult --> SprintSnapshot : history

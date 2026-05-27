@@ -29,6 +29,7 @@ import type {
   ImpedimentListing,
   PlatformState,
   ResolvedItemFilter,
+  ScrumField,
   SprintInfo,
   StoryDetail,
   StoryUpdates,
@@ -40,6 +41,7 @@ import type {
   BacklogHealth,
   EpicListing,
   ImpedimentRef,
+  ImpedimentStatus,
   ItemSearchResult,
   IterationEntry,
   SprintRef,
@@ -275,7 +277,7 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
 
   async setField(
     ref: StoryRef,
-    field: "status" | "sprint" | "story_points" | "priority" | "assignee" | "type",
+    field: ScrumField,
     value: string | number | SprintRef | null,
   ): Promise<void> {
     const resolved = await this.resolveRef(ref);
@@ -303,7 +305,7 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
 
   override updateImpediment(
     ref: ImpedimentRef,
-    status: "open" | "in_progress" | "resolved",
+    status: ImpedimentStatus,
     resolutionNotes?: string,
   ): Promise<ImpedimentListing> {
     return this.deps.impedimentService.updateImpediment(ref, status, resolutionNotes);

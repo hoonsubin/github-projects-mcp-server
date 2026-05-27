@@ -11,7 +11,8 @@
 
 import { z } from "zod";
 import type { EpicRef } from "../domain/types.ts";
-import { toSprintName } from "../domain/types.ts";
+import { IMPEDIMENT_STATUSES, toSprintName } from "../domain/types.ts";
+import { ANALYTICS_VIEWS, SCRUM_FIELDS, SEARCH_SCOPES, VOCABULARY_KINDS } from "../scrum/ports.ts";
 
 // ── Primitive schemas (shared by multiple tools) ──────────────────────────────
 
@@ -74,7 +75,7 @@ const SprintRefSchema = z
 
 // The six board fields the agent can write via scrum_set_field.
 const ScrumFieldSchema = z
-  .enum(["status", "sprint", "story_points", "priority", "assignee", "type"])
+  .enum(SCRUM_FIELDS)
   .describe(
     "Board field to update. " +
       '"status" = workflow column (string display name, e.g. "In Progress"); ' +
@@ -119,7 +120,7 @@ export const GetStorySchema = z
 export const FindItemsSchema = z
   .object({
     scope: z
-      .enum(["backlog", "sprint", "all"])
+      .enum(SEARCH_SCOPES)
       .optional()
       .default("all")
       .describe('Scope to search. Defaults to "all".'),
@@ -181,7 +182,7 @@ export const FindItemsSchema = z
 export const GetAnalyticsSchema = z
   .object({
     view: z
-      .enum(["burndown", "history", "both"])
+      .enum(ANALYTICS_VIEWS)
       .optional()
       .default("both")
       .describe(
@@ -420,7 +421,7 @@ export const UpdateImpedimentSchema = z
       })
       .describe("Reference to the impediment to update."),
     status: z
-      .enum(["open", "in_progress", "resolved"])
+      .enum(IMPEDIMENT_STATUSES)
       .describe("New impediment status."),
     resolution_notes: z
       .string()
@@ -433,7 +434,7 @@ export const UpdateImpedimentSchema = z
 export const AddVocabularySchema = z
   .object({
     kind: z
-      .enum(["status_option", "priority_option", "label"])
+      .enum(VOCABULARY_KINDS)
       .describe(
         '"status_option" = add a new column/state to the Status field; ' +
           '"priority_option" = add a new tier to the Priority field; ' +

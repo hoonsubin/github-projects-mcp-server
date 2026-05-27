@@ -8,7 +8,7 @@
 // with platform-specific details.
 // =============================================================================
 
-import { AdapterBackend } from "./types.ts";
+import { AdapterBackend, type TeamRole } from "./types.ts";
 // ── Ceremony artifact type ────────────────────────────────────────────────────
 
 /**
@@ -61,7 +61,7 @@ export interface ScrumConfig {
     };
     team?: Array<{
       name: string;
-      role: "scrum_master" | "product_owner" | "developer";
+      role: TeamRole;
       contact?: string;
     }>;
   };

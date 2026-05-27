@@ -51,7 +51,12 @@ classDiagram
         }
 
         class ports.ts:::scrum {
+            +var SEARCH_SCOPES
             type SearchScope
+            +var SCRUM_FIELDS
+            type ScrumField
+            +var ANALYTICS_VIEWS
+            type AnalyticsView
             interface ItemFilter
             interface ResolvedItemFilter
             interface AnalyticsQuery
@@ -67,6 +72,7 @@ classDiagram
             interface CompletionMap
             interface CreateStoryInput
             interface StoryUpdates
+            +var VOCABULARY_KINDS
             type VocabularyKind
             interface StoryListing
             interface ImpedimentListing
@@ -80,7 +86,7 @@ classDiagram
             interface ProjectReader
             interface ProjectWriter
             interface ProjectBackend
-            %% Unused: SearchScope, FieldPresence, FieldWithOptions, DisplayMap, StoryListing, EpicPort
+            %% Unused: SearchScope, AnalyticsView, FieldPresence, FieldWithOptions, DisplayMap, StoryListing, EpicPort
         }
 
         class update-impediment.ts:::scrum {
@@ -107,8 +113,12 @@ classDiagram
             type EntityRef
             type StoryRef
             type EpicRef
+            type EpicRefWithName
             type ImpedimentRef
+            type ImpedimentStatus
+            +var IMPEDIMENT_STATUSES
             type ItemListingRef
+            type EpicStatus
             interface EpicListing
             interface DependencyEntry
             +var ITEM_TYPES
@@ -136,13 +146,15 @@ classDiagram
             type AdapterBackend
             type Story
             interface IterationEntry
+            type DataSource
+            interface SprintWindowMeta
             interface BurndownResponse
-            interface BurndownSprintMeta
             interface BurndownDayPoint
             interface IdealDayPoint
             interface BurndownStory
             interface ItemSearchResult
             type SprintTotals
+            type SprintTotalsKind
             interface SprintSnapshot
             interface AnalyticsResult
             interface StoryComment
@@ -150,8 +162,9 @@ classDiagram
             interface ItemDetailResult
             interface PartialResult
             interface UseCaseResult
+            type TeamRole
             interface OrientResult
-            %% Unused: SprintName, ScrumTemplateUri, SprintRiskStance, SprintContext, ItemListing, SUPPORTED_BACKENDS
+            %% Unused: EpicRefWithName, EpicStatus, SprintName, ScrumTemplateUri, SprintRiskStance, SprintContext, ItemListing, SUPPORTED_BACKENDS, DataSource, SprintTotalsKind
         }
 
         class acceptance-criteria.ts:::rules {
@@ -500,6 +513,7 @@ classDiagram
     scrum-write.ts --> error-enrichment.ts : "imports"
     scrum-write.ts --> pick-defined.ts : "imports"
     scrum.ts --> types.ts : "imports"
+    scrum.ts --> ports.ts : "imports"
     server.ts --> scrum-read.ts : "imports"
     server.ts --> scrum-write.ts : "imports"
     server.ts --> template-resource.ts : "imports"
@@ -634,13 +648,13 @@ classDiagram
     impediment-service.ts --> errors.ts : "imports"
     impediment-service.ts --> github-types.ts : "imports"
     impediment-service.ts --> http-client.ts : "imports"
+    impediment-service.ts --> types.ts : "imports"
     impediment-service.ts --> resolver.ts : "imports"
     impediment-service.ts --> label-resolver.ts : "imports"
     impediment-service.ts --> story-mutation-service.ts : "imports"
     impediment-service.ts --> queries.ts : "imports"
     impediment-service.ts --> pagination.ts : "imports"
     impediment-service.ts --> config-loader.ts : "imports"
-    impediment-service.ts --> types.ts : "imports"
     impediment-service.ts --> ports.ts : "imports"
     config-loader.ts --> types.ts : "imports"
     config-loader.ts --> config.ts : "imports"
@@ -692,6 +706,7 @@ The following exports are never directly imported by other modules in the codeba
 | [`./src/scrum/sprint-math.ts`](src/scrum/sprint-math.ts) | `groupStoriesByStatus` | `function` |
 | [`./src/scrum/sprint-math.ts`](src/scrum/sprint-math.ts) | `computeSprintTotals` | `function` |
 | [`./src/scrum/ports.ts`](src/scrum/ports.ts) | `SearchScope` | `type` |
+| [`./src/scrum/ports.ts`](src/scrum/ports.ts) | `AnalyticsView` | `type` |
 | [`./src/scrum/ports.ts`](src/scrum/ports.ts) | `FieldPresence` | `interface` |
 | [`./src/scrum/ports.ts`](src/scrum/ports.ts) | `FieldWithOptions` | `interface` |
 | [`./src/scrum/ports.ts`](src/scrum/ports.ts) | `DisplayMap` | `type` |
@@ -728,12 +743,16 @@ The following exports are never directly imported by other modules in the codeba
 | [`./src/adapters/github/types.ts`](src/adapters/github/types.ts) | `FieldValueRepository` | `type` |
 | [`./src/adapters/github/types.ts`](src/adapters/github/types.ts) | `LabelColorNodes` | `type` |
 | [`./src/adapters/abstract-backend.ts`](src/adapters/abstract-backend.ts) | `UnsupportedCapabilityError` | `class` |
+| [`./src/domain/types.ts`](src/domain/types.ts) | `EpicRefWithName` | `type` |
+| [`./src/domain/types.ts`](src/domain/types.ts) | `EpicStatus` | `type` |
 | [`./src/domain/types.ts`](src/domain/types.ts) | `SprintName` | `type` |
 | [`./src/domain/types.ts`](src/domain/types.ts) | `ScrumTemplateUri` | `type` |
 | [`./src/domain/types.ts`](src/domain/types.ts) | `SprintRiskStance` | `type` |
 | [`./src/domain/types.ts`](src/domain/types.ts) | `SprintContext` | `interface` |
 | [`./src/domain/types.ts`](src/domain/types.ts) | `ItemListing` | `type` |
 | [`./src/domain/types.ts`](src/domain/types.ts) | `SUPPORTED_BACKENDS` | `var` |
+| [`./src/domain/types.ts`](src/domain/types.ts) | `DataSource` | `type` |
+| [`./src/domain/types.ts`](src/domain/types.ts) | `SprintTotalsKind` | `type` |
 | [`./src/domain/config.ts`](src/domain/config.ts) | `ArtifactType` | `type` |
 | [`./src/services/error-enrichment.ts`](src/services/error-enrichment.ts) | `enrichError` | `function` |
 
