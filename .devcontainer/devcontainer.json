@@ -1,5 +1,5 @@
 {
-  "name": "GitHub Projects MCP Server",
+  "name": "Scrum Master MCP Toolkit",
   "dockerComposeFile": "docker-compose.dev.yml",
   "service": "workspace",
   "workspaceFolder": "/workspace",

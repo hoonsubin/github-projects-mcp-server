@@ -7,7 +7,6 @@ Project guidance for all coding agents. Concise by design - linked docs provide 
 - `README.md` - Project installation.
 - `tasks/TODO.md` - Active work items.
 - `tasks/REFACTORING.md` - Ongoing refactor plan.
-- `docs/proj-diagram.md` - Current module dependency diagram.
 - `docs/ARCHITECTURE.MD` - Project architecture
 
 ## High-Level Architecture

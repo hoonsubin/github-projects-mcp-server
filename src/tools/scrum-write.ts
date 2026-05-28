@@ -51,7 +51,7 @@ export const registerScrumWriteTools = (
 
         IMPORTANT CONSTRAINT: this tool can only add options to fields that already exist
         (status, priority). It cannot create new project fields - that requires a human to
-        act in the GitHub Projects UI.
+        act in the platform UI.
 
         Use this when scrum_set_field or scrum_create_story fails because a vocabulary value
         is not found. Call scrum_orient first to see what values already exist before adding duplicates.

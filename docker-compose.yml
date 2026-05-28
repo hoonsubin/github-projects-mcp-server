@@ -1,7 +1,7 @@
 services:
-  github-projects-mcp:
+  scrum-master-toolkit:
     build: .
-    container_name: github-projects-mcp
+    container_name: scrum-master-toolkit
     restart: unless-stopped
     env_file:
       - .env
@@ -25,4 +25,4 @@ services:
   # open-webui:
   #   ...
   #   environment:
-  #     - MCP_SERVER_URL=http://github-projects-mcp:3000/mcp
+  #     - MCP_SERVER_URL=http://scrum-master-toolkit:3000/mcp
