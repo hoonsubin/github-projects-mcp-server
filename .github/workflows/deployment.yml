@@ -106,27 +106,12 @@ jobs:
       - name: Bundle Node.js
         run: deno task bundle:node
 
-      # Set up Node.js for the mcpb CLI (only needed for packaging, not running).
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
       # Package the Node.js bundle as a .mcpb (MCP Bundle) for one-click
-      # installation in Claude Desktop. Steps:
-      #   1. Patch the version into bundle/manifest.json.
-      #   2. Stage dist/server.mjs as the server entry point.
-      #   3. Run `mcpb pack` to produce scrum-master-toolkit.mcpb.
-      #   4. Move the output into dist/ and remove the raw .mjs.
+      # installation in Claude Desktop. See scripts/bundle-mcpb.ts for details.
       - name: Package as .mcpb
-        run: |
-          VERSION="${{ steps.version.outputs.value }}"
-          npm install -g @anthropic-ai/mcpb
-          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"${VERSION}\"/" bundle/manifest.json
-          mkdir -p bundle/server
-          cp dist/server.mjs bundle/server/index.js
-          cd bundle && mcpb pack && mv scrum-master-toolkit.mcpb ../dist/
-          rm dist/server.mjs
+        run: deno task bundle:mcpb
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.value }}
 
       # Generate sha256 checksums for every file in dist/ (binaries + .mcpb).
       # The checksums file is uploaded as an additional release asset.
