@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "scrum-master-toolkit",
   "display_name": "Scrum Master Toolkit",
-  "version": "0.0.0",
+  "version": "dev",
   "description": "Scrum-vocabulary MCP server. Provides 14 tools for backlog management, sprint tracking, impediment logging, and burndown reporting.",
   "author": {
     "name": "Hoon Kim"
