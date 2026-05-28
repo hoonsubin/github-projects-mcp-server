@@ -110,7 +110,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       # Package the Node.js bundle as a .mcpb (MCP Bundle) for one-click
       # installation in Claude Desktop. Steps:
