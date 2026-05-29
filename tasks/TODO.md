@@ -3,6 +3,8 @@
 > **Goal:** Replace the hard-coded local filesystem assumption in config and template loading with a unified `TemplateLocation` ADT that supports local files, remote URLs, and inline content. Remove the `--root` CLI flag. Make the "project root" self-describing from the config file itself.
 >
 > **Scope:** `src/domain/`, `src/scrum/`, `src/adapters/factory.ts`, `src/adapters/github/` internals, `src/server.ts`. No changes to tool handlers, use-case functions (except `template-resource.ts`), or the MCP tool surface.
+>
+> **Unchanged:** `src/tools/` (all tool handlers), `src/schemas/`, `src/scrum/find-items.ts`, `src/scrum/get-analytics.ts`, `src/scrum/get-board-health.ts`, `src/scrum/get-story.ts`, `src/scrum/listing-mappers.ts`, `src/scrum/update-impediment.ts`, `src/scrum/sprint-math.ts`, `src/scrum/config-helpers.ts`, `src/adapters/github/backend.ts` (logic unchanged), `src/adapters/github/internal/contents.ts`, `src/adapters/github/internal/story-mutation-service.ts`, `src/adapters/github/internal/story-query-service.ts`, `src/adapters/abstract-backend.ts`, `src/domain/types.ts`, `src/domain/errors.ts`, `src/services/`.
 
 ---
 
@@ -26,33 +28,87 @@ The `--root` / `-r` CLI flag exists solely to tell `GitHubFileReader` where to a
 
 ## Architecture Overview
 
-The refactor introduces a single new domain type - `TemplateLocation` - that represents every possible source a file can come from. All config and template paths flow through this type. Resolution (string → `TemplateLocation`) is a pure use-case-layer function. Fetching (`TemplateLocation` → `string` content) is the backend's responsibility.
+The refactor introduces a single new domain type - `TemplateLocation` - that represents every possible source a file can come from. All config and template paths flow through this type. Resolution (string → `TemplateLocation`) is a pure use-case-layer function. Content fetching (`TemplateLocation` → `string`) is a shared use-case utility that adapters wrap with platform-specific auth.
 
 ```
+use-case layer (src/scrum/)
+  resolveLocation(string, baseDir)                 ← Step 2:  string → TemplateLocation
+  fetchContent(TemplateLocation)                   ← Step 2c: TemplateLocation → string (no auth)
+
 server.ts
   --config <string>
-    → resolveLocation(string, Deno.cwd())        ← pure, use-case layer
+    → resolveLocation(string, Deno.cwd())          ← use-case utility
     → TemplateLocation { kind: "file" | "url" }
     → AdapterStartupOptions.configLocation
 
-config-loader.ts
+config-loader.ts  (adapter)
   receives TemplateLocation
-  → fetchContent(location)                        ← dispatches on kind
+  → fetchContent(configLocation)                   ← use-case utility, no auth needed
   → parse YAML → ScrumConfig
   → compute baseDir from location
   → resolve projRoot from config (relative to baseDir)
-  → resolveLocation(template, projectRoot)        ← for each type_mapping entry
+  → resolveLocation(template, projectRoot)         ← for each type_mapping entry
   → typeTemplatePaths: Record<string, TemplateLocation>
 
-GitHubFileReader.fetchFile(TemplateLocation)
-  "file"   → Deno.readTextFile(location.path)
-  "url"    → GitHub raw fetch (with auth) or plain HTTPS GET
-  "inline" → return location.content directly
+GitHubFileReader.fetchFile(TemplateLocation)       (adapter — implements FileReaderPort)
+  github.com URL → intercept with auth → raw.githubusercontent.com
+  all others     → delegate to fetchContent(location)
+
+TrelloFileReader.fetchFile(TemplateLocation)       (hypothetical adapter — implements FileReaderPort)
+  trello.com URL → intercept with Trello API + auth
+  all others     → delegate to fetchContent(location)
+```
+
+Both `resolveLocation` and `fetchContent` live at the use-case layer so every adapter imports them without adapter-to-adapter coupling. Each adapter wraps `fetchContent` with only its platform's auth logic for URLs on its domain.
+
+---
+
+## Execution Phases
+
+Steps are grouped into phases by dependency. Phases must be completed in order; steps within a phase can be done in parallel.
+
+```
+Phase A — Domain foundation (no deps, ships atomically)
+  Step 0   Pre-flight: audit FileReaderPort references in test files
+  Step 1   New domain type: TemplateLocation
+  Step 2   New use-case utility: resolveLocation (string → TemplateLocation)
+  Step 2b  Unit tests for resolveLocation
+  Step 2c  New use-case utility: fetchContent (TemplateLocation → string)
+
+Phase B — Port contract (depends on A)
+  Step 3   Extend ScrumConfig.project with projRoot
+  Step 4   Extend FileReaderPort (doc comment only; signature unchanged)
+  Step 5   Update AdapterStartupOptions and BackendResult
+
+Phase C — Adapter implementation (depends on B)
+  Step 6   Update config-loader.ts (import fetchContent; resolve typeTemplatePaths)
+  Step 7   Update GitHubFileReader (wrap fetchContent + GitHub auth interceptor)
+  Step 7b  Remove unused fetchRepoFile from contents.ts
+  Step 8   Update template-resource.ts
+  Step 9   Update orient.ts
+  Step 10  Update PlatformState in ports.ts (type propagation to backend.ts is a compile-time check)
+
+Phase D — Composition root (depends on C)
+  Step 11  Update server.ts
 ```
 
 ---
 
 ## Step-by-Step Implementation
+
+### Step 0 — Pre-flight: audit `FileReaderPort` references in test files
+
+Before changing any types, locate every reference to `FileReaderPort` / `fetchRepoFile` in test files. Changing the method signature will break any stub or mock that implements the old interface. Run:
+
+```bash
+grep -rn "FileReaderPort\|fetchRepoFile" src/ --include="*.test.ts"
+```
+
+Update each test stub to implement `fetchFile(location: TemplateLocation): Promise<string>` instead of `fetchRepoFile(path: string): Promise<string>`. An empty-object `typeTemplatePaths: {}` fixture (like the one in [`story-mutation-service.test.ts`](src/adapters/github/internal/story-mutation-service.test.ts:146)) will continue to type-check as `Record<string, TemplateLocation>`.
+
+Do this in Phase A before the type changes so test compilation failures don't distract from production-code type errors.
+
+---
 
 ### Step 1 - New domain type: `TemplateLocation`
 
@@ -77,7 +133,47 @@ export type TemplateLocation =
   | { readonly kind: "inline"; readonly content: string };
 ```
 
-**Why domain layer:** `TemplateLocation` is a value the use-case layer reasons about (it passes locations to ports). It is not infrastructure - it doesn't do I/O. Domain types live with their consumers, not their implementers.
+Also add a `describeLocation` helper alongside the type — it is a pure display function with no I/O and is used by both config-loader.ts (error messages) and server.ts (error hints):
+
+```typescript
+/** Human-readable representation for error messages. */
+export const describeLocation = (loc: TemplateLocation): string => {
+  switch (loc.kind) {
+    case "file":
+      return loc.path;
+    case "url":
+      return loc.url.toString();
+    case "inline":
+      return "<inline content>";
+  }
+};
+
+/**
+ * Infer a MIME type from a file extension.
+ * Used by template-resource.ts to return the correct Content-Type for
+ * .json and .yml templates (which are no longer forced to "text/markdown"
+ * now that TemplateLocation carries the file extension).
+ *
+ * Falls back to "text/markdown" for unrecognized extensions (the
+ * historical default — most templates are markdown).
+ */
+export const mimeTypeForPath = (p: string): string => {
+  const ext = p.split(".").pop()?.toLowerCase();
+  switch (ext) {
+    case "json":
+      return "application/json";
+    case "yml":
+    case "yaml":
+      return "application/x-yaml";
+    default:
+      return "text/markdown";
+  }
+};
+```
+
+**Why domain layer:** `TemplateLocation` is a value the use-case layer reasons about (it passes locations to ports). It is not infrastructure - it doesn't do I/O. Domain types live with their consumers, not their implementers. `describeLocation` and `mimeTypeForPath` are pure display/logic functions operating only on the domain type — they belong with the type, not duplicated in consumers.
+
+**Naming note:** The type is called `TemplateLocation` but it represents config files too (e.g. `AdapterStartupOptions.configLocation`). A more generic name like `ContentSource` or `FileLocation` would be more honest, but the rename would cascade through ~12 files. The structure is correct regardless — this is a cosmetic observation, not a blocker.
 
 **No existing type to extend or reuse.** Confirm by grepping - nothing named `TemplateLocation`, `ConfigLocation`, or similar exists in the codebase before this change.
 
@@ -116,6 +212,68 @@ export const resolveLocation = (input: string, baseDir: string): TemplateLocatio
 **Extension guard:** After resolution, check that `path.extname(resolvedPath)` or the URL pathname's extension is one of `SUPPORTED_TEMPLATE_EXTENSIONS`. Throw a descriptive error if not. This is the only place extension validation lives - do not duplicate it elsewhere.
 
 **Why use-case layer (`src/scrum/`):** This function knows about the domain concept of `TemplateLocation` and the rule about supported extensions, but does no I/O. Keeping it out of `src/domain/` is intentional - domain types are data shapes; this is behaviour.
+
+**`@std/path` import:** The use-case layer imports `@std/path` (Deno standard library, not a framework). This is consistent with existing use-case code in [`sprint-math.ts`](src/scrum/sprint-math.ts) and is acceptable — the standard library is a stable, platform-level dependency, not a volatile framework detail.
+
+---
+
+### Step 2b — Unit tests for `resolveLocation`
+
+**File to create:** `src/scrum/resolve-location.test.ts`
+
+`resolveLocation` is a pure function — it must be tested independently before it flows into config-loader and server. Test cases:
+
+| Input                                | baseDir         | Expected                                                           |
+| ------------------------------------ | --------------- | ------------------------------------------------------------------ |
+| `".github/scrum/config.yml"`         | `/home/project` | `{ kind: "file", path: "/home/project/.github/scrum/config.yml" }` |
+| `"/absolute/path/config.yml"`        | `/home/project` | `{ kind: "file", path: "/absolute/path/config.yml" }`              |
+| `"https://example.com/config.yml"`   | any             | `{ kind: "url", url: new URL("https://example.com/config.yml") }`  |
+| `"http://example.com/config.yml"`    | any             | `{ kind: "url", url: new URL("http://example.com/config.yml") }`   |
+| `"relative/template.md"`             | `/home/project` | `{ kind: "file", path: "/home/project/relative/template.md" }`     |
+| `"./config.json"`                    | `/home/project` | `{ kind: "file", path: "/home/project/config.json" }`              |
+| `"template.txt"`                     | any             | throws — unsupported extension                                     |
+| `"https://example.com/template.txt"` | any             | throws — unsupported extension                                     |
+
+### Step 2c — New use-case utility: `fetchContent`
+
+**File to create:** `src/scrum/fetch-location.ts`
+
+Shared dispatch on `TemplateLocation → string`. Lives at the use-case layer so every adapter imports it without adapter-to-adapter coupling. Uses only platform primitives (`Deno.readTextFile`, `fetch`) — no adapter dependencies.
+
+```typescript
+import type { TemplateLocation } from "../domain/template-location.ts";
+
+/**
+ * Fetch content from wherever a TemplateLocation points.
+ * Pure dispatch — no adapter dependencies, no auth.
+ *
+ * Used by:
+ *   - config-loader.ts (during boot, before FileReaderPort exists)
+ *   - Adapter FileReader implementations (wrapping with platform auth)
+ *
+ * This is NOT the port interface — it's a raw utility.
+ * FileReaderPort is the contract use-cases code against.
+ */
+export const fetchContent = async (location: TemplateLocation): Promise<string> => {
+  switch (location.kind) {
+    case "file":
+      return Deno.readTextFile(location.path);
+    case "inline":
+      return location.content;
+    case "url": {
+      const res = await fetch(location.url);
+      if (!res.ok) throw new Error(`Cannot fetch ${location.url}: ${res.status}`);
+      return res.text();
+    }
+  }
+};
+```
+
+**Why use-case layer (`src/scrum/`):** Mirrors `resolve-location.ts` — both operate on `TemplateLocation`. `resolveLocation` converts `string → TemplateLocation`; `fetchContent` converts `TemplateLocation → string`. Together they form the resolution + retrieval pipeline. Keeping them side-by-side avoids adapter-to-adapter imports when multiple platform adapters exist.
+
+**I/O precedent:** `resolve-location.ts` imports `@std/path`; `fetch-location.ts` uses `Deno.readTextFile` and `fetch`. Both are Deno platform primitives and the standard library — stable dependencies, not volatile framework details.
+
+**Not the port:** `FileReaderPort.fetchFile` is the contract use-cases code against. `fetchContent` is the raw utility that adapter implementations of that port wrap with platform-specific auth. `config-loader.ts` imports `fetchContent` directly (not through the port) because config loading happens before `FileReaderPort` implementers exist.
 
 ---
 
@@ -219,7 +377,7 @@ import type { TemplateLocation } from "../domain/template-location.ts";
 **Downstream effects:**
 
 - `src/adapters/github/factory.ts` reads `options?.configPath` and `options?.projectRoot` → update to `options?.configLocation` (Step 6).
-- `src/server.ts` passes `{ configPath, projectRoot }` → update to `{ configLocation }` (Step 8).
+- `src/server.ts` passes `{ configPath, projectRoot }` → update to `{ configLocation }` (Step 11).
 
 ---
 
@@ -255,23 +413,15 @@ typeTemplatePaths: Record<string, string>;
 typeTemplatePaths: Record<string, TemplateLocation>;
 ```
 
-**C. Config content fetching** - replace `Deno.readTextFile(configPath)` with a local `fetchContent` function:
+**C. Config content fetching** - replace `Deno.readTextFile(configPath)` with `fetchContent` imported from the use-case layer:
 
 ```typescript
-const fetchContent = async (location: TemplateLocation): Promise<string> => {
-  switch (location.kind) {
-    case "file":
-      return Deno.readTextFile(location.path);
-    case "inline":
-      return location.content;
-    case "url": {
-      const res = await fetch(location.url);
-      if (!res.ok) throw new Error(`Cannot fetch config from ${location.url}: ${res.status}`);
-      return res.text();
-    }
-  }
-};
+import { fetchContent } from "../../../scrum/fetch-location.ts";
 ```
+
+Then call `fetchContent(configLocation)` instead of `Deno.readTextFile(configPath)` and instead of the previously-planned local `fetchContent` function.
+
+The shared `fetchContent` lives at `src/scrum/fetch-location.ts` (Step 2c) and dispatches on `TemplateLocation.kind` using only platform primitives (`Deno.readTextFile`, `fetch`). No adapter dependencies — safe to import during boot before `GitHubFileReader` exists.
 
 Note: config file fetching uses plain `fetch` (no GitHub auth). If the config lives in a private GitHub repo, the user must supply a raw URL with a token in the query string, or use a local file. This is an intentional constraint - authenticating config fetches is out of scope for this change.
 
@@ -310,7 +460,13 @@ for (const [key, entry] of Object.entries(patchedGhConfig.type_mapping ?? {})) {
 }
 ```
 
-Import `resolveLocation` from `"../../../scrum/resolve-location.ts"`.
+Imports needed:
+
+```typescript
+import { resolveLocation } from "../../../scrum/resolve-location.ts";
+import { fetchContent } from "../../../scrum/fetch-location.ts";
+import { describeLocation } from "../../../domain/template-location.ts";
+```
 
 **G. Default `configLocation`:**
 
@@ -321,20 +477,7 @@ const configLocation: TemplateLocation = params.configLocation ?? {
 };
 ```
 
-**Important:** The existing `configPath` string in error messages (e.g. `"Config error in ${configPath}"`) should be replaced with a human-readable representation of the `TemplateLocation`. Use a small helper:
-
-```typescript
-const describeLocation = (loc: TemplateLocation): string => {
-  switch (loc.kind) {
-    case "file":
-      return loc.path;
-    case "url":
-      return loc.url.toString();
-    case "inline":
-      return "<inline content>";
-  }
-};
-```
+**Important:** The existing `configPath` string in error messages (e.g. `"Config error in ${configPath}"`) should be replaced with `describeLocation(configLocation)` — a human-readable representation of the `TemplateLocation`. Import `describeLocation` from `"../../../domain/template-location.ts"` (added in Step 1).
 
 ---
 
@@ -342,9 +485,13 @@ const describeLocation = (loc: TemplateLocation): string => {
 
 **File to edit:** `src/adapters/github/internal/file-reader.ts`
 
-Remove `localRoot` from the constructor. Add `token` (already available from the resolved config - pass it in from `GitHubAdapterFactory`).
+Remove `localRoot` from the constructor. Add `token` (already available from the resolved config - pass it in from `GitHubAdapterFactory`). Delegate to the shared `fetchContent` for all non-GitHub cases instead of duplicating the dispatch logic.
 
 ```typescript
+import { fetchContent } from "../../../scrum/fetch-location.ts";
+import type { TemplateLocation } from "../../../domain/template-location.ts";
+import type { FileReaderPort } from "../../../scrum/ports.ts";
+
 export class GitHubFileReader implements FileReaderPort {
   constructor(
     private readonly owner: string,
@@ -353,23 +500,12 @@ export class GitHubFileReader implements FileReaderPort {
   ) {}
 
   async fetchFile(location: TemplateLocation): Promise<string> {
-    switch (location.kind) {
-      case "file":
-        return Deno.readTextFile(location.path);
-      case "inline":
-        return location.content;
-      case "url":
-        return this.fetchRemoteUrl(location.url);
+    // Only intercept github.com URLs for authenticated raw fetch.
+    // Everything else (file, inline, non-GitHub URLs) delegates to the shared utility.
+    if (location.kind === "url" && location.url.hostname === "github.com") {
+      return this.fetchGitHubBlobAsRaw(location.url);
     }
-  }
-
-  private async fetchRemoteUrl(url: URL): Promise<string> {
-    if (url.hostname === "github.com") {
-      return this.fetchGitHubBlobAsRaw(url);
-    }
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Failed to fetch template from ${url}: ${res.status}`);
-    return res.text();
+    return fetchContent(location);
   }
 
   private async fetchGitHubBlobAsRaw(blobUrl: URL): Promise<string> {
@@ -395,6 +531,8 @@ export class GitHubFileReader implements FileReaderPort {
   }
 }
 ```
+
+**Pattern:** The adapter only adds its platform's auth logic. `file`, `inline`, and non-GitHub `url` kinds all flow through the shared `fetchContent`. A hypothetical `TrelloFileReader` would follow the same pattern — intercept `trello.com` URLs, delegate everything else.
 
 **In `GitHubAdapterFactory.create()`** (file: `src/adapters/github/factory.ts`):
 
@@ -454,7 +592,26 @@ export const templateResourceUseCase = async (
 };
 ```
 
-The `mimeType: "text/markdown"` is now a lie for `.json` and `.yml` templates. Consider changing `TemplateData.mimeType` to `"text/markdown" | "application/json" | "text/yaml"` and inferring it from the location's extension. This is a quality-of-life improvement, not a blocker - but flag it as a follow-up if not done here.
+The `mimeType` is now inferred from the location's file extension via [`mimeTypeForPath()`](src/domain/template-location.ts) (added in Step 1). In [`template-resource.ts`](src/scrum/template-resource.ts), replace:
+
+```typescript
+return { content, mimeType: "text/markdown" };
+```
+
+With logic that extracts the path from the `TemplateLocation` and calls the helper:
+
+```typescript
+import { mimeTypeForPath } from "../domain/template-location.ts";
+
+const mimeType = location.kind === "inline"
+  ? "text/markdown" // inline content — no extension available
+  : location.kind === "file"
+  ? mimeTypeForPath(location.path)
+  : mimeTypeForPath(location.url.pathname);
+return { content, mimeType };
+```
+
+This gives correct `Content-Type` for JSON and YAML templates without a deferred TODO.
 
 ---
 
@@ -492,6 +649,8 @@ readonly typeTemplatePaths: Record<string, TemplateLocation>;
 
 Also update the comment on the field to remove the "Repo-relative template file paths" description - they are no longer necessarily repo-relative.
 
+**Backend propagation (compile-time check):** [`backend.ts`](src/adapters/github/backend.ts) line 220 passes `this.deps.config.typeTemplatePaths` through to `PlatformState`. Since `config.typeTemplatePaths` is now `Record<string, TemplateLocation>`, this propagates automatically — no logic change needed. The compiler confirms the types flow correctly; no separate step required.
+
 ---
 
 ### Step 11 - Update `server.ts`
@@ -522,25 +681,18 @@ const _configLocation: TemplateLocation | undefined = _cliArgs.config
 backendResult = await createBackend(factories, { configLocation: _configLocation });
 ```
 
-**D. Update error hint** - replace references to `configPath` string with `describeLocation` (or inline the same logic):
+**D. Update error hint** - replace references to `configPath` string with `describeLocation` imported from `"./domain/template-location.ts"`:
 
 ```typescript
+import { describeLocation } from "./domain/template-location.ts";
+
+// ...
 } else if (_configLocation) {
-  hint = `Config not found or invalid at: ${
-    _configLocation.kind === "url" ? _configLocation.url : _configLocation.kind === "file" ? _configLocation.path : "<inline>"
-  }`;
+  hint = `Config not found or invalid at: ${describeLocation(_configLocation)}`;
 }
 ```
 
----
-
-### Step 12 - Update `backend.ts` (`getPlatformState`)
-
-**File to edit:** `src/adapters/github/backend.ts`
-
-Line 220 returns `typeTemplatePaths: this.deps.config.typeTemplatePaths`. Since `config.typeTemplatePaths` is now `Record<string, TemplateLocation>`, this propagates automatically - no logic change, just verify TypeScript accepts it after the type change in `RuntimeConfig`.
-
----
+**E. `--root` migration note:** The `--root` / `-r` flag is removed with no deprecation period. Any script, systemd unit, or Claude Desktop config that passes `--root` will see an "unknown flag" error from `parseArgs`. Add a line to the release notes: "The `--root` / `-r` CLI flag has been removed. Use `projRoot` in the config YAML instead. Templates now resolve relative to the config file's directory by default."
 
 ## Files Touched (Complete List)
 
@@ -565,25 +717,38 @@ Line 220 returns `typeTemplatePaths: this.deps.config.typeTemplatePaths`. Since 
 
 ### `_deno-shim.node.ts`
 
-This file provides a Node.js shim for `Deno.readTextFile`. If the project is built for Node distribution, `GitHubFileReader.fetchFile` for `kind: "file"` must route through the shim. Check whether `Deno.readTextFile` calls in the new `file-reader.ts` need to be replaced with the shim's equivalent. The existing shim already handles `readFile` - use the same pattern.
+The Node.js shim at [`_deno-shim.node.ts:73`](src/_deno-shim.node.ts:73) already provides `Deno.readTextFile` as a bridge to `node:fs/promises readFile`. Any code calling `Deno.readTextFile` — including the new `fetchFile` dispatch in `GitHubFileReader` and `fetchContent` in `config-loader.ts` — is automatically covered in the Node.js bundle. No shim changes are needed.
 
 ### Test files
 
-`src/adapters/github/internal/story-mutation-service.test.ts` line 146 has a fixture:
-
-```typescript
-typeTemplatePaths: {},
-```
-
-This will still type-check as `Record<string, TemplateLocation>` because an empty object satisfies any `Record` type. No change needed unless the test constructs non-empty paths.
+Test file stub updates are handled in Step 0 (pre-flight audit). No further test changes are expected beyond what that step surfaces.
 
 ### `ConfigReloader`
 
-`src/adapters/github/internal/config-reloader.ts` calls `loadConfig({ github: this.github })` without a `configLocation`. This means it uses the default - the same local `.github/scrum/config.yml`. This is correct for reload behaviour (reload always refreshes from the same source). No change needed, but verify after Step 6 that the default path construction still works.
+`ConfigReloader` calls `loadConfig({ github: this.github })` without a `configLocation`, which defaults to the local `.github/scrum/config.yml`. When the server started with a remote config (`--config https://…`), reload will silently fall back to the local file.
+
+**Decision:** This is an intentional limitation. `ConfigReloader.reload()` refreshes live GitHub project field metadata (iterations, field option IDs) — it does not re-fetch the config YAML. Remote config sources are immutable from the reloader's perspective. If reloading a remote config is needed later, store the original `configLocation` in `ConfigReloader` and pass it through.
+
+### `fetchContent` sharing
+
+The shared `fetchContent` function lives at `src/scrum/fetch-location.ts` (Step 2c) at the use-case layer. Both `config-loader.ts` and `GitHubFileReader` import it. This eliminates the previously-planned duplication between two local dispatch implementations.
+
+**Why use-case layer:** Keeps adapter-to-use-case as the only dependency direction. A hypothetical `TrelloFileReader` imports `fetchContent` from `src/scrum/` without ever touching `src/adapters/github/`. The pattern is symmetric across all adapters — each only adds platform-specific auth for its own domain URLs.
+
+**Why not through FileReaderPort for config loading:** Config loading happens during adapter construction, before `GitHubFileReader` (or any `FileReaderPort` implementer) exists. `loadConfig` imports `fetchContent` directly. Once the adapter is constructed, template fetching goes through `FileReaderPort.fetchFile()` as normal.
 
 ---
 
 ## Verification Checklist
+
+### 0. Lint and format (pre-merge gate)
+
+```bash
+deno lint
+deno fmt --check
+```
+
+Must pass with zero warnings and no unformatted files. Per [`AGENT.md`](AGENT.md), lint must pass before marking any task complete.
 
 ### 1. TypeScript compiles clean
 
@@ -654,6 +819,32 @@ Confirm the error message includes the path (not `[object Object]`).
 ### 9. `ConfigReloader` still works
 
 After the server starts, make a change on the GitHub board (rename an iteration). Call `scrum_orient`. Confirm the reloader picks up the change. This verifies `configReloader.reload()` still calls `loadConfig` correctly with no `configLocation` (falling back to the default).
+
+### 10. `ConfigReloader` with remote config is a documented no-op
+
+Start the server with a remote config:
+
+```bash
+deno run --allow-all src/server.ts --config https://example.com/scrum.yml
+```
+
+Call `scrum_orient` to trigger a reload. Confirm the server does NOT crash or switch to the local `.github/scrum/config.yml`. The reloader refreshes field metadata (iterations, options) only — config source is not re-fetched. This is the documented behaviour.
+
+### 11. `resolveLocation` unit tests pass
+
+```bash
+deno test src/scrum/resolve-location.test.ts
+```
+
+All cases from Step 2b must pass before merging Phase A.
+
+### 12. All existing tests still pass
+
+```bash
+deno test
+```
+
+No regressions — every test that stubbed `FileReaderPort` has been updated (Step 0).
 
 ---
 

@@ -163,7 +163,7 @@ backends:
     owner_type: user # user | org
     project_number: 5
     tracked_repos:
-      - scrum-master-toolkit-server
+      - github-projects-mcp-server
 
     team:
       - ref: Hoon Kim # matches project.team[].name
