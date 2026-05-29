@@ -56,8 +56,8 @@ The compiled binary embeds a full JavaScript runtime. Download, make executable,
 Requires [Deno](https://deno.com) v2.x.
 
 ```bash
-git clone https://github.com/hoonsubin/github-projects-mcp-server.git
-cd github-projects-mcp-server
+git clone https://github.com/hoonsubin/scrum-master-toolkit-server.git
+cd scrum-master-toolkit-server
 deno task compile          # builds ./mcp-server binary for your current platform
 deno task compile:all      # builds all five platform binaries into dist/
 deno task bundle:node      # builds dist/server.mjs (Node.js bundle)

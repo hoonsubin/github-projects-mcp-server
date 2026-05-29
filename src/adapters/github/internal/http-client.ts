@@ -97,7 +97,7 @@ export const graphql = async <T>(
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
-        "User-Agent": "github-projects-mcp-server/1.0.0",
+        "User-Agent": "scrum-master-toolkit-server/1.0.0",
         "X-Github-Next-Global-ID": "1", // opt-in to new global node IDs
       },
       body: JSON.stringify({ query, variables }),
@@ -254,7 +254,7 @@ export const rest = async <T>(
   // Build headers
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
-    "User-Agent": "github-projects-mcp-server/1.0.0",
+    "User-Agent": "scrum-master-toolkit-server/1.0.0",
     "X-GitHub-Api-Version": "2022-11-28",
     ...options.accept ? { Accept: options.accept } : { Accept: "application/vnd.github+json" },
   };

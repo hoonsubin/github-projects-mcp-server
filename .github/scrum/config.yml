@@ -29,7 +29,7 @@
 # GitHub login, Notion user ID) is declared under the relevant backend below.
 
 project:
-  name: "GitHub Projects MCP Server"
+  name: "Scrum Master MCP Toolkit"
 
   agent:
     name: "Scrum Master Bot"
@@ -163,7 +163,7 @@ backends:
     owner_type: user # user | org
     project_number: 5
     tracked_repos:
-      - github-projects-mcp-server
+      - scrum-master-toolkit-server
 
     team:
       - ref: Hoon Kim # matches project.team[].name

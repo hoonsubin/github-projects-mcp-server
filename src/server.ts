@@ -67,7 +67,7 @@ const _cliArgs = parseArgs(Deno.args, {
 if (_cliArgs.help) {
   // Use console.error so help text never contaminates the MCP stdio stream.
   console.error(`
-github-projects-mcp-server
+scrum-master-toolkit-server
 
 Usage:
   mcp-server [options]
@@ -241,7 +241,7 @@ const createMcpServer = async (
   projectRoot?: string,
 ): Promise<McpServer> => {
   const server = new McpServer({
-    name: "github-projects-mcp-server",
+    name: "scrum-master-toolkit-server",
     version: Deno.env.get("RELEASE_VERSION") ?? "dev",
   });
 
@@ -340,7 +340,7 @@ const runStdio = async (
     const transport = new StdioServerTransport();
     await server.connect(transport);
     if (Deno.env.get("TRACE")) wrapTransportLogging(transport, "stdio");
-    log.info("github-projects-mcp-server running on stdio");
+    log.info("scrum-master-toolkit-server running on stdio");
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     log.error("Stdio server failed to start.", { error: message });
@@ -369,7 +369,7 @@ const runHttp = (configPath?: string, projectRoot?: string): void => {
     // ── Health check ──────────────────────────────────────────────────────────
     if (pathname === "/health" && req.method === "GET") {
       log.debug("health check", { method: req.method, url: req.url });
-      return Response.json({ jsonrpc: "2.0", server: "github-projects-mcp-server" });
+      return Response.json({ jsonrpc: "2.0", server: "scrum-master-toolkit-server" });
     }
 
     // ── MCP endpoint ──────────────────────────────────────────────────────────
@@ -452,7 +452,7 @@ const runHttp = (configPath?: string, projectRoot?: string): void => {
     return new Response("Not Found", { status: 404 });
   });
 
-  log.info(`github-projects-mcp-server listening → http://0.0.0.0:${port}/mcp`);
+  log.info(`scrum-master-toolkit-server listening → http://0.0.0.0:${port}/mcp`);
 };
 
 // ── Entry point ──────────────────────────────────────────────────────────────

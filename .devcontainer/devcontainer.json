@@ -1,5 +1,5 @@
 {
-  "name": "GitHub Projects MCP Server",
+  "name": "Scrum Master MCP Toolkit",
   "dockerComposeFile": "docker-compose.dev.yml",
   "service": "workspace",
   "workspaceFolder": "/workspace",
@@ -81,8 +81,6 @@
     "PATH": "${containerEnv:PATH}:/home/vscode/.local/bin",
     "QDRANT_URL": "http://vectordb:6333",
     "QDRANT_GRPC_URL": "http://vectordb:6334",
-    "MEMPALACE_USER_NAME": "hoonsubin",
-    "MEMPALACE_USER_EMAIL": "mail@hoon.kim",
     "MEMPALACE_WING": "workspace"
   },
 

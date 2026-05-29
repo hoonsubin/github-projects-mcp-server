@@ -31,7 +31,7 @@
 				"search_nodes",
 				"open_nodes"
 			],
-			"disabled": true
+			"disabled": false
 		},
 		"github": {
 			"command": "github-mcp-server",
@@ -50,7 +50,7 @@
 		"mempalace": {
 			"command": "mempalace-mcp",
 			"args": [],
-			"disabled": false,
+			"disabled": true,
 			"alwaysAllow": [
 				"mempalace_search",
 				"mempalace_kg_add"
@@ -79,7 +79,7 @@
 				"searxng_web_search",
 				"web_url_read"
 			],
-			"disabled": false
+			"disabled": true
 		}
 	}
 }

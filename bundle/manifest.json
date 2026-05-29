@@ -1,0 +1,51 @@
+{
+  "manifest_version": "0.3",
+  "name": "scrum-master-toolkit",
+  "display_name": "Scrum Master Toolkit",
+  "version": "dev",
+  "description": "Scrum-vocabulary MCP server. Provides 14 tools for backlog management, sprint tracking, impediment logging, and burndown reporting.",
+  "author": {
+    "name": "Hoon Kim"
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/server/index.js",
+        "--config",
+        "${user_config.config_path}",
+        "--root",
+        "${user_config.project_root}"
+      ],
+      "env": {
+        "GITHUB_TOKEN": "${user_config.github_token}"
+      }
+    }
+  },
+  "tools": [],
+  "tools_generated": true,
+  "user_config": {
+    "github_token": {
+      "type": "string",
+      "title": "GitHub Token",
+      "description": "Personal access token with read/write access to the project (repo + project scopes).",
+      "sensitive": true,
+      "required": true
+    },
+    "config_path": {
+      "type": "string",
+      "title": "Scrum Config Path",
+      "description": "Absolute path to your project's scrum config file, e.g. /Users/you/myproject/.github/scrum/config.yml",
+      "required": true
+    },
+    "project_root": {
+      "type": "string",
+      "title": "Project Root",
+      "description": "Absolute path to the root of the project this server manages, e.g. /Users/you/myproject",
+      "required": true
+    }
+  },
+  "license": "MIT"
+}

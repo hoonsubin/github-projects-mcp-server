@@ -1,0 +1,226 @@
+name: Deploy
+
+# Triggered two ways:
+#
+#   workflow_dispatch  — manual full release
+#     Prompts for a semver string (e.g. 1.2.3), creates an annotated tag,
+#     builds all artifacts, and publishes a stable GitHub Release.
+#
+#   push to main  — automatic pre-release on every merged PR
+#     Produces two releases per merge:
+#       1. Commit-pinned pre-release  tag: v<latest>-pre.<sha7>
+#          e.g. v1.2.3-pre.abc1234.  Permanent record; useful for bisecting
+#          regressions across merges.  Base version tracks the latest full
+#          release tag (vX.Y.Z); falls back to 0.0.0 if none exists yet.
+#       2. Rolling "edge" release     tag: edge (force-updated each run)
+#          Always points to the latest commit on main.  Consumers who always
+#          want the freshest build pin to "edge" instead of a specific hash.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Semantic version to release (e.g. 1.2.3 or v1.2.3)"
+        required: true
+        type: string
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write # required to create tags, releases, and upload assets
+
+jobs:
+  deploy:
+    name: ${{ github.event_name == 'workflow_dispatch' && 'Build & publish release' || 'Build & publish pre-release' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history for tag derivation and edge tag push
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      # ── Version derivation ─────────────────────────────────────────────────
+      # workflow_dispatch: normalise the user input — strip a leading "v" if
+      #   present, then re-add it so the tag is always "vX.Y.Z" and the bare
+      #   version is always "X.Y.Z".
+      # push to main: base version = latest full-release tag (vX.Y.Z, no
+      #   pre-release suffix), falling back to 0.0.0 if none exists yet.
+      #   Pre-release suffix is the short SHA of the triggering commit.
+      - name: Derive version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            RAW="${{ github.event.inputs.version }}"
+            BARE="${RAW#v}"
+            echo "value=${BARE}"       >> "$GITHUB_OUTPUT"
+            echo "tag=v${BARE}"        >> "$GITHUB_OUTPUT"
+          else
+            SHORT_SHA="${GITHUB_SHA::7}"
+            BASE=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' \
+                     | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+                     | sort -V | tail -1)
+            BASE="${BASE#v}"           # strip leading "v"
+            BASE="${BASE:-0.0.0}"      # fallback if no release tag exists yet
+            echo "short_sha=${SHORT_SHA}"                >> "$GITHUB_OUTPUT"
+            echo "value=${BASE}-pre.${SHORT_SHA}"        >> "$GITHUB_OUTPUT"
+            echo "tag=v${BASE}-pre.${SHORT_SHA}"         >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── Release only: create and push an annotated tag ────────────────────
+      - name: Create and push tag
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+      # ── Build ──────────────────────────────────────────────────────────────
+
+      # Patch the version string directly into source before compiling.
+      # The binary reads Deno.env.get("RELEASE_VERSION") at runtime, but end
+      # users won't set that env var — so we replace the literal in server.ts
+      # here so the correct version is baked into every compiled binary.
+      - name: Patch version into source
+        run: |
+          VERSION="${{ steps.version.outputs.value }}"
+          sed -i "s/Deno.env.get(\"RELEASE_VERSION\") ?? \"dev\"/\"${VERSION}\"/" src/server.ts
+
+      # Cross-compile all five platform targets from this single Linux runner.
+      # deno compile embeds the JS bundle into a platform-specific denort
+      # binary — no native toolchain is needed for cross-compilation.
+      - name: Compile all targets
+        run: deno task compile:all
+
+      # Bundle the server as a single self-contained Node.js ESM file.
+      # Requires Node.js 18+ at runtime; no Deno needed.
+      - name: Bundle Node.js
+        run: deno task bundle:node
+
+      # Package the Node.js bundle as a .mcpb (MCP Bundle) for one-click
+      # installation in Claude Desktop. See scripts/bundle-mcpb.ts for details.
+      - name: Package as .mcpb
+        run: deno task bundle:mcpb
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.value }}
+
+      # Generate sha256 checksums for every file in dist/ (binaries + .mcpb).
+      # The checksums file is uploaded as an additional release asset.
+      - name: Generate checksums
+        working-directory: dist
+        run: sha256sum * > checksums.txt
+
+      # ── Release only: stable release ──────────────────────────────────────
+
+      # Create the GitHub Release and upload all dist/ files as assets.
+      # --generate-notes pulls PR titles and commit messages since the last tag.
+      # Skipped under act (no gh CLI available on local runners).
+      - name: Publish release
+        if: ${{ !env.ACT && github.event_name == 'workflow_dispatch' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          gh release create "$TAG" \
+            --title "Release $TAG" \
+            --generate-notes \
+            dist/mcp-server-mac-arm64 \
+            dist/mcp-server-mac-x64 \
+            dist/mcp-server-linux-x64 \
+            dist/mcp-server-linux-arm64 \
+            dist/mcp-server-win.exe \
+            dist/scrum-master-toolkit.mcpb \
+            dist/checksums.txt
+
+      # ── Pre-release only: commit-pinned pre-release ───────────────────────
+
+      # gh release create also creates the git tag on the current commit if it
+      # does not already exist, so no separate "git tag" step is needed here.
+      # Skipped under act (no gh CLI available on local runners).
+      - name: Publish commit-pinned pre-release
+        if: ${{ !env.ACT && github.event_name == 'push' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          gh release create "$TAG" \
+            --title "Pre-release $TAG" \
+            --generate-notes \
+            --prerelease \
+            dist/mcp-server-mac-arm64 \
+            dist/mcp-server-mac-x64 \
+            dist/mcp-server-linux-x64 \
+            dist/mcp-server-linux-arm64 \
+            dist/mcp-server-win.exe \
+            dist/scrum-master-toolkit.mcpb \
+            dist/checksums.txt
+
+      # ── Pre-release only: rolling "edge" release ──────────────────────────
+
+      # Delete the previous edge release and tag before recreating so the
+      # assets are always the binaries from the latest commit on main.
+      - name: Delete previous edge release & tag (if any)
+        if: ${{ !env.ACT && github.event_name == 'push' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete edge --yes 2>/dev/null || true
+          git push origin :refs/tags/edge          2>/dev/null || true
+
+      - name: Publish rolling edge release
+        if: ${{ !env.ACT && github.event_name == 'push' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          SHA="${{ github.sha }}"
+
+          # Force-create the edge tag on this commit and push it.
+          git tag -f edge
+          git push origin edge --force
+
+          gh release create edge \
+            --title "Edge (latest pre-release)" \
+            --notes $'Rolling pre-release — always tracks the latest commit on `main`.\n\nCurrent build: [`'"$TAG"'`](../../releases/tag/'"$TAG"') · commit `'"$SHA"'`' \
+            --prerelease \
+            dist/mcp-server-mac-arm64 \
+            dist/mcp-server-mac-x64 \
+            dist/mcp-server-linux-x64 \
+            dist/mcp-server-linux-arm64 \
+            dist/mcp-server-win.exe \
+            dist/scrum-master-toolkit.mcpb \
+            dist/checksums.txt
+
+      # ── Pre-release only: prune old pre-releases ──────────────────────────
+      #
+      # Retention rules (applied in order, each pass only sees survivors of
+      # the previous one so the rules compose correctly):
+      #
+      #   1. Per ISO calendar week  → keep the 12 most recent builds
+      #   2. Per calendar month     → keep the  7 most recent builds
+      #   3. Hard cap               → keep at most 50 total
+      #
+      # Under act: --mock generates 80 synthetic releases so the algorithm
+      # can be verified without credentials or a real repo.  --dry-run ensures
+      # nothing is deleted.  On GitHub runners both flags are omitted and the
+      # script calls gh against the real repo.
+      - name: Prune old pre-releases
+        if: github.event_name == 'push'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ -n "${ACT}" ]]; then
+            python3 scripts/prune-pre-releases.py --mock --dry-run
+          else
+            python3 scripts/prune-pre-releases.py
+          fi
