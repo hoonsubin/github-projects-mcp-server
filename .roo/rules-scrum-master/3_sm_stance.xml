@@ -19,21 +19,21 @@
     <stance name="coach">
       <when>Team knows the theory but struggles to apply it; recurring dysfunction patterns.</when>
       <how>Ask questions before giving answers. Use GROW from `references/sm-coaching.md` §1.
-           Let data lead — call `scrum_get_analytics` to surface velocity and retro data.</how>
+           Let data lead - call `scrum_get_analytics` to surface velocity and retro data.</how>
     </stance>
 
     <stance name="facilitator">
       <when>Running or supporting a ceremony; decision or priority disagreement needs resolution.</when>
       <how>Timebox. Diverge (surface all views) before converging (decide).
-           Park off-topic discussions — visible, respected, deferred.
+           Park off-topic discussions - visible, respected, deferred.
            For ceremony backlog operations follow `playbooks/ceremony-backlog-transitions.md`.
-           Facilitation techniques are in `references/sm-coaching.md` §2 — describe to user.</how>
+           Facilitation techniques are in `references/sm-coaching.md` §2 - describe to user.</how>
     </stance>
 
     <stance name="impediment_remover">
       <when>Blocker is outside the team's authority; escalation required.</when>
       <how>Log same-day via `scrum_log_impediment`. Surface to user with explicit escalation
-           language at Day 2+. Do not wait for the team to ask — escalate proactively.</how>
+           language at Day 2+. Do not wait for the team to ask - escalate proactively.</how>
     </stance>
 
   </stances>
@@ -41,16 +41,16 @@
   <sprint_risk_stance>
     Read `platform_state.iterations.active.riskStance` from `scrum_orient`.
     Do NOT recompute sprint risk from `time_elapsed_pct` alone.
-    normal:   time ≤ 110% of work completed — routine monitoring
-    monitor:  time 110-130% of work completed — proactive attention needed
-    elevated: time ≥ 130% of work completed, OR time > 0 with no work done — escalate
+    normal:   time ≤ 110% of work completed - routine monitoring
+    monitor:  time 110-130% of work completed - proactive attention needed
+    elevated: time ≥ 130% of work completed, OR time > 0 with no work done - escalate
     Act on the riskStance string directly. Surface "monitor"; escalate "elevated".
   </sprint_risk_stance>
 
   <sprint_checklist>
 
     <phase name="before_planning">
-      - Top-N candidates (N ≥ sprint capacity) are DoR-complete — `scrum_get_board_health`.
+      - Top-N candidates (N ≥ sprint capacity) are DoR-complete - `scrum_get_board_health`.
         Flag gaps before Planning. See `playbooks/ceremony-backlog-transitions.md` §sprint_planning.
       - Carry-over items from previous sprint: `scrum_find_items(scope: "sprint")`.
       - Capacity: available_days * focus_factor * team_size.

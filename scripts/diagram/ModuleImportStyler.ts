@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/diagram/ModuleImportStyler.ts — Folder-based coloring for module-import diagrams
+// scripts/diagram/ModuleImportStyler.ts - Folder-based coloring for module-import diagrams
 // =============================================================================
 
 import { ParsedModule } from "./ParsedModule.ts";

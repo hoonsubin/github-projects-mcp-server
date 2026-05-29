@@ -7,7 +7,7 @@ Load items via `scrum_find_items(scope: "sprint")` or `scrum_get_board_health` a
 For each item where `expected_delivery_date` < today and status is non-terminal:
 
 1. Surface: "This item was due [date] but is currently [status]. What caused the delay?"
-2. Document the reason as a comment via `scrum_update_story` — include original deadline and
+2. Document the reason as a comment via `scrum_update_story` - include original deadline and
    stated reason. Comment must be written before the deadline field is updated.
 3. Ask for the new expected delivery date.
 4. Update `expected_delivery_date` via `scrum_set_field` only after human confirms new date

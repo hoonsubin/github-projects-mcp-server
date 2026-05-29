@@ -351,7 +351,7 @@ const runStdio = async (
 
 // ── Streamable HTTP transport ────────────────────────────────────────────────
 //
-// Uses Deno.serve() with WebStandardStreamableHTTPServerTransport — the MCP SDK's
+// Uses Deno.serve() with WebStandardStreamableHTTPServerTransport - the MCP SDK's
 // native Web Standards transport for Deno/Bun/Cloudflare Workers. No express needed.
 //
 // Body-parsing note: Request bodies can only be consumed once. For a new
@@ -378,7 +378,7 @@ const runHttp = (configPath?: string, projectRoot?: string): void => {
 
       if (req.method === "POST") {
         if (!sessionId) {
-          // No session yet — must be an initialization request.
+          // No session yet - must be an initialization request.
           // Parse body once here so we can validate and hand it off via parsedBody.
           let body: unknown;
           try {

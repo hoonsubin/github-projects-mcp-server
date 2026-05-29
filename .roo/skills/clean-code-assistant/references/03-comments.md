@@ -1,6 +1,6 @@
 # Comments (Ch. 4)
 
-> _"Don't comment bad code — rewrite it."_ — Kernighan & Plaugher
+> _"Don't comment bad code - rewrite it."_ - Kernighan & Plaugher
 
 Comments compensate for our failure to express intent in code. Every time you want to write a comment, ask: **can I express this in code instead?**
 
@@ -16,9 +16,9 @@ if employee.is_eligible_for_benefits():
 
 ## Good Comments (use sparingly)
 
-**Legal headers** — required copyright notices are acceptable.
+**Legal headers** - required copyright notices are acceptable.
 
-**Intent explanation** — _why_ the code does something non-obvious, not _what_:
+**Intent explanation** - _why_ the code does something non-obvious, not _what_:
 
 ```python
 # Comparing integers for speed; string comparison was 10x slower in profiling
@@ -35,7 +35,7 @@ self.assertRegex(output, r'^Success$')
 **Warning of consequences:**
 
 ```python
-# Do NOT run this test concurrently — it modifies shared database state
+# Do NOT run this test concurrently - it modifies shared database state
 def test_user_deletion(): ...
 ```
 
@@ -48,29 +48,29 @@ result = sync_fetch(url)
 
 ## Bad Comments (always avoid)
 
-**Redundant** — says exactly what the code already says:
+**Redundant** - says exactly what the code already says:
 
 ```python
 # Set the name
 self.name = name
 ```
 
-**Misleading** — slightly wrong is worse than no comment; it actively deceives.
+**Misleading** - slightly wrong is worse than no comment; it actively deceives.
 
-**Mandated boilerplate** — "every function must have Javadoc" policies produce noise:
+**Mandated boilerplate** - "every function must have Javadoc" policies produce noise:
 
 ```java
 /** @param title The title of the CD @param author The author of the CD */
 public void addCD(String title, String author, int tracks) { ... }
 ```
 
-**Changelog / journal comments** — version control remembers history; code does not need a change log.
+**Changelog / journal comments** - version control remembers history; code does not need a change log.
 
-**Commented-out code** — **delete it immediately.** Version control has it.
+**Commented-out code** - **delete it immediately.** Version control has it.
 
-**Position markers / section banners** — if you need `### ACTION METHODS ###` to navigate a file, the file is too long.
+**Position markers / section banners** - if you need `### ACTION METHODS ###` to navigate a file, the file is too long.
 
-**HTML in comments or non-local references** — source code is not a documentation website; distant comments become misleading as code moves.
+**HTML in comments or non-local references** - source code is not a documentation website; distant comments become misleading as code moves.
 
 ## Rule Summary
 

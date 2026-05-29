@@ -1,38 +1,38 @@
 import { assertEquals } from "jsr:@std/assert@^1.0.0";
 import { pickDefined } from "./pick-defined.ts";
 
-Deno.test("pickDefined — includes property with non-undefined value", () => {
+Deno.test("pickDefined - includes property with non-undefined value", () => {
   const result = pickDefined({ a: 1, b: "hello" }, ["a"]);
   assertEquals(result, { a: 1 });
 });
 
-Deno.test("pickDefined — preserves null values (clear/set-to-null intent)", () => {
+Deno.test("pickDefined - preserves null values (clear/set-to-null intent)", () => {
   const result = pickDefined({ a: null, b: undefined }, ["a", "b"]);
   assertEquals(result, { a: null });
 });
 
-Deno.test("pickDefined — skips properties with undefined values", () => {
+Deno.test("pickDefined - skips properties with undefined values", () => {
   const result = pickDefined({ a: undefined, b: 42 }, ["a", "b"]);
   assertEquals(result, { b: 42 });
 });
 
-Deno.test("pickDefined — returns empty object when all values are undefined", () => {
+Deno.test("pickDefined - returns empty object when all values are undefined", () => {
   const result = pickDefined({ a: undefined }, ["a"]);
   assertEquals(result, {});
 });
 
-Deno.test("pickDefined — returns empty object for empty keys array", () => {
+Deno.test("pickDefined - returns empty object for empty keys array", () => {
   const result = pickDefined({ a: 1 }, []);
   assertEquals(result, {});
 });
 
-Deno.test("pickDefined — handles exact UpdateStorySchema shape", () => {
+Deno.test("pickDefined - handles exact UpdateStorySchema shape", () => {
   const params = {
     title: "New title",
     body: undefined,
     epic: null, // detach epic intent
     blocked_by: undefined,
-    comment: "hello", // not in keys — should not appear
+    comment: "hello", // not in keys - should not appear
   };
   const result = pickDefined(params, ["title", "body", "epic", "blocked_by"]);
   assertEquals(result, { title: "New title", epic: null });

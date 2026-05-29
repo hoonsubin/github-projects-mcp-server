@@ -8,8 +8,8 @@
 //
 // What the bundle contains:
 //   - All project source (src/)
-//   - All Deno stdlib deps (jsr:@std/*) — inlined by esbuild-deno-loader
-//   - All npm deps (@modelcontextprotocol/sdk, graphql, zod, etc.) — inlined
+//   - All Deno stdlib deps (jsr:@std/*) - inlined by esbuild-deno-loader
+//   - All npm deps (@modelcontextprotocol/sdk, graphql, zod, etc.) - inlined
 //   - src/_deno-shim.node.ts injected as a global Deno replacement
 //
 // What stays external (resolved at runtime by Node.js):
@@ -47,7 +47,7 @@ const result = await esbuild.build({
   target: ["node18"],
   outfile,
 
-  // Keep all node:* built-ins external — Node.js resolves them at runtime.
+  // Keep all node:* built-ins external - Node.js resolves them at runtime.
   // Do NOT add npm packages here; they should be inlined for a zero-dependency
   // distributable.
   external: ["node:*"],

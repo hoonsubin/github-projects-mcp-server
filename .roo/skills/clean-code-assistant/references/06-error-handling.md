@@ -1,6 +1,6 @@
 # Error Handling (Ch. 7)
 
-Error handling must not **obscure** the main logic. Clean error handling reads separately from clean business logic — they don't tangle together.
+Error handling must not **obscure** the main logic. Clean error handling reads separately from clean business logic - they don't tangle together.
 
 ## Use Exceptions, Not Error Codes
 
@@ -39,7 +39,7 @@ A function that handles errors should **do nothing else**. The `try` block and i
 
 ## Provide Context with Exceptions
 
-Don't throw bare exceptions — include what operation was attempted and why it failed:
+Don't throw bare exceptions - include what operation was attempted and why it failed:
 
 ```python
 # Bad
@@ -63,7 +63,7 @@ except DeviceResponseException as e: ...
 except ATM1212UnlockedException as e: ...
 except GMXError as e: ...
 
-# Good: wrap the API — also makes mocking trivial
+# Good: wrap the API - also makes mocking trivial
 class PortDeviceFailure(Exception): ...
 
 class LocalPort:
@@ -99,7 +99,7 @@ def get_employee(name) -> Employee:
 
 - Signaling failure: Throw an exception, not an error code
 - Writing error-prone code: Write try-catch first, then fill in logic
-- Third-party library: Wrap it — translate their exceptions to yours
+- Third-party library: Wrap it - translate their exceptions to yours
 - Returning "not found": Raise an exception
 - Optional arguments: Use keyword args with defaults, not None sentinels
 - No context in exception: Always add a descriptive message

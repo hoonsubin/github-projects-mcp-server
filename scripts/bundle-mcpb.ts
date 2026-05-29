@@ -40,7 +40,7 @@ try {
   await Deno.stat(serverMjs);
 } catch {
   console.error(
-    "[bundle-mcpb] error: dist/server.mjs not found — run 'deno task bundle:node' first.",
+    "[bundle-mcpb] error: dist/server.mjs not found - run 'deno task bundle:node' first.",
   );
   Deno.exit(1);
 }
@@ -89,7 +89,7 @@ if (!packOk) {
 // ── Move output to dist/ ─────────────────────────────────────────────────────
 
 // mcpb pack names the output after the directory it was run in, not the
-// manifest name field — so the actual file on disk is always "bundle.mcpb".
+// manifest name field - so the actual file on disk is always "bundle.mcpb".
 const packed = resolve(bundleDir, "bundle.mcpb");
 const dest = resolve(distDir, outputName);
 await Deno.rename(packed, dest);

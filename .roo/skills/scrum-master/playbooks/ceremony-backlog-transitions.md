@@ -1,22 +1,22 @@
 # Ceremony → Backlog Transitions
 
-The agent's role in ceremonies is to process the backlog changes they produce — not to facilitate
+The agent's role in ceremonies is to process the backlog changes they produce - not to facilitate
 the ceremonies themselves. For full ceremony facilitation, redirect to `references/sm-coaching.md`
 or `references/templates-ceremonies.md`.
 
 ## Sprint Planning
 
-**Pre-planning** — prepare the backlog before Planning opens.
+**Pre-planning** - prepare the backlog before Planning opens.
 N = sprint capacity in items (velocity / avg-SP-per-item; minimum 1.5× velocity in SP).
 If >30% of top-N fail DoR: flag as refinement debt before committing to a planning session.
 
 Tool sequence:
-1. `scrum_find_items(scope: "sprint")` — identify carry-over items (highest-priority candidates)
-2. `scrum_find_items(scope: "backlog")` — load top-N candidates
-3. Check each against `vocabulary.dor` from `scrum_orient` — missing AC, no estimate, unclear scope
+1. `scrum_find_items(scope: "sprint")` - identify carry-over items (highest-priority candidates)
+2. `scrum_find_items(scope: "backlog")` - load top-N candidates
+3. Check each against `vocabulary.dor` from `scrum_orient` - missing AC, no estimate, unclear scope
 4. Surface gap list; offer `scrum_update_story` per gap on confirmation
 
-**Post-planning** — apply sprint selection.
+**Post-planning** - apply sprint selection.
 - `scrum_plan_sprint({ sprint: "current", stories: [...refs] })`
 - Sprint goal: pass as `goal` arg. If `platform_state.iterations.active.goal` returns null after
   the call: post goal as comment on the sprint's first active story.
@@ -24,7 +24,7 @@ Tool sequence:
 
 ## Sprint Review
 
-**Post-review** — apply review output to the backlog.
+**Post-review** - apply review output to the backlog.
 
 Done items: no board action required.
 
@@ -39,8 +39,8 @@ Ask: "What should change in the backlog based on what you saw today?" Do not clo
 one confirmed backlog action.
 
 Tool sequence:
-1. `scrum_find_items(scope: "sprint")` — load final sprint state
-2. `scrum_get_analytics(view: "burndown", sprint_ref: "current")` — completion summary
+1. `scrum_find_items(scope: "sprint")` - load final sprint state
+2. `scrum_get_analytics(view: "burndown", sprint_ref: "current")` - completion summary
 3. Separate Done vs not-done using terminal status keys from `vocabulary.status`
 4. Apply carry-over comments; create new items
 5. Check `platform_state.template_uris` for `sprint_review` template
@@ -58,7 +58,7 @@ Tool sequence:
 3. Check `platform_state.template_uris` for `retrospective` template
 
 Recurring pattern (same improvement unmet 2+ sprints): surface to human with sprint data.
-Recommend Five Whys session — `references/sm-coaching.md §Retrospective formats`.
+Recommend Five Whys session - `references/sm-coaching.md §Retrospective formats`.
 
 ## Backlog Refinement
 
@@ -66,10 +66,10 @@ Goal: top-N items (N ≥ 1.5× velocity in SP) are DoR-complete before next plan
 
 Tool sequence:
 1. `scrum_find_items(scope: "backlog")`
-2. Check each against `vocabulary.dor` — missing AC, no estimate, unclear scope
-3. `scrum_update_story` — add AC or estimates agreed with human
-4. `scrum_set_field` — adjust priority on confirmation
-5. `scrum_add_vocabulary` — if new labels or field options needed
+2. Check each against `vocabulary.dor` - missing AC, no estimate, unclear scope
+3. `scrum_update_story` - add AC or estimates agreed with human
+4. `scrum_set_field` - adjust priority on confirmation
+5. `scrum_add_vocabulary` - if new labels or field options needed
 6. Check `platform_state.template_uris` for `refinement` template
 
 Staleness: no field update in 2 sprints → surface; candidate for icebox or close.

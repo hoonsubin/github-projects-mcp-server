@@ -2,7 +2,7 @@
 """
 Prune pre-release builds from GitHub Releases.
 
-Retention rules (applied in order — each pass sees only survivors of the prior one):
+Retention rules (applied in order - each pass sees only survivors of the prior one):
   1. Per ISO calendar week  → keep the 12 most recent
   2. Per calendar month     → keep the  7 most recent
   3. Hard cap               → keep at most 50 total
@@ -11,10 +11,10 @@ Usage:
   # Normal run (calls gh CLI against the real repo)
   python3 scripts/prune-pre-releases.py
 
-  # Dry run — prints what would be deleted, touches nothing
+  # Dry run - prints what would be deleted, touches nothing
   python3 scripts/prune-pre-releases.py --dry-run
 
-  # Mock run — uses synthetic data instead of calling gh (no credentials needed)
+  # Mock run - uses synthetic data instead of calling gh (no credentials needed)
   python3 scripts/prune-pre-releases.py --mock --dry-run
 
   # Mock run with a custom synthetic build count
@@ -65,19 +65,19 @@ def compute_deletions(releases: list[dict]) -> set[str]:
         if r.get("isPrerelease") and str(r["tagName"]).startswith("v0.0.0-pre.")
     ]
 
-    # Newest first — all bucket slices preserve this order.
+    # Newest first - all bucket slices preserve this order.
     pre.sort(key=lambda r: r["createdAt"], reverse=True)
 
     to_delete: set[str] = set()
 
-    # Pass 1 — weekly (%G-W%V is ISO 8601: correct across year boundaries)
+    # Pass 1 - weekly (%G-W%V is ISO 8601: correct across year boundaries)
     prune_buckets(pre, lambda dt: dt.strftime("%G-W%V"), WEEK_KEEP, to_delete)
 
-    # Pass 2 — monthly (survivors from pass 1 only)
+    # Pass 2 - monthly (survivors from pass 1 only)
     survivors = [r for r in pre if r["tagName"] not in to_delete]
     prune_buckets(survivors, lambda dt: dt.strftime("%Y-%m"), MONTH_KEEP, to_delete)
 
-    # Pass 3 — hard cap (survivors from passes 1+2)
+    # Pass 3 - hard cap (survivors from passes 1+2)
     survivors = [r for r in pre if r["tagName"] not in to_delete]
     if len(survivors) > TOTAL_CAP:
         to_delete.update(str(r["tagName"]) for r in survivors[TOTAL_CAP:])
@@ -189,7 +189,7 @@ def main() -> None:
         print(f"  {mode} {tag}", file=sys.stderr)
 
     if args.dry_run:
-        print("Dry run — no releases were deleted.", file=sys.stderr)
+        print("Dry run - no releases were deleted.", file=sys.stderr)
         sys.exit(0)
 
     # ── delete ────────────────────────────────────────────────────────────────
@@ -200,7 +200,7 @@ def main() -> None:
             errors += 1
 
     print(
-        f"Pruning complete — {len(to_delete) - errors} deleted, {errors} failed.",
+        f"Pruning complete - {len(to_delete) - errors} deleted, {errors} failed.",
         file=sys.stderr,
     )
     sys.exit(1 if errors else 0)

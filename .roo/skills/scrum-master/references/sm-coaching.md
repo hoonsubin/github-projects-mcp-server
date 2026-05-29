@@ -11,7 +11,7 @@
 | Options | "What could you do?" / "What if the constraint didn't exist?" |
 | Will | "What will you do next?" / "When?" / "What support do you need?" |
 
-In coaching mode, ask questions — don't provide answers. "What should I do?" → "What do *you* think the options are?"
+In coaching mode, ask questions - don't provide answers. "What should I do?" → "What do *you* think the options are?"
 
 ### Powerful questions
 - "What's the worst that could happen if you tried that?"
@@ -24,7 +24,7 @@ In coaching mode, ask questions — don't provide answers. "What should I do?" �
 
 > "During today's standup [situation], you spent 10 minutes on a technical deep-dive [behaviour], which meant three team members couldn't share updates [impact]."
 
-Describe observable behaviour only — no labels ("you're disorganised").
+Describe observable behaviour only - no labels ("you're disorganised").
 
 ## Facilitation techniques
 
@@ -53,7 +53,7 @@ Describe observable behaviour only — no labels ("you're disorganised").
 
 | Type | Sign | SM approach |
 |---|---|---|
-| Task | Disagreement on *what* | Healthy — structured debate; each side steelmans the other |
+| Task | Disagreement on *what* | Healthy - structured debate; each side steelmans the other |
 | Process | Disagreement on *how* | Restate Goal; "what process serves the goal?" |
 | Relationship | Personal friction; blame | Separate people from problem; SBI; 1:1 first |
 
@@ -68,7 +68,7 @@ SM is not a judge. Facilitate the team to its own decision. Genuinely stuck → 
 ## Team health metrics
 
 ```markdown
-## Team Health — Sprint [N]
+## Team Health - Sprint [N]
 
 | Metric | Value | Trend | Notes |
 |---|---|---|---|
@@ -97,10 +97,10 @@ Three consecutive ↓ in any metric → bring to retro explicitly.
 | Review | Video + screen share; record for absent stakeholders |
 | Retro | Shared markdown doc; virtual stickies or 1-2-4-All in writing rounds |
 
-- Over-communicate decisions, retro commitments, and impediments in writing — visibility replaces presence
+- Over-communicate decisions, retro commitments, and impediments in writing - visibility replaces presence
 - Camera-on norms: propose and model, don't mandate
 - "Office hours": 30-min daily open slot; reduces async pile-up
-- Watch for silent voices in video — use written rounds before verbal in 1-2-4-All
+- Watch for silent voices in video - use written rounds before verbal in 1-2-4-All
 
 ## Onboarding a new team
 
@@ -133,13 +133,13 @@ Red flags (seek coaching yourself if any are yes):
 
 ### Sprint 0 vs. Sprint 1
 
-**Sprint 0** — use when tooling, board configuration, and working agreements aren't in place; DoD and DoR have never been discussed; or the team hasn't worked together in a Scrum cadence before. Goal: "By end of this sprint, we have a working board, agreed DoD, and a calibrated velocity estimate." Keep it to 1 week. Sprint 0 produces no product increment — it produces a team ready to commit.
+**Sprint 0** - use when tooling, board configuration, and working agreements aren't in place; DoD and DoR have never been discussed; or the team hasn't worked together in a Scrum cadence before. Goal: "By end of this sprint, we have a working board, agreed DoD, and a calibrated velocity estimate." Keep it to 1 week. Sprint 0 produces no product increment - it produces a team ready to commit.
 
-**Sprint 1** — use when the board is functional, DoD/DoR are written (even minimally), and the team has context; or the project has been running informally and just needs structure applied. When in doubt, prefer Sprint 1. Sprint 0 is a crutch that teams extend indefinitely.
+**Sprint 1** - use when the board is functional, DoD/DoR are written (even minimally), and the team has context; or the project has been running informally and just needs structure applied. When in doubt, prefer Sprint 1. Sprint 0 is a crutch that teams extend indefinitely.
 
 ### v1 DoD principle
 
-Write the simplest DoD the team will actually respect. A DoD with 3 criteria followed is worth more than one with 10 criteria ignored. Start with: code reviewed, AC verified, deployed to staging. Add criteria in retro as the team proves the baseline. Never write an aspirational DoD — "100% test coverage" on a project with no tests is a fiction. Write what's true now and upgrade it.
+Write the simplest DoD the team will actually respect. A DoD with 3 criteria followed is worth more than one with 10 criteria ignored. Start with: code reviewed, AC verified, deployed to staging. Add criteria in retro as the team proves the baseline. Never write an aspirational DoD - "100% test coverage" on a project with no tests is a fiction. Write what's true now and upgrade it.
 
 ### Velocity baseline from informal history
 
@@ -147,7 +147,7 @@ Write the simplest DoD the team will actually respect. A DoD with 3 criteria fol
 2. Divide by elapsed weeks, multiply by sprint length → items/sprint.
 3. Ask the team to size those completed items relative to each other for a story-point estimate.
 4. Use the result as a provisional planning number. Label it as bootstrapped.
-5. Revisit after Sprint 2 — by then, real data exists.
+5. Revisit after Sprint 2 - by then, real data exists.
 
 If no throughput data exists: start with the capacity formula; treat Sprint 1 as a calibration sprint. The point is a reliable velocity reading, not maximum output.
 
@@ -156,11 +156,11 @@ If no throughput data exists: start with the capacity formula; treat Sprint 1 as
 ### The restart retrospective
 
 Before re-planning, run a short retrospective on the pause itself. Three questions only:
-1. "What caused the pause — and what have we learned from it?"
+1. "What caused the pause - and what have we learned from it?"
 2. "What's different now that makes this restart viable?"
 3. "What one change would prevent the same thing from happening again?"
 
-Capture the one committed change. If the root cause isn't resolved, don't restart — plan the resolution first.
+Capture the one committed change. If the root cause isn't resolved, don't restart - plan the resolution first.
 
 ### Re-baseline decision
 
@@ -175,10 +175,10 @@ Capacity = Available Days × Focus Factor (0.65) × Team Size.
 
 ### The calibration sprint
 
-The first sprint back is not about output — it's about proving the team can deliver again:
+The first sprint back is not about output - it's about proving the team can deliver again:
 - Commit to 60–70% of estimated capacity
-- Choose items the team knows well — no new technology or high-risk unknowns
+- Choose items the team knows well - no new technology or high-risk unknowns
 - Sprint Goal: "Deliver one complete, releasable increment"
 - Retro question: "Was the commit realistic? What would we adjust?"
 
-Under-committing on the calibration sprint is not weakness — it's accurate. Teams that over-commit on restart sprint 1 and miss it lose confidence twice.
+Under-committing on the calibration sprint is not weakness - it's accurate. Teams that over-commit on restart sprint 1 and miss it lose confidence twice.

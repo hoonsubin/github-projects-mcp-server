@@ -515,7 +515,7 @@ export type SprintTotals =
     completed_points: number;
   };
 
-/** Discriminant for SprintTotals discriminated union. Derived — stays in sync automatically. */
+/** Discriminant for SprintTotals discriminated union. Derived - stays in sync automatically. */
 export type SprintTotalsKind = SprintTotals["kind"];
 
 /**

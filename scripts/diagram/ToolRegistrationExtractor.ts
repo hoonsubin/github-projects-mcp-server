@@ -2,7 +2,7 @@
 // scripts/diagram/ToolRegistrationExtractor.ts
 //
 // Extracts tool registrations from src/tools/scrum-*.ts files.
-// Uses an already-parsed ParsedModule — no duplicate ts.createSourceFile().
+// Uses an already-parsed ParsedModule - no duplicate ts.createSourceFile().
 // =============================================================================
 
 import * as ts from "typescript";
@@ -22,7 +22,7 @@ export interface ToolExtractorResult {
  *
  * @param module    Already-parsed module instance.
  * @param namespace Which Mermaid namespace to assign the classes to.
- * @param knownNames  All class names in the diagram — used to emit arrows.
+ * @param knownNames  All class names in the diagram - used to emit arrows.
  * @param schemaNameToClassName  Same map used in ZodSchemaExtractor.
  * @param responseMap Manual map from tool name to its Mermaid response class.
  */

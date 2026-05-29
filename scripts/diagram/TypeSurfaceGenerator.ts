@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/diagram/TypeSurfaceGenerator.ts — Type-surface Mermaid diagram generator
+// scripts/diagram/TypeSurfaceGenerator.ts - Type-surface Mermaid diagram generator
 // =============================================================================
 
 import type { ClassBodyResult, ExtractedClass, ExtractedRelationship } from "./types.ts";

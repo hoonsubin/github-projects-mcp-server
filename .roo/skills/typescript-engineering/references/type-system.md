@@ -1,6 +1,6 @@
-# Advanced Type System — A Design Toolkit
+# Advanced Type System - A Design Toolkit
 
-The TypeScript type system is set-theoretic, structural, and erased at runtime. Use it to encode invariants so the compiler — not tests, not code review — catches violations. This file is the toolkit; load it when a task needs more than the SKILL.md core principles.
+The TypeScript type system is set-theoretic, structural, and erased at runtime. Use it to encode invariants so the compiler - not tests, not code review - catches violations. This file is the toolkit; load it when a task needs more than the SKILL.md core principles.
 
 ## Contents
 1. The structural, set-theoretic model
@@ -23,8 +23,8 @@ The TypeScript type system is set-theoretic, structural, and erased at runtime. 
 
 A type *is* a set of values. `string` = all strings. `"ok"` = a one-member set. `never` = the empty set. `unknown` = the universal set. This model explains everything else.
 
-- `A | B` is set union — a value in A **or** B.
-- `A & B` is set intersection — a value satisfying A **and** B. On object types this merges members; on disjoint primitives (`string & number`) it yields `never`, because no value is both.
+- `A | B` is set union - a value in A **or** B.
+- `A & B` is set intersection - a value satisfying A **and** B. On object types this merges members; on disjoint primitives (`string & number`) it yields `never`, because no value is both.
 - A type is **assignable** to another when its set is a subset. `"ok"` ⊆ `string`, so `"ok"` is assignable to `string`.
 - Typing is **structural**: compatibility is by shape, not by declared name. A class instance satisfies an interface it never declared `implements`, if the shape matches. You do not pre-wire compatibility; you just match shapes. (For when you need to *block* this, see §8.)
 
@@ -34,7 +34,7 @@ A type *is* a set of values. `string` = all strings. `"ok"` = a one-member set. 
 
 ## 2. Literal types and widening
 
-Inference depends on mutability. `let x = "a"` infers `string` (widened — it could change). `const x = "a"` infers `"a"` (it cannot change). This routinely surprises people:
+Inference depends on mutability. `let x = "a"` infers `string` (widened - it could change). `const x = "a"` infers `"a"` (it cannot change). This routinely surprises people:
 
 ```typescript
 function move(dir: "left" | "right") {}
@@ -74,12 +74,12 @@ function area(s: Shape): number {
   switch (s.kind) {
     case "circle": return Math.PI * s.radius ** 2;
     case "square": return s.side ** 2;
-    default: return assertNever(s); // exhaustiveness — see below
+    default: return assertNever(s); // exhaustiveness - see below
   }
 }
 ```
 
-**Exhaustiveness check** — make "forgot a case" a compile error:
+**Exhaustiveness check** - make "forgot a case" a compile error:
 
 ```typescript
 function assertNever(x: never): never {
@@ -89,7 +89,7 @@ function assertNever(x: never): never {
 
 Add a new variant to `Shape` and every non-exhaustive `switch` fails to compile.
 
-**Type predicate** — teach the compiler what a runtime check proves:
+**Type predicate** - teach the compiler what a runtime check proves:
 
 ```typescript
 function isUser(v: unknown): v is User {
@@ -97,7 +97,7 @@ function isUser(v: unknown): v is User {
 }
 ```
 
-**Assertion function** — narrow for the rest of the scope, throwing otherwise:
+**Assertion function** - narrow for the rest of the scope, throwing otherwise:
 
 ```typescript
 function assertIsString(v: unknown): asserts v is string {
@@ -105,7 +105,7 @@ function assertIsString(v: unknown): asserts v is string {
 }
 ```
 
-Predicates and assertions are the honest bridge from `unknown` to a real type at a boundary. They are how you avoid `as` (anti-pattern T3). For untrusted external input (HTTP bodies, parsed JSON), prefer a schema validator (Zod, Valibot) whose inferred type *is* the parsed type — one source of truth for runtime and compile time.
+Predicates and assertions are the honest bridge from `unknown` to a real type at a boundary. They are how you avoid `as` (anti-pattern T3). For untrusted external input (HTTP bodies, parsed JSON), prefer a schema validator (Zod, Valibot) whose inferred type *is* the parsed type - one source of truth for runtime and compile time.
 
 ---
 
@@ -131,7 +131,7 @@ Use mapped types to *derive* related types from one source of truth instead of h
 
 ## 5. Conditional types and `infer`
 
-`T extends U ? X : Y` branches at the type level. `infer` captures a type from inside another type — impossible in nominally-typed languages:
+`T extends U ? X : Y` branches at the type level. `infer` captures a type from inside another type - impossible in nominally-typed languages:
 
 ```typescript
 type ElementOf<T>  = T extends readonly (infer E)[] ? E : never;
@@ -139,14 +139,14 @@ type ReturnOf<T>   = T extends (...a: any[]) => infer R ? R : never;
 type Unwrap<T>     = T extends Promise<infer R> ? Unwrap<R> : T; // recursive
 ```
 
-Conditional types over a union **distribute** — applied to each member separately:
+Conditional types over a union **distribute** - applied to each member separately:
 
 ```typescript
 type NonNullableOf<T> = T extends null | undefined ? never : T;
 type X = NonNullableOf<string | null | undefined>; // string
 ```
 
-Powerful, but a magnet for over-engineering. Reach for a custom conditional type when it removes real duplication or encodes a real invariant — not to show off. Deeply nested conditional types are hard to read and debug; a named intermediate type or a simpler model often beats cleverness.
+Powerful, but a magnet for over-engineering. Reach for a custom conditional type when it removes real duplication or encodes a real invariant - not to show off. Deeply nested conditional types are hard to read and debug; a named intermediate type or a simpler model often beats cleverness.
 
 ---
 
@@ -168,11 +168,11 @@ Common use: a typed event bus or i18n key map where keys are checked at compile 
 
 ## 7. `satisfies` vs `as` vs annotation
 
-Three ways to relate a value to a type — they are not interchangeable:
+Three ways to relate a value to a type - they are not interchangeable:
 
-- **Annotation** (`const x: T = ...`) — checks the value, then *widens* the variable to `T`. You lose specific inferred literals.
-- **`as`** (`const x = ... as T`) — a cast. Overrides inference. Use only for `as const`, or a narrowing you have genuinely proven. A widening or fabricating `as` is anti-pattern T3.
-- **`satisfies`** (`const x = ... satisfies T`) — checks the value against `T` **without** widening. You keep the precise inferred type *and* get the constraint enforced.
+- **Annotation** (`const x: T = ...`) - checks the value, then *widens* the variable to `T`. You lose specific inferred literals.
+- **`as`** (`const x = ... as T`) - a cast. Overrides inference. Use only for `as const`, or a narrowing you have genuinely proven. A widening or fabricating `as` is anti-pattern T3.
+- **`satisfies`** (`const x = ... satisfies T`) - checks the value against `T` **without** widening. You keep the precise inferred type *and* get the constraint enforced.
 
 ```typescript
 type Palette = Record<string, [number, number, number] | string>;
@@ -180,7 +180,7 @@ const colors = { red: [255,0,0], green: "#0f0" } satisfies Palette;
 colors.green.toUpperCase(); // ✅ green is known to be string, not the union
 ```
 
-**`satisfies` + `as const` together** — the most powerful form for typed config objects. `satisfies` validates the shape; `as const` preserves all literal types so derived union types stay specific. Use this for any config or lookup table that other types are derived from:
+**`satisfies` + `as const` together** - the most powerful form for typed config objects. `satisfies` validates the shape; `as const` preserves all literal types so derived union types stay specific. Use this for any config or lookup table that other types are derived from:
 
 ```typescript
 const routes = {
@@ -201,7 +201,7 @@ Rule: `satisfies` to validate a value's shape while keeping its specifics; `as` 
 
 ## 8. Branded / nominal types
 
-Structural typing means `UserId` and `OrderId` (both `string`) are interchangeable — a real bug source. Brand a type to make it nominal:
+Structural typing means `UserId` and `OrderId` (both `string`) are interchangeable - a real bug source. Brand a type to make it nominal:
 
 ```typescript
 type Brand<T, B extends string> = T & { readonly __brand: B };
@@ -212,10 +212,10 @@ const UserId  = (s: string): UserId  => s as UserId;   // smart constructor
 const OrderId = (s: string): OrderId => s as OrderId;
 
 declare function getOrder(id: OrderId): Promise<Order>;
-getOrder(UserId("u1")); // ❌ compile error — exactly what you want
+getOrder(UserId("u1")); // ❌ compile error - exactly what you want
 ```
 
-Brand entity IDs, validated values (`Email`, `PositiveInt`), and units (`Meters`, `Millis`). The brand exists only at compile time — zero runtime cost. For values with validation rules or behavior, prefer a full value-object class (see `paradigms.md`); a brand is the lightweight option when you only need identity distinction.
+Brand entity IDs, validated values (`Email`, `PositiveInt`), and units (`Meters`, `Millis`). The brand exists only at compile time - zero runtime cost. For values with validation rules or behavior, prefer a full value-object class (see `paradigms.md`); a brand is the lightweight option when you only need identity distinction.
 
 ---
 
@@ -234,7 +234,7 @@ let handleAnimal: (a: Animal) => void = a => {};
 let handleDog: (d: Dog) => void = handleAnimal; // ✅ accepting a supertype is safe
 ```
 
-Mutable arrays are **invariant** in practice: `Dog[]` is not safely a `readonly Animal[]`'s mutable cousin, because you could `push` a non-Dog. Prefer `readonly T[]` in parameter positions — it is covariant and communicates "I will not mutate this". Developers from Java/C# expect generic covariance and get this wrong; the rule follows directly from "what would be unsafe to do".
+Mutable arrays are **invariant** in practice: `Dog[]` is not safely a `readonly Animal[]`'s mutable cousin, because you could `push` a non-Dog. Prefer `readonly T[]` in parameter positions - it is covariant and communicates "I will not mutate this". Developers from Java/C# expect generic covariance and get this wrong; the rule follows directly from "what would be unsafe to do".
 
 ---
 
@@ -242,7 +242,7 @@ Mutable arrays are **invariant** in practice: `Dog[]` is not safely a `readonly 
 
 Types vanish at runtime. There is no reflection over generic parameters, no `instanceof` for an interface, no runtime guard generated from a type. Anything you need enforced at runtime must be written as actual JavaScript: type predicates, assertion functions, or schema validation at the system boundary.
 
-The flip side: because types cost nothing at runtime, the type system can afford to be extraordinarily expressive. Use it generously for compile-time correctness — just never assume a type is checking anything once the program runs.
+The flip side: because types cost nothing at runtime, the type system can afford to be extraordinarily expressive. Use it generously for compile-time correctness - just never assume a type is checking anything once the program runs.
 
 ---
 
@@ -253,30 +253,30 @@ Generics encode the relationship between types. The design decisions are: what t
 **Constrain to the minimum required.** Over-constraining destroys reusability; under-constraining loses safety. Ask what the function actually needs from `T`:
 
 ```typescript
-// ❌ Over-constrained — forces callers to pass full objects
+// ❌ Over-constrained - forces callers to pass full objects
 function getField<T extends { id: string; name: string; email: string }>(
   obj: T, key: keyof T
 ): T[typeof key] { return obj[key]; }
 
-// ✅ Constrained to only what's needed — works on any object
+// ✅ Constrained to only what's needed - works on any object
 function getField<T extends object, K extends keyof T>(obj: T, key: K): T[K] {
   return obj[key];
 }
 ```
 
-**`const` type parameters (TS 5.0+)** — preserve literal types at the call site without requiring `as const` from the caller. Use when a function should capture the precise shape it receives:
+**`const` type parameters (TS 5.0+)** - preserve literal types at the call site without requiring `as const` from the caller. Use when a function should capture the precise shape it receives:
 
 ```typescript
-// Without const — T is inferred as string[], losing literal types
+// Without const - T is inferred as string[], losing literal types
 function makeRoute<T extends string[]>(paths: T): T { return paths; }
 makeRoute(["home", "profile"]); // string[]
 
-// With const — T is inferred as ["home", "profile"]
+// With const - T is inferred as ["home", "profile"]
 function makeRoute<const T extends string[]>(paths: T): T { return paths; }
-makeRoute(["home", "profile"]); // ["home", "profile"] — literals preserved
+makeRoute(["home", "profile"]); // ["home", "profile"] - literals preserved
 ```
 
-**Phantom type parameters** — a type parameter that appears in the type signature but not in the value. Encodes state or intent without runtime cost; a lightweight alternative to full branded types when the distinction is about lifecycle or capability rather than identity:
+**Phantom type parameters** - a type parameter that appears in the type signature but not in the value. Encodes state or intent without runtime cost; a lightweight alternative to full branded types when the distinction is about lifecycle or capability rather than identity:
 
 ```typescript
 type Validated<T, Brand extends string> = T & { readonly __validated: Brand };
@@ -294,25 +294,25 @@ sendEmail(validateEmail("ok@example.com"), "Hi"); // ✅
 
 **Generic inference failures.** When TypeScript can't infer a type parameter, the fallback is `unknown` or `{}`, which may compile but lose safety. Common causes:
 - The parameter only appears in a return type (inference is input-driven).
-- Conditional types block inference — add a `NoInfer<T>` helper or split the function.
+- Conditional types block inference - add a `NoInfer<T>` helper or split the function.
 - Two parameters forced to the same `T` when they should be independent `T` and `U`.
 
-When inference breaks, don't reach for `as` — restructure the signature so inference has enough information.
+When inference breaks, don't reach for `as` - restructure the signature so inference has enough information.
 
 ---
 
 ## 12. Excess property checking
 
-TypeScript checks for extra properties *only on fresh object literals*, not on variables. This is structural typing in action — a variable might legitimately be a more specific subtype — but it surprises people:
+TypeScript checks for extra properties *only on fresh object literals*, not on variables. This is structural typing in action - a variable might legitimately be a more specific subtype - but it surprises people:
 
 ```typescript
 interface Point { x: number; y: number; }
 function plot(p: Point): void {}
 
-plot({ x: 1, y: 2, z: 3 }); // ❌ fresh literal — excess 'z' caught
+plot({ x: 1, y: 2, z: 3 }); // ❌ fresh literal - excess 'z' caught
 
 const p3d = { x: 1, y: 2, z: 3 };
-plot(p3d);                   // ✅ variable — structurally compatible, no excess check
+plot(p3d);                   // ✅ variable - structurally compatible, no excess check
 ```
 
 This is intentional: a fresh literal at a call site with extra keys is almost certainly a mistake. A variable might genuinely be a richer type being passed somewhere that uses a subset. Understanding this distinction prevents two common mistakes: adding `as Point` to suppress the error (hiding the mistake), and being confused when the error doesn't fire for a variable.
@@ -323,7 +323,7 @@ When you *want* to block extra properties on variables (strict domain boundaries
 
 ## 13. Declaration merging and module augmentation
 
-TypeScript merges multiple declarations of the same `interface` name. This is how you extend third-party types without forking them — the only legitimate use of declaration merging in application code.
+TypeScript merges multiple declarations of the same `interface` name. This is how you extend third-party types without forking them - the only legitimate use of declaration merging in application code.
 
 **Augmenting a library type** (e.g. adding fields to Express `Request`):
 
@@ -352,4 +352,4 @@ declare module "some-lib" {
 }
 ```
 
-Keep augmentation files in a `src/types/` folder, named after the library they augment. A `types/index.ts` that re-exports everything else is an anti-pattern (A3 / A8) — `types/` should contain only `.d.ts` augmentation files, not domain types.
+Keep augmentation files in a `src/types/` folder, named after the library they augment. A `types/index.ts` that re-exports everything else is an anti-pattern (A3 / A8) - `types/` should contain only `.d.ts` augmentation files, not domain types.

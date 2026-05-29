@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/diagram/LayerSurfaceGenerator.ts — Layer-surface Mermaid diagram generator
+// scripts/diagram/LayerSurfaceGenerator.ts - Layer-surface Mermaid diagram generator
 // =============================================================================
 
 import type { ClassBodyResult, ExtractedClass, ExtractedRelationship } from "./types.ts";

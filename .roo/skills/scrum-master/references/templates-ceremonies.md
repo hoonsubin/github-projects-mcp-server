@@ -31,8 +31,8 @@ Management artifacts (velocity tracker, charter, roadmap, capacity calendar) →
 ## Definition of Ready
 
 ```markdown
-# Definition of Ready — [Team]
-_v[N] — [YYYY-MM-DD]_
+# Definition of Ready - [Team]
+_v[N] - [YYYY-MM-DD]_
 
 An item enters Sprint Planning only if ALL are true:
 - [ ] User-story format (who / what / why)
@@ -48,8 +48,8 @@ An item enters Sprint Planning only if ALL are true:
 ## Definition of Done
 
 ```markdown
-# Definition of Done — [Team]
-_v[N] — [YYYY-MM-DD]_
+# Definition of Done - [Team]
+_v[N] - [YYYY-MM-DD]_
 
 **Build**
 - [ ] Code written and self-reviewed
@@ -75,7 +75,7 @@ _v[N] — [YYYY-MM-DD]_
 ## Sprint Planning Board
 
 ```markdown
-## 🏃 Sprint [N] — [Start] to [End]
+## 🏃 Sprint [N] - [Start] to [End]
 
 ### Sprint Goal
 > _One outcome-based sentence._
@@ -101,7 +101,7 @@ _v[N] — [YYYY-MM-DD]_
 ## Sprint Planning Agenda
 
 ```markdown
-## Sprint [N] Planning — [YYYY-MM-DD]
+## Sprint [N] Planning - [YYYY-MM-DD]
 **Timebox:** [X] hr  **Sprint:** [Start] → [End]  **Facilitator:** [SM]
 
 ### 1. Capacity (10 min)
@@ -123,7 +123,7 @@ _v[N] — [YYYY-MM-DD]_
 | **Total SP** | | | | |
 
 ### 4. Commitment
-> [ ] Achievable given capacity? Yes — close  /  No — remove: [items]
+> [ ] Achievable given capacity? Yes - close  /  No - remove: [items]
 ```
 
 ---
@@ -131,7 +131,7 @@ _v[N] — [YYYY-MM-DD]_
 ## Daily Standup Log
 
 ```markdown
-## Standup — Sprint [N]
+## Standup - Sprint [N]
 
 | Date | Done | Doing | Blockers |
 |---|---|---|---|
@@ -141,7 +141,7 @@ _v[N] — [YYYY-MM-DD]_
 **Async format (remote teams):**
 
 ```markdown
-## Standup — [YYYY-MM-DD]
+## Standup - [YYYY-MM-DD]
 
 **[Name]**
 - ✅ Done: [moves the Goal]

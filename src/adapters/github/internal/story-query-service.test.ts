@@ -1,7 +1,7 @@
 // =============================================================================
 // src/adapters/github/internal/story-query-service.test.ts
 //
-// Unit tests for buildDependencyMap() — pure function, no mocks needed.
+// Unit tests for buildDependencyMap() - pure function, no mocks needed.
 // Tests A-bug-1 (blocks/blocked_by direction) and A-bug-2 (cross-repo stub nodes).
 // =============================================================================
 
@@ -89,7 +89,7 @@ const makeIssueStory = (opts: {
 
 /**
  * Build a minimal ProjectItem (issue content) for the second-pass allItems lookup.
- * Only includes the fields buildStoryFromRaw reads — matched to ProjectItemIssueContent shape.
+ * Only includes the fields buildStoryFromRaw reads - matched to ProjectItemIssueContent shape.
  */
 const makeProjectItem = (opts: { id: string; key: string; title: string }): ProjectItem => ({
   id: opts.id,
@@ -117,7 +117,7 @@ const makeProjectItem = (opts: { id: string; key: string; title: string }): Proj
 // Test cases
 // =============================================================================
 
-Deno.test("A-bug-1: dependency direction — A blocked by B", () => {
+Deno.test("A-bug-1: dependency direction - A blocked by B", () => {
   // Story 10 is blocked by Story 20
   const storyA = makeIssueStory({
     key: "10",
@@ -150,7 +150,7 @@ Deno.test("A-bug-1: dependency direction — A blocked by B", () => {
   assertFalse(map[keyB].blocked_by.includes(keyA), "B should not appear to be blocked by A");
 });
 
-Deno.test("A-bug-1: no dependencies — blocks and blocked_by are empty", () => {
+Deno.test("A-bug-1: no dependencies - blocks and blocked_by are empty", () => {
   const story10 = makeIssueStory({ key: "10" });
   const story20 = makeIssueStory({ key: "20" });
 
@@ -224,7 +224,7 @@ Deno.test("A-bug-2: out-of-scope dependency (in allItems but not in filtered sto
   assertEquals(node.blocked_by, []);
 });
 
-Deno.test("A-bug-1: circular dependency A↔B — direction is consistent", () => {
+Deno.test("A-bug-1: circular dependency A↔B - direction is consistent", () => {
   // Story 10 blocked by 20, AND 20 blocked by 10
   const story10 = makeIssueStory({
     key: "10",

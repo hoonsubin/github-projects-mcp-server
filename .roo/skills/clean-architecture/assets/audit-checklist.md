@@ -1,4 +1,4 @@
-# Architecture Audit — Concrete Checklist
+# Architecture Audit - Concrete Checklist
 
 A printable checklist for running the audit defined in `references/workflow-audit.md`. Any unticked item is either a finding or a blocker for the audit itself.
 
@@ -79,9 +79,9 @@ Verdicts: **OK** (`D ≤ 0.1`) · **Drift** (`D > 0.1`, watch) · **Zone of Pain
 
 Pick 5 random files from each inner layer and grep their imports:
 
-- [ ] Sampled entity files — imports look pure (standard library + own domain types only).
-- [ ] Sampled use case files — own domain + own ports + standard library only.
-- [ ] Sampled controller/adapter files — framework imports OK here; no leak in either direction.
+- [ ] Sampled entity files - imports look pure (standard library + own domain types only).
+- [ ] Sampled use case files - own domain + own ports + standard library only.
+- [ ] Sampled controller/adapter files - framework imports OK here; no leak in either direction.
 
 ## K. Boundaries
 

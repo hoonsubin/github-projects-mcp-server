@@ -3,9 +3,9 @@
 //
 // Scans .ts files in /src, extracts exports with type info via TS Compiler API,
 // detects dependencies, and outputs three Mermaid classDiagram artifacts:
-//   1. module-imports.mermaid  — module-per-class import dependency diagram
-//   2. type-surface.mermaid    — namespaced type-surface diagram (Zod schemas + tools)
-//   3. layer-surface.mermaid   — use-case + adapter layer class diagram with relationships
+//   1. module-imports.mermaid  - module-per-class import dependency diagram
+//   2. type-surface.mermaid    - namespaced type-surface diagram (Zod schemas + tools)
+//   3. layer-surface.mermaid   - use-case + adapter layer class diagram with relationships
 // =============================================================================
 
 // ── Imports: diagram utilities ─────────────────────────────────────────────────

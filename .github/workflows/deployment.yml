@@ -2,11 +2,11 @@ name: Deploy
 
 # Triggered two ways:
 #
-#   workflow_dispatch  — manual full release
+#   workflow_dispatch  - manual full release
 #     Prompts for a semver string (e.g. 1.2.3), creates an annotated tag,
 #     builds all artifacts, and publishes a stable GitHub Release.
 #
-#   push to main  — automatic pre-release on every merged PR
+#   push to main  - automatic pre-release on every merged PR
 #     Produces two releases per merge:
 #       1. Commit-pinned pre-release  tag: v<latest>-pre.<sha7>
 #          e.g. v1.2.3-pre.abc1234.  Permanent record; useful for bisecting
@@ -47,7 +47,7 @@ jobs:
           deno-version: v2.x
 
       # ── Version derivation ─────────────────────────────────────────────────
-      # workflow_dispatch: normalise the user input — strip a leading "v" if
+      # workflow_dispatch: normalise the user input - strip a leading "v" if
       #   present, then re-add it so the tag is always "vX.Y.Z" and the bare
       #   version is always "X.Y.Z".
       # push to main: base version = latest full-release tag (vX.Y.Z, no
@@ -88,7 +88,7 @@ jobs:
 
       # Patch the version string directly into source before compiling.
       # The binary reads Deno.env.get("RELEASE_VERSION") at runtime, but end
-      # users won't set that env var — so we replace the literal in server.ts
+      # users won't set that env var - so we replace the literal in server.ts
       # here so the correct version is baked into every compiled binary.
       - name: Patch version into source
         run: |
@@ -97,7 +97,7 @@ jobs:
 
       # Cross-compile all five platform targets from this single Linux runner.
       # deno compile embeds the JS bundle into a platform-specific denort
-      # binary — no native toolchain is needed for cross-compilation.
+      # binary - no native toolchain is needed for cross-compilation.
       - name: Compile all targets
         run: deno task compile:all
 
@@ -190,7 +190,7 @@ jobs:
 
           gh release create edge \
             --title "Edge (latest pre-release)" \
-            --notes $'Rolling pre-release — always tracks the latest commit on `main`.\n\nCurrent build: [`'"$TAG"'`](../../releases/tag/'"$TAG"') · commit `'"$SHA"'`' \
+            --notes $'Rolling pre-release - always tracks the latest commit on `main`.\n\nCurrent build: [`'"$TAG"'`](../../releases/tag/'"$TAG"') · commit `'"$SHA"'`' \
             --prerelease \
             dist/mcp-server-mac-arm64 \
             dist/mcp-server-mac-x64 \

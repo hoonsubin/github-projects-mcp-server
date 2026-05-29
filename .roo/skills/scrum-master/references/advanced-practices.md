@@ -5,11 +5,11 @@
 | Method | When | How |
 |---|---|---|
 | **Planning Poker** | Sprint-ready items | Each member secretly picks (Fibonacci); reveal simultaneously; outliers explain; re-vote to consensus. Never average. |
-| **T-shirt sizing** | Epics / roadmap | XS, S, M, L, XL — relative, no points; for rough roadmap before items are sprint-ready |
+| **T-shirt sizing** | Epics / roadmap | XS, S, M, L, XL - relative, no points; for rough roadmap before items are sprint-ready |
 | **Three-point** | High-risk items | O=optimistic, P=pessimistic, M=most likely → Expected = (O + 4M + P) / 6 |
 | **Spikes** | Can't estimate until investigated | Time-boxed research story; output is *knowledge*, not increment |
 
-**Three Amigos** — before estimating: convene PO (what) + Developer (how) + Tester (what could go wrong). Surfaces hidden AC. Game variant: add discipline-specific reps (artist, designer, audio).
+**Three Amigos** - before estimating: convene PO (what) + Developer (how) + Tester (what could go wrong). Surfaces hidden AC. Game variant: add discipline-specific reps (artist, designer, audio).
 
 ## Velocity & capacity
 
@@ -29,7 +29,7 @@ Buffer: stable team 10% / new team or domain 20% / high interrupt rate 25–30%
 
 ## Backlog refinement
 
-### INVEST — well-formed story checklist
+### INVEST - well-formed story checklist
 
 Evaluate a story before sprint commitment or as a drafting quality gate during `playbooks/item-creation.md` Phase 2. A story that fails any criterion should be flagged and fixed before creation, not after.
 
@@ -55,7 +55,7 @@ When a story fails T: apply the AC quality rules from `references/item-types.md 
 | Later | Described, coarse estimate | Sprint 4–6 |
 | Future | Idea-level | 6+ sprints |
 
-### WSJF (Weighted Shortest Job First) — for scaled environments
+### WSJF (Weighted Shortest Job First) - for scaled environments
 
 ```
 WSJF = Cost of Delay / Job Duration
@@ -74,7 +74,7 @@ Higher WSJF = higher priority.
 | Data variation | Export → CSV / PDF |
 | Happy path first | Core flow → edge cases later |
 
-*Game variant: split by mechanic (jump, attack, defend) and by stand-in vs. final asset — get the mechanic playable with placeholders, polish in later sprints.*
+*Game variant: split by mechanic (jump, attack, defend) and by stand-in vs. final asset - get the mechanic playable with placeholders, polish in later sprints.*
 
 ### Story mapping (90-min session)
 

@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/diagram/DiagramStyler.ts — Abstract base class for Mermaid styling
+// scripts/diagram/DiagramStyler.ts - Abstract base class for Mermaid styling
 // =============================================================================
 
 import type { NamespaceDef } from "./types.ts";

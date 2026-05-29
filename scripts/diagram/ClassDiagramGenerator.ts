@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/diagram/ClassDiagramGenerator.ts — Abstract base for Mermaid classDiagram generation
+// scripts/diagram/ClassDiagramGenerator.ts - Abstract base for Mermaid classDiagram generation
 // =============================================================================
 
 import type { ClassBodyResult } from "./types.ts";
@@ -31,7 +31,7 @@ export abstract class ClassDiagramGenerator<T> {
   constructor(protected readonly styler: DiagramStyler<T>) {}
 
   /**
-   * Template method — assembles the complete Mermaid diagram string.
+   * Template method - assembles the complete Mermaid diagram string.
    */
   generate(): string {
     const lines: string[] = [];

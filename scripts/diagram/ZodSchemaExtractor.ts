@@ -2,7 +2,7 @@
 // scripts/diagram/ZodSchemaExtractor.ts
 //
 // Extracts class/relationship info from Zod schema files (src/schemas/).
-// Uses an already-parsed ParsedModule — no duplicate ts.createSourceFile().
+// Uses an already-parsed ParsedModule - no duplicate ts.createSourceFile().
 // =============================================================================
 
 import * as ts from "typescript";

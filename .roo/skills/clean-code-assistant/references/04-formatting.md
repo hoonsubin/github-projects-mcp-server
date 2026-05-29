@@ -1,6 +1,6 @@
 # Formatting (Ch. 5)
 
-Formatting is **communication**. Consistent formatting lets readers build a mental model quickly. Agree on one style per project and enforce it with a formatter (`black`, `prettier`, `gofmt`, `rustfmt`) — a consistent bad style beats an inconsistent mix.
+Formatting is **communication**. Consistent formatting lets readers build a mental model quickly. Agree on one style per project and enforce it with a formatter (`black`, `prettier`, `gofmt`, `rustfmt`) - a consistent bad style beats an inconsistent mix.
 
 ## Vertical Formatting
 

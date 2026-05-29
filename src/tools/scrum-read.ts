@@ -56,11 +56,11 @@ export const registerScrumReadTools = (
         pass to write tools - they are project-specific and cannot be guessed.
 
         Key fields to cache for the session:
-          platform_state.deadline_field — null when the project does not track deadlines via a
+          platform_state.deadline_field - null when the project does not track deadlines via a
             custom field. When non-null, it is the exact key to use when reading deadline values
             from item.custom_fields[deadline_field]. Do not re-orient just to retrieve this value.
-          vocabulary.sprint.velocity_window — preferred history window for scrum_get_analytics calls.
-          vocabulary.status — canonical key → display label map; always resolve status values from
+          vocabulary.sprint.velocity_window - preferred history window for scrum_get_analytics calls.
+          vocabulary.status - canonical key → display label map; always resolve status values from
             here before passing to scrum_set_field. Never hardcode strings like "Done" or "In Progress".
 
         No arguments required. Pass {} or omit arguments entirely.`,
@@ -126,7 +126,7 @@ export const registerScrumReadTools = (
         Search by scope, keys, text, type, status, priority, epic, labels, assignee,
         or sprint. Optionally include the full dependency graph.
 
-        scope vs sprint_ref — two distinct filters, use the right one:
+        scope vs sprint_ref - two distinct filters, use the right one:
           scope: "sprint"        → items in the CURRENT active sprint ("what's in this sprint")
           sprint_ref: "Sprint 3" → items in a named or historical sprint (retro, cross-sprint queries)
           These are orthogonal. scope sets the query domain; sprint_ref targets a specific iteration.
@@ -178,7 +178,7 @@ export const registerScrumReadTools = (
       title: "Get Sprint Analytics",
       description: `Unified sprint analytics - burndown + velocity history.
 
-        Always pass view explicitly — default "both" fetches more data than most calls need:
+        Always pass view explicitly - default "both" fetches more data than most calls need:
           "burndown" → standup / daily monitoring (current sprint progress only)
           "history"  → velocity question, retrospective preparation (completed sprints only)
           "both"     → sprint report, full board assessment

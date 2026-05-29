@@ -2,7 +2,7 @@
 // src/_deno-shim.node.ts
 //
 // Deno API shim for the Node.js bundle (dist/server.mjs).
-// Injected by esbuild via scripts/bundle-node.ts — do NOT import this file
+// Injected by esbuild via scripts/bundle-node.ts - do NOT import this file
 // directly; it only makes sense as an esbuild inject.
 //
 // Every Deno.* call used across the project is mapped to its Node.js
@@ -38,12 +38,12 @@ export function addEventListener(
       handler({ reason, preventDefault: () => {} });
     });
   }
-  // Other event types are silently ignored — none are used in this project.
+  // Other event types are silently ignored - none are used in this project.
 }
 
 export const Deno = {
   // ── CLI args ───────────────────────────────────────────────────────────────
-  // Captured at module init — equivalent to Deno.args which is also static.
+  // Captured at module init - equivalent to Deno.args which is also static.
   args: process.argv.slice(2),
 
   // ── Environment variables ──────────────────────────────────────────────────

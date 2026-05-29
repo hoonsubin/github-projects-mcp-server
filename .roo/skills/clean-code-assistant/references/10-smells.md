@@ -2,7 +2,7 @@
 
 Each smell is labeled for precise citation during reviews (e.g., "G14: Feature Envy").
 
-## C — Comments
+## C - Comments
 
 | Code | Smell | What to do |
 |---|---|---|
@@ -12,14 +12,14 @@ Each smell is labeled for precise citation during reviews (e.g., "G14: Feature E
 | C4 | Poorly written comment | Rewrite with correct grammar |
 | C5 | Commented-out code | **Delete immediately** |
 
-## E — Environment
+## E - Environment
 
 | Code | Smell | What to do |
 |---|---|---|
 | E1 | Build requires more than one step | Automate with one command |
 | E2 | Tests require more than one step | One command should run all tests |
 
-## F — Functions
+## F - Functions
 
 | Code | Smell | What to do |
 |---|---|---|
@@ -28,7 +28,7 @@ Each smell is labeled for precise citation during reviews (e.g., "G14: Feature E
 | F3 | Flag arguments | Split into two functions |
 | F4 | Dead function (never called) | Delete it |
 
-## G — General
+## G - General
 
 | Code | Smell | What to do |
 |---|---|---|
@@ -69,7 +69,7 @@ Each smell is labeled for precise citation during reviews (e.g., "G14: Feature E
 | G35 | Keep configurable data at high levels | Pass constants down; don't bury in low-level code |
 | G36 | Avoid transitive navigation (Law of Demeter) | `a.b().c()` → ask A directly |
 
-## N — Names
+## N - Names
 
 | Code | Smell | What to do |
 |---|---|---|
@@ -81,7 +81,7 @@ Each smell is labeled for precise citation during reviews (e.g., "G14: Feature E
 | N6 | Encodings (Hungarian notation, type prefixes) | Remove them |
 | N7 | Name doesn't describe side effects | `createOrReturnRegistry()` not `getRegistry()` |
 
-## T — Tests
+## T - Tests
 
 | Code | Smell | What to do |
 |---|---|---|
@@ -90,7 +90,7 @@ Each smell is labeled for precise citation during reviews (e.g., "G14: Feature E
 | T3 | Skipped trivial tests | Trivial tests are documentation |
 | T4 | Ignored test | Clarify the ambiguity or delete |
 | T5 | Untested boundary conditions | Always test at and around the edges |
-| T6 | Bugs not exhaustively tested | Bugs cluster — look for more nearby |
+| T6 | Bugs not exhaustively tested | Bugs cluster - look for more nearby |
 | T7 | Failure patterns unexamined | Failed tests often reveal the root cause |
 | T8 | Coverage gaps | Uncovered paths = untested assumptions |
 | T9 | Slow tests | Slow tests don't get run |
@@ -99,4 +99,4 @@ Each smell is labeled for precise citation during reviews (e.g., "G14: Feature E
 
 Tag each issue with its code for precise, learnable feedback:
 
-> "Line 42: G5 (Duplication) — this date formatting logic appears again in `UserFormatter`. Extract to a shared `DateFormatter`."
+> "Line 42: G5 (Duplication) - this date formatting logic appears again in `UserFormatter`. Extract to a shared `DateFormatter`."

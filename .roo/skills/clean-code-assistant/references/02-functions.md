@@ -4,7 +4,7 @@ Functions are the primary unit of organization. The rules below compound: follow
 
 ## Rule 1: Small
 
-Functions should be **small** — rarely more than 20 lines. Blocks within `if`, `else`, `while` should be **one line** (usually a descriptive function call).
+Functions should be **small** - rarely more than 20 lines. Blocks within `if`, `else`, `while` should be **one line** (usually a descriptive function call).
 
 ```python
 # Bad: long, nested, multiple concerns
@@ -28,7 +28,7 @@ def render_page_with_setups_and_teardowns(page_data, is_suite):
 **Test:** Can you describe the function in one sentence with no "and"?
 
 ```python
-# Bad: validates AND initializes session — two things
+# Bad: validates AND initializes session - two things
 def check_password(username, password):
     user = find_user(username)
     if user.password_hash == hash(password):
@@ -78,7 +78,7 @@ Use the **Stepdown Rule**: arrange functions top-to-bottom as a narrative, each 
 - Refactor polyadic functions:
   - For functions with four or more arguments (polyadic), consider refactoring them into a Parameter Object to improve readability and maintainability.
 
-**Avoid flag (boolean) arguments** — they announce the function does two things:
+**Avoid flag (boolean) arguments** - they announce the function does two things:
 
 ```python
 # Bad
@@ -107,11 +107,11 @@ make_circle(spec)
 
 ## Rule 5: Have No Side Effects
 
-Side effects are **lies** — the name promises one thing, the side effect does another (see `check_password` in Rule 2). If a side effect is unavoidable, name the function honestly — then ask if SRP is violated.
+Side effects are **lies** - the name promises one thing, the side effect does another (see `check_password` in Rule 2). If a side effect is unavoidable, name the function honestly - then ask if SRP is violated.
 
 ## Rule 6: Command-Query Separation
 
-A function should either **do something** (command) or **answer something** (query) — never both.
+A function should either **do something** (command) or **answer something** (query) - never both.
 
 ```python
 # Bad: sets an attribute AND returns whether it was set
@@ -124,7 +124,7 @@ def set_attribute(name, value): ...
 
 ## Rule 7: Prefer Exceptions to Returning Error Codes
 
-Error codes force immediate handling and create deep nesting. **Error handling is one thing** — a function that handles errors should do nothing else.
+Error codes force immediate handling and create deep nesting. **Error handling is one thing** - a function that handles errors should do nothing else.
 
 ```python
 # Bad: error handling tangled with logic
@@ -143,7 +143,7 @@ def delete(page):
 
 ## Rule 8: Don't Repeat Yourself (DRY)
 
-Every copy-paste is a future bug — you'll fix it in one place, not the other. Extract repeated logic into a named function named after its _intent_, not its _implementation_.
+Every copy-paste is a future bug - you'll fix it in one place, not the other. Extract repeated logic into a named function named after its _intent_, not its _implementation_.
 
 ## Quick Checklist
 

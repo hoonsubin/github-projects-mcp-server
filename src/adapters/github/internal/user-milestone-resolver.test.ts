@@ -15,17 +15,17 @@ import { GitHubApiError } from "../errors.ts";
 // GraphQL response fixtures
 // =============================================================================
 
-/** User found — { user: { id: "MDQ6VXNlcjE=" } } */
+/** User found - { user: { id: "MDQ6VXNlcjE=" } } */
 const USER_FOUND = { user: { id: "MDQ6VXNlcjE=" } };
 
-/** User null — { user: null } (triggers NOT_FOUND) */
+/** User null - { user: null } (triggers NOT_FOUND) */
 const USER_NULL = { user: null };
 
-/** User undefined — {} (no user key at all) */
+/** User undefined - {} (no user key at all) */
 const USER_UNDEF = {};
 
 // =============================================================================
-// GitHubClient spy — queue-based to handle sequential graphql calls
+// GitHubClient spy - queue-based to handle sequential graphql calls
 // =============================================================================
 
 interface GitHubClientSpy extends GitHubClient {
@@ -96,7 +96,7 @@ const createResolver = (options: CreateResolverOptions = {}) => {
 };
 
 // =============================================================================
-// Test-specification helpers — express intent, not wiring
+// Test-specification helpers - express intent, not wiring
 // =============================================================================
 
 const givenUserExists = (spy: GitHubClientSpy): void => {
@@ -108,7 +108,7 @@ const givenUserNotFound = (spy: GitHubClientSpy): void => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Group A — resolveUserNodeId
+// Group A - resolveUserNodeId
 // ═══════════════════════════════════════════════════════════════════════════════
 
 Deno.test({
@@ -223,7 +223,7 @@ Deno.test({
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Group B — resolveUserNodeIds
+// Group B - resolveUserNodeIds
 // ═══════════════════════════════════════════════════════════════════════════════
 
 Deno.test({

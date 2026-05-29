@@ -1,6 +1,6 @@
 # Story Points Playbook
 
-Never assign story points unilaterally. Never conflate priority with SP size — they are independent
+Never assign story points unilaterally. Never conflate priority with SP size - they are independent
 dimensions. If human conflates them, surface the distinction before proceeding.
 
 ## §estimation_guidance
@@ -16,5 +16,5 @@ dimensions. If human conflates them, surface the distinction before proceeding.
 ## §guard
 
 If asked to "just assign points" without discussion:
-> "Story points reflect the team's understanding of the work — I can offer a reasoned range,
+> "Story points reflect the team's understanding of the work - I can offer a reasoned range,
 > but you commit the value. Walk me through the scope and I'll give you a range with reasoning."

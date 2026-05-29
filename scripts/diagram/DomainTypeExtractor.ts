@@ -4,7 +4,7 @@
 // Extracts class/relationship info from plain TypeScript source files.
 // Handles: interface, type alias (union, branded, object), enum, const tuple.
 //
-// Uses the TypeScript Compiler API (ts.*) at the AST node level — no type
+// Uses the TypeScript Compiler API (ts.*) at the AST node level - no type
 // checker required, so we don't need to build a full Program.
 // =============================================================================
 
@@ -29,7 +29,7 @@ export interface DomainExtractorResult {
  * @param module    Already-parsed module instance (avoids duplicate ts.createSourceFile).
  * @param namespace Which Mermaid namespace to assign all extracted classes to.
  * @param knownNames Optional set of type names already collected from other
- *                   files — used to suppress relationship arrows to unknowns.
+ *                   files - used to suppress relationship arrows to unknowns.
  */
 export const extractDomainTypes = (
   module: ParsedModule,

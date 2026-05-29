@@ -90,7 +90,7 @@ export const registerScrumWriteTools = (
           field  one of: "status" | "sprint" | "story_points" | "priority" | "assignee" | "type"
           value  shape depends on field:
                    status        → MUST be resolved from vocabulary.status in scrum_orient.
-                                   Never pass display names like "Done" or "In Progress" literally —
+                                   Never pass display names like "Done" or "In Progress" literally -
                                    the project may use "Completed", "Closed", or any custom label.
                                    Always resolve: vocabulary.status["done"] → pass that exact string.
                    sprint        → "current" | "next" | "<sprint-name>" | null  (null clears)
@@ -122,11 +122,11 @@ export const registerScrumWriteTools = (
         `Edit the content fields of a story: title, body, labels, assignees, epic, or dependencies.
         For board fields (status, sprint, story_points, priority, assignee) use scrum_set_field.
 
-        WARNING — labels and assignees REPLACE the full existing set, they do not append.
+        WARNING - labels and assignees REPLACE the full existing set, they do not append.
         To add one label without losing the rest: call scrum_get_item_detail first, merge the
         new label into the existing labels array, then pass the merged set here.
-        Same applies to assignees — always read first unless intent is to replace wholesale.
-        body also replaces the entire body — read first if you intend to append content.
+        Same applies to assignees - always read first unless intent is to replace wholesale.
+        body also replaces the entire body - read first if you intend to append content.
 
         Args:
           ref        { number: integer } | { id: string } - story to update

@@ -16,7 +16,7 @@ session end if no in-progress item is active.
 ## Output
 
 Present top 1–3 recommendations. Per item: state ticket title, ID, and weighted rationale.
-Never return a bare list — every recommendation requires a stated reason.
-> "I recommend [#42 — Add rate limiting]. It's 2 days past its delivery date AND blocking #45 and #47."
+Never return a bare list - every recommendation requires a stated reason.
+> "I recommend [#42 - Add rate limiting]. It's 2 days past its delivery date AND blocking #45 and #47."
 
 If session ends with no in-progress item and no stated next action, apply this playbook.
