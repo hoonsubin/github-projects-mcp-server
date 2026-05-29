@@ -1,6 +1,14 @@
 ---
 name: clean-code-assistant
-description: "Clean Code skill. Writing, reviewing, or refactoring code; naming variables/functions/classes; class design; error handling; tests; reducing duplication; code smells; SRP, OCP, DIP. Phrases: 'is this clean', 'clean this up', 'what's wrong with my function', 'how do I improve this', pasting code for feedback or rewrite. Apply proactively to any coding task."
+description: >-
+  Clean Code skill. Writing, reviewing, or refactoring code; naming
+  variables/functions/classes; class design; error handling; tests; reducing
+  duplication; code smells; SRP, OCP, DIP. Phrases: 'is this clean', 'clean this
+  up', 'what's wrong with my function', 'how do I improve this', pasting code
+  for feedback or rewrite. Apply proactively to any coding task.
+modeSlugs:
+  - architect
+  - code
 ---
 
 # Clean Code Assistant

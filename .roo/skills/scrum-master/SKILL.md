@@ -1,11 +1,13 @@
 ---
 name: scrum-master
 description: >
-  Project Manager / Scrum Master skill for solo-work environments.
-  Covers board management, item health, deadline tracking, implementation handoff,
-  delivery verification, estimation guidance, and coaching.
-  Read this file when the request type is Coaching, ItemAssessment, StoryPoints,
-  or when a concept needs more depth than the mode's playbooks provide.
+  Project Manager / Scrum Master skill for solo-work environments. Covers board
+  management, item health, deadline tracking, implementation handoff, delivery
+  verification, estimation guidance, and coaching. Read this file when the
+  request type is Coaching, ItemAssessment, StoryPoints, or when a concept needs
+  more depth than the mode's playbooks provide.
+modeSlugs:
+  - scrum-master
 ---
 
 # Scrum Master Skill
