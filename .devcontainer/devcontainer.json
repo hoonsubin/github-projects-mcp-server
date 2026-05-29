@@ -28,7 +28,7 @@
         "GitHub.vscode-pull-request-github",
         "streetsidesoftware.code-spell-checker",
         "pomdtr.excalidraw-editor",
-        "RooVeterinaryInc.roo-cline",
+        "zoocodeorganization.zoo-code",
         "GraphQL.vscode-graphql-syntax",
         "ms-azuretools.vscode-containers",
         "github.vscode-github-actions"
@@ -47,12 +47,7 @@
         },
 
         // Terminal shell
-        "terminal.integrated.defaultProfile.linux": "bash",
-        "roo-cline.qdrantUrl": "http://qdrant:6333",
-        "roo-cline.embeddingProvider": "openai-compatible",
-        "roo-cline.embeddingBaseUrl": "http://host.docker.internal:1234/v1",
-        "roo-cline.embeddingModel": "text-embedding-nomic-embed-text-v2-moe",
-        "roo-cline.embeddingDimension": 768
+        "terminal.integrated.defaultProfile.linux": "bash"
       }
     }
   },

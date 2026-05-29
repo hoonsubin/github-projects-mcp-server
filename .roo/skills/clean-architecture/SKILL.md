@@ -1,6 +1,17 @@
 ---
 name: clean-architecture
-description: "Clean Architecture skill. Project structure, layer design, dependency direction, SOLID, module/component boundaries, monolith vs microservices, decoupling, coupling/cohesion metrics, refactoring a big ball of mud, architecture audits, greenfield design, separation of concerns. Phrases: 'where does this go', 'how do I structure this', 'hard to change', 'fragile', 'circular dependency', 'should I use microservices', 'starting a new project', 'decouple X from Y', 'design review', 'this is a mess'. Any stack or domain."
+description: >-
+  Clean Architecture skill. Project structure, layer design, dependency
+  direction, SOLID, module/component boundaries, monolith vs microservices,
+  decoupling, coupling/cohesion metrics, refactoring a big ball of mud,
+  architecture audits, greenfield design, separation of concerns. Phrases:
+  'where does this go', 'how do I structure this', 'hard to change', 'fragile',
+  'circular dependency', 'should I use microservices', 'starting a new project',
+  'decouple X from Y', 'design review', 'this is a mess'. Any stack or domain.
+modeSlugs:
+  - architect
+  - code
+  - project-research
 ---
 
 # Clean Architecture — System Architecting Skill

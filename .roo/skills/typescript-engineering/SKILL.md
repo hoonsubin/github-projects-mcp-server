@@ -1,6 +1,21 @@
 ---
 name: typescript-engineering
-description: "Advanced TypeScript engineering — writing, reviewing, refactoring, and architecting TypeScript codebases. Use whenever the task involves TypeScript: writing new TS code, reviewing or auditing existing TS, refactoring messy TS, fixing type errors, designing types, choosing between OOP and functional style, structuring a TS project, or judging whether code is maintainable and scalable. Triggers on phrases like 'review my TypeScript', 'is this type-safe', 'how should I type this', 'this code is a mess', 'fix this type error', 'should this be a class or a function', 'how do I structure this project', 'make this more maintainable', 'refactor this', and ANY task where the codebase is TypeScript. Apply proactively — do not wait for the user to ask for a 'TypeScript review'. Thinks in TypeScript's type system first, then applies Clean Code and Clean Architecture principles."
+description: >-
+  Advanced TypeScript engineering — writing, reviewing, refactoring, and
+  architecting TypeScript codebases. Use whenever the task involves TypeScript:
+  writing new TS code, reviewing or auditing existing TS, refactoring messy TS,
+  fixing type errors, designing types, choosing between OOP and functional
+  style, structuring a TS project, or judging whether code is maintainable and
+  scalable. Triggers on phrases like 'review my TypeScript', 'is this
+  type-safe', 'how should I type this', 'this code is a mess', 'fix this type
+  error', 'should this be a class or a function', 'how do I structure this
+  project', 'make this more maintainable', 'refactor this', and ANY task where
+  the codebase is TypeScript. Apply proactively — do not wait for the user to
+  ask for a 'TypeScript review'. Thinks in TypeScript's type system first, then
+  applies Clean Code and Clean Architecture principles.
+modeSlugs:
+  - code
+  - architect
 ---
 
 # TypeScript Engineering
