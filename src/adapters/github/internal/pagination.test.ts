@@ -15,7 +15,7 @@
 // =============================================================================
 
 import { assert, assertEquals, assertRejects } from "@std/assert";
-import { PaginatedProjectItemFetcher, isBacklogItem } from "./pagination.ts";
+import { isBacklogItem, PaginatedProjectItemFetcher } from "./pagination.ts";
 import { createGhSpy, makeConfig } from "./_test_utils.ts";
 import { GitHubApiError } from "../errors.ts";
 import type { GitHubBootState } from "../bootstrap.ts";
@@ -60,9 +60,7 @@ function makeEmptyPage(ownerType: "user" | "org" = "user") {
 }
 
 function makeNotFoundPage(ownerType: "user" | "org" = "user") {
-  return ownerType === "user"
-    ? { user: null }
-    : { organization: null };
+  return ownerType === "user" ? { user: null } : { organization: null };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -116,7 +114,8 @@ Deno.test({
 });
 
 Deno.test({
-  name: "collect() - field values contain accessible field.id (regression: GraphQL union selection)",
+  name:
+    "collect() - field values contain accessible field.id (regression: GraphQL union selection)",
   async fn() {
     // This test catches the query bug where `field { id name }` was placed directly
     // on the ProjectV2ItemFieldValue union. GitHub silently dropped the field selection,

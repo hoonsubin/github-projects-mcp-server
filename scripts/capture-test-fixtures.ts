@@ -77,9 +77,7 @@ if (!args.config) {
 const configLocation = resolveLocation(args.config, resolve(Deno.cwd()));
 const { scrumConfig } = await loadScrumConfig(configLocation);
 
-const selected = args.platform
-  ? CAPTURERS.filter((c) => c.platform === args.platform)
-  : CAPTURERS;
+const selected = args.platform ? CAPTURERS.filter((c) => c.platform === args.platform) : CAPTURERS;
 
 if (selected.length === 0) {
   const known = CAPTURERS.map((c) => c.platform).join(", ");
@@ -95,7 +93,9 @@ for (const capturer of selected) {
   console.error(`\n[${capturer.platform}] capturing fixtures…`);
   try {
     const result = await capturer.capture(scrumConfig, args["output-dir"]);
-    console.error(`[${capturer.platform}] wrote ${result.files.length} files → ${result.outputDir}`);
+    console.error(
+      `[${capturer.platform}] wrote ${result.files.length} files → ${result.outputDir}`,
+    );
     for (const f of result.files) {
       console.error(`  ${f.slice(result.outputDir.length + 1)}`);
     }
