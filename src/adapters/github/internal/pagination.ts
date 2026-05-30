@@ -79,7 +79,7 @@ export class PaginatedProjectItemFetcher {
     return this.items;
   }
 
-  /** Fetch the first page (called from constructor). Do not call directly. */
+  /** Fetch the first page. Called lazily by collect() on first invocation. */
   private async fetchFirstPage(): Promise<void> {
     const result = await this.github.graphql<ProjectItemsResponse>(this.query, {
       login: this.login,
@@ -125,6 +125,7 @@ export class PaginatedProjectItemFetcher {
   async collect(
     predicate: (item: ProjectItem) => boolean,
   ): Promise<ProjectItem[]> {
+    if (this.pageInfo === null) await this.fetchFirstPage();
     const results: ProjectItem[] = [];
     for (const item of this.items) {
       if (predicate(item)) results.push(item);
@@ -179,7 +180,7 @@ const buildItemsQuery = (ownerType: OwnerType, opts: ItemFetchConfig): string =>
   const sprintFragment = opts.sprint !== false
     ? `
         ... on ProjectV2ItemFieldIterationValue {
-          field { id name }
+          field { ... on ProjectV2FieldCommon { id name } }
           iterationId
           title
           startDate
@@ -223,23 +224,32 @@ const buildItemsQuery = (ownerType: OwnerType, opts: ItemFetchConfig): string =>
               fieldValues(first: 20) {
                 nodes {
                   __typename
-                  field { id name }
-                  ... on ProjectV2ItemFieldTextValue { text }
-                  ... on ProjectV2ItemFieldNumberValue { number }
-                  ... on ProjectV2ItemFieldDateValue { date }
+                  ... on ProjectV2ItemFieldTextValue {
+                    field { ... on ProjectV2FieldCommon { id name } } text
+                  }
+                  ... on ProjectV2ItemFieldNumberValue {
+                    field { ... on ProjectV2FieldCommon { id name } } number
+                  }
+                  ... on ProjectV2ItemFieldDateValue {
+                    field { ... on ProjectV2FieldCommon { id name } } date
+                  }
                   ... on ProjectV2ItemFieldSingleSelectValue {
-                    name color optionId
+                    field { ... on ProjectV2FieldCommon { id name } } name color optionId
                   }
                   ... on ProjectV2ItemFieldUserValue {
+                    field { ... on ProjectV2FieldCommon { id name } }
                     users(first: 5) { nodes { login } }
                   }
                   ... on ProjectV2ItemFieldLabelValue {
+                    field { ... on ProjectV2FieldCommon { id name } }
                     labels(first: 5) { nodes { name color } }
                   }
                   ... on ProjectV2ItemFieldMilestoneValue {
+                    field { ... on ProjectV2FieldCommon { id name } }
                     milestone { id title dueOn }
                   }
                   ... on ProjectV2ItemFieldRepositoryValue {
+                    field { ... on ProjectV2FieldCommon { id name } }
                     repository { name nameWithOwner }
                   }${sprintFragment}
                 }
