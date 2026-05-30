@@ -212,7 +212,7 @@ Deno.test({
 
 Deno.test({
   name: "isBacklogItem() - returns false for items with a sprint field value",
-  async fn() {
+  fn() {
     const sprintFieldId = "PVTF_sprint";
     const itemWithSprint = {
       id: "PVTI_1",
@@ -229,7 +229,7 @@ Deno.test({
 
 Deno.test({
   name: "isBacklogItem() - returns true for items missing sprint field entirely",
-  async fn() {
+  fn() {
     const sprintFieldId = "PVTF_sprint";
     const itemWithoutSprint = {
       id: "PVTI_2",
@@ -242,7 +242,7 @@ Deno.test({
 
 Deno.test({
   name: "isBacklogItem() - returns true when sprint field present but iterationId is null",
-  async fn() {
+  fn() {
     const sprintFieldId = "PVTF_sprint";
     const itemWithNullIteration = {
       id: "PVTI_3",
