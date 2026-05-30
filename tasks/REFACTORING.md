@@ -69,12 +69,12 @@ The [`operations.graphql`](src/adapters/github/operations.graphql) file defines 
 
 [`classifyFilter()`](src/adapters/github/internal/filter-strategy-router.ts) classifies any `ResolvedItemFilter` into exactly one `FilterProfile`. [`GitHubProjectBackend.findItems()`](src/adapters/github/backend.ts) dispatches on the profile via a switch to the matching assembler:
 
-| Profile          | Assembler                                                                                              |
-| ---------------- | ------------------------------------------------------------------------------------------------------ |
-| `direct_lookup`  | [`DirectLookupAssembler`](src/adapters/github/internal/assemblers/direct-lookup-assembler.ts)         |
-| `search_api`     | [`SearchApiAssembler`](src/adapters/github/internal/assemblers/search-api-assembler.ts) (shell)       |
-| `project_items`  | [`ProjectItemsAssembler`](src/adapters/github/internal/assemblers/project-items-assembler.ts)         |
-| `mixed`          | [`MixedAssembler`](src/adapters/github/internal/assemblers/mixed-assembler.ts) → delegates to above  |
+| Profile         | Assembler                                                                                           |
+| --------------- | --------------------------------------------------------------------------------------------------- |
+| `direct_lookup` | [`DirectLookupAssembler`](src/adapters/github/internal/assemblers/direct-lookup-assembler.ts)       |
+| `search_api`    | [`SearchApiAssembler`](src/adapters/github/internal/assemblers/search-api-assembler.ts) (shell)     |
+| `project_items` | [`ProjectItemsAssembler`](src/adapters/github/internal/assemblers/project-items-assembler.ts)       |
+| `mixed`         | [`MixedAssembler`](src/adapters/github/internal/assemblers/mixed-assembler.ts) → delegates to above |
 
 All assemblers currently delegate to `StoryQueryService.findItems()`. Phase 4b replaces this delegation with real `PlatformRequest[]` production and `ExecutionEngine` consumption.
 
@@ -243,6 +243,7 @@ repo:{owner}/{repo} is:issue is:open
 GitHub org-level **Issue Types** are organization-scoped entities that replace the project board's single-select type field for org-owned projects. The item type lives directly on the issue (`issue.issueType`) and is set via a dedicated mutation, not via `updateProjectV2ItemFieldValue`.
 
 **Confirmed behaviour from live probe (TeamSTEP / Project Meltdown #6):**
+
 - `projectV2.fields` contains no single-select type field for org projects.
 - `organization.issueTypes` returns the canonical type vocabulary (`User Story`, `Bug`, `Spike`, `Tech Debt`, `Impediment`) with stable `IT_kw…` IDs.
 - `issue.issueType { id name }` is set at the issue level — not inside `fieldValues`.
@@ -303,8 +304,8 @@ Replace `typeFieldId` with a discriminated `typeResolution` field:
 ```typescript
 typeResolution: {
   source: "board_field" | "org_issue_type";
-  fieldId: string | null;  // non-null only when source === "board_field"
-};
+  fieldId: string | null; // non-null only when source === "board_field"
+}
 typeOptions: Record<string, string>;
 ```
 
@@ -322,7 +323,13 @@ if (typeFieldId !== null) {
   typeResolution = { source: "board_field", fieldId: typeFieldId };
 } else if (ownerType === "org") {
   // Org project without a board type field → fetch org issue types
-  const response = await gh.graphql<{ organization: { issueTypes: { nodes: Array<{ id: string; name: string; isEnabled: boolean }> } } }>(
+  const response = await gh.graphql<
+    {
+      organization: {
+        issueTypes: { nodes: Array<{ id: string; name: string; isEnabled: boolean }> };
+      };
+    }
+  >(
     GET_ORG_ISSUE_TYPES_BOOTSTRAP_QUERY,
     { login: owner },
   );
@@ -344,8 +351,8 @@ if (typeFieldId !== null) {
   // User project with item_type declared but field not found — existing config error, unchanged
   throw new Error(
     `Type field '${ghConfig.field_mapping.item_type ?? "(not configured)"}' not found ` +
-    `in project #${projectNumber}. Update backends.github.field_mapping.item_type in ` +
-    `${configDesc} to match the exact SINGLE_SELECT field name in GitHub Projects.`,
+      `in project #${projectNumber}. Update backends.github.field_mapping.item_type in ` +
+      `${configDesc} to match the exact SINGLE_SELECT field name in GitHub Projects.`,
   );
 }
 ```
@@ -369,12 +376,14 @@ if (field === "type") {
   const { typeResolution, typeOptions } = this.ctx.config.live;
   const optionId = typeOptions[value];
   if (!optionId) {
-    throw new AdapterError(`Unknown type value '${value}'. Known types: ${Object.keys(typeOptions).join(", ")}`);
+    throw new AdapterError(
+      `Unknown type value '${value}'. Known types: ${Object.keys(typeOptions).join(", ")}`,
+    );
   }
   if (typeResolution.source === "org_issue_type") {
     // Use the SetIssueType mutation on the issue node (not the project item)
     // issueId comes from resolving the project item's content node ID
-    const issueId = await this.resolveIssueNodeId(itemId);  // existing resolver
+    const issueId = await this.resolveIssueNodeId(itemId); // existing resolver
     return this.ctx.gh.graphql(SET_ISSUE_TYPE_MUTATION, { issueId, issueTypeId: optionId });
   }
   // source === "board_field": existing updateProjectV2ItemFieldValue path
@@ -395,7 +404,7 @@ if (field === "type") {
 // In the type extraction section of buildStoryFromRaw() or extractBoardFields():
 const typeValue = config.typeResolution.source === "board_field"
   ? extractFieldValue(item.fieldValues.nodes, config.typeResolution.fieldId!)
-  : item.content?.issueType?.name ?? null;  // org issue type — read from the content node
+  : item.content?.issueType?.name ?? null; // org issue type — read from the content node
 ```
 
 The `item.content?.issueType?.name` field is only populated after Step 1 adds `issueType { id name }` to the `ItemContent` fragment.
@@ -450,8 +459,7 @@ const request: PlatformRequest = {
 import type { ProjectItemsResponse } from "./project-items-query-builder.ts";
 
 const projectItemsExtractor: PageExtractor<ProjectItemsResponse> = (response) => {
-  const projectV2 =
-    response.user?.projectV2 ?? response.organization?.projectV2;
+  const projectV2 = response.user?.projectV2 ?? response.organization?.projectV2;
   if (!projectV2) throw new GitHubApiError("Project not found");
   const { nodes, pageInfo, totalCount } = projectV2.items;
   return { nodes: nodes ?? [], pageInfo, totalCount };
@@ -479,8 +487,8 @@ export class ProjectItemsAssembler {
     private readonly engine: ExecutionEngine,
     private readonly normalizer: ResultNormalizer,
     private readonly queryBuilder: ProjectItemsQueryBuilder,
-    private readonly config: GitHubBootState,          // for owner/projectNumber variables
-    private readonly filterBuilder: ItemFilterChain,   // see below
+    private readonly config: GitHubBootState, // for owner/projectNumber variables
+    private readonly filterBuilder: ItemFilterChain, // see below
   ) {}
 
   async assemble(filter: ResolvedItemFilter): Promise<AssemblerOutput> {
@@ -532,6 +540,7 @@ This avoids a full board scan entirely, which is the primary objective of the `d
 In [`factory.ts`](src/adapters/github/factory.ts) (or wherever the backend deps are constructed), update the assembler constructors to inject `ExecutionEngine`, `ResultNormalizer`, and `ProjectItemsQueryBuilder` instead of `StoryQueryService`.
 
 After this wiring is complete:
+
 - Remove `ResultNormalizer.enrichListings()` call from `StoryQueryService.findItems()`
 - Remove `StoryQueryService` from `ProjectItemsAssembler` and `DirectLookupAssembler` constructors
 
