@@ -97,7 +97,7 @@ export class PaginatedProjectItemFetcher {
         },
       );
     }
-    this.items = project.items?.nodes ?? [];
+    this.items = [...(project.items?.nodes ?? [])];
     this.pageInfo = project.items?.pageInfo ?? null;
     this._totalCount = project.items?.totalCount ?? 0;
   }

@@ -182,13 +182,15 @@ Deno.test({
     gh.enqueue(p1Fixture, p2Fixture);
 
     const fetcher = new PaginatedProjectItemFetcher(config, gh);
-    // Only keep ISSUEs — there will be fewer than FIXTURE_TOTAL
+    // p1 has 10 PULL_REQUEST + 1 DRAFT_ISSUE, so ISSUE count < FIXTURE_TOTAL
     const issues = await fetcher.collect((item) => item.type === "ISSUE");
 
-    assert(issues.length > 0, "Expected at least one ISSUE");
-    assert(issues.length <= FIXTURE_TOTAL);
-    assert(issues.every((item) => item.type === "ISSUE"));
-    // Both pages must still have been fetched to honour the predicate across all items.
+    assert(issues.length > 0, "Expected at least one ISSUE item");
+    assert(
+      issues.length < FIXTURE_TOTAL,
+      `Predicate should have excluded non-ISSUE items; got ${issues.length} of ${FIXTURE_TOTAL}`,
+    );
+    // Both pages must still be fetched — predicate must not short-circuit pagination.
     assertEquals(gh.graphqlCalls.length, 2);
   },
 });
