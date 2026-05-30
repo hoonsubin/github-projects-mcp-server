@@ -28,7 +28,7 @@ SM moves:
 
 Triggered by: human confirms someone is actively working the blocker.
 
-1. Locate the impediment: `scrum_find_items(types: ["impediment"])` or `scrum_get_story` on known ref.
+1. Locate the impediment: `scrum_find_items(types: ["impediment"])` or `scrum_get_item_detail` on known ref.
 2. `scrum_update_impediment(ref, status: "in_progress")`
 3. Comment on affected story: "Impediment [title] is now being actively worked."
 
@@ -42,7 +42,7 @@ Triggered by: human reports blocker cleared, or SM observes affected story resum
 
 1. Locate ref:
    - Human names it: `scrum_find_items(types: ["impediment"], search: "<keyword>")`
-   - Human has story number: `scrum_get_story(ref: { number: N })` → read `blocked_by`
+   - Human has story number: `scrum_get_item_detail(ref: { number: N })` → read `blocked_by`
 2. `scrum_update_impediment(ref, status: "resolved", resolution_notes: "<how resolved>")` -
    `resolution_notes` is REQUIRED. Do not close without it.
 3. Comment on originally affected story: "Impediment cleared: [summary]. Story is unblocked."

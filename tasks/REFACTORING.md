@@ -1,6 +1,30 @@
 # Adapter Layer Refactoring Strategy
 
-> **Scope:** GitHub backend internal architecture - no changes to port interfaces, use-case functions, or tool handlers. **Goal:** Make the adapter a pure assembly layer whose only responsibility is composing the right API fragments to satisfy a port contract, so future use-case or framework changes never require internal re-architecture - only re-assembly.
+## Background & Motivation
+
+The GitHub adapter currently treats “fetch data from GitHub” as a monolithic operation, collapsing three responsibilities—what to request, how to fetch it, and how to normalize results—into a single code path. This tight coupling makes any change in requirements ripple through query construction, pagination, and mapping logic.
+
+## Core Problem
+
+The adapter’s `PaginatedProjectItemFetcher` embeds query building inside pagination infrastructure, preventing reuse of fragments and causing over‑fetching. Changes to fields or filters force modifications across the entire fetch‑process, violating the assembly‑layer principle.
+
+## Objectives
+
+1. **Make the adapter a pure assembly layer** – its sole job is to compose the correct GraphQL fragments for a given port call, without embedding query logic, filter logic, or mapping logic.
+2. **Introduce declarative components**: a Fragment Library, a Query Assembler, and an Execution Engine + Result Normalizer that together handle fragment selection, request assembly, execution, and domain‑type normalization while preserving all `custom_fields`.
+3. **Enable future extensibility** – new use‑case needs, new execution paths (e.g., GitHub Search API), or new backends can be added by extending these layers without touching existing code.
+
+## Target Architecture (high‑level)
+
+| Layer                             | Responsibility                                                                                                                                    |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Fragment Library**              | Reusable GraphQL field selections; no query logic.                                                                                                |
+| **Query Assembler**               | Takes a typed filter, decides the appropriate GitHub API surface and selects/composes fragments to eliminate over‑fetching.                       |
+| **Execution Engine + Normalizer** | Executes assembled requests, handles pagination/cursors, rate limits, and maps raw responses to `BacklogItemListing[]` with full `custom_fields`. |
+
+## Implementation Scope
+
+This refactoring touches only the files listed in Phase 0 (config‑loader.ts, backend.ts, FieldValueMutator, mappers.ts, operations.graphql). It does not modify port interfaces, use‑case functions, tool handlers, Zod schemas, or domain types.
 
 ---
 
@@ -49,9 +73,9 @@ The [`operations.graphql`](src/adapters/github/operations.graphql) file defines 
 
 ---
 
-## Current State
+## Current Architecture
 
-### Adapter-to-Use-Case Plugging (High Level)
+The following call chain shows how a tool request flows through the adapter today:
 
 ```
 Tool Handler
@@ -69,47 +93,21 @@ Tool Handler
         → ItemSearchResult
 ```
 
-The backend facade ([`GitHubProjectBackend`](src/adapters/github/backend.ts)) is a thin delegation layer. The real logic lives in [`StoryQueryService`](src/adapters/github/internal/story-query-service.ts), but the query construction is embedded inside [`PaginatedProjectItemFetcher`](src/adapters/github/internal/pagination.ts), which is supposed to be pagination infrastructure.
-
-### The Core Problem
-
-The current model treats "fetch data from GitHub" as a single, monolithic operation: always fetch all project items, always filter client-side, always using the same query shape. This works but collapses three distinct responsibilities into one code path:
-
-1. **What to ask for** - which fields, which item types, which API surface (project items vs. search API)
-2. **How to fetch it** - pagination, cursor management, error handling
-3. **How to normalize it** - mapping raw shapes to domain types
-
-Because these are entangled, any change in what the use-case needs - a new field in `BacklogItemListing`, a new filter dimension, a different execution path - ripples all the way from the query string up through the mapper. The adapter has to consider _how_ to restructure itself, not just _what_ to produce.
-
-The `custom_fields` field in `BacklogItemListing` exists in the domain type but is sparsely populated. Non-canonical project fields (deadlines, custom scores, non-standard flags) are silently dropped in the mapping layer because the query and mapper are coupled to only the four canonical fields.
+The backend facade ([`GitHubProjectBackend`](src/adapters/github/backend.ts)) is a thin delegation layer. The real query logic lives in [`StoryQueryService`](src/adapters/github/internal/story-query-service.ts), but query construction is embedded inside [`PaginatedProjectItemFetcher`](src/adapters/github/internal/pagination.ts), which is supposed to be pagination infrastructure.
 
 ---
 
-## Target Architecture
+## Internal Layer Breakdown
 
-### Design Principles
+The target adapter structure separates into three layers:
 
-**The adapter is an assembly layer, not a service layer.**
-
-The GitHub adapter's sole internal responsibility is: given a port method call with a typed input, assemble the right API building blocks and return the result in the right domain shape. It does not contain query logic, filter logic, or mapping logic as fixed implementations - it contains _declarative components_ that are composed on demand.
-
-This means:
-
-- A use-case requirement change (new field, new filter, new return shape) = extend the fragment library and update the assembly rule. Nothing else changes.
-- A new execution path (search API, REST fallback) = add a new assembler variant. Existing assemblers are untouched.
-- A new backend (Notion, Trello) = implement the same fragment-assembler-normalizer contract for that API. The port and use-case layers see no difference.
-
-### Internal Layer Breakdown
-
-The adapter's internal structure separates into three layers:
-
-**Layer 1 - Fragment Library**
+### Fragment Library
 
 Atomic, reusable GraphQL field selections with no query logic. Each fragment describes a specific data shape: issue content, project field values, sprint iteration fields, dependency edges, label sets, etc. Fragments are the vocabulary; they do not know how or when they are used.
 
 Fragments are composed into query documents by the assembler. A fragment change (adding a field to the issue content shape) propagates automatically to every query that includes it.
 
-**Layer 2 - Query Assembler**
+### Query Assembler
 
 Takes a typed request from the port method (e.g., `ResolvedItemFilter`) and produces a complete, executable query document by selecting and composing the right fragments. This is where execution strategy lives.
 
@@ -124,11 +122,20 @@ The assembler has a routing step: given the filter, determine the most appropria
 
 The assembler also decides field selection: if `include_dependencies` is false, the `blockedBy` fragment is excluded from the query. If `estimated` is the only filter, only the story points field is needed in `fieldValues`. This is where over-fetching is eliminated without touching any other layer.
 
-**Layer 3 - Execution Engine + Result Normalizer**
+### Execution Engine + Result Normalizer
 
 The execution engine takes any assembled query document and handles the HTTP/GraphQL interaction: pagination cursor management, rate limit handling, partial failure recovery. It has no knowledge of what it is fetching - it only knows how to fetch and iterate.
 
 The result normalizer maps any raw response shape to `BacklogItemListing[]`. It is responsible for populating `custom_fields` with **all** field values from the response, not just the canonical four. Non-canonical metadata passes through untouched - the normalizer does not filter it. The agent receives it; the agent decides whether it is meaningful.
+
+**Content Type vs Semantic Item Type:** The normalizer must preserve the distinction between two orthogonal type dimensions that exist in GitHub's data model:
+
+| Dimension              | Source                                  | Values                                        | Meaning                                                                                         |
+| ---------------------- | --------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| **Content Type**       | GraphQL `__typename` on the node        | `Issue`, `PullRequest`, `DraftIssue`          | The underlying GitHub object kind — determines available fields and API                         |
+| **Semantic Item Type** | Project board field (or org issue type) | `Bug`, `Feature`, `Spike`, `User Story`, etc. | The Scrum classification — set by the team, stored in a board custom field or `issue.issueType` |
+
+Both must survive normalization. Content type is structural (it determines which fields are populated and which are null; a `DraftIssue` has no `assignees`, a `PullRequest` has no `state` but has `merged`). Semantic item type is business-level metadata surfaced in [`BacklogItemListing.type`](src/domain/types.ts). The normalizer extracts semantic type from the appropriate source (board field or `issue.issueType`, per `typeResolution.source`) and passes content type through as a `custom_fields` entry (`__typename`) so the agent and use-case layer can distinguish structural shapes without hardcoding assumptions about the underlying object kind.
 
 ### GitHub Search API Integration
 
@@ -248,6 +255,7 @@ GitHub introduced org-level **Issue Types** and **Issue Fields** as organization
    ```
 
    Add `issueType { id name }` to the issue content fragment so it is populated for every item fetch and listing query.
+   > **Why this matters:** Adding `issueType { id name }` to the fragment is the single change that enables seamless transition between content type and semantic type in later phases. Once this field is present on every fetched item, the normalizer (Phase 3) can read it to populate `BacklogItemListing.type` for org-owned projects without any further query changes. The underlying `__typename` (content type: `Issue`, `PullRequest`, `DraftIssue`) and the org-level `issueType.name` (semantic type: `Bug`, `Feature`, `Spike`) travel side-by-side in the raw response, giving the normalizer both dimensions to work with.
 
 2. **`config-loader.ts`** - Remove the hard throw on missing `typeFieldId`. Replace with a `typeResolution` field on `RuntimeConfig`:
 
@@ -315,6 +323,8 @@ Extract `buildItemsQuery()` from `PaginatedProjectItemFetcher` into a standalone
 ### Phase 2 - Complete fragment library migration
 
 > **Status: PARTIALLY COMPLETE.** [`operations.graphql`](src/adapters/github/operations.graphql) defines `ProjectCore`, `ItemContent`, and `ItemFieldValues` fragments. [`queries.ts`](src/adapters/github/queries.ts) auto-parses and bundles them for registered operations. However, [`buildItemsQuery()`](src/adapters/github/internal/pagination.ts:94) in `pagination.ts` constructs GraphQL inline and does not use the fragment registry.
+>
+> **Clarification:** Fragments are already defined and actively used by several registered operations ([`GetOrgProjectItems`](src/adapters/github/operations.graphql), [`GetProjectItems`](src/adapters/github/operations.graphql), [`GetStory`](src/adapters/github/operations.graphql)), but the main item-fetching path ([`PaginatedProjectItemFetcher`](src/adapters/github/internal/pagination.ts:227)) bypasses both the fragment registry and the registered operations entirely — it constructs raw GraphQL strings inline in [`buildItemsQuery()`](src/adapters/github/internal/pagination.ts:94). Migrating the fetcher to compose queries from the fragment registry is therefore the primary goal of this phase: it unifies all query construction under one mechanism, eliminates the duplicate inline field definitions, and ensures that a change to a fragment automatically propagates to the listing path.
 
 The remaining work:
 

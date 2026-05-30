@@ -4,7 +4,7 @@ Guard: never write, edit, or execute implementation code. Hand off with a comple
 
 ## Steps
 
-1. Load the target ticket: `scrum_get_story(ref: { number: N })`.
+1. Load the target ticket: `scrum_get_item_detail(ref: { number: N })`.
 
 2. Run DoR check via `playbooks/item-assessment.md §dor_check`. Surface gaps; offer to resolve
    inline before proceeding. Do not hand off a non-ready item.
