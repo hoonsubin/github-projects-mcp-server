@@ -153,3 +153,22 @@ export const ADD_COMMENT_MUTATION = getQuery("AddComment");
 export const UPDATE_FIELD_MUTATION = getQuery("UpdateField");
 export const CONVERT_DRAFT_ISSUE_MUTATION = getQuery("ConvertDraftIssue");
 export const ADD_DRAFT_ISSUE_MUTATION = getQuery("AddDraftIssue");
+
+// ── Fragment registry API ──────────────────────────────────────────────────────
+
+/**
+ * Returns the raw source text of a named fragment definition from
+ * operations.graphql. Throws immediately if the fragment is not found.
+ *
+ * Used by query builders that compose ad-hoc operations with fragment
+ * spreads rather than using the pre-built named operations.
+ */
+export const getFragmentSource = (name: string): string => {
+  const frag = _fragments.get(name);
+  if (!frag) {
+    throw new Error(
+      `[queries] Fragment "${name}" not found in operations.graphql`,
+    );
+  }
+  return print(frag);
+};
