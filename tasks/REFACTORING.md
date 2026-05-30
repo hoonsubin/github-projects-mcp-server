@@ -26,6 +26,23 @@ The adapter's `PaginatedProjectItemFetcher` embeds query building inside paginat
 
 This refactoring touches only the adapter layer. It does not modify port interfaces, use‑case functions, tool handlers, Zod schemas, or domain types.
 
+## Pre-Implementation Corrections (Must Apply Before Coding Continues)
+
+The architecture direction is correct, but several assumptions in this document did not match the current codebase state at the time of review. The following corrections are now part of the baseline plan:
+
+1. **Phase 0 scope is broader than originally documented.** `typeFieldId` is read in additional runtime paths beyond bootstrap/mappers, including mutation and impediment flows. Phase 0 must include those call sites to avoid split-brain behavior.
+2. **Direct lookup cannot use issue-detail query shape alone.** Keys-only execution must still return project-item context (`ref.id`, board field values, custom_fields enrichment inputs), so a dedicated direct-lookup query contract is required.
+3. **Filter behavior parity must be explicit.** The assembler rewrite must preserve existing semantics (keys bypass scope, pre-limit `total_count`, dependency map computed pre-limit, sprint `ref.id` backfill).
+4. **Search path behavior must be parity-scoped before implementation.** Search API integration must define open/closed semantics and project-membership constraints; the previous sample query implied narrower semantics than current board-scan behavior.
+5. **Execution-engine claims must match implementation.** Current engine handles pagination only; rate-limit and partial-failure logic remain out of scope unless a concrete policy and tests are added.
+
+### Mandatory acceptance gates (all phases)
+
+- **Gate A — Behavioral parity:** existing `findItems` snapshots for representative filters match pre-refactor results (excluding intentional performance-path differences).
+- **Gate B — Mapping parity:** `BacklogItemListing` fields (`type`, `status`, `sprint`, `custom_fields`, dependency refs) are unchanged for equivalent inputs.
+- **Gate C — Routing determinism:** `classifyFilter()` resolves every filter shape to exactly one profile with test coverage.
+- **Gate D — Error contract stability:** user-facing error codes/recovery hints remain stable unless explicitly changed in this document.
+
 ---
 
 ## Completed Work
@@ -236,7 +253,7 @@ repo:{owner}/{repo} is:issue is:open
 
 > **Status: NOT STARTED.**
 >
-> **Self-contained.** Touches only `operations.graphql`, `queries.ts`, `bootstrap.ts`, `backend.ts`, `field-value-mutator.ts`, and `mappers.ts`. Does not modify port interfaces, use-case functions, tool handlers, Zod schemas, or domain types.
+> **Scope correction (required).** This phase is **not** limited to the original six files. It must also update `internal/story-mutation-service.ts`, `internal/impediment-service.ts`, `internal/_test_utils.ts`, and affected unit tests where `typeFieldId` assumptions exist.
 >
 > **Prerequisite for Phase 4b normalizer.** `normalizeItemList()` reads `typeResolution.source` to decide how to extract semantic type. Adding `typeResolution` to `GitHubBootState` now ensures Phase 4b's normalizer compiles without further changes to the config type.
 
@@ -368,7 +385,7 @@ type: {
 }
 ```
 
-**Step 5 — `field-value-mutator.ts`**: the mutator currently reads `this.ctx.config.live.fields.typeFieldId` to determine the field ID for type writes. Add a branch on `typeResolution.source`:
+**Step 5 — `internal/field-value-mutator.ts`**: the mutator currently reads `this.ctx.config.live.fields.typeFieldId` to determine the field ID for type writes. Add a branch on `typeResolution.source`:
 
 ```typescript
 // In the method that handles field="type" writes:
@@ -382,8 +399,10 @@ if (field === "type") {
   }
   if (typeResolution.source === "org_issue_type") {
     // Use the SetIssueType mutation on the issue node (not the project item)
-    // issueId comes from resolving the project item's content node ID
-    const issueId = await this.resolveIssueNodeId(itemId); // existing resolver
+    // issueId comes from resolving the project item's content node ID.
+    // If the item is still a Draft Issue, this must fail with a clear constraint
+    // error or force conversion in the caller before setFieldType is invoked.
+    const issueId = await this.resolveIssueNodeId(itemId);
     return this.ctx.gh.graphql(SET_ISSUE_TYPE_MUTATION, { issueId, issueTypeId: optionId });
   }
   // source === "board_field": existing updateProjectV2ItemFieldValue path
@@ -396,9 +415,15 @@ if (field === "type") {
 }
 ```
 
-> **Note:** If `resolveIssueNodeId` doesn't already exist as a helper, look for how the existing mutator resolves item → content node references (the project item's `content.id` field carries the issue node ID). Reuse that pattern.
+> **Note:** If `resolveIssueNodeId` doesn't already exist as a helper, use `GetProjectItemById` and validate the content type before mutation. Do not silently treat Draft Issues as Issues.
 
-**Step 6 — `mappers.ts` (`extractBoardFields` or equivalent)**: the function that extracts `type` from a raw project item currently matches against `fields.typeFieldId`. Add a branch on `typeResolution.source`:
+**Step 6 — `internal/story-mutation-service.ts` and `internal/impediment-service.ts`:**
+
+- Ensure all call paths that set or inspect item `type` branch on `typeResolution.source` instead of assuming a board field ID.
+- For org issue types, reads should use `item.content.issueType` (Issue-only).
+- For org issue types, writes that target Draft Issues must surface a deterministic constraint error or perform explicit conversion before write.
+
+**Step 7 — `mappers.ts` (`extractBoardFields` or equivalent)**: the function that extracts `type` from a raw project item currently matches against `fields.typeFieldId`. Add a branch on `typeResolution.source`:
 
 ```typescript
 // In the type extraction section of buildStoryFromRaw() or extractBoardFields():
@@ -409,7 +434,16 @@ const typeValue = config.typeResolution.source === "board_field"
 
 The `item.content?.issueType?.name` field is only populated after Step 1 adds `issueType { id name }` to the `ItemContent` fragment.
 
-**Files touched:** `operations.graphql`, `queries.ts`, `bootstrap.ts`, `backend.ts`, `field-value-mutator.ts`, `mappers.ts`.
+**Step 8 — tests and fixtures:**
+
+- Update shared test config builders to the new `typeResolution` shape.
+- Add branch coverage for:
+  - board-field type writes,
+  - org-issue-type writes,
+  - org-issue-type reads (`buildStoryFromRaw` / impediment filters),
+  - Draft Issue behavior under org type resolution.
+
+**Files touched:** `operations.graphql`, `queries.ts`, `bootstrap.ts`, `backend.ts`, `internal/field-value-mutator.ts`, `internal/story-mutation-service.ts`, `internal/impediment-service.ts`, `mappers.ts`, `internal/_test_utils.ts`, relevant tests.
 
 **Files not touched:** Port interfaces, use-case functions, tool handlers, Zod schemas, domain types, assemblers, `ExecutionEngine`, `ResultNormalizer`.
 
@@ -525,12 +559,23 @@ export class ProjectItemsAssembler {
 
 The filter order is defined in `StoryQueryService.findItems()`. Study that method before extracting to ensure no filter step is lost.
 
+**4.1 Behavioral parity checklist (required before cutover):**
+
+- `keys` bypass scope and other scope-derived exclusion behavior.
+- `totalCount` reflects pre-limit filtered size.
+- `dependencyMap` is computed from the filtered set before `limit`.
+- Sprint listing keeps `sprint.ref.id` backfill behavior for resolved iteration titles.
+- `custom_fields` remains fully enriched (`__typename` + all field values).
+
 **5. Rewrite `DirectLookupAssembler` similarly**
 
-The direct lookup path uses `node(id)` or `issue(number)` queries rather than a full board scan. `StoryQueryService.getStoryDetail()` already does this for single items. For a `keys`-only filter the simplest approach is:
+The direct lookup path must avoid full board scans while still returning project-item-level data. For a `keys`-only filter:
 
-- For each key in `profile.keys`, call `GET_ISSUE_DETAILS_QUERY` (already in `queries.ts`) to fetch the item detail.
-- Map each response through `buildStoryFromRaw()` and `toItemListing()` individually.
+- For each key in `profile.keys`, fetch:
+  - issue identity by number, and
+  - matching project item context for the configured project (item ID + field values + content typename).
+- Do **not** rely on `GetIssueDetails` alone; it does not provide board item refs/field values needed for `BacklogItemListing` parity.
+- Map each resolved item through the same normalizer path used by project-items execution.
 - Return the assembled `AssemblerOutput`.
 
 This avoids a full board scan entirely, which is the primary objective of the `direct_lookup` profile.
@@ -560,11 +605,17 @@ After this wiring is complete:
 
 > **Status: NOT STARTED.** [`SearchApiAssembler`](src/adapters/github/internal/assemblers/search-api-assembler.ts) is currently a shell that returns an empty result set with a warning. No search-related query code exists in the adapter.
 >
-> **Depends on Phase 4b.** The real `SearchApiAssembler` will use `ExecutionEngine` and a new `SearchResultNormalizer` (or a new entry point on `ResultNormalizer`) — the same infrastructure Phase 4b establishes for the project items path.
+> **Depends on Phase 4b + routing matrix hardening.** The real `SearchApiAssembler` will use `ExecutionEngine` and a new `SearchResultNormalizer` (or a new entry point on `ResultNormalizer`) — the same infrastructure Phase 4b establishes for the project items path.
 
 Implement `SearchApiAssembler` using the query shape defined in the [GitHub Search API Integration](#github-search-api-integration) section above. Implement a `SearchResultNormalizer` to map the inverted response shape (issue with nested `projectItems`) into `BacklogItemListing[]`. Wire into the strategy router as the `search_api` path.
 
-**Outcome:** Text search, label filter, and assignee filter no longer require a full board scan. The use-case and tool handler are unchanged.
+Before enabling by default, codify and test:
+
+- open/closed state parity vs existing `findItems` behavior,
+- project-membership filtering when issues belong to multiple projects,
+- fallback behavior for Draft Issue-inclusive scopes.
+
+**Outcome:** Text search, label filter, and assignee filter no longer require a full board scan while preserving current semantic contracts.
 
 ---
 

@@ -133,6 +133,7 @@ export const GET_FIELD_OPTIONS_QUERY = getQuery("GetFieldOptions");
 // ── Bootstrap queries (config-loader) ──────────────────────────────────────────
 export const GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY = getQuery("GetUserProjectFieldsBootstrap");
 export const GET_ORG_PROJECT_FIELDS_BOOTSTRAP_QUERY = getQuery("GetOrgProjectFieldsBootstrap");
+export const GET_ORG_ISSUE_TYPES_BOOTSTRAP_QUERY = getQuery("GetOrgIssueTypesBootstrap");
 
 // ── Label mutations ────────────────────────────────────────────────────────────
 export const CREATE_LABEL_MUTATION = getQuery("CreateLabel");
@@ -145,6 +146,7 @@ export const CLOSE_ISSUE_MUTATION = getQuery("CloseIssue");
 export const CLEAR_ASSIGNEES_MUTATION = getQuery("ClearAssignees");
 export const SET_ASSIGNEE_MUTATION = getQuery("SetAssignee");
 export const SET_MILESTONE_MUTATION = getQuery("SetMilestone");
+export const SET_ISSUE_TYPE_MUTATION = getQuery("SetIssueType");
 
 // ── Comment mutations ──────────────────────────────────────────────────────────
 export const ADD_COMMENT_MUTATION = getQuery("AddComment");

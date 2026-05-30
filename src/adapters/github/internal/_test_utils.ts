@@ -84,6 +84,7 @@ export function makeConfig(overrides: Partial<GitHubBootState> = {}): GitHubBoot
       priority_display: { "p0": "Must" },
     },
     live: {
+      typeResolution: { source: "board_field", fieldId: "PVTF_type" },
       projectId: "PVT_project1",
       fields: {
         sprintFieldId: "PVTF_sprint",
@@ -92,7 +93,6 @@ export function makeConfig(overrides: Partial<GitHubBootState> = {}): GitHubBoot
         priorityFieldId: "PVTF_priority",
         epicFieldId: null,
         assigneeFieldId: null,
-        typeFieldId: "PVTF_type",
       },
       statusOptions: { "In Progress": "opt_ip" },
       priorityOptions: { "Must": "opt_must" },

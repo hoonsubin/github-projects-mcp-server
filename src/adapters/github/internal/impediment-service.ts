@@ -160,10 +160,12 @@ export class ImpedimentService {
     return sprintItems
       .filter((item) =>
         item.content?.__typename === "Issue" &&
-        item.fieldValues.nodes.some((v) =>
-          v.field?.id === this.ctx.config.live.fields.typeFieldId &&
-          "optionId" in v && v.optionId === impedimentOptionId
-        )
+        (this.ctx.config.live.typeResolution.source === "board_field"
+          ? item.fieldValues.nodes.some((v) =>
+            v.field?.id === this.ctx.config.live.typeResolution.fieldId &&
+            "optionId" in v && v.optionId === impedimentOptionId
+          )
+          : item.content.issueType?.id === impedimentOptionId)
       )
       .map((item) => {
         const issue = item.content as ProjectItemIssueContent;

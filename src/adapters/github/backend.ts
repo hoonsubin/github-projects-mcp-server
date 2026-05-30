@@ -213,7 +213,7 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
           missingOptions: missingPriorityOptions,
         },
         type: {
-          exists: !!this.deps.config.live.fields.typeFieldId,
+          exists: this.deps.config.live.typeResolution !== null,
           configured: Object.keys(this.deps.config.live.typeOptions).length > 0,
         },
       },

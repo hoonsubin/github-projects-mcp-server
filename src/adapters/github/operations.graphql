@@ -91,6 +91,7 @@ fragment ItemContent on ProjectV2Item {
     __typename
     ... on Issue {
       id number title url state body
+      issueType { id name }
       assignees(first: 5) { nodes { login } }
       labels(first: 10)   { nodes { name color } }
       milestone { id title dueOn }
@@ -353,6 +354,7 @@ query GetIssueDetails($issueId: ID!) {
   node(id: $issueId) {
     ... on Issue {
       id number title body url createdAt updatedAt
+      issueType { id name }
       assignees(first: 10) { nodes { login } }
       labels(first: 20)    { nodes { name } }
       milestone { id title }
@@ -783,6 +785,18 @@ query GetOrgProjectFieldsBootstrap($login: String!, $number: Int!) {
   }
 }
 
+query GetOrgIssueTypesBootstrap($login: String!) {
+  organization(login: $login) {
+    issueTypes(first: 50) {
+      nodes {
+        id
+        name
+        isEnabled
+      }
+    }
+  }
+}
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # MUTATIONS - Label management
@@ -831,6 +845,12 @@ mutation SetAssignee($issueId: ID!, $userId: ID!) {
 
 mutation SetMilestone($issueId: ID!, $milestoneId: ID!) {
   updateIssue(input: { id: $issueId, milestoneId: $milestoneId }) { issue { id } }
+}
+
+mutation SetIssueType($issueId: ID!, $issueTypeId: ID!) {
+  updateIssue(input: { id: $issueId, issueTypeId: $issueTypeId }) {
+    issue { id }
+  }
 }
 
 
