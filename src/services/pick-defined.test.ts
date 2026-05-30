@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@^1.0.0";
+import { assertEquals } from "@std/assert";
 import { pickDefined } from "./pick-defined.ts";
 
 Deno.test("pickDefined - includes property with non-undefined value", () => {
@@ -36,4 +36,17 @@ Deno.test("pickDefined - handles exact UpdateStorySchema shape", () => {
   };
   const result = pickDefined(params, ["title", "body", "epic", "blocked_by"]);
   assertEquals(result, { title: "New title", epic: null });
+});
+
+Deno.test("pickDefined - includes false (falsy but defined)", () => {
+  assertEquals(pickDefined({ a: false }, ["a"]), { a: false });
+});
+
+Deno.test("pickDefined - includes 0 (falsy but defined)", () => {
+  assertEquals(pickDefined({ a: 0 }, ["a"]), { a: 0 });
+});
+
+Deno.test("pickDefined - skips key absent from object entirely", () => {
+  const obj = { b: 1 } as Record<string, unknown>;
+  assertEquals(pickDefined(obj, ["a", "b"]), { b: 1 });
 });

@@ -5,35 +5,16 @@
 // Tests A-bug-1 (blocks/blocked_by direction) and A-bug-2 (cross-repo stub nodes).
 // =============================================================================
 
-import { assertEquals, assertFalse } from "jsr:@std/assert@^1.0.0";
+import { assertEquals, assertFalse } from "@std/assert";
 import { buildDependencyMap } from "./story-query-service.ts";
+import { makeConfig } from "./_test_utils.ts";
 import { toIssueKey } from "../../../domain/types.ts";
 import type { DependencyEntry, EntityRef, ItemType, Story } from "../../../domain/types.ts";
 import type { IssueStory, ProjectItem } from "../types.ts";
-import type { RuntimeConfig } from "../config-loader.ts";
 
 // =============================================================================
 // Test helpers
 // =============================================================================
-
-/** Minimal RuntimeConfig for buildDependencyMap tests. */
-const mockConfig = {
-  scrumConfig: { templates: {}, backends: { github: {} } },
-  projectId: "PVT_test",
-  fields: {
-    sprintFieldId: "SPRINT_FIELD",
-    statusFieldId: "STATUS_FIELD",
-    storyPointsFieldId: null,
-    priorityFieldId: null,
-    epicFieldId: null,
-    assigneeFieldId: null,
-    typeFieldId: null,
-  },
-  statusOptions: {},
-  priorityOptions: {},
-  typeOptions: {},
-  iterations: { active: null, next: null, completed: [], all: [] },
-} as unknown as RuntimeConfig;
 
 const makeRef = (id: string): EntityRef => ({ id });
 const TEST_TYPE: ItemType = "feature" as ItemType;
@@ -134,7 +115,7 @@ Deno.test("A-bug-1: dependency direction - A blocked by B", () => {
   const stories: Story[] = [storyA, storyB];
   const allItems: ProjectItem[] = [];
 
-  const map = buildDependencyMap(stories, allItems, mockConfig);
+  const map = buildDependencyMap(stories, allItems, makeConfig());
 
   const keyA = toIssueKey("10");
   const keyB = toIssueKey("20");
@@ -157,7 +138,7 @@ Deno.test("A-bug-1: no dependencies - blocks and blocked_by are empty", () => {
   const stories: Story[] = [story10, story20];
   const allItems: ProjectItem[] = [];
 
-  const map = buildDependencyMap(stories, allItems, mockConfig);
+  const map = buildDependencyMap(stories, allItems, makeConfig());
 
   for (const key of ["10", "20"]) {
     assertEquals(map[toIssueKey(key)].blocks, [], `${key}.blocks should be empty`);
@@ -177,7 +158,7 @@ Deno.test("A-bug-2: cross-repo/off-board dependency → stub node", () => {
   const stories: Story[] = [story10];
   const allItems: ProjectItem[] = []; // cross-repo: not in allItems
 
-  const map = buildDependencyMap(stories, allItems, mockConfig);
+  const map = buildDependencyMap(stories, allItems, makeConfig());
 
   const stubKey = toIssueKey("99");
   const stub = map[stubKey];
@@ -211,7 +192,7 @@ Deno.test("A-bug-2: out-of-scope dependency (in allItems but not in filtered sto
   const unresolvedItem = makeProjectItem({ id: "PVTI_30", key: "30", title: "Out-of-scope Story" });
   const allItems: ProjectItem[] = [unresolvedItem];
 
-  const map = buildDependencyMap(stories, allItems, mockConfig);
+  const map = buildDependencyMap(stories, allItems, makeConfig());
 
   const key30 = toIssueKey("30");
   const node = map[key30];
@@ -240,7 +221,7 @@ Deno.test("A-bug-1: circular dependency A↔B - direction is consistent", () => 
   const stories: Story[] = [story10, story20];
   const allItems: ProjectItem[] = [];
 
-  const map = buildDependencyMap(stories, allItems, mockConfig);
+  const map = buildDependencyMap(stories, allItems, makeConfig());
 
   const keyA = toIssueKey("10");
   const keyB = toIssueKey("20");
@@ -279,7 +260,7 @@ Deno.test("draft stories are excluded from dependency map", () => {
   const stories: Story[] = [draft];
   const allItems: ProjectItem[] = [];
 
-  const map = buildDependencyMap(stories, allItems, mockConfig);
+  const map = buildDependencyMap(stories, allItems, makeConfig());
 
   assertEquals(Object.keys(map).length, 0, "draft stories should not appear in dependency map");
 });

@@ -6,9 +6,9 @@
 // intercepts (the real resolveStory function consumes our mock responses).
 // =============================================================================
 
-import { assert, assertEquals, assertRejects, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
+import { assert, assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { StoryMutationService } from "./story-mutation-service.ts";
-import type { GitHubClient, RestResponse } from "./http-client.ts";
+import { createGhSpy, makeConfig } from "./_test_utils.ts";
 import type { RuntimeConfig } from "../config-loader.ts";
 import type { LabelResolver } from "./label-resolver.ts";
 import type { UserMilestoneResolver } from "./user-milestone-resolver.ts";
@@ -78,81 +78,6 @@ const REPO_ID = { repository: { id: "R_repo1" } };
 
 const ADD_COMMENT_OK = { addComment: { commentEdge: { node: { id: "C_1" } } } };
 
-// =============================================================================
-// GitHubClient spy - queue-based to handle sequential resolveStory calls
-// =============================================================================
-
-interface GitHubClientSpy extends GitHubClient {
-  graphqlCalls: Array<{ queryExcerpt: string; variables: Record<string, unknown> }>;
-  restCalls: Array<{ path: string; options: unknown }>;
-  enqueue(...responses: unknown[]): void;
-  remaining(): number;
-}
-
-const createGhSpy = (): GitHubClientSpy => {
-  const queue: unknown[] = [];
-  const spy: GitHubClientSpy = {
-    graphqlCalls: [],
-    restCalls: [],
-    async graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
-      spy.graphqlCalls.push({
-        queryExcerpt: query.slice(0, 300).replace(/\s+/g, " "),
-        variables: variables ?? {},
-      });
-      if (queue.length === 0) {
-        throw new Error(`Unmocked graphql (empty queue): ${query.slice(0, 120)}`);
-      }
-      const r = queue.shift()!;
-      if (r instanceof Error) throw r;
-      return await Promise.resolve(r as T);
-    },
-    async rest<T>(path: string, options?: Record<string, unknown>): Promise<RestResponse<T>> {
-      spy.restCalls.push({ path, options });
-      return await Promise.resolve({ data: {} as T, linkHeader: null });
-    },
-    enqueue(...responses: unknown[]) {
-      queue.push(...responses);
-    },
-    remaining() {
-      return queue.length;
-    },
-  };
-  return spy;
-};
-
-// =============================================================================
-// Fixture factories
-// =============================================================================
-
-const makeConfig = (overrides: Partial<RuntimeConfig> = {}): RuntimeConfig => ({
-  scrumConfig: {
-    project: { name: "Test" },
-    scrum: { priority: [], status: {} },
-    backends: { github: {} },
-  },
-  projectId: "PVT_project1",
-  fields: {
-    sprintFieldId: "PVTF_sprint",
-    statusFieldId: "PVTF_status",
-    storyPointsFieldId: "PVTF_points",
-    priorityFieldId: "PVTF_priority",
-    epicFieldId: null,
-    assigneeFieldId: null,
-    typeFieldId: "PVTF_type",
-  },
-  statusOptions: { "In Progress": "opt_ip" },
-  priorityOptions: { "Must": "opt_must" },
-  typeOptions: { feature: "opt_feature", bug: "opt_bug" },
-  typeTemplatePaths: {},
-  iterations: {
-    active: { id: "IT_active", title: "Sprint 5", startDate: "2026-01-01", duration: 14 },
-    next: { id: "IT_next", title: "Sprint 6", startDate: "2026-01-15", duration: 14 },
-    completed: [],
-    all: [],
-  },
-  ...overrides,
-});
-
 const makeCreateInput = (overrides: Partial<CreateStoryInput> = {}): CreateStoryInput => ({
   title: "Test Story",
   body: "As a user, I want to test.",
@@ -210,20 +135,21 @@ const createService = (options: CreateServiceOptions = {}) => {
     },
   } as unknown as UserMilestoneResolver;
 
-  // Track field mutator calls
+  // Track field mutator calls — per-method recorders so tests can assert
+  // which specific field mutator method was invoked.
   const fieldCalls: Array<{ method: string; args: unknown[] }> = [];
-  const recordCall = (...args: unknown[]) => {
-    fieldCalls.push({ method: "recordCall", args });
+  const makeRecorder = (method: string) => (...args: unknown[]): Promise<void> => {
+    fieldCalls.push({ method, args });
     return Promise.resolve();
   };
   const fieldValueMutator = {
-    setFieldStatus: recordCall,
-    setFieldSprint: recordCall,
-    setFieldStoryPoints: recordCall,
-    setFieldPriority: recordCall,
-    setFieldType: recordCall,
-    setFieldAssignee: recordCall,
-    clearField: recordCall,
+    setFieldStatus: makeRecorder("setFieldStatus"),
+    setFieldSprint: makeRecorder("setFieldSprint"),
+    setFieldStoryPoints: makeRecorder("setFieldStoryPoints"),
+    setFieldPriority: makeRecorder("setFieldPriority"),
+    setFieldType: makeRecorder("setFieldType"),
+    setFieldAssignee: makeRecorder("setFieldAssignee"),
+    clearField: makeRecorder("clearField"),
   } as unknown as FieldValueMutator;
 
   const service = new StoryMutationService(
@@ -247,10 +173,6 @@ const createService = (options: CreateServiceOptions = {}) => {
     fieldCalls,
   };
 };
-
-// Helper: return a fresh service with custom config
-const createServiceWithConfig = (configOverrides: Partial<RuntimeConfig>) =>
-  createService({ configOverrides });
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Group A - createStory
@@ -304,8 +226,8 @@ Deno.test({
 Deno.test({
   name: "createStory - throws when type value not in typeOptions",
   async fn() {
-    const { service, gh } = createServiceWithConfig({
-      typeOptions: {},
+    const { service, gh } = createService({
+      configOverrides: { typeOptions: {} },
     });
     gh.enqueue(ADD_DRAFT_SUCCESS);
     const input = makeCreateInput({ labels: undefined, epic: undefined, priority: undefined });

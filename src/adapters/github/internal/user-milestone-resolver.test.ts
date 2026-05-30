@@ -5,9 +5,9 @@
 // Mocks all injected dependencies via a queue-based GitHubClient spy.
 // =============================================================================
 
-import { assertEquals, assertRejects, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
+import { assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { UserMilestoneResolver } from "./user-milestone-resolver.ts";
-import type { GitHubClient, RestResponse } from "./http-client.ts";
+import { createGhSpy, type GitHubClientSpy } from "./_test_utils.ts";
 import type { RepoNodeIdProvider } from "./label-resolver.ts";
 import { GitHubApiError } from "../errors.ts";
 
@@ -23,53 +23,6 @@ const USER_NULL = { user: null };
 
 /** User undefined - {} (no user key at all) */
 const USER_UNDEF = {};
-
-// =============================================================================
-// GitHubClient spy - queue-based to handle sequential graphql calls
-// =============================================================================
-
-interface GitHubClientSpy extends GitHubClient {
-  graphqlCalls: Array<{
-    queryExcerpt: string;
-    variables: Record<string, unknown>;
-  }>;
-  enqueue(...responses: unknown[]): void;
-  remaining(): number;
-}
-
-const createGhSpy = (): GitHubClientSpy => {
-  const queue: unknown[] = [];
-  const spy: GitHubClientSpy = {
-    graphqlCalls: [],
-    async graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
-      spy.graphqlCalls.push({
-        queryExcerpt: query.slice(0, 80).replace(/\s+/g, " "),
-        variables: variables ?? {},
-      });
-      if (queue.length === 0) {
-        throw new Error(
-          `Unmocked graphql (empty queue): ${query.slice(0, 120)}`,
-        );
-      }
-      const r = queue.shift()!;
-      if (r instanceof Error) throw r;
-      return await Promise.resolve(r as T);
-    },
-    async rest<T>(
-      _path: string,
-      _options?: Record<string, unknown>,
-    ): Promise<RestResponse<T>> {
-      return await Promise.resolve({ data: {} as T, linkHeader: null });
-    },
-    enqueue(...responses: unknown[]) {
-      queue.push(...responses);
-    },
-    remaining() {
-      return queue.length;
-    },
-  };
-  return spy;
-};
 
 // =============================================================================
 // Service factory
