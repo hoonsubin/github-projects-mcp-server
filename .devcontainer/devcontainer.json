@@ -32,7 +32,7 @@
         "GraphQL.vscode-graphql-syntax",
         "ms-azuretools.vscode-containers",
         "github.vscode-github-actions",
-        "MermaidChart.vscode-mermaid-chart"
+        "bpruitt-goddard.mermaid-markdown-syntax-highlighting"
       ],
       "settings": {
         // Deno as the default TypeScript/JavaScript language server
