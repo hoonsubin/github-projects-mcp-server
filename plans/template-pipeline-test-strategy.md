@@ -10,29 +10,29 @@
 
 ### Covered (no changes needed to logic, but see Phase 5 for housekeeping)
 
-| Test file | Count | Coverage quality |
-| --- | --- | --- |
-| [`src/scrum/resolve-location.test.ts`](src/scrum/resolve-location.test.ts) | 13 tests | Good. Missing `.ts` extension and empty-string edge cases — added in Phase 5. |
-| [`src/scrum/fetch-location.test.ts`](src/scrum/fetch-location.test.ts) | 12 tests | Good. Has a platform portability bug (`/etc/shadow`) and a non-standard error pattern — fixed in Phase 5. |
-| [`src/adapters/github/internal/story-mutation-service.test.ts`](src/adapters/github/internal/story-mutation-service.test.ts) | ~40 tests | Good coverage. Has a duplicated spy factory and a redundant helper wrapper — refactored in Phase 6. |
-| [`src/adapters/github/internal/user-milestone-resolver.test.ts`](src/adapters/github/internal/user-milestone-resolver.test.ts) | ~10 tests | Good. Has a duplicated spy factory — refactored in Phase 6. |
-| [`src/adapters/github/internal/story-query-service.test.ts`](src/adapters/github/internal/story-query-service.test.ts) | ~6 tests | Good. Has an unsafe `as unknown as RuntimeConfig` cast — fixed in Phase 6. |
-| [`src/services/pick-defined.test.ts`](src/services/pick-defined.test.ts) | 6 tests | Missing falsy-but-defined and absent-key edge cases — added in Phase 5. |
+| Test file                                                                                                                      | Count     | Coverage quality                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------------------ | --------- | --------------------------------------------------------------------------------------------------------- |
+| [`src/scrum/resolve-location.test.ts`](src/scrum/resolve-location.test.ts)                                                     | 13 tests  | Good. Missing `.ts` extension and empty-string edge cases — added in Phase 5.                             |
+| [`src/scrum/fetch-location.test.ts`](src/scrum/fetch-location.test.ts)                                                         | 12 tests  | Good. Has a platform portability bug (`/etc/shadow`) and a non-standard error pattern — fixed in Phase 5. |
+| [`src/adapters/github/internal/story-mutation-service.test.ts`](src/adapters/github/internal/story-mutation-service.test.ts)   | ~40 tests | Good coverage. Has a duplicated spy factory and a redundant helper wrapper — refactored in Phase 6.       |
+| [`src/adapters/github/internal/user-milestone-resolver.test.ts`](src/adapters/github/internal/user-milestone-resolver.test.ts) | ~10 tests | Good. Has a duplicated spy factory — refactored in Phase 6.                                               |
+| [`src/adapters/github/internal/story-query-service.test.ts`](src/adapters/github/internal/story-query-service.test.ts)         | ~6 tests  | Good. Has an unsafe `as unknown as RuntimeConfig` cast — fixed in Phase 6.                                |
+| [`src/services/pick-defined.test.ts`](src/services/pick-defined.test.ts)                                                       | 6 tests   | Missing falsy-but-defined and absent-key edge cases — added in Phase 5.                                   |
 
 ### Mixed Concerns (needs refactoring)
 
-| Test file | Problem |
-| --- | --- |
+| Test file                                                                    | Problem                                                                                                                         |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | [`src/scrum/template-resource.test.ts`](src/scrum/template-resource.test.ts) | Mixes pure use-case unit tests with integration tests that read real `.github/scrum/config.yml` via `buildTypeTemplatePaths()`. |
 
 ### Missing (new code needed)
 
-| Layer | What | Where |
-| --- | --- | --- |
-| Domain | `mimeTypeForPath()` has no unit tests | New file: `src/domain/content-location.test.ts` |
-| Use-case | No pure test for file-kind `ContentLocation` MIME resolution | [`src/scrum/template-resource.test.ts`](src/scrum/template-resource.test.ts) |
-| Use-case | No pure test for url-kind `ContentLocation` MIME resolution | [`src/scrum/template-resource.test.ts`](src/scrum/template-resource.test.ts) |
-| Full pipeline integration | No test for config.yml → resolveLocation → fetchContent → templateResourceUseCase end-to-end | New file: `src/scrum/template-pipeline.test.ts` |
+| Layer                     | What                                                                                         | Where                                                                        |
+| ------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Domain                    | `mimeTypeForPath()` has no unit tests                                                        | New file: `src/domain/content-location.test.ts`                              |
+| Use-case                  | No pure test for file-kind `ContentLocation` MIME resolution                                 | [`src/scrum/template-resource.test.ts`](src/scrum/template-resource.test.ts) |
+| Use-case                  | No pure test for url-kind `ContentLocation` MIME resolution                                  | [`src/scrum/template-resource.test.ts`](src/scrum/template-resource.test.ts) |
+| Full pipeline integration | No test for config.yml → resolveLocation → fetchContent → templateResourceUseCase end-to-end | New file: `src/scrum/template-pipeline.test.ts`                              |
 
 > **Note:** A config-loader integration test (`config-loader-template.test.ts`) was considered but dropped. Building a valid `GitHubClient` stub for `loadConfig()` would require mocking GraphQL responses for project fields, status/priority/type options, and iterations — a fake that will rot. Phase 4 already validates `typeTemplatePaths` correctness by reading the real config file and calling `resolveLocation()` directly, which is sufficient.
 
@@ -43,12 +43,12 @@
 Before writing any stub, note how `templateResourceUseCase()` actually sequences its work (see `src/scrum/template-resource.ts` lines 60–65):
 
 ```ts
-const content = await fileReader.fetchContent(location);   // fetch FIRST
+const content = await fileReader.fetchContent(location); // fetch FIRST
 const mimeType = location.kind === "inline"
   ? "text/markdown"
   : location.kind === "file"
   ? mimeTypeForPath(location.path)
-  : mimeTypeForPath(location.url.pathname);                // MIME resolved after
+  : mimeTypeForPath(location.url.pathname); // MIME resolved after
 return { content, mimeType };
 ```
 
@@ -275,37 +275,69 @@ import { mimeTypeForPath } from "./content-location.ts";
 
 const opts = { permissions: "none" } as const;
 
-Deno.test({ name: ".json → application/json", ...opts, fn() {
-  assertEquals(mimeTypeForPath("template.json"), "application/json");
-}});
+Deno.test({
+  name: ".json → application/json",
+  ...opts,
+  fn() {
+    assertEquals(mimeTypeForPath("template.json"), "application/json");
+  },
+});
 
-Deno.test({ name: ".yml → application/x-yaml", ...opts, fn() {
-  assertEquals(mimeTypeForPath("template.yml"), "application/x-yaml");
-}});
+Deno.test({
+  name: ".yml → application/x-yaml",
+  ...opts,
+  fn() {
+    assertEquals(mimeTypeForPath("template.yml"), "application/x-yaml");
+  },
+});
 
-Deno.test({ name: ".yaml → application/x-yaml", ...opts, fn() {
-  assertEquals(mimeTypeForPath("template.yaml"), "application/x-yaml");
-}});
+Deno.test({
+  name: ".yaml → application/x-yaml",
+  ...opts,
+  fn() {
+    assertEquals(mimeTypeForPath("template.yaml"), "application/x-yaml");
+  },
+});
 
-Deno.test({ name: ".md → text/markdown", ...opts, fn() {
-  assertEquals(mimeTypeForPath("README.md"), "text/markdown");
-}});
+Deno.test({
+  name: ".md → text/markdown",
+  ...opts,
+  fn() {
+    assertEquals(mimeTypeForPath("README.md"), "text/markdown");
+  },
+});
 
-Deno.test({ name: "unrecognized ext → text/markdown fallback", ...opts, fn() {
-  assertEquals(mimeTypeForPath("foo.txt"), "text/markdown");
-}});
+Deno.test({
+  name: "unrecognized ext → text/markdown fallback",
+  ...opts,
+  fn() {
+    assertEquals(mimeTypeForPath("foo.txt"), "text/markdown");
+  },
+});
 
-Deno.test({ name: "no extension → text/markdown fallback", ...opts, fn() {
-  assertEquals(mimeTypeForPath("Makefile"), "text/markdown");
-}});
+Deno.test({
+  name: "no extension → text/markdown fallback",
+  ...opts,
+  fn() {
+    assertEquals(mimeTypeForPath("Makefile"), "text/markdown");
+  },
+});
 
-Deno.test({ name: "absolute path with .json", ...opts, fn() {
-  assertEquals(mimeTypeForPath("/abs/path/file.json"), "application/json");
-}});
+Deno.test({
+  name: "absolute path with .json",
+  ...opts,
+  fn() {
+    assertEquals(mimeTypeForPath("/abs/path/file.json"), "application/json");
+  },
+});
 
-Deno.test({ name: "URL pathname with .yml", ...opts, fn() {
-  assertEquals(mimeTypeForPath("/owner/repo/main/.github/template.yml"), "application/x-yaml");
-}});
+Deno.test({
+  name: "URL pathname with .yml",
+  ...opts,
+  fn() {
+    assertEquals(mimeTypeForPath("/owner/repo/main/.github/template.yml"), "application/x-yaml");
+  },
+});
 ```
 
 ### Verification
@@ -446,7 +478,7 @@ Commit the generated `__snapshots__/template-pipeline.test.ts.snap` file alongsi
 import { assertSnapshot } from "@std/testing/snapshot";
 import { assertEquals } from "@std/assert";
 import { templateResourceUseCase } from "./template-resource.ts";
-import { typeTemplatePathsPromise, realFileReader } from "./_test_utils.ts";
+import { realFileReader, typeTemplatePathsPromise } from "./_test_utils.ts";
 import type { SupportedMimeType } from "../domain/content-location.ts";
 
 // ── Per-type pipeline tests ───────────────────────────────────────────────────
@@ -722,17 +754,16 @@ All previously passing tests must still pass. The `/etc/shadow` test will now be
 
 ### 6b. Improve `fieldCalls` method tracking in `story-mutation-service.test.ts`
 
-**Problem:** All field mutator methods route through a single `recordCall` function, so tests can only assert that *a* call was made — not *which method* was called.
+**Problem:** All field mutator methods route through a single `recordCall` function, so tests can only assert that _a_ call was made — not _which method_ was called.
 
 **Fix:** Replace the single `recordCall` with per-method recorders. Keep the `fieldCalls` array but record `{ method, args }` tuples:
 
 ```ts
 const fieldCalls: Array<{ method: string; args: unknown[] }> = [];
-const makeRecorder = (method: string) =>
-  (...args: unknown[]): Promise<void> => {
-    fieldCalls.push({ method, args });
-    return Promise.resolve();
-  };
+const makeRecorder = (method: string) => (...args: unknown[]): Promise<void> => {
+  fieldCalls.push({ method, args });
+  return Promise.resolve();
+};
 const fieldValueMutator = {
   setFieldStatus: makeRecorder("setFieldStatus"),
   setFieldSprint: makeRecorder("setFieldSprint"),
@@ -783,19 +814,19 @@ Phases 5 and 6 are independent of each other and of phases 1–4. They can be do
 
 ## File Inventory
 
-| File | Action |
-| --- | --- |
-| `src/scrum/_test_utils.ts` | **Create** — `buildTypeTemplatePaths`, lazy promise, both reader stubs, `withTestServer` |
-| `src/adapters/github/internal/_test_utils.ts` | **Create** — `createGhSpy`, `GitHubClientSpy`, `makeConfig` |
-| `src/domain/content-location.test.ts` | **Create** — Phase 1, 8 tests with `permissions: "none"` |
-| `src/scrum/template-resource.test.ts` | **Modify** — Phase 2a (remove 3 tests + helper + unused imports), Phase 2b (add 6 tests, import stubs from `_test_utils.ts`) |
-| `src/scrum/template-pipeline.test.ts` | **Create** — Phase 4, 5 tests using `assertSnapshot` for content |
-| `src/scrum/__snapshots__/template-pipeline.test.ts.snap` | **Generate** — first-run `--update`, then commit |
-| `src/scrum/fetch-location.test.ts` | **Modify** — Phase 5b (`/etc/shadow` ignore), 5c (503 assertRejects), 5d (withTestServer refactor) |
-| `src/scrum/resolve-location.test.ts` | **Modify** — Phase 5e (add `.ts` and empty-string tests) |
-| `src/services/pick-defined.test.ts` | **Modify** — Phase 5f (add `false`, `0`, absent-key tests) |
-| `src/adapters/github/internal/story-mutation-service.test.ts` | **Modify** — Phase 6a (import shared spy+config, remove local defs, inline createServiceWithConfig), 6b (per-method fieldCalls) |
-| `src/adapters/github/internal/user-milestone-resolver.test.ts` | **Modify** — Phase 6a (import shared spy, remove local def) |
-| `src/adapters/github/internal/story-query-service.test.ts` | **Modify** — Phase 6a (import makeConfig, remove unsafe cast) |
-| `src/adapters/github/config-loader.ts` | **No change** |
-| `deno.json` | **No change** — `@std/fs` avoided by using `Deno.stat` instead of `existsSync` |
+| File                                                           | Action                                                                                                                          |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `src/scrum/_test_utils.ts`                                     | **Create** — `buildTypeTemplatePaths`, lazy promise, both reader stubs, `withTestServer`                                        |
+| `src/adapters/github/internal/_test_utils.ts`                  | **Create** — `createGhSpy`, `GitHubClientSpy`, `makeConfig`                                                                     |
+| `src/domain/content-location.test.ts`                          | **Create** — Phase 1, 8 tests with `permissions: "none"`                                                                        |
+| `src/scrum/template-resource.test.ts`                          | **Modify** — Phase 2a (remove 3 tests + helper + unused imports), Phase 2b (add 6 tests, import stubs from `_test_utils.ts`)    |
+| `src/scrum/template-pipeline.test.ts`                          | **Create** — Phase 4, 5 tests using `assertSnapshot` for content                                                                |
+| `src/scrum/__snapshots__/template-pipeline.test.ts.snap`       | **Generate** — first-run `--update`, then commit                                                                                |
+| `src/scrum/fetch-location.test.ts`                             | **Modify** — Phase 5b (`/etc/shadow` ignore), 5c (503 assertRejects), 5d (withTestServer refactor)                              |
+| `src/scrum/resolve-location.test.ts`                           | **Modify** — Phase 5e (add `.ts` and empty-string tests)                                                                        |
+| `src/services/pick-defined.test.ts`                            | **Modify** — Phase 5f (add `false`, `0`, absent-key tests)                                                                      |
+| `src/adapters/github/internal/story-mutation-service.test.ts`  | **Modify** — Phase 6a (import shared spy+config, remove local defs, inline createServiceWithConfig), 6b (per-method fieldCalls) |
+| `src/adapters/github/internal/user-milestone-resolver.test.ts` | **Modify** — Phase 6a (import shared spy, remove local def)                                                                     |
+| `src/adapters/github/internal/story-query-service.test.ts`     | **Modify** — Phase 6a (import makeConfig, remove unsafe cast)                                                                   |
+| `src/adapters/github/config-loader.ts`                         | **No change**                                                                                                                   |
+| `deno.json`                                                    | **No change** — `@std/fs` avoided by using `Deno.stat` instead of `existsSync`                                                  |

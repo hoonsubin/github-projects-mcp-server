@@ -114,8 +114,8 @@ Examples:
 // Resolve --config (or SCRUM_CONFIG_PATH env fallback) to a ContentLocation.
 // The env fallback allows mcpb installers that only support user_config
 // interpolation in `env` (not `args`) to pass the config path cleanly.
-const _rawConfigPath: string | undefined =
-  _cliArgs.config || Deno.env.get("SCRUM_CONFIG_PATH") || undefined;
+const _rawConfigPath: string | undefined = _cliArgs.config || Deno.env.get("SCRUM_CONFIG_PATH") ||
+  undefined;
 const _configLocation: ContentLocation | undefined = _rawConfigPath
   ? resolveLocation(_rawConfigPath, resolvePath(Deno.cwd()))
   : undefined;
