@@ -33,7 +33,9 @@
   "exclude": [
     "dist/",
     ".roo/",
-    "docs/"
+    "docs/",
+    "**/*.js",
+    "**/*.mjs"
   ],
   "compilerOptions": {
     "lib": [
