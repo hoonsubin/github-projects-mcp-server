@@ -121,9 +121,6 @@ definition_of_done:
 # `ceremony_records` declares where the agent writes ceremony documents.
 # The agent writes directly to this backend using its own platform capabilities
 # - ceremony records are outside the MCP server's scope.
-#
-# `templates` maps each artifact type to a repo-relative path for a custom
-# template, or null to use the agent skill's built-in default.
 
 ceremony_records:
   backend: github_discussions

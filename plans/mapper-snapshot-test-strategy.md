@@ -11,6 +11,7 @@
 The mapper functions are pure data transformers: GitHub API response shape → domain `Story` objects. The risk is not control flow — it is shape drift. If `extractBoardFields` silently stops reading the iteration field, or `buildStoryFromRaw` drops `blocked_by` entries, no existing test catches it.
 
 `assertSnapshot` is the right tool because:
+
 - The full domain object is the contract, not just one field
 - Snapshots serve as a human-readable record of what the mapper produces from a real-shaped input
 - Any future change to the mapper, the `ProjectItem` type, or `operations.graphql` fragments that changes mapper output will fail the snapshot, requiring a deliberate `--update`
@@ -443,9 +444,7 @@ Deno.test({
       ...issueItem,
       fieldValues: {
         nodes: issueItem.fieldValues.nodes.map((fv) =>
-          fv.field?.id === "PVTF_type"
-            ? { ...fv, name: "UnknownType" }
-            : fv
+          fv.field?.id === "PVTF_type" ? { ...fv, name: "UnknownType" } : fv
         ),
       },
     };
@@ -604,7 +603,9 @@ Deno.test({
   name: "buildCommentList — maps author, body, createdAt, url (snapshot)",
   permissions: "none",
   async fn(t) {
-    const comments = buildCommentList(issueDetails.comments!.nodes as Parameters<typeof buildCommentList>[0]);
+    const comments = buildCommentList(
+      issueDetails.comments!.nodes as Parameters<typeof buildCommentList>[0],
+    );
     await assertSnapshot(t, comments);
   },
 });
@@ -613,9 +614,16 @@ Deno.test({
   name: "buildCommentList — ghost author when author is null",
   permissions: "none",
   fn() {
-    const result = buildCommentList([
-      { author: null, body: "anonymous comment", createdAt: "2026-01-01T00:00:00Z", url: "https://example.com" },
-    ] as Parameters<typeof buildCommentList>[0]);
+    const result = buildCommentList(
+      [
+        {
+          author: null,
+          body: "anonymous comment",
+          createdAt: "2026-01-01T00:00:00Z",
+          url: "https://example.com",
+        },
+      ] as Parameters<typeof buildCommentList>[0],
+    );
     assertEquals(result[0].author, "(ghost)");
     assertEquals(result[0].body, "anonymous comment");
   },
@@ -637,7 +645,9 @@ Deno.test({
   name: "buildLinkedPrList — maps PR number, title, url, state, is_draft (snapshot)",
   permissions: "none",
   async fn(t) {
-    const prs = buildLinkedPrList(issueDetails.timelineItems!.nodes as Parameters<typeof buildLinkedPrList>[0]);
+    const prs = buildLinkedPrList(
+      issueDetails.timelineItems!.nodes as Parameters<typeof buildLinkedPrList>[0],
+    );
     await assertSnapshot(t, prs);
   },
 });
@@ -656,9 +666,11 @@ Deno.test({
   permissions: "none",
   fn() {
     // source exists but number is absent (not a PR, or partial data)
-    const result = buildLinkedPrList([
-      { source: { title: "PR", url: "https://x.com", state: "OPEN", isDraft: false } as never },
-    ] as Parameters<typeof buildLinkedPrList>[0]);
+    const result = buildLinkedPrList(
+      [
+        { source: { title: "PR", url: "https://x.com", state: "OPEN", isDraft: false } as never },
+      ] as Parameters<typeof buildLinkedPrList>[0],
+    );
     assertEquals(result, []);
   },
 });
@@ -816,7 +828,7 @@ Review the diff in the `.snap` file before committing — this is the safety gat
 deno task capture-fixtures
 ```
 
-**Script:** `scripts/capture-test-fixtures.ts`  
+**Script:** `scripts/capture-test-fixtures.ts`\
 **Permissions:** `--allow-env=GITHUB_TOKEN,DEBUG,NODE_ENV --allow-net --allow-read --allow-write`
 
 The script does the following in sequence:
@@ -831,9 +843,9 @@ The script does the following in sequence:
 
 ### Flags
 
-| Flag | Effect |
-| --- | --- |
-| `--dry-run` | Prints fixture JSON to stdout, writes nothing to disk. Use to inspect what would be captured before committing. |
+| Flag                 | Effect                                                                                                          |
+| -------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `--dry-run`          | Prints fixture JSON to stdout, writes nothing to disk. Use to inspect what would be captured before committing. |
 | `--update-snapshots` | After writing fixtures, runs `deno test --update` on `mappers.test.ts` to regenerate `.snap` files in one step. |
 
 ### Full refresh workflow (one command)
@@ -871,27 +883,27 @@ This runs `deno test --update` across the entire `src/` tree. All snapshot tests
 
 ## What is NOT covered by this plan (by design)
 
-| Area | Reason not included |
-| --- | --- |
-| `StoryQueryService.getStoryDetail` | Control-flow service method; best extended in `story-query-service.test.ts` using the existing queue spy pattern |
-| `StoryQueryService.findItems` | Same — filter logic is best tested with spy-enqueued responses, not mapper fixtures |
-| `extractBoardFields` (private) | Fully covered as a side effect of all `buildStoryFromRaw` tests; it is private to `mappers.ts` and cannot be directly imported |
-| Live GitHub API responses | Out of scope for a unit test plan; if desired, write a `scripts/capture-fixtures.ts` that calls the real API and writes to `testdata/` |
-| `buildBurndownStoryInput` | Thin wrapper over `extractBoardFields` — low risk; can be added in a follow-up with a single fixture-based snapshot test |
-| `toSprintInfo`, `resolveSprintGoal` | Already covered or trivially simple; out of scope here |
+| Area                                | Reason not included                                                                                                                    |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `StoryQueryService.getStoryDetail`  | Control-flow service method; best extended in `story-query-service.test.ts` using the existing queue spy pattern                       |
+| `StoryQueryService.findItems`       | Same — filter logic is best tested with spy-enqueued responses, not mapper fixtures                                                    |
+| `extractBoardFields` (private)      | Fully covered as a side effect of all `buildStoryFromRaw` tests; it is private to `mappers.ts` and cannot be directly imported         |
+| Live GitHub API responses           | Out of scope for a unit test plan; if desired, write a `scripts/capture-fixtures.ts` that calls the real API and writes to `testdata/` |
+| `buildBurndownStoryInput`           | Thin wrapper over `extractBoardFields` — low risk; can be added in a follow-up with a single fixture-based snapshot test               |
+| `toSprintInfo`, `resolveSprintGoal` | Already covered or trivially simple; out of scope here                                                                                 |
 
 ---
 
 ## File inventory
 
-| File | Action |
-| --- | --- |
-| `src/adapters/github/testdata/project-item-issue.json` | **Create** — Issue with all 5 board fields, milestone, assignee, label, one dep |
-| `src/adapters/github/testdata/project-item-draft.json` | **Create** — DraftIssue with status field and assignee |
-| `src/adapters/github/testdata/project-item-no-fields.json` | **Create** — Issue with empty fieldValues |
-| `src/adapters/github/testdata/issue-details.json` | **Create** — GetIssueDetails response with one comment and one linked PR |
-| `src/adapters/github/internal/_test_utils.ts` | **Modify** — add `type_mapping` to `makeConfig` default; update `all` iterations array |
-| `src/adapters/github/mappers.test.ts` | **Create** — Groups A–E, ~30 tests |
-| `src/adapters/github/__snapshots__/mappers.test.ts.snap` | **Generate** — first-run `--update`, then commit |
-| `scripts/capture-test-fixtures.ts` | **Create** — live-capture script (already written; see script file) |
-| `deno.json` | **Modify** — add `capture-fixtures` and `update-snapshots` tasks (already added) |
+| File                                                       | Action                                                                                 |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `src/adapters/github/testdata/project-item-issue.json`     | **Create** — Issue with all 5 board fields, milestone, assignee, label, one dep        |
+| `src/adapters/github/testdata/project-item-draft.json`     | **Create** — DraftIssue with status field and assignee                                 |
+| `src/adapters/github/testdata/project-item-no-fields.json` | **Create** — Issue with empty fieldValues                                              |
+| `src/adapters/github/testdata/issue-details.json`          | **Create** — GetIssueDetails response with one comment and one linked PR               |
+| `src/adapters/github/internal/_test_utils.ts`              | **Modify** — add `type_mapping` to `makeConfig` default; update `all` iterations array |
+| `src/adapters/github/mappers.test.ts`                      | **Create** — Groups A–E, ~30 tests                                                     |
+| `src/adapters/github/__snapshots__/mappers.test.ts.snap`   | **Generate** — first-run `--update`, then commit                                       |
+| `scripts/capture-test-fixtures.ts`                         | **Create** — live-capture script (already written; see script file)                    |
+| `deno.json`                                                | **Modify** — add `capture-fixtures` and `update-snapshots` tasks (already added)       |

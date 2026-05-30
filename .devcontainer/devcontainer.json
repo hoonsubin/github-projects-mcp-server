@@ -31,7 +31,8 @@
         "zoocodeorganization.zoo-code",
         "GraphQL.vscode-graphql-syntax",
         "ms-azuretools.vscode-containers",
-        "github.vscode-github-actions"
+        "github.vscode-github-actions",
+        "MermaidChart.vscode-mermaid-chart"
       ],
       "settings": {
         // Deno as the default TypeScript/JavaScript language server
