@@ -10,6 +10,7 @@ deno.lock
 
 # Build output
 dist/
+bundle/server/index.js
 build/
 out/
 mcp-server

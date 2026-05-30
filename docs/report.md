@@ -31,6 +31,12 @@ classDiagram
             +historyEntryToItemListing()
         }
 
+        class config-boot.ts:::scrum {
+            interface BootConfig
+            +loadScrumConfig()
+            %% Unused: BootConfig
+        }
+
         class sprint-math.ts:::scrum {
             +computeSprintEndDate()
             +buildSprintMeta()
@@ -103,12 +109,6 @@ classDiagram
 
         class update-impediment.ts:::scrum {
             +updateImpedimentUseCase()
-        }
-
-        class config-helpers.ts:::scrum {
-            +resolveHighestPriorityDisplay()
-            +resolveTerminalDisplay()
-            %% Unused: resolveTerminalDisplay
         }
 
         class template-resource.ts:::scrum {
@@ -357,8 +357,16 @@ classDiagram
         }
 
         class pagination.ts:::internal {
+            interface ItemFetchConfig
             class PaginatedProjectItemFetcher
             +isBacklogItem()
+            %% Unused: ItemFetchConfig
+        }
+
+        class display-helpers.ts:::internal {
+            +resolveTerminalDisplay()
+            +resolveHighestPriorityDisplay()
+            %% Unused: resolveTerminalDisplay, resolveHighestPriorityDisplay
         }
 
         class resolver.ts:::internal {
@@ -386,7 +394,7 @@ classDiagram
         class _test_utils.ts:::internal {
             interface GitHubClientSpy
             +createGhSpy() GitHubClientSpy
-            +makeConfig() RuntimeConfig
+            +makeConfig() GitHubBootState
             %% Unused: GitHubClientSpy, createGhSpy, makeConfig
         }
 
@@ -481,17 +489,19 @@ classDiagram
             type ResolvedToken
             +resolveToken()
             +validateToken()
-            %% Unused: GitHubMilestoneId, toEntityRef, ItemContentType, IssueIdentity, PrIdentity, PrDiscriminator, PrState, IssueState, IssueRef, LabelRef, FieldValueField, FieldValueUser, FieldValueUserNodes, FieldValueLabel, FieldValueLabelNodes, FieldValueMilestone, FieldValueRepository, LabelColorNodes, ResolvedToken, resolveToken, validateToken
-        }
-
-        class config-loader.ts:::github {
-            interface RuntimeConfig
-            +loadConfig()
+            %% Unused: GitHubMilestoneId, toEntityRef, ItemContentType, IssueIdentity, PrIdentity, PrDiscriminator, PrState, IssueState, IssueRef, LabelRef, FieldValueField, FieldValueUser, FieldValueUserNodes, FieldValueLabel, FieldValueLabelNodes, FieldValueMilestone, FieldValueRepository, LabelColorNodes
         }
 
         class backend.ts:::github {
             interface GitHubBackendDependencies
             class GitHubProjectBackend
+        }
+
+        class bootstrap.ts:::github {
+            interface GitHubLiveMetadata
+            interface GitHubBootState
+            +bootstrapGitHub()
+            %% Unused: GitHubLiveMetadata
         }
 
         class abstract-backend.ts:::adapters {
@@ -513,6 +523,9 @@ classDiagram
     find-items.ts --> types.ts : "imports"
     listing-mappers.ts --> ports.ts : "imports"
     listing-mappers.ts --> types.ts : "imports"
+    config-boot.ts --> fetch-location.ts : "imports"
+    config-boot.ts --> content-location.ts : "imports"
+    config-boot.ts --> config.ts : "imports"
     sprint-math.ts --> types.ts : "imports"
     sprint-math.ts --> ports.ts : "imports"
     get-story.ts --> ports.ts : "imports"
@@ -521,7 +534,7 @@ classDiagram
     get-board-health.ts --> ports.ts : "imports"
     get-board-health.ts --> types.ts : "imports"
     _test_utils.ts --> http-client.ts : "imports"
-    _test_utils.ts --> config-loader.ts : "imports"
+    _test_utils.ts --> bootstrap.ts : "imports"
     fetch-location.ts --> content-location.ts : "imports"
     fetch-location.ts --> errors.ts : "imports"
     ports.ts --> types.ts : "imports"
@@ -529,7 +542,6 @@ classDiagram
     ports.ts --> content-location.ts : "imports"
     update-impediment.ts --> ports.ts : "imports"
     update-impediment.ts --> types.ts : "imports"
-    config-helpers.ts --> config.ts : "imports"
     template-resource.ts --> ports.ts : "imports"
     template-resource.ts --> content-location.ts : "imports"
     resolve-location.ts --> content-location.ts : "imports"
@@ -550,7 +562,6 @@ classDiagram
     scrum-write.ts --> ports.ts : "imports"
     scrum-write.ts --> types.ts : "imports"
     scrum-write.ts --> config.ts : "imports"
-    scrum-write.ts --> config-helpers.ts : "imports"
     scrum-write.ts --> update-impediment.ts : "imports"
     scrum-write.ts --> scrum.ts : "imports"
     scrum-write.ts --> error-enrichment.ts : "imports"
@@ -561,12 +572,13 @@ classDiagram
     server.ts --> scrum-write.ts : "imports"
     server.ts --> template-resource.ts : "imports"
     server.ts --> factory.ts : "imports"
+    server.ts --> config-boot.ts : "imports"
     server.ts --> errors.ts : "imports"
     server.ts --> logger.ts : "imports"
     server.ts --> resolve-location.ts : "imports"
     server.ts --> content-location.ts : "imports"
     factory.ts --> capabilities.ts : "imports"
-    factory.ts --> config-loader.ts : "imports"
+    factory.ts --> bootstrap.ts : "imports"
     factory.ts --> backend.ts : "imports"
     factory.ts --> http-client.ts : "imports"
     factory.ts --> burndown-calculator.ts : "imports"
@@ -584,22 +596,23 @@ classDiagram
     factory.ts --> board-health-service.ts : "imports"
     factory.ts --> file-reader.ts : "imports"
     factory.ts --> types.ts : "imports"
+    factory.ts --> content-location.ts : "imports"
     queries.ts --> server.ts : "imports"
-    mappers.ts --> config-loader.ts : "imports"
+    mappers.ts --> bootstrap.ts : "imports"
     mappers.ts --> errors.ts : "imports"
     mappers.ts --> types.ts : "imports"
     mappers.ts --> sprint-math.ts : "imports"
     mappers.ts --> ports.ts : "imports"
-    config-reloader.ts --> config-loader.ts : "imports"
-    config-reloader.ts --> content-location.ts : "imports"
     config-reloader.ts --> http-client.ts : "imports"
+    config-reloader.ts --> types.ts : "imports"
+    config-reloader.ts --> bootstrap.ts : "imports"
     burndown-calculator.ts --> errors.ts : "imports"
     burndown-calculator.ts --> http-client.ts : "imports"
     burndown-calculator.ts --> pagination.ts : "imports"
     burndown-calculator.ts --> mappers.ts : "imports"
     burndown-calculator.ts --> resolver.ts : "imports"
     burndown-calculator.ts --> sprint-math.ts : "imports"
-    burndown-calculator.ts --> config-loader.ts : "imports"
+    burndown-calculator.ts --> bootstrap.ts : "imports"
     burndown-calculator.ts --> ports.ts : "imports"
     burndown-calculator.ts --> types.ts : "imports"
     burndown-calculator.ts --> logger.ts : "imports"
@@ -614,22 +627,23 @@ classDiagram
     analytics-service.ts --> resolver.ts : "imports"
     analytics-service.ts --> sprint-math.ts : "imports"
     analytics-service.ts --> listing-mappers.ts : "imports"
-    analytics-service.ts --> config-loader.ts : "imports"
+    analytics-service.ts --> bootstrap.ts : "imports"
     analytics-service.ts --> ports.ts : "imports"
     analytics-service.ts --> types.ts : "imports"
     pagination.ts --> errors.ts : "imports"
-    pagination.ts --> config-loader.ts : "imports"
+    pagination.ts --> bootstrap.ts : "imports"
     pagination.ts --> types.ts : "imports"
+    display-helpers.ts --> types.ts : "imports"
     resolver.ts --> errors.ts : "imports"
     resolver.ts --> github-types.ts : "imports"
-    resolver.ts --> config-loader.ts : "imports"
+    resolver.ts --> bootstrap.ts : "imports"
     resolver.ts --> types.ts : "imports"
     resolver.ts --> queries.ts : "imports"
     field-value-mutator.ts --> errors.ts : "imports"
     field-value-mutator.ts --> http-client.ts : "imports"
     field-value-mutator.ts --> resolver.ts : "imports"
     field-value-mutator.ts --> user-milestone-resolver.ts : "imports"
-    field-value-mutator.ts --> config-loader.ts : "imports"
+    field-value-mutator.ts --> bootstrap.ts : "imports"
     field-value-mutator.ts --> types.ts : "imports"
     field-value-mutator.ts --> queries.ts : "imports"
     user-milestone-resolver.ts --> errors.ts : "imports"
@@ -640,22 +654,23 @@ classDiagram
     label-resolver.ts --> errors.ts : "imports"
     label-resolver.ts --> http-client.ts : "imports"
     label-resolver.ts --> queries.ts : "imports"
-    label-resolver.ts --> config-loader.ts : "imports"
+    label-resolver.ts --> bootstrap.ts : "imports"
     label-resolver.ts --> ports.ts : "imports"
     sprint-history-service.ts --> errors.ts : "imports"
     sprint-history-service.ts --> http-client.ts : "imports"
     sprint-history-service.ts --> pagination.ts : "imports"
-    sprint-history-service.ts --> config-loader.ts : "imports"
+    sprint-history-service.ts --> bootstrap.ts : "imports"
     sprint-history-service.ts --> ports.ts : "imports"
     sprint-history-service.ts --> types.ts : "imports"
     file-reader.ts --> fetch-location.ts : "imports"
     file-reader.ts --> content-location.ts : "imports"
     file-reader.ts --> ports.ts : "imports"
+    file-reader.ts --> types.ts : "imports"
     vocabulary-manager.ts --> errors.ts : "imports"
     vocabulary-manager.ts --> types.ts : "imports"
     vocabulary-manager.ts --> http-client.ts : "imports"
     vocabulary-manager.ts --> label-resolver.ts : "imports"
-    vocabulary-manager.ts --> config-loader.ts : "imports"
+    vocabulary-manager.ts --> bootstrap.ts : "imports"
     vocabulary-manager.ts --> ports.ts : "imports"
     vocabulary-manager.ts --> queries.ts : "imports"
     story-mutation-service.ts --> errors.ts : "imports"
@@ -665,7 +680,7 @@ classDiagram
     story-mutation-service.ts --> user-milestone-resolver.ts : "imports"
     story-mutation-service.ts --> field-value-mutator.ts : "imports"
     story-mutation-service.ts --> queries.ts : "imports"
-    story-mutation-service.ts --> config-loader.ts : "imports"
+    story-mutation-service.ts --> bootstrap.ts : "imports"
     story-mutation-service.ts --> ports.ts : "imports"
     story-mutation-service.ts --> types.ts : "imports"
     board-health-service.ts --> story-query-service.ts : "imports"
@@ -674,7 +689,7 @@ classDiagram
     board-health-service.ts --> mappers.ts : "imports"
     board-health-service.ts --> readiness.ts : "imports"
     board-health-service.ts --> types.ts : "imports"
-    board-health-service.ts --> config-loader.ts : "imports"
+    board-health-service.ts --> bootstrap.ts : "imports"
     board-health-service.ts --> ports.ts : "imports"
     story-query-service.ts --> errors.ts : "imports"
     story-query-service.ts --> error-enrichment.ts : "imports"
@@ -684,7 +699,7 @@ classDiagram
     story-query-service.ts --> resolver.ts : "imports"
     story-query-service.ts --> mappers.ts : "imports"
     story-query-service.ts --> queries.ts : "imports"
-    story-query-service.ts --> config-loader.ts : "imports"
+    story-query-service.ts --> bootstrap.ts : "imports"
     story-query-service.ts --> ports.ts : "imports"
     story-query-service.ts --> types.ts : "imports"
     story-query-service.ts --> listing-mappers.ts : "imports"
@@ -700,18 +715,12 @@ classDiagram
     impediment-service.ts --> story-mutation-service.ts : "imports"
     impediment-service.ts --> queries.ts : "imports"
     impediment-service.ts --> pagination.ts : "imports"
-    impediment-service.ts --> config-loader.ts : "imports"
+    impediment-service.ts --> bootstrap.ts : "imports"
     impediment-service.ts --> ports.ts : "imports"
-    config-loader.ts --> types.ts : "imports"
-    config-loader.ts --> config.ts : "imports"
-    config-loader.ts --> queries.ts : "imports"
-    config-loader.ts --> content-location.ts : "imports"
-    config-loader.ts --> fetch-location.ts : "imports"
-    config-loader.ts --> resolve-location.ts : "imports"
     backend.ts --> capabilities.ts : "imports"
     backend.ts --> abstract-backend.ts : "imports"
     backend.ts --> errors.ts : "imports"
-    backend.ts --> config-loader.ts : "imports"
+    backend.ts --> bootstrap.ts : "imports"
     backend.ts --> label-resolver.ts : "imports"
     backend.ts --> field-value-mutator.ts : "imports"
     backend.ts --> vocabulary-manager.ts : "imports"
@@ -723,9 +732,14 @@ classDiagram
     backend.ts --> analytics-service.ts : "imports"
     backend.ts --> board-health-service.ts : "imports"
     backend.ts --> mappers.ts : "imports"
+    backend.ts --> types.ts : "imports"
     backend.ts --> ports.ts : "imports"
     backend.ts --> error-enrichment.ts : "imports"
-    backend.ts --> types.ts : "imports"
+    bootstrap.ts --> types.ts : "imports"
+    bootstrap.ts --> config.ts : "imports"
+    bootstrap.ts --> content-location.ts : "imports"
+    bootstrap.ts --> resolve-location.ts : "imports"
+    bootstrap.ts --> queries.ts : "imports"
     abstract-backend.ts --> capabilities.ts : "imports"
     abstract-backend.ts --> ports.ts : "imports"
     abstract-backend.ts --> error-enrichment.ts : "imports"
@@ -751,6 +765,7 @@ The following exports are never directly imported by other modules in the codeba
 
 | Module | Export | Kind |
 |---|---|---|
+| [`./src/scrum/config-boot.ts`](src/scrum/config-boot.ts) | `BootConfig` | `interface` |
 | [`./src/scrum/sprint-math.ts`](src/scrum/sprint-math.ts) | `buildSprintMeta` | `function` |
 | [`./src/scrum/_test_utils.ts`](src/scrum/_test_utils.ts) | `buildTypeTemplatePaths` | `function` |
 | [`./src/scrum/_test_utils.ts`](src/scrum/_test_utils.ts) | `typeTemplatePathsPromise` | `var` |
@@ -764,7 +779,6 @@ The following exports are never directly imported by other modules in the codeba
 | [`./src/scrum/ports.ts`](src/scrum/ports.ts) | `DisplayMap` | `type` |
 | [`./src/scrum/ports.ts`](src/scrum/ports.ts) | `StoryListing` | `interface` |
 | [`./src/scrum/ports.ts`](src/scrum/ports.ts) | `EpicPort` | `interface` |
-| [`./src/scrum/config-helpers.ts`](src/scrum/config-helpers.ts) | `resolveTerminalDisplay` | `function` |
 | [`./src/scrum/resolve-location.ts`](src/scrum/resolve-location.ts) | `SUPPORTED_TEMPLATE_EXTENSIONS` | `var` |
 | [`./src/scrum/resolve-location.ts`](src/scrum/resolve-location.ts) | `SupportedTemplateExtension` | `type` |
 | [`./src/_deno-shim.node.ts`](src/_deno-shim.node.ts) | `addEventListener` | `function` |
@@ -773,6 +787,9 @@ The following exports are never directly imported by other modules in the codeba
 | [`./src/adapters/github/errors.ts`](src/adapters/github/errors.ts) | `GitHubErrorCode` | `type` |
 | [`./src/adapters/github/queries.ts`](src/adapters/github/queries.ts) | `ADD_PROJECT_ITEM_MUTATION` | `var` |
 | [`./src/adapters/github/queries.ts`](src/adapters/github/queries.ts) | `CREATE_ISSUE_MUTATION` | `var` |
+| [`./src/adapters/github/internal/pagination.ts`](src/adapters/github/internal/pagination.ts) | `ItemFetchConfig` | `interface` |
+| [`./src/adapters/github/internal/display-helpers.ts`](src/adapters/github/internal/display-helpers.ts) | `resolveTerminalDisplay` | `function` |
+| [`./src/adapters/github/internal/display-helpers.ts`](src/adapters/github/internal/display-helpers.ts) | `resolveHighestPriorityDisplay` | `function` |
 | [`./src/adapters/github/internal/label-resolver.ts`](src/adapters/github/internal/label-resolver.ts) | `GitHubLabel` | `interface` |
 | [`./src/adapters/github/internal/_test_utils.ts`](src/adapters/github/internal/_test_utils.ts) | `GitHubClientSpy` | `interface` |
 | [`./src/adapters/github/internal/_test_utils.ts`](src/adapters/github/internal/_test_utils.ts) | `createGhSpy` | `function` |
@@ -796,9 +813,7 @@ The following exports are never directly imported by other modules in the codeba
 | [`./src/adapters/github/types.ts`](src/adapters/github/types.ts) | `FieldValueMilestone` | `type` |
 | [`./src/adapters/github/types.ts`](src/adapters/github/types.ts) | `FieldValueRepository` | `type` |
 | [`./src/adapters/github/types.ts`](src/adapters/github/types.ts) | `LabelColorNodes` | `type` |
-| [`./src/adapters/github/types.ts`](src/adapters/github/types.ts) | `ResolvedToken` | `type` |
-| [`./src/adapters/github/types.ts`](src/adapters/github/types.ts) | `resolveToken` | `function` |
-| [`./src/adapters/github/types.ts`](src/adapters/github/types.ts) | `validateToken` | `function` |
+| [`./src/adapters/github/bootstrap.ts`](src/adapters/github/bootstrap.ts) | `GitHubLiveMetadata` | `interface` |
 | [`./src/adapters/abstract-backend.ts`](src/adapters/abstract-backend.ts) | `UnsupportedCapabilityError` | `class` |
 | [`./src/domain/content-location.ts`](src/domain/content-location.ts) | `CONTENT_LOCATION_KINDS` | `var` |
 | [`./src/domain/content-location.ts`](src/domain/content-location.ts) | `ContentLocationKind` | `type` |

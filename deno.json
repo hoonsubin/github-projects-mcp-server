@@ -11,11 +11,10 @@
     "compile:linux:x64": "deno compile --target x86_64-unknown-linux-gnu --allow-env --allow-net --allow-read --output dist/mcp-server-linux-x64  src/server.ts",
     "compile:linux:arm64": "deno compile --target aarch64-unknown-linux-gnu --allow-env --allow-net --allow-read --output dist/mcp-server-linux-arm64  src/server.ts",
     "compile:win": "deno compile --target x86_64-pc-windows-msvc  --allow-env --allow-net --allow-read --output dist/mcp-server-win.exe     src/server.ts",
-    "compile:all": "deno task compile:mac:arm64 && deno task compile:mac:x64 && deno task compile:linux:x64 && deno task compile:linux:arm64 && deno task compile:win",
+    "compile:all": "deno task compile:mac:arm64 && deno task compile:mac:x64 && deno task compile:linux:x64 && deno task compile:linux:arm64 && deno task compile:win && deno task bundle:node && deno task bundle:mcpb",
     "bundle:node": "deno run --allow-read --allow-write --allow-env --allow-net --allow-run scripts/bundle-node.ts",
     "bundle:mcpb": "deno run --allow-read --allow-write --allow-env --allow-run scripts/bundle-mcpb.ts",
-    "capture-fixtures": "deno run --allow-env=GITHUB_TOKEN,DEBUG,NODE_ENV --allow-net --allow-read --allow-write scripts/capture-test-fixtures.ts",
-    "update-snapshots": "deno test --allow-read --allow-env=GITHUB_TOKEN,NODE_ENV --allow-write --update src/"
+    "capture-fixtures": "deno run --allow-env=GITHUB_TOKEN,DEBUG,NODE_ENV --allow-net --allow-read --allow-write scripts/capture-test-fixtures.ts"
   },
   "imports": {
     "@hono/node-server": "npm:@hono/node-server@^1.19.9",

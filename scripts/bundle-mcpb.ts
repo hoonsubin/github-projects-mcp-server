@@ -95,11 +95,6 @@ const dest = resolve(distDir, outputName);
 await Deno.rename(packed, dest);
 console.error(`[bundle-mcpb] moved → dist/${outputName}`);
 
-// ── Remove intermediate .mjs ─────────────────────────────────────────────────
-
-await Deno.remove(serverMjs);
-console.error("[bundle-mcpb] removed dist/server.mjs");
-
 // ── Report output size ───────────────────────────────────────────────────────
 
 const stat = await Deno.stat(dest);
