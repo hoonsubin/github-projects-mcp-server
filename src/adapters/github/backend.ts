@@ -11,6 +11,7 @@
 import { GITHUB_CAPABILITIES } from "../capabilities.ts";
 import { AbstractProjectBackend } from "../abstract-backend.ts";
 import { GitHubApiError } from "./errors.ts";
+import { assertNever } from "../../domain/errors.ts";
 import { type GitHubBootState } from "./bootstrap.ts";
 import { LabelResolver } from "./internal/label-resolver.ts";
 import { FieldValueMutator } from "./internal/field-value-mutator.ts";
@@ -258,11 +259,13 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
           return this.deps.projectItemsAssembler.assemble(profile.filter);
         case "mixed":
           return this.deps.mixedAssembler.assemble(profile.filter);
+        default:
+          return assertNever(profile);
       }
     })();
 
     return {
-      items: items as import("../../domain/types.ts").BacklogItemListing[],
+      items,
       total_count: totalCount,
       scope_summary: {
         sprint_count: scopeSummary.sprint_count,

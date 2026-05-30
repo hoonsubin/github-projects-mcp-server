@@ -140,19 +140,6 @@ export class GitHubAdapterFactory implements AdapterFactory {
 
     const storyQueryService = new StoryQueryService(ctx);
 
-    // ── Tier 2.5: Assemblers (Phase 3 filter-strategy-routing pipeline) ──
-    const directLookupAssembler = new DirectLookupAssembler(storyQueryService);
-    const projectItemsAssembler = new ProjectItemsAssembler(storyQueryService);
-    const searchApiAssembler = new SearchApiAssembler();
-    const mixedAssembler = new MixedAssembler(projectItemsAssembler);
-
-    const epicService = new EpicService(
-      ghClient,
-      owner,
-      resolvedGhConfig.tracked_repos,
-      storyQueryService,
-    );
-
     const storyMutationService = new StoryMutationService(
       ctx,
       labelResolver,
@@ -161,6 +148,16 @@ export class GitHubAdapterFactory implements AdapterFactory {
     );
 
     const impedimentService = new ImpedimentService(ctx, labelResolver, storyMutationService);
+
+    // ── Excluded from ctx pattern (different dep shapes) ─────────────────────
+    // EpicService: uses tracked_repos (full list), not primaryRepo
+    // ConfigReloader: needs projectRoot + configDesc — process-startup values
+    const epicService = new EpicService(
+      ghClient,
+      owner,
+      resolvedGhConfig.tracked_repos,
+      storyQueryService,
+    );
 
     const configReloader = new ConfigReloader(
       resolvedGhConfig,
@@ -184,6 +181,13 @@ export class GitHubAdapterFactory implements AdapterFactory {
       storyQueryService,
       impedimentService,
     );
+
+    // ── Assemblers (Phase 3 filter-strategy-routing pipeline) ─────────────
+    // Depend on storyQueryService (Tier 2) — constructed after all Tier 2/3 services.
+    const directLookupAssembler = new DirectLookupAssembler(storyQueryService);
+    const projectItemsAssembler = new ProjectItemsAssembler(storyQueryService);
+    const searchApiAssembler = new SearchApiAssembler();
+    const mixedAssembler = new MixedAssembler(projectItemsAssembler);
 
     // ── File reader ──────────────────────────────────────────────────────
 

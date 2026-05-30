@@ -484,7 +484,7 @@ export interface BurndownStory {
  * Combines item listings with scope metadata and optional dependency graph.
  */
 export interface ItemSearchResult {
-  items: BacklogItemListing[];
+  items: readonly BacklogItemListing[];
   total_count: number;
   scope_summary: {
     sprint_count: number | null;

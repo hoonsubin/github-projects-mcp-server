@@ -41,6 +41,7 @@ import type {
 } from "../../../domain/types.ts";
 import { toItemListing } from "../../../scrum/listing-mappers.ts";
 import { toIssueKey } from "../../../domain/types.ts";
+import { ResultNormalizer } from "./result-normalizer.ts";
 
 // ── Response types ─────────────────────────────────────────────────────────────
 
@@ -174,10 +175,12 @@ export const buildDependencyMap = (
  */
 export class StoryQueryService {
   private readonly projectItemsQuery: string;
+  private readonly normalizer: ResultNormalizer;
 
   constructor(private readonly ctx: GitHubInfraContext) {
     this.projectItemsQuery = new ProjectItemsQueryBuilder(this.ctx.ghConfig.owner_type)
       .buildQuery();
+    this.normalizer = new ResultNormalizer(ctx.config);
   }
 
   async getSprintStories(
@@ -468,6 +471,11 @@ export class StoryQueryService {
       }
       return item;
     });
+
+    // ── Enrich custom_fields (passthrough + __typename) ──────────────────
+    // ResultNormalizer adds all field values and __typename to custom_fields.
+    // Without this, agents cannot see non-canonical field metadata.
+    items = this.normalizer.enrichListings(items, allItems);
 
     // ── Limit ─────────────────────────────────────────────────────────────
     items = items.slice(0, filter.limit);
