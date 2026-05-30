@@ -7,6 +7,7 @@
 import type { FileReaderPort, ProjectReader, ProjectWriter } from "../scrum/ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 import type { PlatformCapabilities } from "./capabilities.ts";
+import type { ContentLocation } from "../domain/content-location.ts";
 
 // ── AdapterStartupOptions ───────────────────────────────────────────────────
 
@@ -16,19 +17,10 @@ import type { PlatformCapabilities } from "./capabilities.ts";
  */
 export interface AdapterStartupOptions {
   /**
-   * Absolute path to the scrum config YAML.
-   * undefined → adapter uses its platform default (e.g. ".github/scrum/config.yml")
+   * Where to load the scrum config from.
+   * undefined → adapter uses its default: { kind: "file", path: ".github/scrum/config.yml" }
    */
-  readonly configPath?: string;
-
-  /**
-   * Absolute path to the project root directory.
-   * Used as `localRoot` for file readers so repo-relative paths in the config
-   * (e.g. ".github/ISSUE_TEMPLATE/story.yml") resolve correctly regardless of
-   * the process's working directory.
-   * undefined → adapter uses Deno.cwd()
-   */
-  readonly projectRoot?: string;
+  readonly configLocation?: ContentLocation;
 }
 
 // ── AdapterFactory ──────────────────────────────────────────────────────────
@@ -76,11 +68,11 @@ export interface BackendResult {
   readonly scrumConfig: ScrumConfig;
 
   /**
-   * Maps canonical type keys → repo-relative template file paths.
+   * Maps canonical type keys → resolved template locations.
    * Only present for types that declare a template in the backend config.
    * Passed to the MCP template resource at registration time.
    */
-  readonly typeTemplatePaths: Record<string, string>;
+  readonly typeTemplatePaths: Record<string, ContentLocation>;
 }
 
 // ── createBackend() ─────────────────────────────────────────────────────────

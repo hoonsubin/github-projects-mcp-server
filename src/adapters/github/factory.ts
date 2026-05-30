@@ -45,7 +45,7 @@ export class GitHubAdapterFactory implements AdapterFactory {
   async create(options?: AdapterStartupOptions): Promise<BackendResult> {
     const config = await loadConfig({
       github: { graphql },
-      configPath: options?.configPath,
+      configLocation: options?.configLocation,
     });
     const gh = config.scrumConfig.backends.github as GitHubBackendConfig;
     const ghClient = { graphql, rest };
@@ -134,11 +134,8 @@ export class GitHubAdapterFactory implements AdapterFactory {
 
     // ── File reader ──────────────────────────────────────────────────────
 
-    // projectRoot is explicit when --root is given; falls back to Deno.cwd() otherwise.
-    // This keeps template paths (e.g. ".github/ISSUE_TEMPLATE/story.yml") resolving
-    // from the project root regardless of where the binary was invoked from.
-    const localRoot = options?.projectRoot ?? Deno.cwd();
-    const fileReader = new GitHubFileReader(owner, primaryRepo, localRoot);
+    // gh.auth.token is already the resolved literal value (env refs expanded by loadConfig).
+    const fileReader = new GitHubFileReader(owner, primaryRepo, gh.auth.token);
 
     // ── Facade assembly - single parameter object, no positional args ────
 

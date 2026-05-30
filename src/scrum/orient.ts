@@ -10,6 +10,7 @@ import type { ScrumConfig } from "../domain/config.ts";
 import type { EpicSummary, OrientResult, TemplateUriMap, UseCaseResult } from "../domain/types.ts";
 import { ITEM_TYPES, sprintContextFromSprintInfo } from "../domain/types.ts";
 import { catchBackend } from "../services/error-enrichment.ts";
+import type { ContentLocation } from "../domain/content-location.ts";
 
 /**
  * Compute days elapsed since the sprint start date (UTC midnight).
@@ -23,11 +24,13 @@ const daysSince = (startDate: string): number => {
 };
 
 /**
- * Build a TemplateUriMap from the backend's declared template paths.
- * Only types with a declared template path get a URI - the agent falls back
+ * Build a TemplateUriMap from the backend's declared template locations.
+ * Only types with a declared template location get a URI - the agent falls back
  * to its own defaults for absent types.
  */
-const buildTemplateUriMap = (typeTemplatePaths: Record<string, string>): TemplateUriMap | null => {
+const buildTemplateUriMap = (
+  typeTemplatePaths: Record<string, ContentLocation>,
+): TemplateUriMap | null => {
   const map: TemplateUriMap = {};
   for (const type of ITEM_TYPES) {
     if (typeTemplatePaths[type]) {
