@@ -72,8 +72,8 @@ interface GitHubClient {
 /** Config loader parameters. Only the GitHub client is required. */
 interface ConfigParams {
   github: GitHubClient;
-  /** Where to load the config from. Defaults to { kind: "file", path: ".github/scrum/config.yml" }. */
-  configLocation?: ContentLocation;
+  /** Where to load the config from. Always provided by the caller. */
+  configLocation: ContentLocation;
 }
 
 // ── Env-var resolution ────────────────────────────────────────────────────────
@@ -355,12 +355,7 @@ const classifyIterations = (
 // ── Main function ─────────────────────────────────────────────────────────────
 
 export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> => {
-  const { github } = params;
-
-  const configLocation: ContentLocation = params.configLocation ?? {
-    kind: "file",
-    path: resolve(Deno.cwd(), ".github/scrum/config.yml"),
-  };
+  const { github, configLocation } = params;
   const configDesc = describeContentLocation(configLocation);
 
   // Fetch and parse the config file from wherever its location points.

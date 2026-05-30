@@ -43,9 +43,10 @@ export class GitHubAdapterFactory implements AdapterFactory {
   readonly platform = "github";
 
   async create(options?: AdapterStartupOptions): Promise<BackendResult> {
+    const configLocation = options!.configLocation; // Required by AdapterStartupOptions post-patch
     const config = await loadConfig({
       github: { graphql },
-      configLocation: options?.configLocation,
+      configLocation,
     });
     const gh = config.scrumConfig.backends.github as GitHubBackendConfig;
     const ghClient = { graphql, rest };
@@ -116,7 +117,7 @@ export class GitHubAdapterFactory implements AdapterFactory {
       storyMutationService,
     );
 
-    const configReloader = new ConfigReloader(config, ghClient);
+    const configReloader = new ConfigReloader(config, ghClient, configLocation);
 
     // ── New unified services (P7) ───────────────────────────────────────
 

@@ -18,9 +18,9 @@ import type { ContentLocation } from "../domain/content-location.ts";
 export interface AdapterStartupOptions {
   /**
    * Where to load the scrum config from.
-   * undefined → adapter uses its default: { kind: "file", path: ".github/scrum/config.yml" }
+   * Always provided by the server composition root.
    */
-  readonly configLocation?: ContentLocation;
+  readonly configLocation: ContentLocation;
 }
 
 // ── AdapterFactory ──────────────────────────────────────────────────────────

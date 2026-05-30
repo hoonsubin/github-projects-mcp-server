@@ -1,6 +1,6 @@
 # Plan: Remove Silent Config Fallback — Make `--config` Mandatory
 
-> **TypeScript-engineering reassessment.** Original plan at v1 missed the [`ConfigReloader`](src/adapters/github/internal/config-reloader.ts:19) cascade — this revision captures every affected site.
+> **TypeScript-engineering reassessment.** Original plan at v1 missed the [`ConfigReloader`](src/adapters/github/internal/config-reloader.ts:19) cascade and the [`GitHubAdapterFactory.create():48`](src/adapters/github/factory.ts:48) `options?.configLocation` type mismatch — this revision captures every affected site.
 
 ---
 
@@ -21,7 +21,7 @@ When that default path doesn't exist, the error is caught in [`server.ts:262-277
 
 ---
 
-## Complete Change Inventory (11 sites, 6 files)
+## Complete Change Inventory (12 sites, 6 files)
 
 ### ⚠️ CRITICAL: ConfigReloader Cascade
 
@@ -199,25 +199,36 @@ Must import `ContentLocation` from `../../domain/content-location.ts`.
 
 ---
 
-### Site 11 — `src/adapters/github/factory.ts:119` (ConfigReloader construction)
+### Site 11 — `src/adapters/github/factory.ts:45-49` (capture configLocation at factory entry)
+
+```diff
+   async create(options?: AdapterStartupOptions): Promise<BackendResult> {
++    const configLocation = options!.configLocation; // Required by AdapterStartupOptions post-patch
+     const config = await loadConfig({
+       github: { graphql },
+-      configLocation: options?.configLocation,
++      configLocation,
+     });
+```
+
+**Why this is a separate site from Sites 7-8:** After making `AdapterStartupOptions.configLocation` required (Site 7), `create()` still accepts `options?: AdapterStartupOptions`. The `options?.configLocation` on line 48 would produce `ContentLocation | undefined`, failing to assign to `ConfigParams.configLocation` which is now required (Site 8). Capturing via `options!.configLocation` into a local const resolves the type. The non-null assertion is safe because `createBackend()` at [`server.ts:261`](src/server.ts:261) always passes `{ configLocation }`.
+
+---
+
+### Site 12 — `src/adapters/github/factory.ts:119` (ConfigReloader construction)
 
 ```diff
 -   const configReloader = new ConfigReloader(config, ghClient);
-+   const configReloader = new ConfigReloader(config, ghClient, {
-+     kind: "file" as const,
-+     path: config.scrumConfig._configSource, // or reconstruct from options
-+   });
++   const configReloader = new ConfigReloader(config, ghClient, configLocation);
 ```
 
-**⚠️ Open question:** How does `ConfigReloader` know the original config location? The `RuntimeConfig` does not currently store `configLocation`. Two approaches:
-
-**Option A (minimal):** Store the original `configLocation` on `RuntimeConfig` (add a `configLocation: ContentLocation` field). The reloader reads it from there.
-
-**Option B (parameter):** Pass it through `ConfigReloader` constructor (Site 10). The factory already has `options?.configLocation` at construction time.
-
-**Recommendation:** Option B — simpler, no type change to `RuntimeConfig`. The factory at [`factory.ts:48`](src/adapters/github/factory.ts:48) already has `options?.configLocation` (now required), so passing it to `ConfigReloader` is one line.
+`configLocation` refers to the local const captured in Site 11 above. This is **Option B** from the original analysis: simpler than modifying `RuntimeConfig`, and the value is already in scope.
 
 ---
+
+### Why Sites 11-12 are the precise conclusion
+
+The original plan's Site 11 code example referenced a non-existent `config.scrumConfig._configSource` field. That field does not exist on `ScrumConfig` or `RuntimeConfig`. The correct approach is to capture `options!.configLocation` once at the top of `create()` and use that same binding for both `loadConfig()` and `ConfigReloader` construction. Two sites (capture + consumption) rather than one.
 
 ## What Stays (NOT dead code)
 
@@ -241,15 +252,19 @@ Must import `ContentLocation` from `../../domain/content-location.ts`.
 
 ## Type Surface Reduction
 
-| Before                                          | After                               |
-| ----------------------------------------------- | ----------------------------------- |
-| `_configLocation: ContentLocation \| undefined` | `ContentLocation`                   |
-| 3 function params `configLocation?:`            | 3 function params `configLocation:` |
-| 1 `??` fallback + 1 `else` branch               | 0 (eliminated)                      |
-| `AdapterStartupOptions.configLocation?:`        | `configLocation:` (required)        |
-| `ConfigParams.configLocation?:`                 | `configLocation:` (required)        |
+| Before                                          | After                                   |
+| ----------------------------------------------- | --------------------------------------- |
+| `_configLocation: ContentLocation \| undefined` | `ContentLocation`                       |
+| 3 function params `configLocation?:`            | 3 function params `configLocation:`     |
+| 1 `??` fallback + 1 `else` branch               | 0 (eliminated)                          |
+| `AdapterStartupOptions.configLocation?:`        | `configLocation:` (required)            |
+| `ConfigParams.configLocation?:`                 | `configLocation:` (required)            |
+| `GitHubAdapterFactory.create()` line 48         | `options!.configLocation` local cap     |
+| `ConfigReloader` 2-arg constructor              | 3-arg constructor (adds configLocation) |
 
-**Net effect:** 5 optional types become required; 2 dead branches removed; 1 hidden default eliminated. The type system now accurately reflects that config is mandatory — not merely preferred.
+**Net effect:** 5 optional types become required; 2 dead branches removed; 1 hidden default eliminated; 1 constructor gains a parameter; 1 factory call site gains a local capture to bridge `options?` → `required`. The type system now accurately reflects that config is mandatory — not merely preferred.
+
+> **Note on `createBackend()` and `AdapterFactory.create()` signatures:** These retain `options?: AdapterStartupOptions` because the optionality is about whether _any_ startup options are provided, not whether config location is provided. In a future multi-backend world, a different adapter might not need any startup options. The non-null assertion at `github/factory.ts:46` (`options!.configLocation`) is the narrowest fix — it doesn't force other adapters to accept mandatory options.
 
 ---
 
@@ -280,3 +295,20 @@ After (hard crash):
         ▼
   Server exits immediately — never starts MCP transport
 ```
+
+## Implementation Order (critical-path dependency chain)
+
+Sites must be applied in this order to keep the codebase compilable between each step:
+
+1. **Site 10** — Add `configLocation` parameter to `ConfigReloader` constructor (additive; existing callers still compile with 2 args until Site 12)
+2. **Site 8** — Make `ConfigParams.configLocation` required
+3. **Site 9** — Remove `??` fallback in `loadConfig()` body
+4. **Site 7** — Make `AdapterStartupOptions.configLocation` required
+5. **Site 11** — Capture `options!.configLocation` local in `GitHubAdapterFactory.create()`
+6. **Site 12** — Pass `configLocation` to `ConfigReloader` constructor (now requires Site 10 + Site 11)
+7. **Site 1** — CLI early exit in `server.ts`
+8. **Site 2** — Help text update
+9. **Site 3** — `createMcpServer` signature
+10. **Site 4** — Error handling branches
+11. **Site 5** — `runStdio` signature
+12. **Site 6** — `runHttp` signature

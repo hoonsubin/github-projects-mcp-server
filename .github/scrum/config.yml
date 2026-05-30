@@ -129,13 +129,6 @@ ceremony_records:
   backend: github_discussions
   discussion_category: Ceremonies
 
-templates:
-  sprint_review: null
-  retrospective: null
-  standup: null
-  sprint_planning: null
-  refinement: null
-
 # ── BACKENDS ──────────────────────────────────────────────────────────────────
 #
 # One section per PM platform. The agent identifies backends by their key name

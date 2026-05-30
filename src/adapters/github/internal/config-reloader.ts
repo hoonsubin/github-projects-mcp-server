@@ -7,16 +7,18 @@
 // =============================================================================
 
 import { loadConfig, type RuntimeConfig } from "../config-loader.ts";
+import type { ContentLocation } from "../../../domain/content-location.ts";
 import type { GitHubClient } from "./http-client.ts";
 
 export class ConfigReloader {
   constructor(
     private readonly config: RuntimeConfig,
     private readonly github: GitHubClient,
+    private readonly configLocation: ContentLocation,
   ) {}
 
   async reload(): Promise<void> {
-    const fresh = await loadConfig({ github: this.github });
+    const fresh = await loadConfig({ github: this.github, configLocation: this.configLocation });
 
     // Patch iterations in-place - every service reads these via the shared reference
     this.config.iterations.active = fresh.iterations.active;
