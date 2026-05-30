@@ -8,6 +8,7 @@
 
 import { GitHubApiError } from "../errors.ts";
 import { PaginatedProjectItemFetcher } from "./pagination.ts";
+import { ProjectItemsQueryBuilder } from "./project-items-query-builder.ts";
 import { buildBurndownStoryInput } from "../mappers.ts";
 import { resolveSprint } from "./resolver.ts"; // standalone function - not a class method
 import { computeSprintEndDate } from "../../../scrum/sprint-math.ts";
@@ -54,7 +55,8 @@ export class BurndownCalculator {
     // No sprintFieldIds - use the full field values query so extractBoardFields
     // can resolve story_points, status, etc. Sprint filtering is done by the
     // predicate below via iterationId, which the full query still returns.
-    const fetcher = new PaginatedProjectItemFetcher(this.ctx);
+    const query = new ProjectItemsQueryBuilder(this.ctx.ghConfig.owner_type).buildQuery();
+    const fetcher = new PaginatedProjectItemFetcher(this.ctx, query);
 
     const items = await fetcher.collect((item) => {
       return item.fieldValues.nodes.some(

@@ -1,19 +1,17 @@
 // =============================================================================
 // src/adapters/github/internal/pagination.ts - PaginatedProjectItemFetcher
 //
-// Reusable abstraction for fetching GitHub Projects v2 items with cursor-based
-// pagination. Optimized for minimal payload by allowing callers to specify
-// which field values to include.
+// Cursor-based pagination infrastructure for GitHub Projects v2 items.
+// Receives a pre-built GraphQL query (built by ProjectItemsQueryBuilder)
+// and does nothing but page through results.
 //
-// Used by:
-//   - Story 7 (scrum_find_items) - fetch all items, filter by null sprint
-//   - Story 8 (scrum_get_sprint) - fetch items for a specific sprint
-//   - Story 10 (scrum_get_burndown) - fetch items across sprints for velocity
-//   - Future tools - any tool needing project item access
+// Phase 1 of adapter refactoring — query-building responsibility moved to
+// project-items-query-builder.ts. The fetcher is pure cursor iteration.
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
 import type { GitHubInfraContext } from "./infra-context.ts";
+import type { ProjectItemsResponse } from "./project-items-query-builder.ts";
 import type {
   ItemFieldValue,
   OwnerType,
@@ -23,17 +21,7 @@ import type {
   ProjectItemIssueContent,
   ProjectItemPRContent,
   ProjectV2ItemRef,
-  ProjectV2Ref,
 } from "../types.ts";
-
-// ---------------------------------------------------------------------------
-// ItemFetchConfig — controls which field values are fetched
-// ---------------------------------------------------------------------------
-
-export interface ItemFetchConfig {
-  /** Whether to fetch sprint iteration field values (default: true). */
-  sprint?: boolean;
-}
 
 // ---------------------------------------------------------------------------
 // PaginatedProjectItemFetcher
@@ -42,10 +30,12 @@ export interface ItemFetchConfig {
 /**
  * Cursor-based paginated fetcher for GitHub Projects v2 items.
  *
- * Automatically fetches the first page on construction.
+ * Receives a pre-built query (from ProjectItemsQueryBuilder) and pages
+ * through results. No query logic lives here — this is pure iteration
+ * infrastructure.
  *
  * @param ctx - GitHubInfraContext carrying config, gh, owner, repo
- * @param options - Fetch configuration controlling payload size
+ * @param query - Pre-built GraphQL query document from ProjectItemsQueryBuilder
  */
 export class PaginatedProjectItemFetcher {
   private login: string;
@@ -58,13 +48,13 @@ export class PaginatedProjectItemFetcher {
 
   constructor(
     private ctx: GitHubInfraContext,
-    private options: ItemFetchConfig = {},
+    query: string,
   ) {
     const ghConfig = ctx.config.ghConfig;
     this.login = ghConfig.owner;
     this.projectNumber = ghConfig.project_number;
     this.ownerType = ghConfig.owner_type;
-    this.query = buildItemsQuery(this.ownerType, this.options);
+    this.query = query;
   }
 
   /** Get total item count from the first page response. */
@@ -154,110 +144,6 @@ export class PaginatedProjectItemFetcher {
 
 export const isBacklogItem = (item: ProjectItem, sprintFieldId: string): boolean => {
   return !item.fieldValues.nodes.some((fv) => fv.field?.id === sprintFieldId && fv.iterationId);
-};
-
-// ---------------------------------------------------------------------------
-// Query builders (private helpers)
-// ---------------------------------------------------------------------------
-
-interface ProjectItemsResponse {
-  user?: { projectV2: ProjectV2ItemsPage | null } | null;
-  organization?: { projectV2: ProjectV2ItemsPage | null } | null;
-}
-
-interface ProjectV2ItemsPage extends ProjectV2Ref {
-  items: {
-    totalCount: number;
-    pageInfo: PageInfoRef;
-    nodes: ProjectItem[];
-  };
-}
-
-const buildItemsQuery = (ownerType: OwnerType, opts: ItemFetchConfig): string => {
-  const ownerField = ownerType === "user" ? "user" : "organization";
-  const sprintFragment = opts.sprint !== false
-    ? `
-        ... on ProjectV2ItemFieldIterationValue {
-          field { ... on ProjectV2FieldCommon { id name } }
-          iterationId
-          title
-          startDate
-          duration
-        }`
-    : "";
-  return `
-    query($login: String!, $number: Int!, $cursor: String) {
-      ${ownerField}(login: $login) {
-        projectV2(number: $number) {
-          id
-          items(first: 100, after: $cursor, orderBy: { field: POSITION, direction: ASC }) {
-            totalCount
-            pageInfo { hasNextPage endCursor }
-            nodes {
-              id
-              type
-              createdAt
-              updatedAt
-              isArchived
-              content {
-                __typename
-                ... on Issue {
-                  id number title body url state
-                  assignees(first: 5) { nodes { login } }
-                  labels(first: 10) { nodes { name color } }
-                  milestone { id title }
-                  repository { name nameWithOwner }
-                }
-                ... on PullRequest {
-                  id number title body url state isDraft
-                  assignees(first: 5) { nodes { login } }
-                  labels(first: 10) { nodes { name color } }
-                  repository { name nameWithOwner }
-                }
-                ... on DraftIssue {
-                  id title body
-                  assignees(first: 5) { nodes { login } }
-                }
-              }
-              fieldValues(first: 20) {
-                nodes {
-                  __typename
-                  ... on ProjectV2ItemFieldTextValue {
-                    field { ... on ProjectV2FieldCommon { id name } } text
-                  }
-                  ... on ProjectV2ItemFieldNumberValue {
-                    field { ... on ProjectV2FieldCommon { id name } } number
-                  }
-                  ... on ProjectV2ItemFieldDateValue {
-                    field { ... on ProjectV2FieldCommon { id name } } date
-                  }
-                  ... on ProjectV2ItemFieldSingleSelectValue {
-                    field { ... on ProjectV2FieldCommon { id name } } name color optionId
-                  }
-                  ... on ProjectV2ItemFieldUserValue {
-                    field { ... on ProjectV2FieldCommon { id name } }
-                    users(first: 5) { nodes { login } }
-                  }
-                  ... on ProjectV2ItemFieldLabelValue {
-                    field { ... on ProjectV2FieldCommon { id name } }
-                    labels(first: 5) { nodes { name color } }
-                  }
-                  ... on ProjectV2ItemFieldMilestoneValue {
-                    field { ... on ProjectV2FieldCommon { id name } }
-                    milestone { id title dueOn }
-                  }
-                  ... on ProjectV2ItemFieldRepositoryValue {
-                    field { ... on ProjectV2FieldCommon { id name } }
-                    repository { name nameWithOwner }
-                  }${sprintFragment}
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  `;
 };
 
 // Re-export types used by downstream consumers

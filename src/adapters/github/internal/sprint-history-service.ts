@@ -7,6 +7,7 @@
 
 import { GitHubApiError } from "../errors.ts";
 import { PaginatedProjectItemFetcher } from "./pagination.ts";
+import { ProjectItemsQueryBuilder } from "./project-items-query-builder.ts";
 import type { GitHubInfraContext } from "./infra-context.ts";
 import type { SprintHistoryEntry } from "../../../scrum/ports.ts";
 import type { ProjectItemIssueContent, ProjectItemPRContent } from "../types.ts";
@@ -87,7 +88,8 @@ export class SprintHistoryService {
    * exclude them explicitly, preserving the original query shape from the paginator.
    */
   private fetchAllItems() {
-    const fetcher = new PaginatedProjectItemFetcher(this.ctx);
+    const query = new ProjectItemsQueryBuilder(this.ctx.ghConfig.owner_type).buildQuery();
+    const fetcher = new PaginatedProjectItemFetcher(this.ctx, query);
     return fetcher.collect(() => true);
   }
 }

@@ -16,6 +16,7 @@
 
 import { assert, assertEquals, assertRejects } from "@std/assert";
 import { isBacklogItem, PaginatedProjectItemFetcher } from "./pagination.ts";
+import { ProjectItemsQueryBuilder } from "./project-items-query-builder.ts";
 import { createGhSpy, makeCtx } from "./_test_utils.ts";
 import { GitHubApiError } from "../errors.ts";
 
@@ -38,6 +39,10 @@ const P1_NODES = (p1Fixture as { user: { projectV2: { items: { nodes: unknown[] 
 const P2_NODES = (p2Fixture as { user: { projectV2: { items: { nodes: unknown[] } } } })
   .user.projectV2.items.nodes;
 const FIXTURE_TOTAL = P1_NODES.length + P2_NODES.length;
+
+// Pre-built queries matching the fixture owner types.
+const USER_QUERY = new ProjectItemsQueryBuilder("user").buildQuery();
+const ORG_QUERY = new ProjectItemsQueryBuilder("org").buildQuery();
 
 // ── Synthetic response builders ───────────────────────────────────────────────
 
@@ -68,6 +73,7 @@ Deno.test({
 
     const fetcher = new PaginatedProjectItemFetcher(
       makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
+      USER_QUERY,
     );
     const items = await fetcher.collect(() => true);
 
@@ -84,6 +90,7 @@ Deno.test({
 
     const fetcher = new PaginatedProjectItemFetcher(
       makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
+      USER_QUERY,
     );
     const items = await fetcher.collect(() => true);
 
@@ -100,6 +107,7 @@ Deno.test({
 
     const fetcher = new PaginatedProjectItemFetcher(
       makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
+      USER_QUERY,
     );
     const items = await fetcher.collect(() => true);
 
@@ -121,6 +129,7 @@ Deno.test({
 
     const fetcher = new PaginatedProjectItemFetcher(
       makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
+      USER_QUERY,
     );
     const items = await fetcher.collect(() => true);
 
@@ -160,6 +169,7 @@ Deno.test({
 
     const fetcher = new PaginatedProjectItemFetcher(
       makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
+      USER_QUERY,
     );
     assertEquals(gh.graphqlCalls.length, 0, "No calls should happen in constructor");
 
@@ -180,6 +190,7 @@ Deno.test({
 
     const fetcher = new PaginatedProjectItemFetcher(
       makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
+      USER_QUERY,
     );
     // p1 has 10 PULL_REQUEST + 1 DRAFT_ISSUE, so ISSUE count < FIXTURE_TOTAL
     const issues = await fetcher.collect((item) => item.type === "ISSUE");
@@ -202,6 +213,7 @@ Deno.test({
 
     const fetcher = new PaginatedProjectItemFetcher(
       makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
+      USER_QUERY,
     );
     const none = await fetcher.collect(() => false);
 
@@ -269,6 +281,7 @@ Deno.test({
 
     const fetcher = new PaginatedProjectItemFetcher(
       makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
+      USER_QUERY,
     );
     const items = await fetcher.collect(() => true);
 
@@ -285,6 +298,7 @@ Deno.test({
 
     const fetcher = new PaginatedProjectItemFetcher(
       makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
+      USER_QUERY,
     );
     await assertRejects(
       () => fetcher.collect(() => true),
@@ -299,7 +313,7 @@ Deno.test({
     const gh = createGhSpy();
     gh.enqueue(makeEmptyPage("org"));
 
-    const fetcher = new PaginatedProjectItemFetcher(makeCtx(gh));
+    const fetcher = new PaginatedProjectItemFetcher(makeCtx(gh), ORG_QUERY);
     const items = await fetcher.collect(() => true);
 
     assertEquals(items.length, 0);
@@ -314,6 +328,7 @@ Deno.test({
 
     const fetcher = new PaginatedProjectItemFetcher(
       makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
+      USER_QUERY,
     );
     await fetcher.collect(() => true);
 

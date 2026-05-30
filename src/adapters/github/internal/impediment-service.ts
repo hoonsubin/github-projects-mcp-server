@@ -27,6 +27,7 @@ import {
   GET_ISSUE_BY_ID_QUERY,
   REPLACE_ISSUE_LABELS_MUTATION,
 } from "../queries.ts";
+import { ProjectItemsQueryBuilder } from "./project-items-query-builder.ts";
 import { PaginatedProjectItemFetcher } from "./pagination.ts";
 import type { ProjectItemIssueContent, UserLogin } from "../types.ts";
 import type { CreateStoryInput, ImpedimentListing } from "../../../scrum/ports.ts";
@@ -131,7 +132,8 @@ export class ImpedimentService {
     const iterationId = resolveSprint(sprint, this.ctx.config);
     if (!iterationId) return [];
 
-    const fetcher = new PaginatedProjectItemFetcher(this.ctx);
+    const query = new ProjectItemsQueryBuilder(this.ctx.ghConfig.owner_type).buildQuery();
+    const fetcher = new PaginatedProjectItemFetcher(this.ctx, query);
 
     // Fetch all items, filter by sprint iteration
     const sprintItems = await fetcher.collect((item) => {

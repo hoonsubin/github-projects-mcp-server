@@ -10,6 +10,7 @@ import { GitHubApiError } from "../errors.ts";
 import { type BackendCallResult, catchBackend } from "../../../services/error-enrichment.ts";
 import type * as GH from "../generated/github-types.ts";
 import { isBacklogItem, PaginatedProjectItemFetcher } from "./pagination.ts";
+import { ProjectItemsQueryBuilder } from "./project-items-query-builder.ts";
 import { resolveSprint, resolveStory } from "./resolver.ts";
 import {
   buildCommentList,
@@ -172,7 +173,12 @@ export const buildDependencyMap = (
  * Injected into GitHubProjectBackend via constructor (DIP).
  */
 export class StoryQueryService {
-  constructor(private readonly ctx: GitHubInfraContext) {}
+  private readonly projectItemsQuery: string;
+
+  constructor(private readonly ctx: GitHubInfraContext) {
+    this.projectItemsQuery = new ProjectItemsQueryBuilder(this.ctx.ghConfig.owner_type)
+      .buildQuery();
+  }
 
   async getSprintStories(
     sprint: SprintRef,
@@ -218,7 +224,7 @@ export class StoryQueryService {
   }
 
   async getBacklogStories(): Promise<Story[]> {
-    const fetcher = new PaginatedProjectItemFetcher(this.ctx);
+    const fetcher = new PaginatedProjectItemFetcher(this.ctx, this.projectItemsQuery);
     const backlogItems = await fetcher.collect((item) =>
       isBacklogItem(item, this.ctx.config.live.fields.sprintFieldId)
     );
@@ -337,7 +343,7 @@ export class StoryQueryService {
 
   /** Fetch all project items (including issues, PRs, and draft issues). */
   fetchAllItems(): Promise<ProjectItem[]> {
-    const fetcher = new PaginatedProjectItemFetcher(this.ctx);
+    const fetcher = new PaginatedProjectItemFetcher(this.ctx, this.projectItemsQuery);
     return fetcher.collect(() => true);
   }
 
