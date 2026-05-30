@@ -26,6 +26,7 @@ import { resolveToken, validateToken } from "../../src/adapters/github/types.ts"
 import type { GitHubBackendConfig, ResolvedToken } from "../../src/adapters/github/types.ts";
 import { bootstrapGitHub } from "../../src/adapters/github/bootstrap.ts";
 import { PaginatedProjectItemFetcher } from "../../src/adapters/github/internal/pagination.ts";
+import { GET_USER_NODE_ID } from "../../src/adapters/github/queries.ts";
 import type { ScrumConfig } from "../../src/domain/config.ts";
 
 // Fixtures land next to the tests that consume them.
@@ -119,6 +120,30 @@ export class GitHubFixtureCapturer {
     const fetcher = new PaginatedProjectItemFetcher(bootState, itemsRec.client);
     await fetcher.collect(() => true);
     savedFiles.push(...await itemsRec.saveAll(effectiveDir, "project-items"));
+
+    // ── Phase 3: user node IDs ────────────────────────────────────────────────
+    // Captures GetUserNodeId for the owner login from the config so
+    // user-milestone-resolver.test.ts and field-value-mutator.test.ts can
+    // exercise the real resolveUserNodeId path with real API response shapes.
+    // Also captures a NOT_FOUND response for a non-existent user.
+
+    // Resolve a real user login — for user-type owners, the owner IS the user.
+    // For org-type owners, fall back to the first team member's login.
+    const loginToResolve = resolvedGhConfig.owner_type === "user"
+      ? resolvedGhConfig.owner
+      : (resolvedGhConfig.team?.[0]?.login ?? resolvedGhConfig.owner);
+    const userNodeIds: Record<string, unknown> = {};
+
+    // Resolve the user login (real API call)
+    const ownerResult = await realGraphql(GET_USER_NODE_ID, { login: loginToResolve });
+    userNodeIds[loginToResolve] = ownerResult;
+
+    // NOT_FOUND: simulate a non-existent user (API returns { user: null })
+    userNodeIds["_not_found_"] = { user: null };
+
+    const userNodeIdsPath = resolve(effectiveDir, "user-node-ids.json");
+    await Deno.writeTextFile(userNodeIdsPath, JSON.stringify(userNodeIds, null, 2));
+    savedFiles.push(userNodeIdsPath);
 
     // ── Manifest ──────────────────────────────────────────────────────────────
     const capturedAt = new Date().toISOString();
