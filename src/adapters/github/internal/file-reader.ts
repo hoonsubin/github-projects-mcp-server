@@ -19,7 +19,7 @@ export class GitHubFileReader implements FileReaderPort {
     private readonly token: string,
   ) {}
 
-  async fetchContent(location: ContentLocation): Promise<string> {
+  fetchContent(location: ContentLocation): Promise<string> {
     if (location.kind === "url" && location.url.hostname === "github.com") {
       return this.fetchGitHubBlobAsRaw(location.url);
     }

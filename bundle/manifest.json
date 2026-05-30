@@ -15,9 +15,7 @@
       "args": [
         "${__dirname}/server/index.js",
         "--config",
-        "${user_config.config_path}",
-        "--root",
-        "${user_config.project_root}"
+        "${user_config.config_path}"
       ],
       "env": {
         "GITHUB_TOKEN": "${user_config.github_token}"
@@ -36,14 +34,8 @@
     },
     "config_path": {
       "type": "string",
-      "title": "Scrum Config Path",
-      "description": "Absolute path to your project's scrum config file, e.g. /Users/you/myproject/.github/scrum/config.yml",
-      "required": true
-    },
-    "project_root": {
-      "type": "string",
-      "title": "Project Root",
-      "description": "Absolute path to the root of the project this server manages, e.g. /Users/you/myproject",
+      "title": "Scrum Config Location",
+      "description": "Path or URL to your project's scrum config file. Accepts a local path (e.g. /Users/you/myproject/.github/scrum/config.yml), a relative path (e.g. ./scrum.yml), or an https:// URL to a remote config. The project root is declared in the config file itself via project.projRoot (relative to the config file's directory).",
       "required": true
     }
   },
