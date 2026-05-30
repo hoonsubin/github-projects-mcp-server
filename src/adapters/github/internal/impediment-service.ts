@@ -28,7 +28,7 @@ import {
   REPLACE_ISSUE_LABELS_MUTATION,
 } from "../queries.ts";
 import { PaginatedProjectItemFetcher } from "./pagination.ts";
-import type { RuntimeConfig } from "../config-loader.ts";
+import type { GitHubBootState } from "../bootstrap.ts";
 import type { ProjectItemIssueContent, UserLogin } from "../types.ts";
 import type { CreateStoryInput, ImpedimentListing } from "../../../scrum/ports.ts";
 import type { ImpedimentRef, SprintRef, StoryRef } from "../../../domain/types.ts";
@@ -67,7 +67,7 @@ interface ImpedimentIssuesResponse {
  */
 export class ImpedimentService {
   constructor(
-    private readonly config: RuntimeConfig,
+    private readonly config: GitHubBootState,
     private readonly gh: GitHubClient,
     private readonly owner: string,
     private readonly repo: string,
@@ -132,32 +132,27 @@ export class ImpedimentService {
     const iterationId = resolveSprint(sprint, this.config);
     if (!iterationId) return [];
 
-    const fetcher = new PaginatedProjectItemFetcher(this.config, this.gh, {
-      includeIssueContent: true,
-      includePRContent: false,
-      includeDraftIssueContent: false,
-      pageSize: 100,
-    });
+    const fetcher = new PaginatedProjectItemFetcher(this.config, this.gh);
 
     // Fetch all items, filter by sprint iteration
     const sprintItems = await fetcher.collect((item) => {
       const fv = item.fieldValues.nodes.find(
-        (v) => v.field?.id === this.config.fields.sprintFieldId,
+        (v) => v.field?.id === this.config.live.fields.sprintFieldId,
       );
       return fv?.iterationId === iterationId;
     });
 
     // Filter to Issues with the Type board field set to "impediment"
-    const impedimentOptionId = this.config.typeOptions["impediment"];
+    const impedimentOptionId = this.config.live.typeOptions["impediment"];
     if (!impedimentOptionId) {
       throw new GitHubApiError(
         `"impediment" type option not found in config.typeOptions. ` +
-          `Valid type keys: ${Object.keys(this.config.typeOptions).join(", ")}. ` +
+          `Valid type keys: ${Object.keys(this.config.live.typeOptions).join(", ")}. ` +
           `Add "impediment" to type_mapping in your config file.`,
         {
           code: "OPTION_NOT_FOUND",
           recovery: "Check your config type_mapping for an 'impediment' entry.",
-          context: { valid: Object.keys(this.config.typeOptions) },
+          context: { valid: Object.keys(this.config.live.typeOptions) },
         },
       );
     }
@@ -165,7 +160,7 @@ export class ImpedimentService {
       .filter((item) =>
         item.content?.__typename === "Issue" &&
         item.fieldValues.nodes.some((v) =>
-          v.field?.id === this.config.fields.typeFieldId &&
+          v.field?.id === this.config.live.fields.typeFieldId &&
           "optionId" in v && v.optionId === impedimentOptionId
         )
       )

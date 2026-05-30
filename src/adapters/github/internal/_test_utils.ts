@@ -4,7 +4,7 @@
 // =============================================================================
 
 import type { GitHubClient, RestResponse } from "./http-client.ts";
-import type { RuntimeConfig } from "../config-loader.ts";
+import type { GitHubBootState } from "../bootstrap.ts";
 
 // ── GitHubClient spy ──────────────────────────────────────────────────────────
 
@@ -54,41 +54,54 @@ export function createGhSpy(): GitHubClientSpy {
   return spy;
 }
 
-// ── RuntimeConfig factory ─────────────────────────────────────────────────────
+// ── GitHubBootState factory ───────────────────────────────────────────────────
 
 /**
- * Builds a minimal but structurally valid RuntimeConfig for tests.
+ * Builds a minimal but structurally valid GitHubBootState for tests.
  * Pass overrides for only the fields your test cares about.
  *
- * Use this instead of `{} as unknown as RuntimeConfig` — the cast hides
- * breakage when RuntimeConfig fields change.
+ * Use this instead of `{} as unknown as GitHubBootState` — the cast hides
+ * breakage when GitHubBootState fields change.
  */
-export function makeConfig(overrides: Partial<RuntimeConfig> = {}): RuntimeConfig {
+export function makeConfig(overrides: Partial<GitHubBootState> = {}): GitHubBootState {
   return {
     scrumConfig: {
       project: { name: "Test" },
       scrum: { priority: [], status: {} },
       backends: { github: {} },
     },
-    projectId: "PVT_project1",
-    fields: {
-      sprintFieldId: "PVTF_sprint",
-      statusFieldId: "PVTF_status",
-      storyPointsFieldId: "PVTF_points",
-      priorityFieldId: "PVTF_priority",
-      epicFieldId: null,
-      assigneeFieldId: null,
-      typeFieldId: "PVTF_type",
+    ghConfig: {
+      auth: { token: "ghp_test" as never },
+      owner: "test-owner",
+      owner_type: "org" as const,
+      project_number: 1,
+      tracked_repos: ["test-repo"],
+      type_mapping: {},
+      field_mapping: { sprint: "Sprint", status: "Status" },
+      status_display: { "done": "Done" },
+      priority_display: { "p0": "Must" },
     },
-    statusOptions: { "In Progress": "opt_ip" },
-    priorityOptions: { "Must": "opt_must" },
-    typeOptions: { feature: "opt_feature", bug: "opt_bug" },
-    typeTemplatePaths: {},
-    iterations: {
-      active: { id: "IT_active", title: "Sprint 5", startDate: "2026-01-01", duration: 14 },
-      next: { id: "IT_next", title: "Sprint 6", startDate: "2026-01-15", duration: 14 },
-      completed: [],
-      all: [],
+    live: {
+      projectId: "PVT_project1",
+      fields: {
+        sprintFieldId: "PVTF_sprint",
+        statusFieldId: "PVTF_status",
+        storyPointsFieldId: "PVTF_points",
+        priorityFieldId: "PVTF_priority",
+        epicFieldId: null,
+        assigneeFieldId: null,
+        typeFieldId: "PVTF_type",
+      },
+      statusOptions: { "In Progress": "opt_ip" },
+      priorityOptions: { "Must": "opt_must" },
+      typeOptions: { feature: "opt_feature", bug: "opt_bug" },
+      typeTemplatePaths: {},
+      iterations: {
+        active: { id: "IT_active", title: "Sprint 5", startDate: "2026-01-01", duration: 14 },
+        next: { id: "IT_next", title: "Sprint 6", startDate: "2026-01-15", duration: 14 },
+        completed: [],
+        all: [],
+      },
     },
     ...overrides,
   };

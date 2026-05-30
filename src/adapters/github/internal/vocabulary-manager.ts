@@ -11,7 +11,7 @@ import { assertNever } from "../../../domain/errors.ts";
 import { type SelectFieldOption } from "../types.ts";
 import { type GitHubClient } from "./http-client.ts";
 import { LabelResolver } from "./label-resolver.ts";
-import type { RuntimeConfig } from "../config-loader.ts";
+import type { GitHubBootState } from "../bootstrap.ts";
 import type { CreateResult, VocabularyKind } from "../../../scrum/ports.ts";
 import { GET_FIELD_OPTIONS_QUERY, UPDATE_FIELD_MUTATION } from "../queries.ts";
 
@@ -31,14 +31,14 @@ interface GetFieldOptionsResponse {
  * Injected into GitHubProjectBackend via constructor (DIP).
  */
 export class VocabularyManager {
-  private readonly config: RuntimeConfig;
+  private readonly config: GitHubBootState;
   private readonly gh: GitHubClient;
   private readonly labelResolver: LabelResolver;
   private readonly owner: string;
   private readonly repo: string;
 
   constructor(
-    config: RuntimeConfig,
+    config: GitHubBootState,
     gh: GitHubClient,
     labelResolver: LabelResolver,
     owner: string,
@@ -66,7 +66,7 @@ export class VocabularyManager {
   }
 
   private async addStatusOption(value: string): Promise<CreateResult> {
-    const fieldId = this.config.fields.statusFieldId;
+    const fieldId = this.config.live.fields.statusFieldId;
     if (!fieldId) {
       throw new GitHubApiError(
         "Status field is not configured in this project.",
@@ -82,7 +82,7 @@ export class VocabularyManager {
   }
 
   private async addPriorityOption(value: string): Promise<CreateResult> {
-    const fieldId = this.config.fields.priorityFieldId;
+    const fieldId = this.config.live.fields.priorityFieldId;
     if (!fieldId) {
       throw new GitHubApiError(
         "Priority field is not configured in this project.",
@@ -115,7 +115,7 @@ export class VocabularyManager {
     ];
     await this.gh.graphql(
       UPDATE_FIELD_MUTATION,
-      { projectId: this.config.projectId, fieldId, options: updatedOptions },
+      { projectId: this.config.live.projectId, fieldId, options: updatedOptions },
     );
     return { created: true };
   }

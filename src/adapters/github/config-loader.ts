@@ -11,7 +11,8 @@
 
 import { parse } from "@std/yaml";
 import { dirname, resolve } from "@std/path";
-import type { GitHubBackendConfig } from "./types.ts";
+import type { GitHubBackendConfig, ResolvedToken } from "./types.ts";
+import { resolveToken, validateToken } from "./types.ts";
 import type { ScrumConfig } from "../../domain/config.ts";
 import type { IterationEntry } from "../../domain/types.ts";
 import {
@@ -64,9 +65,11 @@ export interface RuntimeConfig {
   };
 }
 
-/** Minimal GitHub client interface used during config loading. */
+/** Minimal GitHub client interface used during config loading.
+ *  graphql accepts ResolvedToken as first parameter — the token resolved
+ *  earlier in this function is forwarded directly to the API transport. */
 interface GitHubClient {
-  graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T>;
+  graphql<T>(token: ResolvedToken, query: string, variables?: Record<string, unknown>): Promise<T>;
 }
 
 /** Config loader parameters. Only the GitHub client is required. */
@@ -75,25 +78,6 @@ interface ConfigParams {
   /** Where to load the config from. Always provided by the caller. */
   configLocation: ContentLocation;
 }
-
-// ── Env-var resolution ────────────────────────────────────────────────────────
-
-/**
- * If `value` starts with "$", treat the remainder as an environment variable
- * name and return its value. Throws with a clear message if the variable is
- * unset. Literal values (no "$" prefix) are returned as-is.
- */
-const resolveEnvRef = (value: string, context: string): string => {
-  if (!value.startsWith("$")) return value;
-  const varName = value.slice(1);
-  const resolved = Deno.env.get(varName);
-  if (!resolved) {
-    throw new Error(
-      `Config error: ${context} references $${varName} but that environment variable is not set.`,
-    );
-  }
-  return resolved;
-};
 
 // ── Helper types ──────────────────────────────────────────────────────────────
 
@@ -411,8 +395,12 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
   const ghConfig = parsedConfig.backends.github as GitHubBackendConfig;
 
   // Resolve $ENV_VAR references in auth and patch the config object.
+  // resolveToken() throws GitHubApiError (code: AUTH_FAILED) when the env var is unset.
+  // validateToken() catches empty strings and non-standard token formats before
+  // any API call is made.
   // We do NOT mutate the original parsed object - create a patched copy for internal use.
-  const resolvedToken = resolveEnvRef(ghConfig.auth.token, "backends.github.auth.token");
+  const resolvedToken: ResolvedToken = resolveToken(ghConfig.auth.token, configDesc);
+  validateToken(resolvedToken, configDesc);
   const patchedGhConfig: GitHubBackendConfig = {
     ...ghConfig,
     auth: { ...ghConfig.auth, token: resolvedToken },
@@ -468,7 +456,7 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
     ? GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY
     : GET_ORG_PROJECT_FIELDS_BOOTSTRAP_QUERY;
 
-  const fieldsResult = await github.graphql<ProjectFieldsResponse>(bootstrapQuery, {
+  const fieldsResult = await github.graphql<ProjectFieldsResponse>(resolvedToken, bootstrapQuery, {
     login: owner,
     number: projectNumber,
   });

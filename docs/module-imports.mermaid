@@ -37,6 +37,15 @@ classDiagram
             +getBoardHealthUseCase()
         }
 
+        class _test_utils.ts:::scrum {
+            +buildTypeTemplatePaths() Promise<Record<string, ContentLocation>>
+            +Promise<Record<string, ContentLocation>> typeTemplatePathsPromise
+            +FileReaderPort realFileReader
+            +FileReaderPort stubFileReader
+            +withTestServer() Promise<void>
+            %% Unused: buildTypeTemplatePaths, typeTemplatePathsPromise, realFileReader, stubFileReader, withTestServer
+        }
+
         class fetch-location.ts:::scrum {
             +fetchContent()
         }
@@ -363,6 +372,13 @@ classDiagram
             %% Unused: GitHubLabel
         }
 
+        class _test_utils.ts:::internal {
+            interface GitHubClientSpy
+            +createGhSpy() GitHubClientSpy
+            +makeConfig() RuntimeConfig
+            %% Unused: GitHubClientSpy, createGhSpy, makeConfig
+        }
+
         class sprint-history-service.ts:::internal {
             class SprintHistoryService
         }
@@ -394,7 +410,6 @@ classDiagram
             interface GitHubClient
             +graphql()
             +rest()
-            %% Unused: RestResponse
         }
 
         class impediment-service.ts:::internal {
@@ -452,7 +467,10 @@ classDiagram
             interface LinkedPr
             interface DraftStory
             interface IssueStory
-            %% Unused: GitHubMilestoneId, toEntityRef, ItemContentType, IssueIdentity, PrIdentity, PrDiscriminator, PrState, IssueState, IssueRef, LabelRef, FieldValueField, FieldValueUser, FieldValueUserNodes, FieldValueLabel, FieldValueLabelNodes, FieldValueMilestone, FieldValueRepository, LabelColorNodes
+            type ResolvedToken
+            +resolveToken()
+            +validateToken()
+            %% Unused: GitHubMilestoneId, toEntityRef, ItemContentType, IssueIdentity, PrIdentity, PrDiscriminator, PrState, IssueState, IssueRef, LabelRef, FieldValueField, FieldValueUser, FieldValueUserNodes, FieldValueLabel, FieldValueLabelNodes, FieldValueMilestone, FieldValueRepository, LabelColorNodes, ResolvedToken, resolveToken, validateToken
         }
 
         class config-loader.ts:::github {
@@ -491,7 +509,10 @@ classDiagram
     get-story.ts --> acceptance-criteria.ts : "imports"
     get-board-health.ts --> ports.ts : "imports"
     get-board-health.ts --> types.ts : "imports"
+    _test_utils.ts --> http-client.ts : "imports"
+    _test_utils.ts --> config-loader.ts : "imports"
     fetch-location.ts --> content-location.ts : "imports"
+    fetch-location.ts --> errors.ts : "imports"
     ports.ts --> types.ts : "imports"
     ports.ts --> error-enrichment.ts : "imports"
     ports.ts --> content-location.ts : "imports"
@@ -503,6 +524,7 @@ classDiagram
     resolve-location.ts --> content-location.ts : "imports"
     errors.ts --> types.ts : "imports"
     types.ts --> github-types.ts : "imports"
+    types.ts --> errors.ts : "imports"
     config.ts --> types.ts : "imports"
     error-enrichment.ts --> errors.ts : "imports"
     error-enrichment.ts --> types.ts : "imports"
@@ -558,6 +580,7 @@ classDiagram
     mappers.ts --> sprint-math.ts : "imports"
     mappers.ts --> ports.ts : "imports"
     config-reloader.ts --> config-loader.ts : "imports"
+    config-reloader.ts --> content-location.ts : "imports"
     config-reloader.ts --> http-client.ts : "imports"
     burndown-calculator.ts --> errors.ts : "imports"
     burndown-calculator.ts --> http-client.ts : "imports"

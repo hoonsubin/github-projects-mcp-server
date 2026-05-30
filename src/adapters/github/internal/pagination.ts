@@ -13,9 +13,8 @@
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
-import type { RuntimeConfig } from "../config-loader.ts";
+import type { GitHubBootState } from "../bootstrap.ts";
 import type {
-  GitHubBackendConfig,
   ItemFieldValue,
   OwnerType,
   PageInfoRef,
@@ -28,373 +27,237 @@ import type {
 } from "../types.ts";
 
 // ---------------------------------------------------------------------------
-// Types
+// ItemFetchConfig — controls which field values are fetched
 // ---------------------------------------------------------------------------
 
-/**
- * Configuration for what data to fetch per project item.
- * Controls the GraphQL payload to minimize bandwidth.
- */
-interface ItemFetchConfig {
-  /** Which sprint field IDs to include in fieldValues (for backlog filtering). */
-  sprintFieldIds?: string[];
-  /** Whether to fetch Issue content (default true) */
-  includeIssueContent?: boolean;
-  /** Whether to fetch PR content (default false for backlog) */
-  includePRContent?: boolean;
-  /** Whether to fetch DraftIssue content (default false) */
-  includeDraftIssueContent?: boolean;
-  /** Page size (default 100, max per GitHub API) */
-  pageSize?: number;
+export interface ItemFetchConfig {
+  /** Whether to fetch sprint iteration field values (default: true). */
+  sprint?: boolean;
 }
-
-/** Internal GraphQL response shape for project items. */
-interface ProjectItemsConnection {
-  totalCount: number;
-  pageInfo: PageInfoRef;
-  nodes: RawProjectItem[];
-}
-
-/** Query projection of GH.ProjectV2 for paginated items query. */
-interface ProjectV2QueryNode extends ProjectV2Ref {
-  items: ProjectItemsConnection;
-}
-
-interface ProjectItemsResponse {
-  user?: {
-    projectV2: ProjectV2QueryNode;
-  };
-  organization?: {
-    projectV2: ProjectV2QueryNode;
-  };
-}
-
-/** Raw item from GraphQL - mapped to ProjectItem by the fetcher. */
-interface RawProjectItem extends ProjectV2ItemRef {
-  content: RawContent;
-  fieldValues: {
-    nodes: ItemFieldValue[];
-  };
-}
-
-type RawContent =
-  | { __typename: "Issue" } & Omit<ProjectItemIssueContent, "__typename">
-  | { __typename: "PullRequest" } & Omit<ProjectItemPRContent, "__typename">
-  | { __typename: "DraftIssue" } & Omit<ProjectItemDraftContent, "__typename">
-  | null;
-
-// ---------------------------------------------------------------------------
-// GraphQL Queries
-// ---------------------------------------------------------------------------
-
-/**
- * Build a minimal GraphQL query for project items.
- * Only includes content types and field values the caller needs.
- */
-const buildItemsQuery = (
-  ownerType: OwnerType,
-  config: ItemFetchConfig,
-): string => {
-  // Build content fragment based on what's requested
-  const contentParts: string[] = [];
-
-  if (config.includeIssueContent !== false) {
-    contentParts.push(`
-        ... on Issue {
-          __typename id number title url state body
-          assignees(first: 5) { nodes { login } }
-          labels(first: 10) { nodes { name color } }
-          milestone { id title dueOn }
-          repository { name nameWithOwner }
-          blockedBy(first: 10) { nodes { id number title } }
-        }
-    `);
-  }
-
-  if (config.includePRContent) {
-    contentParts.push(`
-        ... on PullRequest {
-          __typename id number title url state body isDraft
-          assignees(first: 5) { nodes { login } }
-          labels(first: 10) { nodes { name color } }
-          repository { name nameWithOwner }
-        }
-    `);
-  }
-
-  if (config.includeDraftIssueContent) {
-    contentParts.push(`
-        ... on DraftIssue {
-          __typename id title body
-          assignees(first: 5) { nodes { login } }
-        }
-    `);
-  }
-
-  const contentFragment = contentParts.join("\n");
-
-  // Build fieldValues fragment - if sprintFieldIds provided, fetch only those
-  const sprintFieldIds = config.sprintFieldIds;
-  let fieldValuesFragment = "";
-
-  if (sprintFieldIds && sprintFieldIds.length > 0) {
-    // Fetch all field values but only render sub-fields for iteration type.
-    // first: 1 was wrong - GitHub has no field-type filter on fieldValues, so
-    // fetching only 1 value misses the sprint field whenever it isn't first.
-    fieldValuesFragment = `
-          fieldValues(first: 20) {
-            nodes {
-              __typename
-              ... on ProjectV2ItemFieldIterationValue {
-                iterationId title startDate duration
-                field { ... on ProjectV2FieldCommon { id name } }
-              }
-            }
-          }
-    `;
-  } else {
-    // Fetch all field values (default for sprint/burndown tools)
-    fieldValuesFragment = `
-          fieldValues(first: 20) {
-            nodes {
-              __typename
-              ... on ProjectV2ItemFieldTextValue { text field { ... on ProjectV2FieldCommon { id name } } }
-              ... on ProjectV2ItemFieldNumberValue { number field { ... on ProjectV2FieldCommon { id name } } }
-              ... on ProjectV2ItemFieldDateValue { date field { ... on ProjectV2FieldCommon { id name } } }
-              ... on ProjectV2ItemFieldSingleSelectValue { name color optionId field { ... on ProjectV2FieldCommon { id name } } }
-              ... on ProjectV2ItemFieldIterationValue { iterationId title startDate duration field { ... on ProjectV2FieldCommon { id name } } }
-              ... on ProjectV2ItemFieldUserValue { users(first: 5) { nodes { login } } field { ... on ProjectV2FieldCommon { id name } } }
-              ... on ProjectV2ItemFieldLabelValue { labels(first: 10) { nodes { name color } } field { ... on ProjectV2FieldCommon { id name } } }
-              ... on ProjectV2ItemFieldMilestoneValue { milestone { id title dueOn } field { ... on ProjectV2FieldCommon { id name } } }
-              ... on ProjectV2ItemFieldRepositoryValue { repository { name nameWithOwner } field { ... on ProjectV2FieldCommon { id name } } }
-            }
-          }
-    `;
-  }
-
-  const ownerKey = ownerType === "user" ? "user" : "organization";
-  const loginArg = `login: $login`;
-
-  return `
-query GetProjectItems(
-  $login: String!
-  $number: Int!
-  $first: Int!
-  $after: String
-) {
-  ${ownerKey}(${loginArg}) {
-    projectV2(number: $number) {
-      id
-      items(first: $first, after: $after) {
-        totalCount
-        pageInfo { hasNextPage endCursor }
-        nodes {
-          id type createdAt updatedAt isArchived
-          content {
-            __typename
-            ${contentFragment.trim()}
-          }
-          ${fieldValuesFragment.trim()}
-        }
-      }
-    }
-  }
-}
-  `.trim();
-};
 
 // ---------------------------------------------------------------------------
 // PaginatedProjectItemFetcher
 // ---------------------------------------------------------------------------
 
 /**
- * A reusable paginated fetcher for GitHub Projects v2 items.
+ * Cursor-based paginated fetcher for GitHub Projects v2 items.
  *
- * Usage pattern:
- *   ```typescript
- *   const fetcher = new PaginatedProjectItemFetcher(config, github, options);
+ * Automatically fetches the first page on construction.
  *
- *   // Iterate lazily
- *   for await (const item of fetcher) {
- *     console.log(item.id);
- *   }
- *
- *   // Collect all (optionally filtered)
- *   const allItems = await fetcher.collect();
- *   const backlogItems = await fetcher.collect(isBacklog);
- *   ```
+ * @param config - GitHubBootState with project identity and field metadata
+ * @param github - GraphQL client
+ * @param options - Fetch configuration controlling payload size
  */
 export class PaginatedProjectItemFetcher {
-  private hasNextPage: boolean = true;
-  private endCursor: string | null = null;
-  private totalCount: number = 0;
-  private buffer: ProjectItem[] = [];
-  private bufferIndex: number = 0;
-  private query: string;
   private login: string;
   private projectNumber: number;
   private ownerType: OwnerType;
+  private query: string;
+  private items: ProjectItem[] = [];
+  private pageInfo: PageInfoRef | null = null;
+  private _totalCount = 0;
 
-  /**
-   * Create a new paginated fetcher.
-   * Automatically fetches the first page on construction.
-   *
-   * @param config - RuntimeConfig with project identity and field metadata
-   * @param github - GraphQL client
-   * @param options - Fetch configuration controlling payload size
-   */
   constructor(
-    private config: RuntimeConfig,
+    private config: GitHubBootState,
     private github: { graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> },
     private options: ItemFetchConfig = {},
   ) {
-    const gh = config.scrumConfig.backends.github as GitHubBackendConfig | undefined;
-    if (!gh) throw new Error("No GitHub backend configured in config.scrumConfig.");
-    this.login = gh.owner;
-    this.projectNumber = gh.project_number;
-    this.ownerType = gh.owner_type;
+    const ghConfig = config.ghConfig;
+    this.login = ghConfig.owner;
+    this.projectNumber = ghConfig.project_number;
+    this.ownerType = ghConfig.owner_type;
     this.query = buildItemsQuery(this.ownerType, this.options);
   }
 
   /** Get total item count from the first page response. */
-  getTotalCount(): number {
-    return this.totalCount;
+  get totalCount(): number {
+    return this._totalCount;
   }
 
-  /** Check if more pages remain to be fetched. */
-  hasMore(): boolean {
-    return this.hasNextPage || this.bufferIndex < this.buffer.length;
+  /** Get all fetched items. */
+  getAll(): ProjectItem[] {
+    return this.items;
   }
 
-  /** Fetch the next page from the GitHub API. */
-  private async _fetchPage(): Promise<void> {
-    const variables = {
+  /** Fetch the first page (called from constructor). Do not call directly. */
+  private async fetchFirstPage(): Promise<void> {
+    const result = await this.github.graphql<ProjectItemsResponse>(this.query, {
       login: this.login,
       number: this.projectNumber,
-      first: this.options.pageSize ?? 100,
-      after: this.endCursor,
-    };
-
-    const result = await this.github.graphql<ProjectItemsResponse>(this.query, variables);
-
+    });
     const project = this.ownerType === "user"
       ? result.user?.projectV2
       : result.organization?.projectV2;
-
     if (!project) {
       throw new GitHubApiError(
         `Project #${this.projectNumber} not found for ${this.ownerType} '${this.login}'.`,
         {
           code: "NOT_FOUND",
-          statusCode: 404,
-          recovery: "Check that the project number and owner in your configuration are correct, " +
-            "and that your token has Projects (read) access for that owner.",
-          context: {
-            projectNumber: this.projectNumber,
-            ownerType: this.ownerType,
-            login: this.login,
-          },
+          recovery: "Verify the project number and owner in backends.github config.",
         },
       );
     }
-
-    const items = project.items;
-    this.totalCount = items.totalCount;
-    this.hasNextPage = items.pageInfo.hasNextPage;
-    this.endCursor = items.pageInfo.endCursor;
-    this.buffer = items.nodes.map(this._rawToItem);
-    this.bufferIndex = 0;
+    this.items = project.items?.nodes ?? [];
+    this.pageInfo = project.items?.pageInfo ?? null;
+    this._totalCount = project.items?.totalCount ?? 0;
   }
 
-  /** Convert a raw GraphQL item to a typed ProjectItem. */
-  private _rawToItem(raw: RawProjectItem): ProjectItem {
-    return {
-      id: raw.id,
-      type: raw.type,
-      createdAt: raw.createdAt,
-      updatedAt: raw.updatedAt,
-      isArchived: raw.isArchived,
-      content: raw.content as ProjectItem["content"],
-      fieldValues: {
-        nodes: (raw.fieldValues?.nodes ?? []).map((fv) => ({
-          __typename: fv.__typename,
-          field: fv.field ?? { id: "", name: "" },
-          iterationId: ("iterationId" in fv ? fv.iterationId : undefined) ?? undefined,
-          title: fv.title,
-          startDate: fv.startDate,
-          duration: fv.duration,
-          text: fv.text,
-          number: fv.number,
-          date: fv.date,
-          name: fv.name,
-          color: fv.color,
-          optionId: fv.optionId,
-          users: fv.users,
-          labels: fv.labels,
-          milestone: fv.milestone,
-          repository: fv.repository,
-        })),
-      },
-    };
-  }
-
-  /** AsyncIterator protocol - enables `for await` syntax. */
-  async *[Symbol.asyncIterator](): AsyncIterator<ProjectItem> {
-    while (this.hasNextPage || this.bufferIndex < this.buffer.length) {
-      if (this.bufferIndex >= this.buffer.length) {
-        await this._fetchPage();
-        if (this.buffer.length === 0 && !this.hasNextPage) break;
-      }
-      yield this.buffer[this.bufferIndex++];
+  /** Fetch all remaining pages. Call after construction to get complete dataset. */
+  async fetchRemaining(): Promise<void> {
+    while (this.pageInfo?.hasNextPage && this.pageInfo.endCursor) {
+      const result = await this.github.graphql<ProjectItemsResponse>(this.query, {
+        login: this.login,
+        number: this.projectNumber,
+        cursor: this.pageInfo.endCursor,
+      });
+      const project = this.ownerType === "user"
+        ? result.user?.projectV2
+        : result.organization?.projectV2;
+      const moreItems = project?.items?.nodes ?? [];
+      this.items.push(...moreItems);
+      this.pageInfo = project?.items?.pageInfo ?? null;
     }
   }
 
   /**
-   * Collect all items (optionally filtered).
-   *
-   * @param filter - Optional predicate to filter items. If omitted, all items are collected.
-   * @returns Array of matching ProjectItem objects
+   * Collect all items matching the predicate, fetching additional pages as needed.
    */
   async collect(
-    filter?: (item: ProjectItem) => boolean,
+    predicate: (item: ProjectItem) => boolean,
   ): Promise<ProjectItem[]> {
     const results: ProjectItem[] = [];
-    for await (const item of this) {
-      if (!filter || filter(item)) {
-        results.push(item);
+    for (const item of this.items) {
+      if (predicate(item)) results.push(item);
+    }
+    while (this.pageInfo?.hasNextPage && this.pageInfo.endCursor) {
+      const result = await this.github.graphql<ProjectItemsResponse>(this.query, {
+        login: this.login,
+        number: this.projectNumber,
+        cursor: this.pageInfo.endCursor,
+      });
+      const project = this.ownerType === "user"
+        ? result.user?.projectV2
+        : result.organization?.projectV2;
+      const moreItems = project?.items?.nodes ?? [];
+      for (const item of moreItems) {
+        if (predicate(item)) results.push(item);
+        this.items.push(item);
       }
+      this.pageInfo = project?.items?.pageInfo ?? null;
     }
     return results;
   }
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Backlog item helper
 // ---------------------------------------------------------------------------
 
-/**
- * Check if a project item is in the backlog (no sprint assignment).
- *
- * @param item - ProjectItem to check
- * @param sprintFieldId - The GraphQL field ID for the sprint field
- * @returns true if the item has no sprint assigned
- */
-export const isBacklogItem = (
-  item: ProjectItem,
-  sprintFieldId: string,
-): boolean => {
-  const sprintValue = item.fieldValues.nodes.find(
-    (fv) => fv.field?.id === sprintFieldId,
-  );
+export const isBacklogItem = (item: ProjectItem, sprintFieldId: string): boolean => {
+  return !item.fieldValues.nodes.some((fv) => fv.field?.id === sprintFieldId && fv.iterationId);
+};
 
-  // No sprint field value at all = backlog
-  if (!sprintValue) return true;
+// ---------------------------------------------------------------------------
+// Query builders (private helpers)
+// ---------------------------------------------------------------------------
 
-  // Iteration value with null iterationId = backlog
-  if (sprintValue.__typename === "ProjectV2ItemFieldIterationValue") {
-    return ("iterationId" in sprintValue ? sprintValue.iterationId : null) === null;
-  }
+interface ProjectItemsResponse {
+  user?: { projectV2: ProjectV2ItemsPage | null } | null;
+  organization?: { projectV2: ProjectV2ItemsPage | null } | null;
+}
 
-  // Any other typename means the field exists but isn't an iteration - treat as backlog
-  return true;
+interface ProjectV2ItemsPage extends ProjectV2Ref {
+  items: {
+    totalCount: number;
+    pageInfo: PageInfoRef;
+    nodes: ProjectItem[];
+  };
+}
+
+const buildItemsQuery = (ownerType: OwnerType, opts: ItemFetchConfig): string => {
+  const ownerField = ownerType === "user" ? "user" : "organization";
+  const sprintFragment = opts.sprint !== false
+    ? `
+        ... on ProjectV2ItemFieldIterationValue {
+          field { id name }
+          iterationId
+          title
+          startDate
+          duration
+        }`
+    : "";
+  return `
+    query($login: String!, $number: Int!, $cursor: String) {
+      ${ownerField}(login: $login) {
+        projectV2(number: $number) {
+          id
+          items(first: 100, after: $cursor, orderBy: { field: POSITION, direction: ASC }) {
+            totalCount
+            pageInfo { hasNextPage endCursor }
+            nodes {
+              id
+              type
+              createdAt
+              updatedAt
+              isArchived
+              content {
+                __typename
+                ... on Issue {
+                  id number title body url state
+                  assignees(first: 5) { nodes { login } }
+                  labels(first: 10) { nodes { name color } }
+                  milestone { id title }
+                  repository { name nameWithOwner }
+                }
+                ... on PullRequest {
+                  id number title body url state isDraft
+                  assignees(first: 5) { nodes { login } }
+                  labels(first: 10) { nodes { name color } }
+                  repository { name nameWithOwner }
+                }
+                ... on DraftIssue {
+                  id title body
+                  assignees(first: 5) { nodes { login } }
+                }
+              }
+              fieldValues(first: 20) {
+                nodes {
+                  __typename
+                  field { id name }
+                  ... on ProjectV2ItemFieldTextValue { text }
+                  ... on ProjectV2ItemFieldNumberValue { number }
+                  ... on ProjectV2ItemFieldDateValue { date }
+                  ... on ProjectV2ItemFieldSingleSelectValue {
+                    name color optionId
+                  }
+                  ... on ProjectV2ItemFieldUserValue {
+                    users(first: 5) { nodes { login } }
+                  }
+                  ... on ProjectV2ItemFieldLabelValue {
+                    labels(first: 5) { nodes { name color } }
+                  }
+                  ... on ProjectV2ItemFieldMilestoneValue {
+                    milestone { id title dueOn }
+                  }
+                  ... on ProjectV2ItemFieldRepositoryValue {
+                    repository { name nameWithOwner }
+                  }${sprintFragment}
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+};
+
+// Re-export types used by downstream consumers
+export type {
+  ItemFieldValue,
+  ProjectItem,
+  ProjectItemDraftContent,
+  ProjectItemIssueContent,
+  ProjectItemPRContent,
+  ProjectV2ItemRef,
 };

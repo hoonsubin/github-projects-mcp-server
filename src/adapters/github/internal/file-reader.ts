@@ -11,12 +11,13 @@
 import { fetchContent } from "../../../scrum/fetch-location.ts";
 import type { ContentLocation } from "../../../domain/content-location.ts";
 import type { FileReaderPort } from "../../../scrum/ports.ts";
+import type { ResolvedToken } from "../types.ts";
 
 export class GitHubFileReader implements FileReaderPort {
   constructor(
     private readonly owner: string,
     private readonly repo: string,
-    private readonly token: string,
+    private readonly token: ResolvedToken,
   ) {}
 
   fetchContent(location: ContentLocation): Promise<string> {

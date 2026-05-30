@@ -632,7 +632,7 @@ classDiagram
 
         class AdapterStartupOptions:::ad_interface {
             <<interface>>
-            +configLocation : ContentLocation opt
+            +configLocation : ContentLocation
         }
 
         class AdapterFactory:::ad_interface {
@@ -698,7 +698,7 @@ classDiagram
 
         class ConfigReloader:::ad_class {
             <<class>>
-            +constructor(config: RuntimeConfig, github: GitHubClient)
+            +constructor(config: RuntimeConfig, github: GitHubClient, configLocation: ContentLocation)
             +reload() : Promise~void~
             +replaceMap(target: Record~string,string~, source: Record~string,string~) : void
         }
@@ -798,6 +798,12 @@ classDiagram
             +resolveOrCreateBatch(names: string[]) : Promise~Array~[ id: string, name: string ]~~
             +addLabel(value: string) : Promise~CreateResult~
             +hashToColor(name: string) : string
+        }
+
+        class GitHubClientSpy:::ad_interface_warn {
+            <<interface>>
+            +graphqlCalls : Array~[ queryExcerpt: string, variables: Record~string,unknown~ ]~
+            +restCalls : Array~[ path: string, options: unknown ]~
         }
 
         class SprintHistoryService:::ad_class {
@@ -1066,6 +1072,11 @@ classDiagram
             +epic : [ ref: EpicRef, name: string ] or null
         }
 
+        class ResolvedToken:::ad_branded {
+            <<branded>>
+            string & [ readonly _brand: "ResolvedToken" ]
+        }
+
         class RuntimeConfig:::ad_interface_warn {
             <<interface>>
             +scrumConfig : ScrumConfig
@@ -1221,6 +1232,7 @@ classDiagram
     IssueDetailsInput --> AssigneeNodes : assignees
     ConfigReloader --> RuntimeConfig : constructor
     ConfigReloader --> GitHubClient : constructor
+    ConfigReloader --> ContentLocation : constructor
     BurndownCalculator --> RuntimeConfig : constructor
     BurndownCalculator --> GitHubClient : constructor
     BurndownCalculator --> BurndownInput : getBurndownInput
@@ -1249,6 +1261,7 @@ classDiagram
     LabelResolver --> GitHubClient : gh
     LabelResolver --> GitHubLabel : fetchAllLabels
     LabelResolver --> CreateResult : addLabel
+    GitHubClientSpy --|> GitHubClient : extends
     SprintHistoryService --> RuntimeConfig : constructor
     SprintHistoryService --> GitHubClient : constructor
     SprintHistoryService --> SprintHistoryEntry : getCompletedSprintHistory

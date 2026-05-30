@@ -48,6 +48,15 @@ classDiagram
             +getBoardHealthUseCase()
         }
 
+        class _test_utils.ts:::scrum {
+            +buildTypeTemplatePaths() Promise<Record<string, ContentLocation>>
+            +Promise<Record<string, ContentLocation>> typeTemplatePathsPromise
+            +FileReaderPort realFileReader
+            +FileReaderPort stubFileReader
+            +withTestServer() Promise<void>
+            %% Unused: buildTypeTemplatePaths, typeTemplatePathsPromise, realFileReader, stubFileReader, withTestServer
+        }
+
         class fetch-location.ts:::scrum {
             +fetchContent()
         }
@@ -374,6 +383,13 @@ classDiagram
             %% Unused: GitHubLabel
         }
 
+        class _test_utils.ts:::internal {
+            interface GitHubClientSpy
+            +createGhSpy() GitHubClientSpy
+            +makeConfig() RuntimeConfig
+            %% Unused: GitHubClientSpy, createGhSpy, makeConfig
+        }
+
         class sprint-history-service.ts:::internal {
             class SprintHistoryService
         }
@@ -405,7 +421,6 @@ classDiagram
             interface GitHubClient
             +graphql()
             +rest()
-            %% Unused: RestResponse
         }
 
         class impediment-service.ts:::internal {
@@ -463,7 +478,10 @@ classDiagram
             interface LinkedPr
             interface DraftStory
             interface IssueStory
-            %% Unused: GitHubMilestoneId, toEntityRef, ItemContentType, IssueIdentity, PrIdentity, PrDiscriminator, PrState, IssueState, IssueRef, LabelRef, FieldValueField, FieldValueUser, FieldValueUserNodes, FieldValueLabel, FieldValueLabelNodes, FieldValueMilestone, FieldValueRepository, LabelColorNodes
+            type ResolvedToken
+            +resolveToken()
+            +validateToken()
+            %% Unused: GitHubMilestoneId, toEntityRef, ItemContentType, IssueIdentity, PrIdentity, PrDiscriminator, PrState, IssueState, IssueRef, LabelRef, FieldValueField, FieldValueUser, FieldValueUserNodes, FieldValueLabel, FieldValueLabelNodes, FieldValueMilestone, FieldValueRepository, LabelColorNodes, ResolvedToken, resolveToken, validateToken
         }
 
         class config-loader.ts:::github {
@@ -502,7 +520,10 @@ classDiagram
     get-story.ts --> acceptance-criteria.ts : "imports"
     get-board-health.ts --> ports.ts : "imports"
     get-board-health.ts --> types.ts : "imports"
+    _test_utils.ts --> http-client.ts : "imports"
+    _test_utils.ts --> config-loader.ts : "imports"
     fetch-location.ts --> content-location.ts : "imports"
+    fetch-location.ts --> errors.ts : "imports"
     ports.ts --> types.ts : "imports"
     ports.ts --> error-enrichment.ts : "imports"
     ports.ts --> content-location.ts : "imports"
@@ -514,6 +535,7 @@ classDiagram
     resolve-location.ts --> content-location.ts : "imports"
     errors.ts --> types.ts : "imports"
     types.ts --> github-types.ts : "imports"
+    types.ts --> errors.ts : "imports"
     config.ts --> types.ts : "imports"
     error-enrichment.ts --> errors.ts : "imports"
     error-enrichment.ts --> types.ts : "imports"
@@ -569,6 +591,7 @@ classDiagram
     mappers.ts --> sprint-math.ts : "imports"
     mappers.ts --> ports.ts : "imports"
     config-reloader.ts --> config-loader.ts : "imports"
+    config-reloader.ts --> content-location.ts : "imports"
     config-reloader.ts --> http-client.ts : "imports"
     burndown-calculator.ts --> errors.ts : "imports"
     burndown-calculator.ts --> http-client.ts : "imports"
@@ -729,6 +752,11 @@ The following exports are never directly imported by other modules in the codeba
 | Module | Export | Kind |
 |---|---|---|
 | [`./src/scrum/sprint-math.ts`](src/scrum/sprint-math.ts) | `buildSprintMeta` | `function` |
+| [`./src/scrum/_test_utils.ts`](src/scrum/_test_utils.ts) | `buildTypeTemplatePaths` | `function` |
+| [`./src/scrum/_test_utils.ts`](src/scrum/_test_utils.ts) | `typeTemplatePathsPromise` | `var` |
+| [`./src/scrum/_test_utils.ts`](src/scrum/_test_utils.ts) | `realFileReader` | `var` |
+| [`./src/scrum/_test_utils.ts`](src/scrum/_test_utils.ts) | `stubFileReader` | `var` |
+| [`./src/scrum/_test_utils.ts`](src/scrum/_test_utils.ts) | `withTestServer` | `function` |
 | [`./src/scrum/ports.ts`](src/scrum/ports.ts) | `SearchScope` | `type` |
 | [`./src/scrum/ports.ts`](src/scrum/ports.ts) | `AnalyticsView` | `type` |
 | [`./src/scrum/ports.ts`](src/scrum/ports.ts) | `FieldPresence` | `interface` |
@@ -746,8 +774,10 @@ The following exports are never directly imported by other modules in the codeba
 | [`./src/adapters/github/queries.ts`](src/adapters/github/queries.ts) | `ADD_PROJECT_ITEM_MUTATION` | `var` |
 | [`./src/adapters/github/queries.ts`](src/adapters/github/queries.ts) | `CREATE_ISSUE_MUTATION` | `var` |
 | [`./src/adapters/github/internal/label-resolver.ts`](src/adapters/github/internal/label-resolver.ts) | `GitHubLabel` | `interface` |
+| [`./src/adapters/github/internal/_test_utils.ts`](src/adapters/github/internal/_test_utils.ts) | `GitHubClientSpy` | `interface` |
+| [`./src/adapters/github/internal/_test_utils.ts`](src/adapters/github/internal/_test_utils.ts) | `createGhSpy` | `function` |
+| [`./src/adapters/github/internal/_test_utils.ts`](src/adapters/github/internal/_test_utils.ts) | `makeConfig` | `function` |
 | [`./src/adapters/github/internal/story-query-service.ts`](src/adapters/github/internal/story-query-service.ts) | `buildDependencyMap` | `function` |
-| [`./src/adapters/github/internal/http-client.ts`](src/adapters/github/internal/http-client.ts) | `RestResponse` | `interface` |
 | [`./src/adapters/github/types.ts`](src/adapters/github/types.ts) | `GitHubMilestoneId` | `type` |
 | [`./src/adapters/github/types.ts`](src/adapters/github/types.ts) | `toEntityRef` | `function` |
 | [`./src/adapters/github/types.ts`](src/adapters/github/types.ts) | `ItemContentType` | `type` |
@@ -766,6 +796,9 @@ The following exports are never directly imported by other modules in the codeba
 | [`./src/adapters/github/types.ts`](src/adapters/github/types.ts) | `FieldValueMilestone` | `type` |
 | [`./src/adapters/github/types.ts`](src/adapters/github/types.ts) | `FieldValueRepository` | `type` |
 | [`./src/adapters/github/types.ts`](src/adapters/github/types.ts) | `LabelColorNodes` | `type` |
+| [`./src/adapters/github/types.ts`](src/adapters/github/types.ts) | `ResolvedToken` | `type` |
+| [`./src/adapters/github/types.ts`](src/adapters/github/types.ts) | `resolveToken` | `function` |
+| [`./src/adapters/github/types.ts`](src/adapters/github/types.ts) | `validateToken` | `function` |
 | [`./src/adapters/abstract-backend.ts`](src/adapters/abstract-backend.ts) | `UnsupportedCapabilityError` | `class` |
 | [`./src/domain/content-location.ts`](src/domain/content-location.ts) | `CONTENT_LOCATION_KINDS` | `var` |
 | [`./src/domain/content-location.ts`](src/domain/content-location.ts) | `ContentLocationKind` | `type` |

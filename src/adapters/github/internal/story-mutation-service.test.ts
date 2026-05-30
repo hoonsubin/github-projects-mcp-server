@@ -9,7 +9,7 @@
 import { assert, assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { StoryMutationService } from "./story-mutation-service.ts";
 import { createGhSpy, makeConfig } from "./_test_utils.ts";
-import type { RuntimeConfig } from "../config-loader.ts";
+import type { GitHubBootState } from "../bootstrap.ts";
 import type { LabelResolver } from "./label-resolver.ts";
 import type { UserMilestoneResolver } from "./user-milestone-resolver.ts";
 import type { FieldValueMutator } from "./field-value-mutator.ts";
@@ -103,7 +103,7 @@ const makeUpdates = (overrides: Partial<StoryUpdates> = {}): StoryUpdates => ({
 // =============================================================================
 
 interface CreateServiceOptions {
-  configOverrides?: Partial<RuntimeConfig>;
+  configOverrides?: Partial<GitHubBootState>;
   labelResolverOverrides?: Partial<Pick<LabelResolver, "resolveExistingLabelNodeIds">>;
 }
 
@@ -226,8 +226,10 @@ Deno.test({
 Deno.test({
   name: "createStory - throws when type value not in typeOptions",
   async fn() {
+    // Merge the live override into the default config
+    const baseConfig = makeConfig();
     const { service, gh } = createService({
-      configOverrides: { typeOptions: {} },
+      configOverrides: { live: { ...baseConfig.live, typeOptions: {} } },
     });
     gh.enqueue(ADD_DRAFT_SUCCESS);
     const input = makeCreateInput({ labels: undefined, epic: undefined, priority: undefined });

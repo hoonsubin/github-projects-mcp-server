@@ -26,7 +26,7 @@ import {
   GET_ISSUE_DETAILS_QUERY,
   GET_ITEM_FIELDS_QUERY,
 } from "../queries.ts";
-import type { RuntimeConfig } from "../config-loader.ts";
+import type { GitHubBootState } from "../bootstrap.ts";
 import type { ResolvedItemFilter, SprintInfo, StoryDetail } from "../../../scrum/ports.ts";
 import type { ItemFieldValue, ProjectItem, ProjectV2ItemRef } from "../types.ts";
 import type {
@@ -72,7 +72,7 @@ interface GetItemFieldsResponse {
 export const buildDependencyMap = (
   stories: readonly Story[],
   allItems: readonly ProjectItem[],
-  config: RuntimeConfig,
+  config: GitHubBootState,
 ): DependencyMap => {
   const map: Record<string, DependencyNode> = {};
 
@@ -174,7 +174,7 @@ export const buildDependencyMap = (
  */
 export class StoryQueryService {
   constructor(
-    private readonly config: RuntimeConfig,
+    private readonly config: GitHubBootState,
     private readonly gh: GitHubClient,
     private readonly owner: string,
     private readonly repo: string,
@@ -194,7 +194,7 @@ export class StoryQueryService {
         },
       );
     }
-    const iterEntry = this.config.iterations.all.find((i) => i.id === iterationId);
+    const iterEntry = this.config.live.iterations.all.find((i) => i.id === iterationId);
     const sprintInfo = toSprintInfo(iterEntry ?? null);
     if (!sprintInfo) {
       throw new GitHubApiError(
@@ -210,7 +210,7 @@ export class StoryQueryService {
     const allItems = await this.fetchAllItems();
     const sprintItems = allItems.filter((item) => {
       const fv = item.fieldValues.nodes.find(
-        (v) => v.field?.id === this.config.fields.sprintFieldId,
+        (v) => v.field?.id === this.config.live.fields.sprintFieldId,
       );
       return fv?.iterationId === iterationId;
     });
@@ -224,14 +224,9 @@ export class StoryQueryService {
   }
 
   async getBacklogStories(): Promise<Story[]> {
-    const fetcher = new PaginatedProjectItemFetcher(this.config, this.gh, {
-      includeIssueContent: true,
-      includePRContent: false,
-      includeDraftIssueContent: true,
-      pageSize: 100,
-    });
+    const fetcher = new PaginatedProjectItemFetcher(this.config, this.gh);
     const backlogItems = await fetcher.collect((item) =>
-      isBacklogItem(item, this.config.fields.sprintFieldId)
+      isBacklogItem(item, this.config.live.fields.sprintFieldId)
     );
     return resolveDependencyRefs(
       backlogItems
@@ -348,13 +343,8 @@ export class StoryQueryService {
 
   /** Fetch all project items (including issues, PRs, and draft issues). */
   fetchAllItems(): Promise<ProjectItem[]> {
-    const fetcher = new PaginatedProjectItemFetcher(this.config, this.gh, {
-      includeIssueContent: true,
-      includePRContent: true,
-      includeDraftIssueContent: true,
-      pageSize: 100,
-    });
-    return fetcher.collect();
+    const fetcher = new PaginatedProjectItemFetcher(this.config, this.gh);
+    return fetcher.collect(() => true);
   }
 
   /**
@@ -371,7 +361,7 @@ export class StoryQueryService {
     // Filter items assigned to this iteration
     const sprintItems = allItems.filter((item) => {
       const fv = item.fieldValues.nodes.find(
-        (v) => v.field?.id === this.config.fields.sprintFieldId,
+        (v) => v.field?.id === this.config.live.fields.sprintFieldId,
       );
       return fv?.iterationId === iterationId;
     });
@@ -384,9 +374,7 @@ export class StoryQueryService {
     // story.status holds the display name (e.g. "Done"), but terminal
     // semantics are keyed by canonical key (e.g. "done") in scrumConfig.scrum.status.
     const statusReverseMap = new Map<string, string>();
-    const scrumConfig = this.config.scrumConfig;
-    const ghConfig = scrumConfig.backends.github as Record<string, unknown>;
-    const statusDisplay = (ghConfig?.status_display ?? {}) as Record<string, string>;
+    const statusDisplay = this.config.ghConfig.status_display ?? {};
     for (const [canonical, display] of Object.entries(statusDisplay)) {
       statusReverseMap.set(display, canonical);
     }
@@ -399,7 +387,7 @@ export class StoryQueryService {
       total += points;
       if (story.status) {
         const canonicalKey = statusReverseMap.get(story.status);
-        if (canonicalKey && scrumConfig.scrum.status[canonicalKey]?.terminal) {
+        if (canonicalKey && this.config.scrumConfig.scrum.status[canonicalKey]?.terminal) {
           completed += points;
         }
       }
@@ -461,7 +449,7 @@ export class StoryQueryService {
     // Fix sprint.ref.id from hardcoded "" to actual iteration ID
     items = items.map((item) => {
       if (item.sprint.name) {
-        const iterEntry = this.config.iterations.all.find(
+        const iterEntry = this.config.live.iterations.all.find(
           (i) => i.title === item.sprint.name,
         );
         if (iterEntry) {
@@ -532,7 +520,7 @@ export class StoryQueryService {
       allItems
         .filter((item) => {
           const fv = item.fieldValues.nodes.find(
-            (v) => v.field?.id === this.config.fields.sprintFieldId,
+            (v) => v.field?.id === this.config.live.fields.sprintFieldId,
           );
           return fv?.iterationId === iterationId;
         })

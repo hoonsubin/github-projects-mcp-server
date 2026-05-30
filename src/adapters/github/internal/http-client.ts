@@ -2,9 +2,11 @@
 // src/adapters/github/internal/http-client.ts - GitHub HTTP transport layer
 //
 // Provides GraphQL and REST transport to the GitHub API.
+// Token is injected as a parameter — the adapter factory resolves it once
+// from the env var declared in the config file, never from a hardcoded name.
 // =============================================================================
 
-import type { GraphQLResponse } from "../types.ts";
+import type { GraphQLResponse, ResolvedToken } from "../types.ts";
 import { log } from "../../../services/logger.ts";
 import { GitHubApiError } from "../errors.ts";
 
@@ -29,6 +31,10 @@ export interface RestResponse<T> {
 /**
  * Unified client interface for GitHub HTTP transport.
  * Enables dependency inversion and easy mocking in tests.
+ *
+ * graphql and rest accept the resolved token as their first argument.
+ * The adapter factory curries the token into partial applications so
+ * callers never pass the token directly.
  */
 export interface GitHubClient {
   graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T>;
@@ -42,22 +48,6 @@ export interface GitHubClient {
     },
   ): Promise<RestResponse<T>>;
 }
-
-const getToken = (): string => {
-  const token = Deno.env.get("GITHUB_TOKEN");
-  if (!token) {
-    throw new GitHubApiError(
-      "GITHUB_TOKEN environment variable is not set.",
-      {
-        code: "AUTH_FAILED",
-        recovery: "Set GITHUB_TOKEN to a fine-grained personal access token generated at " +
-          "https://github.com/settings/tokens with at minimum: " +
-          "Projects (read/write), Issues (read/write), Metadata (read-only).",
-      },
-    );
-  }
-  return token;
-};
 
 // ---------------------------------------------------------------------------
 // GraphQL operation name extractor
@@ -78,10 +68,10 @@ const extractOpName = (query: string): string => {
 
 // documentation: https://docs.github.com/en/graphql/guides/forming-calls-with-graphql#about-queries
 export const graphql = async <T>(
+  token: ResolvedToken,
   query: string,
   variables: Record<string, unknown> = {},
 ): Promise<T> => {
-  const token = getToken();
   const op = extractOpName(query);
   const t0 = performance.now();
 
@@ -229,6 +219,7 @@ export const graphql = async <T>(
  * same classification as graphql().
  */
 export const rest = async <T>(
+  token: ResolvedToken,
   path: string,
   options: {
     method?: "GET" | "POST" | "PATCH" | "DELETE";
@@ -237,7 +228,6 @@ export const rest = async <T>(
     accept?: string;
   } = {},
 ): Promise<RestResponse<T>> => {
-  const token = getToken();
   const method = options.method ?? "GET";
   const t0 = performance.now();
 

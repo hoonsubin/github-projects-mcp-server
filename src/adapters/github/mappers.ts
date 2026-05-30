@@ -6,7 +6,7 @@
 // in the generated schema break at compile time rather than silently desyncing.
 // =============================================================================
 
-import type { RuntimeConfig } from "./config-loader.ts";
+import type { GitHubBootState } from "./bootstrap.ts";
 import { notImplemented } from "./errors.ts";
 import type {
   DependencyEntry,
@@ -104,13 +104,10 @@ export interface IssueDetailsInput {
 /** Extract board fields from a field-value node array. */
 const extractBoardFields = (
   nodes: FieldValueNode[],
-  config: RuntimeConfig,
+  config: GitHubBootState,
 ): BoardFields => {
-  const { fields } = config;
-  const ghConfig = config.scrumConfig.backends.github as
-    | { type_mapping?: Record<string, { display: string }> }
-    | undefined;
-  const typeMapping = ghConfig?.type_mapping ?? {};
+  const fields = config.live.fields;
+  const typeMapping = config.ghConfig.type_mapping ?? {};
   const displayToCanonical = Object.fromEntries(
     Object.entries(typeMapping).map(([key, entry]) => [entry.display, key]),
   );
@@ -160,7 +157,7 @@ const extractBoardFields = (
  */
 export const buildStoryFromRaw = (
   item: ProjectItem,
-  config: RuntimeConfig,
+  config: GitHubBootState,
 ): StoryBase | null => {
   const content = item.content;
   if (!content) return null;
@@ -238,7 +235,7 @@ export const buildEnrichedStory = (
   issueNode: IssueDetailsInput,
   itemId: string,
   fieldValueNodes: FieldValueNode[],
-  config: RuntimeConfig,
+  config: GitHubBootState,
 ): IssueStory => {
   const boardFields = extractBoardFields(fieldValueNodes, config);
   // Type comes from the Type board field - not from labels.
@@ -384,7 +381,7 @@ export const resolveDependencyRefs = (
  */
 export const buildBurndownStoryInput = (
   item: ProjectItem,
-  config: RuntimeConfig,
+  config: GitHubBootState,
 ): BurndownStoryInput | null => {
   const content = item.content;
   if (!content || content.__typename === "DraftIssue") return null;

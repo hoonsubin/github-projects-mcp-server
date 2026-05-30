@@ -32,6 +32,7 @@ import { registerScrumReadTools } from "./tools/scrum-read.ts";
 import { registerScrumWriteTools } from "./tools/scrum-write.ts";
 import { templateResourceUseCase } from "./scrum/template-resource.ts";
 import { type AdapterFactory, createBackend } from "./adapters/factory.ts";
+import { loadScrumConfig } from "./scrum/config-boot.ts";
 import { GitHubAdapterFactory } from "./adapters/github/factory.ts";
 import { AdapterError } from "./domain/errors.ts";
 import { log } from "./services/logger.ts";
@@ -267,9 +268,13 @@ const createMcpServer = async (
   // SCRUM_PLATFORM env var controls which platform is selected (default: "github").
   const factories: AdapterFactory[] = [new GitHubAdapterFactory()];
 
+  // Phase 1: Load the ScrumConfig YAML in the use-case layer, before any
+  // adapter construction. This way the adapter never touches the YAML file.
+  const { scrumConfig, projectRoot } = await loadScrumConfig(configLocation);
+
   let backendResult: Awaited<ReturnType<typeof createBackend>>;
   try {
-    backendResult = await createBackend(factories, { configLocation });
+    backendResult = await createBackend(factories, { configLocation, scrumConfig, projectRoot });
   } catch (err) {
     let hint: string;
     if (err instanceof AdapterError && err.code === "AUTH_FAILED") {
@@ -285,7 +290,7 @@ const createMcpServer = async (
     return server;
   }
 
-  const { backend, fileReader, scrumConfig, typeTemplatePaths } = backendResult;
+  const { backend, fileReader, typeTemplatePaths } = backendResult;
 
   registerScrumReadTools(server, backend, scrumConfig);
   registerScrumWriteTools(server, backend, scrumConfig);

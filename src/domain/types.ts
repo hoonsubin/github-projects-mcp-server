@@ -170,7 +170,7 @@ export const toIssueKey = (key: string): IssueKey => key as IssueKey;
 // ── Template URI types ─────────────────────────────────────────────────────────
 
 /**
- * Template URI format for PBI ceremony templates.
+ * Template URI format for PBI templates.
  * Compile-time format validation via template literal type.
  * Example: `scrum://template/feature`
  */
