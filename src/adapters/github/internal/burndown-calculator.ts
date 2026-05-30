@@ -7,30 +7,25 @@
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
-import { GitHubClient } from "./http-client.ts";
 import { PaginatedProjectItemFetcher } from "./pagination.ts";
+import { ProjectItemsQueryBuilder } from "./project-items-query-builder.ts";
 import { buildBurndownStoryInput } from "../mappers.ts";
 import { resolveSprint } from "./resolver.ts"; // standalone function - not a class method
 import { computeSprintEndDate } from "../../../scrum/sprint-math.ts";
-import type { GitHubBootState } from "../bootstrap.ts";
+import type { GitHubInfraContext } from "./infra-context.ts";
 import type { BurndownInput, BurndownStoryInput, CompletionMap } from "../../../scrum/ports.ts";
 import type { SprintRef } from "../../../domain/types.ts";
 import { log } from "../../../services/logger.ts";
 
 export class BurndownCalculator {
-  constructor(
-    private readonly config: GitHubBootState,
-    private readonly gh: GitHubClient,
-    private readonly owner: string,
-    private readonly repo: string,
-  ) {}
+  constructor(private readonly ctx: GitHubInfraContext) {}
 
   /**
    * Collects all stories belonging to the specified sprint and prepares
    * them for burndown computation.
    */
   async getBurndownInput(sprint: SprintRef): Promise<BurndownInput> {
-    const iterationId = resolveSprint(sprint, this.config);
+    const iterationId = resolveSprint(sprint, this.ctx.config);
 
     if (iterationId === null) {
       throw new GitHubApiError(
@@ -44,7 +39,7 @@ export class BurndownCalculator {
       );
     }
 
-    const iterEntry = this.config.live.iterations.all.find((i) => i.id === iterationId);
+    const iterEntry = this.ctx.config.live.iterations.all.find((i) => i.id === iterationId);
     if (!iterEntry) {
       throw new GitHubApiError(
         `Iteration with ID ${iterationId} not found in configuration.`,
@@ -60,21 +55,19 @@ export class BurndownCalculator {
     // No sprintFieldIds - use the full field values query so extractBoardFields
     // can resolve story_points, status, etc. Sprint filtering is done by the
     // predicate below via iterationId, which the full query still returns.
-    const fetcher = new PaginatedProjectItemFetcher(
-      this.config,
-      { graphql: this.gh.graphql },
-    );
+    const query = new ProjectItemsQueryBuilder(this.ctx.ghConfig.owner_type).buildQuery();
+    const fetcher = new PaginatedProjectItemFetcher(this.ctx, query);
 
     const items = await fetcher.collect((item) => {
       return item.fieldValues.nodes.some(
         (node) =>
-          node.field?.id === this.config.live.fields.sprintFieldId &&
+          node.field?.id === this.ctx.config.live.fields.sprintFieldId &&
           node.iterationId === iterationId,
       );
     });
 
     const stories = items
-      .map((item) => buildBurndownStoryInput(item, this.config))
+      .map((item) => buildBurndownStoryInput(item, this.ctx.config))
       .filter((s): s is BurndownStoryInput => s !== null);
 
     const endDate = computeSprintEndDate(iterEntry.startDate, iterEntry.duration);
@@ -105,10 +98,10 @@ export class BurndownCalculator {
       if (story.number === null) continue;
 
       try {
-        const response = await this.gh.rest<{
+        const response = await this.ctx.gh.rest<{
           event: string;
           created_at: string;
-        }[]>(`repos/${this.owner}/${this.repo}/issues/${story.number}/timeline`);
+        }[]>(`repos/${this.ctx.owner}/${this.ctx.repo}/issues/${story.number}/timeline`);
 
         const lastClosedAt = response.data
           .filter((e) => e.event === "closed")

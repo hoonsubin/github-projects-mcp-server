@@ -15,11 +15,11 @@
 
 import { GitHubApiError } from "../errors.ts";
 import type * as GH from "../generated/github-types.ts";
-import type { GitHubClient } from "./http-client.ts";
 import type { ImpedimentStatus } from "../../../domain/types.ts";
 import { resolveSprint, resolveStory } from "./resolver.ts";
 import { LabelResolver } from "./label-resolver.ts";
 import { StoryMutationService } from "./story-mutation-service.ts";
+import type { GitHubInfraContext } from "./infra-context.ts";
 import {
   ADD_COMMENT_MUTATION,
   CLOSE_ISSUE_MUTATION,
@@ -27,8 +27,8 @@ import {
   GET_ISSUE_BY_ID_QUERY,
   REPLACE_ISSUE_LABELS_MUTATION,
 } from "../queries.ts";
+import { ProjectItemsQueryBuilder } from "./project-items-query-builder.ts";
 import { PaginatedProjectItemFetcher } from "./pagination.ts";
-import type { GitHubBootState } from "../bootstrap.ts";
 import type { ProjectItemIssueContent, UserLogin } from "../types.ts";
 import type { CreateStoryInput, ImpedimentListing } from "../../../scrum/ports.ts";
 import type { ImpedimentRef, SprintRef, StoryRef } from "../../../domain/types.ts";
@@ -67,10 +67,7 @@ interface ImpedimentIssuesResponse {
  */
 export class ImpedimentService {
   constructor(
-    private readonly config: GitHubBootState,
-    private readonly gh: GitHubClient,
-    private readonly owner: string,
-    private readonly repo: string,
+    private readonly ctx: GitHubInfraContext,
     private readonly labelResolver: LabelResolver,
     private readonly storyMutationService: StoryMutationService,
   ) {}
@@ -101,11 +98,14 @@ export class ImpedimentService {
   }
 
   async getOrphanImpediments(): Promise<ImpedimentListing[]> {
-    const result = await this.gh.graphql<ImpedimentIssuesResponse>(GET_IMPEDIMENT_ISSUES_QUERY, {
-      owner: this.owner,
-      repo: this.repo,
-      states: ["OPEN"],
-    });
+    const result = await this.ctx.gh.graphql<ImpedimentIssuesResponse>(
+      GET_IMPEDIMENT_ISSUES_QUERY,
+      {
+        owner: this.ctx.owner,
+        repo: this.ctx.repo,
+        states: ["OPEN"],
+      },
+    );
 
     const issues = result?.repository?.issues?.nodes ?? [];
     const PVTI_PATTERN = /PVTI_[\w-]+/;
@@ -129,30 +129,31 @@ export class ImpedimentService {
   }
 
   async getSprintImpediments(sprint: SprintRef): Promise<ImpedimentListing[]> {
-    const iterationId = resolveSprint(sprint, this.config);
+    const iterationId = resolveSprint(sprint, this.ctx.config);
     if (!iterationId) return [];
 
-    const fetcher = new PaginatedProjectItemFetcher(this.config, this.gh);
+    const query = new ProjectItemsQueryBuilder(this.ctx.ghConfig.owner_type).buildQuery();
+    const fetcher = new PaginatedProjectItemFetcher(this.ctx, query);
 
     // Fetch all items, filter by sprint iteration
     const sprintItems = await fetcher.collect((item) => {
       const fv = item.fieldValues.nodes.find(
-        (v) => v.field?.id === this.config.live.fields.sprintFieldId,
+        (v) => v.field?.id === this.ctx.config.live.fields.sprintFieldId,
       );
       return fv?.iterationId === iterationId;
     });
 
     // Filter to Issues with the Type board field set to "impediment"
-    const impedimentOptionId = this.config.live.typeOptions["impediment"];
+    const impedimentOptionId = this.ctx.config.live.typeOptions["impediment"];
     if (!impedimentOptionId) {
       throw new GitHubApiError(
         `"impediment" type option not found in config.typeOptions. ` +
-          `Valid type keys: ${Object.keys(this.config.live.typeOptions).join(", ")}. ` +
+          `Valid type keys: ${Object.keys(this.ctx.config.live.typeOptions).join(", ")}. ` +
           `Add "impediment" to type_mapping in your config file.`,
         {
           code: "OPTION_NOT_FOUND",
           recovery: "Check your config type_mapping for an 'impediment' entry.",
-          context: { valid: Object.keys(this.config.live.typeOptions) },
+          context: { valid: Object.keys(this.ctx.config.live.typeOptions) },
         },
       );
     }
@@ -160,7 +161,7 @@ export class ImpedimentService {
       .filter((item) =>
         item.content?.__typename === "Issue" &&
         item.fieldValues.nodes.some((v) =>
-          v.field?.id === this.config.live.fields.typeFieldId &&
+          v.field?.id === this.ctx.config.live.fields.typeFieldId &&
           "optionId" in v && v.optionId === impedimentOptionId
         )
       )
@@ -187,7 +188,7 @@ export class ImpedimentService {
   ): Promise<ImpedimentListing> {
     // Resolve the project item ID (PVTI_...) to the underlying GitHub Issue node ID (I_...).
     // Mutation operations (label changes, comments, close) target the Issue, not the project item.
-    const resolved = await resolveStory({ id: ref.id }, this.gh);
+    const resolved = await resolveStory({ id: ref.id }, this.ctx.gh);
     if (!resolved.issueId) {
       throw new GitHubApiError(
         `Impediment "${ref.id}" is a Draft Issue - it has no underlying GitHub Issue.`,
@@ -202,7 +203,7 @@ export class ImpedimentService {
     }
     const issueId = resolved.issueId;
 
-    const issueResult = await this.gh.graphql<{
+    const issueResult = await this.ctx.gh.graphql<{
       node: {
         __typename: "Issue";
         number: number;
@@ -253,13 +254,13 @@ export class ImpedimentService {
       .filter((id) => !removedLabels.find((label) => label.id === id))
       .concat(newLabelId);
 
-    await this.gh.graphql(
+    await this.ctx.gh.graphql(
       REPLACE_ISSUE_LABELS_MUTATION,
       { issueId, labelIds: updatedLabelIds },
     );
 
     if (status === "resolved" && resolutionNotes) {
-      await this.gh.graphql(
+      await this.ctx.gh.graphql(
         ADD_COMMENT_MUTATION,
         { subjectId: issueId, body: resolutionNotes },
       );
@@ -268,7 +269,7 @@ export class ImpedimentService {
     // Close the GitHub Issue when resolved so it leaves the open issues board
     let resolvedAt = issue.closedAt;
     if (status === "resolved" && !issue.closed) {
-      const closeResult = await this.gh.graphql<{
+      const closeResult = await this.ctx.gh.graphql<{
         closeIssue?: { issue?: { closedAt: string } | null } | null;
       }>(
         CLOSE_ISSUE_MUTATION,

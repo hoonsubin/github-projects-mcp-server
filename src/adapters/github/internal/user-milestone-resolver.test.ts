@@ -9,7 +9,7 @@
 
 import { assert, assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { UserMilestoneResolver } from "./user-milestone-resolver.ts";
-import { createGhSpy, type GitHubClientSpy } from "./_test_utils.ts";
+import { createGhSpy, type GitHubClientSpy, makeCtx } from "./_test_utils.ts";
 import type { RepoNodeIdProvider } from "./label-resolver.ts";
 import { GitHubApiError } from "../errors.ts";
 import userNodeIds from "./__fixtures__/user-node-ids.json" with { type: "json" };
@@ -55,12 +55,8 @@ const createResolver = (options: CreateResolverOptions = {}) => {
       return Promise.resolve(options.repoNodeId ?? "R_repo1");
     },
   };
-  const resolver = new UserMilestoneResolver(
-    gh,
-    "test-owner",
-    "test-repo",
-    repoNodeIdProvider,
-  );
+  const ctx = makeCtx(gh);
+  const resolver = new UserMilestoneResolver(ctx, repoNodeIdProvider);
   return { resolver, gh, repoNodeIdProvider };
 };
 

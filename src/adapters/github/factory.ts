@@ -25,6 +25,7 @@ import { bootstrapGitHub, type GitHubBootState } from "./bootstrap.ts";
 import { GitHubProjectBackend } from "./backend.ts";
 import type { GitHubBackendDependencies } from "./backend.ts";
 import { graphql, rest } from "./internal/http-client.ts";
+import type { GitHubInfraContext } from "./internal/infra-context.ts";
 import { BurndownCalculator } from "./internal/burndown-calculator.ts";
 import { ConfigReloader } from "./internal/config-reloader.ts";
 import { FieldValueMutator } from "./internal/field-value-mutator.ts";
@@ -38,6 +39,10 @@ import { EpicService } from "./internal/epic-service.ts";
 import { VocabularyManager } from "./internal/vocabulary-manager.ts";
 import { AnalyticsService } from "./internal/analytics-service.ts";
 import { BoardHealthService } from "./internal/board-health-service.ts";
+import { DirectLookupAssembler } from "./internal/assemblers/direct-lookup-assembler.ts";
+import { ProjectItemsAssembler } from "./internal/assemblers/project-items-assembler.ts";
+import { SearchApiAssembler } from "./internal/assemblers/search-api-assembler.ts";
+import { MixedAssembler } from "./internal/assemblers/mixed-assembler.ts";
 import { GitHubFileReader } from "./internal/file-reader.ts";
 import type { GitHubBackendConfig } from "./types.ts";
 import type { ResolvedToken } from "./types.ts";
@@ -110,66 +115,48 @@ export class GitHubAdapterFactory implements AdapterFactory {
       live,
     };
 
-    // ── Service construction - each service receives only what it needs ──
-
-    const labelResolver = new LabelResolver(bootState, ghClient, owner, primaryRepo);
-
-    const userMilestoneResolver = new UserMilestoneResolver(
-      ghClient,
+    // ── Tier 1: Infrastructure context ────────────────────────────────────
+    const ctx: GitHubInfraContext = {
+      config: bootState,
+      gh: ghClient,
       owner,
-      primaryRepo,
-      labelResolver,
-    );
+      repo: primaryRepo,
+      ghConfig: resolvedGhConfig,
+    };
 
-    const fieldValueMutator = new FieldValueMutator(
-      bootState,
-      ghClient,
-      userMilestoneResolver,
-    );
+    // ── Tier 2: Domain services (ctx + named domain deps) ──────────────────
 
-    const burndownCalculator = new BurndownCalculator(bootState, ghClient, owner, primaryRepo);
+    const labelResolver = new LabelResolver(ctx);
 
-    const sprintHistoryService = new SprintHistoryService(bootState, ghClient, owner, primaryRepo);
+    const userMilestoneResolver = new UserMilestoneResolver(ctx, labelResolver);
 
-    const vocabularyManager = new VocabularyManager(
-      bootState,
-      ghClient,
-      labelResolver,
-      owner,
-      primaryRepo,
-    );
+    const fieldValueMutator = new FieldValueMutator(ctx, userMilestoneResolver);
 
-    const storyQueryService = new StoryQueryService(
-      bootState,
-      ghClient,
-      owner,
-      primaryRepo,
-    );
+    const burndownCalculator = new BurndownCalculator(ctx);
 
-    const epicService = new EpicService(
-      ghClient,
-      owner,
-      resolvedGhConfig.tracked_repos,
-      storyQueryService,
-    );
+    const sprintHistoryService = new SprintHistoryService(ctx);
+
+    const vocabularyManager = new VocabularyManager(ctx, labelResolver);
+
+    const storyQueryService = new StoryQueryService(ctx);
 
     const storyMutationService = new StoryMutationService(
-      bootState,
-      ghClient,
-      owner,
-      primaryRepo,
+      ctx,
       labelResolver,
       userMilestoneResolver,
       fieldValueMutator,
     );
 
-    const impedimentService = new ImpedimentService(
-      bootState,
+    const impedimentService = new ImpedimentService(ctx, labelResolver, storyMutationService);
+
+    // ── Excluded from ctx pattern (different dep shapes) ─────────────────────
+    // EpicService: uses tracked_repos (full list), not primaryRepo
+    // ConfigReloader: needs projectRoot + configDesc — process-startup values
+    const epicService = new EpicService(
       ghClient,
       owner,
-      primaryRepo,
-      labelResolver,
-      storyMutationService,
+      resolvedGhConfig.tracked_repos,
+      storyQueryService,
     );
 
     const configReloader = new ConfigReloader(
@@ -180,7 +167,7 @@ export class GitHubAdapterFactory implements AdapterFactory {
       configDesc,
     );
 
-    // ── New unified services (P7) ───────────────────────────────────────
+    // ── Tier 3: Composed services ─────────────────────────────────────────
 
     const analyticsService = new AnalyticsService(
       bootState,
@@ -194,6 +181,13 @@ export class GitHubAdapterFactory implements AdapterFactory {
       storyQueryService,
       impedimentService,
     );
+
+    // ── Assemblers (Phase 3 filter-strategy-routing pipeline) ─────────────
+    // Depend on storyQueryService (Tier 2) — constructed after all Tier 2/3 services.
+    const directLookupAssembler = new DirectLookupAssembler(storyQueryService);
+    const projectItemsAssembler = new ProjectItemsAssembler(storyQueryService);
+    const searchApiAssembler = new SearchApiAssembler();
+    const mixedAssembler = new MixedAssembler(projectItemsAssembler);
 
     // ── File reader ──────────────────────────────────────────────────────
 
@@ -216,6 +210,10 @@ export class GitHubAdapterFactory implements AdapterFactory {
       configReloader,
       analyticsService,
       boardHealthService,
+      directLookupAssembler,
+      projectItemsAssembler,
+      searchApiAssembler,
+      mixedAssembler,
     };
 
     const backend = new GitHubProjectBackend(deps);

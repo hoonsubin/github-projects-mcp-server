@@ -9,9 +9,8 @@
 import { GitHubApiError } from "../errors.ts";
 import { assertNever } from "../../../domain/errors.ts";
 import { type SelectFieldOption } from "../types.ts";
-import { type GitHubClient } from "./http-client.ts";
 import { LabelResolver } from "./label-resolver.ts";
-import type { GitHubBootState } from "../bootstrap.ts";
+import type { GitHubInfraContext } from "./infra-context.ts";
 import type { CreateResult, VocabularyKind } from "../../../scrum/ports.ts";
 import { GET_FIELD_OPTIONS_QUERY, UPDATE_FIELD_MUTATION } from "../queries.ts";
 
@@ -31,25 +30,10 @@ interface GetFieldOptionsResponse {
  * Injected into GitHubProjectBackend via constructor (DIP).
  */
 export class VocabularyManager {
-  private readonly config: GitHubBootState;
-  private readonly gh: GitHubClient;
-  private readonly labelResolver: LabelResolver;
-  private readonly owner: string;
-  private readonly repo: string;
-
   constructor(
-    config: GitHubBootState,
-    gh: GitHubClient,
-    labelResolver: LabelResolver,
-    owner: string,
-    repo: string,
-  ) {
-    this.config = config;
-    this.gh = gh;
-    this.labelResolver = labelResolver;
-    this.owner = owner;
-    this.repo = repo;
-  }
+    private readonly ctx: GitHubInfraContext,
+    private readonly labelResolver: LabelResolver,
+  ) {}
 
   /** Add a new vocabulary option (status or priority) */
   async addVocabulary(kind: VocabularyKind, value: string): Promise<CreateResult> {
@@ -66,7 +50,7 @@ export class VocabularyManager {
   }
 
   private async addStatusOption(value: string): Promise<CreateResult> {
-    const fieldId = this.config.live.fields.statusFieldId;
+    const fieldId = this.ctx.config.live.fields.statusFieldId;
     if (!fieldId) {
       throw new GitHubApiError(
         "Status field is not configured in this project.",
@@ -82,7 +66,7 @@ export class VocabularyManager {
   }
 
   private async addPriorityOption(value: string): Promise<CreateResult> {
-    const fieldId = this.config.live.fields.priorityFieldId;
+    const fieldId = this.ctx.config.live.fields.priorityFieldId;
     if (!fieldId) {
       throw new GitHubApiError(
         "Priority field is not configured in this project.",
@@ -101,7 +85,7 @@ export class VocabularyManager {
     fieldId: string,
     value: string,
   ): Promise<CreateResult> {
-    const fieldData = await this.gh.graphql<GetFieldOptionsResponse>(
+    const fieldData = await this.ctx.gh.graphql<GetFieldOptionsResponse>(
       GET_FIELD_OPTIONS_QUERY,
       { fieldId },
     );
@@ -113,9 +97,9 @@ export class VocabularyManager {
       ...currentOptions,
       { name: value, color: "GRAY", description: "" },
     ];
-    await this.gh.graphql(
+    await this.ctx.gh.graphql(
       UPDATE_FIELD_MUTATION,
-      { projectId: this.config.live.projectId, fieldId, options: updatedOptions },
+      { projectId: this.ctx.config.live.projectId, fieldId, options: updatedOptions },
     );
     return { created: true };
   }

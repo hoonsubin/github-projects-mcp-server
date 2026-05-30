@@ -39,7 +39,8 @@
 			"disabled": false,
 			"alwaysAllow": [
 				"mempalace_search",
-				"mempalace_kg_add"
+				"mempalace_kg_add",
+				"mempalace_diary_write"
 			]
 		},
 		"sequentialthinking": {

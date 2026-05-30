@@ -21,11 +21,17 @@
 // =============================================================================
 
 import { dirname, fromFileUrl, resolve } from "@std/path";
-import { graphql as rawGraphql } from "../../src/adapters/github/internal/http-client.ts";
+import {
+  type GitHubClient,
+  graphql as rawGraphql,
+  type RestResponse,
+} from "../../src/adapters/github/internal/http-client.ts";
 import { resolveToken, validateToken } from "../../src/adapters/github/types.ts";
 import type { GitHubBackendConfig, ResolvedToken } from "../../src/adapters/github/types.ts";
-import { bootstrapGitHub } from "../../src/adapters/github/bootstrap.ts";
+import { bootstrapGitHub, type GitHubBootState } from "../../src/adapters/github/bootstrap.ts";
 import { PaginatedProjectItemFetcher } from "../../src/adapters/github/internal/pagination.ts";
+import type { GitHubInfraContext } from "../../src/adapters/github/internal/infra-context.ts";
+import { ProjectItemsQueryBuilder } from "../../src/adapters/github/internal/project-items-query-builder.ts";
 import { GET_USER_NODE_ID } from "../../src/adapters/github/queries.ts";
 import type { ScrumConfig } from "../../src/domain/config.ts";
 
@@ -51,11 +57,17 @@ function makeRecorder(
 ) {
   const captured: unknown[] = [];
 
-  const client = {
+  const client: GitHubClient = {
     graphql: async <T>(query: string, variables?: Record<string, unknown>): Promise<T> => {
       const result = await realGraphql<T>(query, variables);
       captured.push(result);
       return result;
+    },
+    rest: <T>(
+      _path: string,
+      _options?: Record<string, unknown>,
+    ): Promise<RestResponse<T>> => {
+      throw new Error("REST API calls are not captured by the fixture capturer.");
     },
   };
 
@@ -115,9 +127,24 @@ export class GitHubFixtureCapturer {
     // PaginatedProjectItemFetcher.collect() makes one call per page of 100.
     // A board with <= 100 items produces a single project-items.json.
 
-    const bootState = { scrumConfig, ghConfig: resolvedGhConfig, live };
     const itemsRec = makeRecorder(realGraphql);
-    const fetcher = new PaginatedProjectItemFetcher(bootState, itemsRec.client);
+
+    const bootConfig: GitHubBootState = {
+      scrumConfig,
+      ghConfig: resolvedGhConfig,
+      live,
+    };
+
+    const ctx: GitHubInfraContext = {
+      config: bootConfig,
+      gh: itemsRec.client,
+      owner: resolvedGhConfig.owner,
+      repo: resolvedGhConfig.tracked_repos[0],
+      ghConfig: resolvedGhConfig,
+    };
+
+    const itemsQuery = new ProjectItemsQueryBuilder(resolvedGhConfig.owner_type).buildQuery();
+    const fetcher = new PaginatedProjectItemFetcher(ctx, itemsQuery);
     await fetcher.collect(() => true);
     savedFiles.push(...await itemsRec.saveAll(effectiveDir, "project-items"));
 

@@ -7,7 +7,6 @@
 
 import { GitHubApiError } from "../errors.ts";
 import { assertNever } from "../../../domain/errors.ts";
-import type { GitHubClient } from "./http-client.ts";
 import { resolveStory } from "./resolver.ts";
 import { LabelResolver } from "./label-resolver.ts";
 import { UserMilestoneResolver } from "./user-milestone-resolver.ts";
@@ -20,7 +19,7 @@ import {
   SET_LABELS_MUTATION,
   SET_MILESTONE_MUTATION,
 } from "../queries.ts";
-import type { GitHubBootState } from "../bootstrap.ts";
+import type { GitHubInfraContext } from "./infra-context.ts";
 import type { CreateStoryInput, ScrumField, StoryUpdates } from "../../../scrum/ports.ts";
 import type { SprintRef, StoryRef } from "../../../domain/types.ts";
 
@@ -32,7 +31,7 @@ import type { SprintRef, StoryRef } from "../../../domain/types.ts";
  * in a single batched GraphQL call using aliases.
  */
 const applyDependencyMutations = async (
-  gh: GitHubClient,
+  gh: GitHubInfraContext["gh"],
   issueId: string,
   blockedBy: readonly StoryRef[] | null | undefined,
   resolveRefsToIssueIds: (refs: readonly StoryRef[]) => Promise<string[]>,
@@ -119,10 +118,7 @@ interface MutationField {
  */
 export class StoryMutationService {
   constructor(
-    private readonly config: GitHubBootState,
-    private readonly gh: GitHubClient,
-    private readonly owner: string,
-    private readonly repo: string,
+    private readonly ctx: GitHubInfraContext,
     private readonly labelResolver: LabelResolver,
     private readonly userMilestoneResolver: UserMilestoneResolver,
     private readonly fieldValueMutator: FieldValueMutator,
@@ -140,13 +136,13 @@ export class StoryMutationService {
 
     // addProjectV2DraftIssue creates the item and adds it to the project in one
     // call - no separate addProjectV2ItemById needed.
-    const draftResult = await this.gh.graphql<{
+    const draftResult = await this.ctx.gh.graphql<{
       addProjectV2DraftIssue?: { projectItem?: { id: string } };
     }>(
       ADD_DRAFT_ISSUE_MUTATION,
       {
         input: {
-          projectId: this.config.live.projectId,
+          projectId: this.ctx.config.live.projectId,
           title: input.title,
           body: input.body,
           ...(assigneeIds.length > 0 ? { assigneeIds } : {}),
@@ -163,7 +159,7 @@ export class StoryMutationService {
           recovery: "Check that your token has Projects (read/write) permission and that " +
             "the project number in your configuration is correct, then retry.",
           context: {
-            projectId: this.config.live.projectId,
+            projectId: this.ctx.config.live.projectId,
             title: input.title,
             responseShape: JSON.stringify(draftResult),
           },
@@ -175,18 +171,18 @@ export class StoryMutationService {
 
     // Type is a project board field - works on draft issues without conversion.
     // Config validation at startup guarantees typeFieldId and typeOptions are populated.
-    const optionId = this.config.live.typeOptions[input.type];
+    const optionId = this.ctx.config.live.typeOptions[input.type];
     if (!optionId) {
       throw new GitHubApiError(
         `Cannot set story type: "${input.type}" is not a recognized canonical type key. ` +
-          `Valid keys: ${Object.keys(this.config.live.typeOptions).join(", ")}. ` +
+          `Valid keys: ${Object.keys(this.ctx.config.live.typeOptions).join(", ")}. ` +
           `Check backends.github.type_mapping in your config file.`,
         {
           code: "OPTION_NOT_FOUND",
           recovery: `Call scrum_orient to see valid type keys (vocabulary.type). ` +
             `If "${input.type}" is a new type, add it to type_mapping in your config file and ` +
             `ensure the matching option exists on the Type project field.`,
-          context: { requested: input.type, valid: Object.keys(this.config.live.typeOptions) },
+          context: { requested: input.type, valid: Object.keys(this.ctx.config.live.typeOptions) },
         },
       );
     }
@@ -205,7 +201,7 @@ export class StoryMutationService {
       if (hasLabels) {
         const labelIds = await this.labelResolver.resolveExistingLabelNodeIds(input.labels!);
         if (labelIds.length > 0) {
-          await this.gh.graphql(
+          await this.ctx.gh.graphql(
             SET_LABELS_MUTATION,
             { issueId, labelIds },
           );
@@ -214,7 +210,7 @@ export class StoryMutationService {
 
       if (hasEpic) {
         // EpicRef.id is the GitHub Milestone node ID (MI_...) - no resolution needed.
-        await this.gh.graphql(
+        await this.ctx.gh.graphql(
           SET_MILESTONE_MUTATION,
           { issueId, milestoneId: input.epic!.id },
         );
@@ -225,17 +221,17 @@ export class StoryMutationService {
   }
 
   async updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void> {
-    const resolved = await resolveStory(ref, this.gh);
+    const resolved = await resolveStory(ref, this.ctx.gh);
     const issueId = resolved.issueId ?? await this.convertDraftToIssue(resolved.itemId);
 
     // Apply blocked_by changes via native GitHub mutations (not body text manipulation)
     if (updates.blocked_by !== undefined) {
       await applyDependencyMutations(
-        this.gh,
+        this.ctx.gh,
         issueId,
         updates.blocked_by,
         async (refs: readonly StoryRef[]) => {
-          const results = await Promise.all(refs.map((r) => resolveStory(r, this.gh)));
+          const results = await Promise.all(refs.map((r) => resolveStory(r, this.ctx.gh)));
           return results.map((r) => {
             if (!r.issueId) {
               throw new GitHubApiError(
@@ -309,7 +305,7 @@ export class StoryMutationService {
     } }) { issue { id } }
       }
     `;
-    await this.gh.graphql(mutation, variables);
+    await this.ctx.gh.graphql(mutation, variables);
   }
 
   async setField(
@@ -317,7 +313,7 @@ export class StoryMutationService {
     field: ScrumField,
     value: string | number | SprintRef | null,
   ): Promise<void> {
-    const resolved = await resolveStory(ref, this.gh);
+    const resolved = await resolveStory(ref, this.ctx.gh);
     const itemId = resolved.itemId;
 
     switch (field) {
@@ -343,11 +339,11 @@ export class StoryMutationService {
   }
 
   async addComment(ref: StoryRef, body: string): Promise<void> {
-    const resolved = await resolveStory(ref, this.gh);
+    const resolved = await resolveStory(ref, this.ctx.gh);
 
     if (resolved.issueNumber !== null) {
-      await this.gh.rest(
-        `repos/${this.owner}/${this.repo}/issues/${resolved.issueNumber}/comments`,
+      await this.ctx.gh.rest(
+        `repos/${this.ctx.owner}/${this.ctx.repo}/issues/${resolved.issueNumber}/comments`,
         { method: "POST", body: { body } },
       );
       return;
@@ -355,7 +351,7 @@ export class StoryMutationService {
 
     // Draft Issue - auto-convert then post via GraphQL (issue number not yet known).
     const issueId = await this.convertDraftToIssue(resolved.itemId);
-    await this.gh.graphql(
+    await this.ctx.gh.graphql(
       ADD_COMMENT_MUTATION,
       { subjectId: issueId, body },
     );
@@ -363,7 +359,7 @@ export class StoryMutationService {
 
   private async convertDraftToIssue(itemId: string): Promise<string> {
     const repositoryId = await this.labelResolver.fetchRepoNodeId();
-    const result = await this.gh.graphql<{
+    const result = await this.ctx.gh.graphql<{
       convertProjectV2DraftIssueItemToIssue?: {
         item?: { content?: { __typename: string; id: string } };
       };
