@@ -99,7 +99,7 @@ classDiagram
             +fields : [ status: FieldWithOptions, sprint: FieldPresence, story_points: FieldPresence, priority: FieldWithOptions, type: FieldPresence and [ configured: boolean ] ]
             +labels : [ existing: readonly string[], expected: readonly string[], missing: readonly string[] ]
             +iterations : [ active: SprintInfo or null, next: SprintInfo or null, completed: readonly SprintInfo[], completedCount: number ]
-            +vocabulary : [ statusDisplay: DisplayMap, priorityDisplay: DisplayMap, typeDisplay: DisplayMap, typeTemplatePaths: Record~string,string~ ]
+            +vocabulary : [ statusDisplay: DisplayMap, priorityDisplay: DisplayMap, typeDisplay: DisplayMap, typeTemplatePaths: Record~string,ContentLocation~ ]
             +epics : [ active: readonly EpicSummary[], totalCount: number ]
             +templateUris : TemplateUriMap or null
         }
@@ -235,6 +235,14 @@ classDiagram
             <<interface>>
         }
 
+        class SUPPORTED_TEMPLATE_EXTENSIONS:::uc_tuple {
+            <<const-tuple>>
+            .md
+            .json
+            .yml
+            .yaml
+        }
+
         class AdapterError:::uc_abstract {
             <<abstract>>
             +backendName : SupportedBackend
@@ -242,6 +250,27 @@ classDiagram
             +recovery : string
             +context : Record~string,unknown~ opt
             +constructor(message: string, context?: Record~string,unknown~)
+        }
+
+        class CONTENT_LOCATION_KINDS:::uc_tuple {
+            <<const-tuple>>
+            file
+            url
+            inline
+        }
+
+        class ContentLocation:::uc_union_warn {
+            <<union>>
+            [ kind: file, path: string ]
+            [ kind: url, url: URL ]
+            [ kind: inline, content: string ]
+        }
+
+        class SupportedMimeType:::uc_union {
+            <<union>>
+            text/markdown
+            application/json
+            application/x-yaml
         }
 
         class EntityRef:::uc_type {
@@ -579,7 +608,7 @@ classDiagram
 
         class ScrumConfig:::uc_interface_warn {
             <<interface>>
-            +project : [ name: string, agent: [ name: string, autonomy: [ level: AutonomyLevel, require_confirmation_above_n_items: number ] ], team: Array~[ name: string, role: TeamRole, contact: string ]~ ]
+            +project : [ name: string, projRoot: string, agent: [ name: string, autonomy: [ level: AutonomyLevel, require_confirmation_above_n_items: number ] ], team: Array~[ name: string, role: TeamRole, contact: string ]~ ]
             +scrum : [ sprint: [ length_weeks: number, start_day: string, story_point_scale: string, story_point_values: number[], velocity_window: number, carry_over_threshold_days: number ], priority: PriorityTier[], status: Record~string,StatusSemantics~ ]
             +definition_of_ready : string[] opt
             +definition_of_done : string[] opt
@@ -603,8 +632,7 @@ classDiagram
 
         class AdapterStartupOptions:::ad_interface {
             <<interface>>
-            +configPath : string opt
-            +projectRoot : string opt
+            +configLocation : ContentLocation opt
         }
 
         class AdapterFactory:::ad_interface {
@@ -618,7 +646,7 @@ classDiagram
             +capabilities : PlatformCapabilities
             +fileReader : FileReaderPort or null
             +scrumConfig : ScrumConfig
-            +typeTemplatePaths : Record~string,string~
+            +typeTemplatePaths : Record~string,ContentLocation~
         }
 
         class GitHubErrorCode:::ad_union {
@@ -781,8 +809,9 @@ classDiagram
 
         class GitHubFileReader:::ad_class {
             <<class>>
-            +constructor(owner: string, repo: string, localRoot: string)
-            +fetchRepoFile(path: string) : Promise~string~
+            +constructor(owner: string, repo: string, token: string)
+            +fetchContent(location: ContentLocation) : Promise~string~
+            +fetchGitHubBlobAsRaw(blobUrl: URL) : Promise~string~
         }
 
         class VocabularyManager:::ad_class {
@@ -1045,7 +1074,7 @@ classDiagram
             +statusOptions : Record~string,string~
             +priorityOptions : Record~string,string~
             +typeOptions : Record~string,string~
-            +typeTemplatePaths : Record~string,string~
+            +typeTemplatePaths : Record~string,ContentLocation~
             +iterations : [ active: IterationEntry or null, next: IterationEntry or null, completed: IterationEntry[], all: IterationEntry[] ]
         }
 
@@ -1131,6 +1160,7 @@ classDiagram
     PlatformState --> FieldPresence : fields
     PlatformState --> SprintInfo : iterations
     PlatformState --> DisplayMap : vocabulary
+    PlatformState --> ContentLocation : vocabulary
     StoryDetail --> StoryComment : comments
     StoryDetail --> LinkedArtifact : linked_artifacts
     BurndownStoryInput --> EntityRef : ref
@@ -1179,11 +1209,13 @@ classDiagram
     ScrumConfig --> AutonomyLevel : project
     ScrumConfig --> TeamRole : project
     ScrumConfig --> ArtifactType : templates
+    AdapterStartupOptions --> ContentLocation : configLocation
     BackendResult --> ProjectReader : backend
     BackendResult --> ProjectWriter : backend
     BackendResult --> PlatformCapabilities : capabilities
     BackendResult --> FileReaderPort : fileReader
     BackendResult --> ScrumConfig : scrumConfig
+    BackendResult --> ContentLocation : typeTemplatePaths
     GitHubApiError --|> AdapterError : extends
     GitHubApiError --> GitHubErrorCode : code
     IssueDetailsInput --> AssigneeNodes : assignees
@@ -1221,6 +1253,7 @@ classDiagram
     SprintHistoryService --> GitHubClient : constructor
     SprintHistoryService --> SprintHistoryEntry : getCompletedSprintHistory
     GitHubFileReader ..|> FileReaderPort : implements
+    GitHubFileReader --> ContentLocation : fetchContent
     VocabularyManager --> RuntimeConfig : config
     VocabularyManager --> GitHubClient : gh
     VocabularyManager --> LabelResolver : labelResolver
@@ -1278,6 +1311,7 @@ classDiagram
     DraftStory --> DependencyEntry : blocked_by
     IssueStory --|> StoryBase : extends
     RuntimeConfig --> ScrumConfig : scrumConfig
+    RuntimeConfig --> ContentLocation : typeTemplatePaths
     RuntimeConfig --> IterationEntry : iterations
     GitHubBackendDependencies --> LabelResolver : labelResolver
     GitHubBackendDependencies --> FieldValueMutator : fieldValueMutator

@@ -48,6 +48,10 @@ classDiagram
             +getBoardHealthUseCase()
         }
 
+        class fetch-location.ts:::scrum {
+            +fetchContent()
+        }
+
         class ports.ts:::scrum {
             +var SEARCH_SCOPES
             type SearchScope
@@ -102,9 +106,26 @@ classDiagram
             +templateResourceUseCase()
         }
 
+        class resolve-location.ts:::scrum {
+            +var SUPPORTED_TEMPLATE_EXTENSIONS
+            type SupportedTemplateExtension
+            +resolveLocation()
+            %% Unused: SUPPORTED_TEMPLATE_EXTENSIONS, SupportedTemplateExtension
+        }
+
         class errors.ts:::domain {
             +assertNever()
             class AdapterError
+        }
+
+        class content-location.ts:::domain {
+            +var CONTENT_LOCATION_KINDS
+            type ContentLocationKind
+            type ContentLocation
+            type SupportedMimeType
+            +describeContentLocation()
+            +mimeTypeForPath()
+            %% Unused: CONTENT_LOCATION_KINDS, ContentLocationKind
         }
 
         class types.ts:::domain {
@@ -373,10 +394,6 @@ classDiagram
             class BoardHealthService
         }
 
-        class contents.ts:::internal {
-            +fetchRepoFile()
-        }
-
         class story-query-service.ts:::internal {
             +buildDependencyMap()
             class StoryQueryService
@@ -471,6 +488,7 @@ classDiagram
     orient.ts --> config.ts : "imports"
     orient.ts --> types.ts : "imports"
     orient.ts --> error-enrichment.ts : "imports"
+    orient.ts --> content-location.ts : "imports"
     get-analytics.ts --> ports.ts : "imports"
     get-analytics.ts --> types.ts : "imports"
     find-items.ts --> ports.ts : "imports"
@@ -484,12 +502,16 @@ classDiagram
     get-story.ts --> acceptance-criteria.ts : "imports"
     get-board-health.ts --> ports.ts : "imports"
     get-board-health.ts --> types.ts : "imports"
+    fetch-location.ts --> content-location.ts : "imports"
     ports.ts --> types.ts : "imports"
     ports.ts --> error-enrichment.ts : "imports"
+    ports.ts --> content-location.ts : "imports"
     update-impediment.ts --> ports.ts : "imports"
     update-impediment.ts --> types.ts : "imports"
     config-helpers.ts --> config.ts : "imports"
     template-resource.ts --> ports.ts : "imports"
+    template-resource.ts --> content-location.ts : "imports"
+    resolve-location.ts --> content-location.ts : "imports"
     errors.ts --> types.ts : "imports"
     types.ts --> github-types.ts : "imports"
     config.ts --> types.ts : "imports"
@@ -519,6 +541,8 @@ classDiagram
     server.ts --> factory.ts : "imports"
     server.ts --> errors.ts : "imports"
     server.ts --> logger.ts : "imports"
+    server.ts --> resolve-location.ts : "imports"
+    server.ts --> content-location.ts : "imports"
     factory.ts --> capabilities.ts : "imports"
     factory.ts --> config-loader.ts : "imports"
     factory.ts --> backend.ts : "imports"
@@ -601,7 +625,8 @@ classDiagram
     sprint-history-service.ts --> config-loader.ts : "imports"
     sprint-history-service.ts --> ports.ts : "imports"
     sprint-history-service.ts --> types.ts : "imports"
-    file-reader.ts --> contents.ts : "imports"
+    file-reader.ts --> fetch-location.ts : "imports"
+    file-reader.ts --> content-location.ts : "imports"
     file-reader.ts --> ports.ts : "imports"
     vocabulary-manager.ts --> errors.ts : "imports"
     vocabulary-manager.ts --> types.ts : "imports"
@@ -628,8 +653,6 @@ classDiagram
     board-health-service.ts --> types.ts : "imports"
     board-health-service.ts --> config-loader.ts : "imports"
     board-health-service.ts --> ports.ts : "imports"
-    contents.ts --> errors.ts : "imports"
-    contents.ts --> http-client.ts : "imports"
     story-query-service.ts --> errors.ts : "imports"
     story-query-service.ts --> error-enrichment.ts : "imports"
     story-query-service.ts --> github-types.ts : "imports"
@@ -659,6 +682,9 @@ classDiagram
     config-loader.ts --> types.ts : "imports"
     config-loader.ts --> config.ts : "imports"
     config-loader.ts --> queries.ts : "imports"
+    config-loader.ts --> content-location.ts : "imports"
+    config-loader.ts --> fetch-location.ts : "imports"
+    config-loader.ts --> resolve-location.ts : "imports"
     backend.ts --> capabilities.ts : "imports"
     backend.ts --> abstract-backend.ts : "imports"
     backend.ts --> errors.ts : "imports"
@@ -711,6 +737,8 @@ The following exports are never directly imported by other modules in the codeba
 | [`./src/scrum/ports.ts`](src/scrum/ports.ts) | `StoryListing` | `interface` |
 | [`./src/scrum/ports.ts`](src/scrum/ports.ts) | `EpicPort` | `interface` |
 | [`./src/scrum/config-helpers.ts`](src/scrum/config-helpers.ts) | `resolveTerminalDisplay` | `function` |
+| [`./src/scrum/resolve-location.ts`](src/scrum/resolve-location.ts) | `SUPPORTED_TEMPLATE_EXTENSIONS` | `var` |
+| [`./src/scrum/resolve-location.ts`](src/scrum/resolve-location.ts) | `SupportedTemplateExtension` | `type` |
 | [`./src/_deno-shim.node.ts`](src/_deno-shim.node.ts) | `addEventListener` | `function` |
 | [`./src/_deno-shim.node.ts`](src/_deno-shim.node.ts) | `Deno` | `var` |
 | [`./src/schemas/inputs.ts`](src/schemas/inputs.ts) | `GraphQLQuerySchema` | `var` |
@@ -739,6 +767,8 @@ The following exports are never directly imported by other modules in the codeba
 | [`./src/adapters/github/types.ts`](src/adapters/github/types.ts) | `FieldValueRepository` | `type` |
 | [`./src/adapters/github/types.ts`](src/adapters/github/types.ts) | `LabelColorNodes` | `type` |
 | [`./src/adapters/abstract-backend.ts`](src/adapters/abstract-backend.ts) | `UnsupportedCapabilityError` | `class` |
+| [`./src/domain/content-location.ts`](src/domain/content-location.ts) | `CONTENT_LOCATION_KINDS` | `var` |
+| [`./src/domain/content-location.ts`](src/domain/content-location.ts) | `ContentLocationKind` | `type` |
 | [`./src/domain/types.ts`](src/domain/types.ts) | `EpicRefWithName` | `type` |
 | [`./src/domain/types.ts`](src/domain/types.ts) | `EpicStatus` | `type` |
 | [`./src/domain/types.ts`](src/domain/types.ts) | `SprintName` | `type` |
