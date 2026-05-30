@@ -6,9 +6,8 @@
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
-import { GitHubClient } from "./http-client.ts";
 import { CREATE_LABEL_MUTATION, GET_REPO_LABELS_QUERY, GET_REPO_QUERY } from "../queries.ts";
-import type { GitHubBootState } from "../bootstrap.ts";
+import type { GitHubInfraContext } from "./infra-context.ts";
 import type { CreateResult } from "../../../scrum/ports.ts";
 
 // ── Helper types ─────────────────────────────────────────────────────────────
@@ -40,39 +39,24 @@ interface RepoLabelsResponse {
  * Injected into GitHubProjectBackend via constructor (DIP).
  */
 export class LabelResolver {
-  private readonly config: GitHubBootState;
-  private readonly gh: GitHubClient;
-  private readonly owner: string;
-  private readonly repo: string;
-
-  constructor(
-    config: GitHubBootState,
-    gh: GitHubClient,
-    owner: string,
-    repo: string,
-  ) {
-    this.config = config;
-    this.gh = gh;
-    this.owner = owner;
-    this.repo = repo;
-  }
+  constructor(private readonly ctx: GitHubInfraContext) {}
 
   /** Fetch the repository node ID from GitHub GraphQL API */
   async fetchRepoNodeId(): Promise<string> {
-    const result = await this.gh.graphql<{ repository?: { id: string } }>(
+    const result = await this.ctx.gh.graphql<{ repository?: { id: string } }>(
       GET_REPO_QUERY,
-      { owner: this.owner, repo: this.repo },
+      { owner: this.ctx.owner, repo: this.ctx.repo },
     );
     const nodeId = result?.repository?.id;
     if (!nodeId) {
       throw new GitHubApiError(
-        `Could not fetch repository node ID for ${this.owner}/${this.repo}.`,
+        `Could not fetch repository node ID for ${this.ctx.owner}/${this.ctx.repo}.`,
         {
           code: "NOT_FOUND",
           statusCode: 404,
           recovery: "Check that owner and repo in your configuration are spelled correctly, " +
             "the repository exists, and your token has Metadata (read) access to it.",
-          context: { owner: this.owner, repo: this.repo },
+          context: { owner: this.ctx.owner, repo: this.ctx.repo },
         },
       );
     }
@@ -81,9 +65,9 @@ export class LabelResolver {
 
   /** Fetch all existing labels for the repository */
   private async fetchAllLabels(): Promise<GitHubLabel[]> {
-    const result = await this.gh.graphql<RepoLabelsResponse>(GET_REPO_LABELS_QUERY, {
-      owner: this.owner,
-      repo: this.repo,
+    const result = await this.ctx.gh.graphql<RepoLabelsResponse>(GET_REPO_LABELS_QUERY, {
+      owner: this.ctx.owner,
+      repo: this.ctx.repo,
     });
     return result?.repository?.labels?.nodes ?? [];
   }
@@ -130,7 +114,7 @@ export class LabelResolver {
     if (unknown.length > 0) {
       throw new GitHubApiError(
         `Cannot assign unknown label(s): ${unknown.join(", ")}. ` +
-          `Available labels on ${this.owner}/${this.repo}: ${
+          `Available labels on ${this.ctx.owner}/${this.ctx.repo}: ${
             existingLabels.map((l) => l.name).join(", ")
           }.`,
         {
@@ -177,7 +161,7 @@ export class LabelResolver {
       const repositoryId = await this.fetchRepoNodeId();
       for (const name of missing) {
         const color = this.hashToColor(name);
-        const createResult = await this.gh.graphql<{
+        const createResult = await this.ctx.gh.graphql<{
           createLabel?: { label?: { id: string } } | null;
         }>(
           CREATE_LABEL_MUTATION,
@@ -211,7 +195,7 @@ export class LabelResolver {
     }
     const color = this.hashToColor(value);
     const repositoryId = await this.fetchRepoNodeId();
-    await this.gh.graphql(
+    await this.ctx.gh.graphql(
       CREATE_LABEL_MUTATION,
       { repositoryId, name: value, color },
     );

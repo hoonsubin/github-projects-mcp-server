@@ -7,9 +7,9 @@
 
 import { GitHubApiError } from "../errors.ts";
 import type * as GH from "../generated/github-types.ts";
-import { GitHubClient } from "./http-client.ts";
 import { RepoNodeIdProvider } from "./label-resolver.ts";
 import { GET_USER_NODE_ID } from "../queries.ts";
+import type { GitHubInfraContext } from "./infra-context.ts";
 
 // ── Response types ─────────────────────────────────────────────────────────────
 
@@ -25,26 +25,14 @@ interface GetUserNodeIdResponse {
  * Injected into GitHubProjectBackend via constructor (DIP).
  */
 export class UserMilestoneResolver {
-  private readonly gh: GitHubClient;
-  private readonly owner: string;
-  private readonly repo: string;
-  private readonly repoNodeIdProvider: RepoNodeIdProvider;
-
   constructor(
-    gh: GitHubClient,
-    owner: string,
-    repo: string,
-    repoNodeIdProvider: RepoNodeIdProvider,
-  ) {
-    this.gh = gh;
-    this.owner = owner;
-    this.repo = repo;
-    this.repoNodeIdProvider = repoNodeIdProvider;
-  }
+    private readonly ctx: GitHubInfraContext,
+    private readonly repoNodeIdProvider: RepoNodeIdProvider,
+  ) {}
 
   /** Resolve a single user login to their GitHub node ID */
   async resolveUserNodeId(login: string): Promise<string> {
-    const result = await this.gh.graphql<GetUserNodeIdResponse>(
+    const result = await this.ctx.gh.graphql<GetUserNodeIdResponse>(
       GET_USER_NODE_ID,
       { login },
     );

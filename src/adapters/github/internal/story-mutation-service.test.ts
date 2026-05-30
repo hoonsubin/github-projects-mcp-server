@@ -8,7 +8,7 @@
 
 import { assert, assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { StoryMutationService } from "./story-mutation-service.ts";
-import { createGhSpy, makeConfig } from "./_test_utils.ts";
+import { createGhSpy, makeConfig, makeCtx } from "./_test_utils.ts";
 import type { GitHubBootState } from "../bootstrap.ts";
 import type { LabelResolver } from "./label-resolver.ts";
 import type { UserMilestoneResolver } from "./user-milestone-resolver.ts";
@@ -153,10 +153,7 @@ const createService = (options: CreateServiceOptions = {}) => {
   } as unknown as FieldValueMutator;
 
   const service = new StoryMutationService(
-    makeConfig(options.configOverrides ?? {}),
-    gh,
-    "test-owner",
-    "test-repo",
+    makeCtx(gh, options.configOverrides ?? {}),
     labelResolver,
     userMilestoneResolver,
     fieldValueMutator,

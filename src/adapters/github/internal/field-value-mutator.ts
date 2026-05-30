@@ -7,10 +7,9 @@
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
-import { GitHubClient } from "./http-client.ts";
 import { resolveSprint } from "./resolver.ts";
 import { UserMilestoneResolver } from "./user-milestone-resolver.ts";
-import type { GitHubBootState } from "../bootstrap.ts";
+import type { GitHubInfraContext } from "./infra-context.ts";
 import type { SprintRef } from "../../../domain/types.ts";
 import { CLEAR_ITEM_FIELD_MUTATION, UPDATE_ITEM_FIELD_MUTATION } from "../queries.ts";
 import { CLEAR_ASSIGNEES_MUTATION, SET_ASSIGNEE_MUTATION } from "../queries.ts";
@@ -22,31 +21,22 @@ import { CLEAR_ASSIGNEES_MUTATION, SET_ASSIGNEE_MUTATION } from "../queries.ts";
  * Injected into GitHubProjectBackend via constructor (DIP).
  */
 export class FieldValueMutator {
-  private readonly config: GitHubBootState;
-  private readonly gh: GitHubClient;
-  private readonly userMilestoneResolver: UserMilestoneResolver;
-
   constructor(
-    config: GitHubBootState,
-    gh: GitHubClient,
-    userMilestoneResolver: UserMilestoneResolver,
-  ) {
-    this.config = config;
-    this.gh = gh;
-    this.userMilestoneResolver = userMilestoneResolver;
-  }
+    private readonly ctx: GitHubInfraContext,
+    private readonly userMilestoneResolver: UserMilestoneResolver,
+  ) {}
 
   /** Clear a project field value using the dedicated GitHub mutation. */
   async clearField(itemId: string, fieldId: string): Promise<void> {
-    await this.gh.graphql(
+    await this.ctx.gh.graphql(
       CLEAR_ITEM_FIELD_MUTATION,
-      { input: { projectId: this.config.live.projectId, itemId, fieldId } },
+      { input: { projectId: this.ctx.config.live.projectId, itemId, fieldId } },
     );
   }
 
   /** Update the status of a project item */
   async setFieldStatus(itemId: string, value: string): Promise<void> {
-    const optionId = this.config.live.statusOptions[value];
+    const optionId = this.ctx.config.live.statusOptions[value];
     if (!optionId) {
       throw new GitHubApiError(
         `Status option "${value}" is not in the project vocabulary.`,
@@ -58,12 +48,12 @@ export class FieldValueMutator {
           context: {
             field: "status",
             value,
-            knownOptions: Object.keys(this.config.live.statusOptions),
+            knownOptions: Object.keys(this.ctx.config.live.statusOptions),
           },
         },
       );
     }
-    const fieldId = this.config.live.fields.statusFieldId;
+    const fieldId = this.ctx.config.live.fields.statusFieldId;
     if (!fieldId) {
       throw new GitHubApiError("Status field is not configured in this project.", {
         code: "FIELD_NOT_CONFIGURED",
@@ -72,11 +62,11 @@ export class FieldValueMutator {
           "then re-run the server so config-loader can pick it up.",
       });
     }
-    await this.gh.graphql<{ updateProjectV2ItemFieldValue: { projectV2Item: { id: string } } }>(
+    await this.ctx.gh.graphql<{ updateProjectV2ItemFieldValue: { projectV2Item: { id: string } } }>(
       UPDATE_ITEM_FIELD_MUTATION,
       {
         input: {
-          projectId: this.config.live.projectId,
+          projectId: this.ctx.config.live.projectId,
           itemId,
           fieldId,
           value: { singleSelectOptionId: optionId },
@@ -87,8 +77,8 @@ export class FieldValueMutator {
 
   /** Update the sprint (iteration) of a project item */
   async setFieldSprint(itemId: string, value: SprintRef): Promise<void> {
-    const iterationId = value === null ? null : resolveSprint(value, this.config);
-    const fieldId = this.config.live.fields.sprintFieldId;
+    const iterationId = value === null ? null : resolveSprint(value, this.ctx.config);
+    const fieldId = this.ctx.config.live.fields.sprintFieldId;
     if (!fieldId) {
       throw new GitHubApiError("Sprint (Iteration) field is not configured in this project.", {
         code: "FIELD_NOT_CONFIGURED",
@@ -100,10 +90,17 @@ export class FieldValueMutator {
     if (iterationId === null) {
       await this.clearField(itemId, fieldId);
     } else {
-      await this.gh.graphql<{ updateProjectV2ItemFieldValue: { projectV2Item: { id: string } } }>(
+      await this.ctx.gh.graphql<
+        { updateProjectV2ItemFieldValue: { projectV2Item: { id: string } } }
+      >(
         UPDATE_ITEM_FIELD_MUTATION,
         {
-          input: { projectId: this.config.live.projectId, itemId, fieldId, value: { iterationId } },
+          input: {
+            projectId: this.ctx.config.live.projectId,
+            itemId,
+            fieldId,
+            value: { iterationId },
+          },
         },
       );
     }
@@ -111,7 +108,7 @@ export class FieldValueMutator {
 
   /** Update the story points of a project item */
   async setFieldStoryPoints(itemId: string, value: number | null): Promise<void> {
-    const fieldId = this.config.live.fields.storyPointsFieldId;
+    const fieldId = this.ctx.config.live.fields.storyPointsFieldId;
     if (!fieldId) {
       throw new GitHubApiError("Story points field is not configured in this project.", {
         code: "FIELD_NOT_CONFIGURED",
@@ -123,11 +120,13 @@ export class FieldValueMutator {
     if (value === null) {
       await this.clearField(itemId, fieldId);
     } else {
-      await this.gh.graphql<{ updateProjectV2ItemFieldValue: { projectV2Item: { id: string } } }>(
+      await this.ctx.gh.graphql<
+        { updateProjectV2ItemFieldValue: { projectV2Item: { id: string } } }
+      >(
         UPDATE_ITEM_FIELD_MUTATION,
         {
           input: {
-            projectId: this.config.live.projectId,
+            projectId: this.ctx.config.live.projectId,
             itemId,
             fieldId,
             value: { number: value },
@@ -139,7 +138,7 @@ export class FieldValueMutator {
 
   /** Update the priority of a project item */
   async setFieldPriority(itemId: string, value: string | null): Promise<void> {
-    const fieldId = this.config.live.fields.priorityFieldId;
+    const fieldId = this.ctx.config.live.fields.priorityFieldId;
     if (!fieldId) {
       throw new GitHubApiError("Priority field is not configured in this project.", {
         code: "FIELD_NOT_CONFIGURED",
@@ -151,7 +150,7 @@ export class FieldValueMutator {
     if (value === null) {
       await this.clearField(itemId, fieldId);
     } else {
-      const optionId = this.config.live.priorityOptions[value];
+      const optionId = this.ctx.config.live.priorityOptions[value];
       if (!optionId) {
         throw new GitHubApiError(
           `Priority option "${value}" is not in the project vocabulary.`,
@@ -163,16 +162,18 @@ export class FieldValueMutator {
             context: {
               field: "priority",
               value,
-              knownOptions: Object.keys(this.config.live.priorityOptions),
+              knownOptions: Object.keys(this.ctx.config.live.priorityOptions),
             },
           },
         );
       }
-      await this.gh.graphql<{ updateProjectV2ItemFieldValue: { projectV2Item: { id: string } } }>(
+      await this.ctx.gh.graphql<
+        { updateProjectV2ItemFieldValue: { projectV2Item: { id: string } } }
+      >(
         UPDATE_ITEM_FIELD_MUTATION,
         {
           input: {
-            projectId: this.config.live.projectId,
+            projectId: this.ctx.config.live.projectId,
             itemId,
             fieldId,
             value: { singleSelectOptionId: optionId },
@@ -184,7 +185,7 @@ export class FieldValueMutator {
 
   /** Update the type of a project item via the Type single-select field */
   async setFieldType(itemId: string, value: string | null): Promise<void> {
-    const fieldId = this.config.live.fields.typeFieldId;
+    const fieldId = this.ctx.config.live.fields.typeFieldId;
     if (!fieldId) {
       throw new GitHubApiError("Type field is not configured in this project.", {
         code: "FIELD_NOT_CONFIGURED",
@@ -198,7 +199,7 @@ export class FieldValueMutator {
       await this.clearField(itemId, fieldId);
       return;
     }
-    const optionId = this.config.live.typeOptions[value];
+    const optionId = this.ctx.config.live.typeOptions[value];
     if (!optionId) {
       throw new GitHubApiError(
         `Type option "${value}" is not in the project vocabulary.`,
@@ -210,16 +211,16 @@ export class FieldValueMutator {
           context: {
             field: "type",
             value,
-            knownOptions: Object.keys(this.config.live.typeOptions),
+            knownOptions: Object.keys(this.ctx.config.live.typeOptions),
           },
         },
       );
     }
-    await this.gh.graphql<{ updateProjectV2ItemFieldValue: { projectV2Item: { id: string } } }>(
+    await this.ctx.gh.graphql<{ updateProjectV2ItemFieldValue: { projectV2Item: { id: string } } }>(
       UPDATE_ITEM_FIELD_MUTATION,
       {
         input: {
-          projectId: this.config.live.projectId,
+          projectId: this.ctx.config.live.projectId,
           itemId,
           fieldId,
           value: { singleSelectOptionId: optionId },
@@ -232,7 +233,7 @@ export class FieldValueMutator {
   async setFieldAssignee(issueId: string, value: string | null): Promise<void> {
     if (value === null) {
       // Clear all assignees
-      await this.gh.graphql<{ updateIssue: { issue: { id: string } } }>(
+      await this.ctx.gh.graphql<{ updateIssue: { issue: { id: string } } }>(
         CLEAR_ASSIGNEES_MUTATION,
         { issueId },
       );
@@ -240,7 +241,7 @@ export class FieldValueMutator {
     }
     // Resolve login → user node ID
     const userId = await this.userMilestoneResolver.resolveUserNodeId(value);
-    await this.gh.graphql<{ updateIssue: { issue: { id: string } } }>(
+    await this.ctx.gh.graphql<{ updateIssue: { issue: { id: string } } }>(
       SET_ASSIGNEE_MUTATION,
       { issueId, userId },
     );

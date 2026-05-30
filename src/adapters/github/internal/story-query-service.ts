@@ -9,7 +9,6 @@
 import { GitHubApiError } from "../errors.ts";
 import { type BackendCallResult, catchBackend } from "../../../services/error-enrichment.ts";
 import type * as GH from "../generated/github-types.ts";
-import type { GitHubClient } from "./http-client.ts";
 import { isBacklogItem, PaginatedProjectItemFetcher } from "./pagination.ts";
 import { resolveSprint, resolveStory } from "./resolver.ts";
 import {
@@ -26,7 +25,7 @@ import {
   GET_ISSUE_DETAILS_QUERY,
   GET_ITEM_FIELDS_QUERY,
 } from "../queries.ts";
-import type { GitHubBootState } from "../bootstrap.ts";
+import type { GitHubInfraContext } from "./infra-context.ts";
 import type { ResolvedItemFilter, SprintInfo, StoryDetail } from "../../../scrum/ports.ts";
 import type { ItemFieldValue, ProjectItem, ProjectV2ItemRef } from "../types.ts";
 import type {
@@ -72,7 +71,7 @@ interface GetItemFieldsResponse {
 export const buildDependencyMap = (
   stories: readonly Story[],
   allItems: readonly ProjectItem[],
-  config: GitHubBootState,
+  config: GitHubInfraContext["config"],
 ): DependencyMap => {
   const map: Record<string, DependencyNode> = {};
 
@@ -173,17 +172,12 @@ export const buildDependencyMap = (
  * Injected into GitHubProjectBackend via constructor (DIP).
  */
 export class StoryQueryService {
-  constructor(
-    private readonly config: GitHubBootState,
-    private readonly gh: GitHubClient,
-    private readonly owner: string,
-    private readonly repo: string,
-  ) {}
+  constructor(private readonly ctx: GitHubInfraContext) {}
 
   async getSprintStories(
     sprint: SprintRef,
   ): Promise<{ stories: Story[]; sprintInfo: SprintInfo }> {
-    const iterationId = resolveSprint(sprint, this.config);
+    const iterationId = resolveSprint(sprint, this.ctx.config);
     if (iterationId === null) {
       throw new GitHubApiError(
         "getSprintStories called with a null sprint ref - guard the null case before calling this method.",
@@ -194,7 +188,7 @@ export class StoryQueryService {
         },
       );
     }
-    const iterEntry = this.config.live.iterations.all.find((i) => i.id === iterationId);
+    const iterEntry = this.ctx.config.live.iterations.all.find((i) => i.id === iterationId);
     const sprintInfo = toSprintInfo(iterEntry ?? null);
     if (!sprintInfo) {
       throw new GitHubApiError(
@@ -210,13 +204,13 @@ export class StoryQueryService {
     const allItems = await this.fetchAllItems();
     const sprintItems = allItems.filter((item) => {
       const fv = item.fieldValues.nodes.find(
-        (v) => v.field?.id === this.config.live.fields.sprintFieldId,
+        (v) => v.field?.id === this.ctx.config.live.fields.sprintFieldId,
       );
       return fv?.iterationId === iterationId;
     });
     const stories = resolveDependencyRefs(
       sprintItems
-        .map((item) => buildStoryFromRaw(item, this.config))
+        .map((item) => buildStoryFromRaw(item, this.ctx.config))
         .filter((s): s is Story => s !== null),
       allItems,
     );
@@ -224,20 +218,20 @@ export class StoryQueryService {
   }
 
   async getBacklogStories(): Promise<Story[]> {
-    const fetcher = new PaginatedProjectItemFetcher(this.config, this.gh);
+    const fetcher = new PaginatedProjectItemFetcher(this.ctx);
     const backlogItems = await fetcher.collect((item) =>
-      isBacklogItem(item, this.config.live.fields.sprintFieldId)
+      isBacklogItem(item, this.ctx.config.live.fields.sprintFieldId)
     );
     return resolveDependencyRefs(
       backlogItems
-        .map((item) => buildStoryFromRaw(item, this.config))
+        .map((item) => buildStoryFromRaw(item, this.ctx.config))
         .filter((s): s is Story => s !== null),
       backlogItems,
     );
   }
 
   async getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>> {
-    const resolved = await resolveStory(ref, this.gh);
+    const resolved = await resolveStory(ref, this.ctx.gh);
 
     // Draft Issues have no GitHub Issue node - fetch project item directly
     if (!resolved.issueId) {
@@ -248,7 +242,7 @@ export class StoryQueryService {
 
     // issueData carries body, comments, timeline - optional sub-query
     const { value: issueData, warnings: issueWarnings } = await catchBackend(() =>
-      this.gh.graphql<GetIssueDetailsResponse>(GET_ISSUE_DETAILS_QUERY, {
+      this.ctx.gh.graphql<GetIssueDetailsResponse>(GET_ISSUE_DETAILS_QUERY, {
         issueId: resolved.issueId!,
       })
     );
@@ -256,7 +250,7 @@ export class StoryQueryService {
 
     // itemData carries custom field values - optional sub-query
     const { value: itemData, warnings: fieldWarnings } = await catchBackend(() =>
-      this.gh.graphql<GetItemFieldsResponse>(GET_ITEM_FIELDS_QUERY, {
+      this.ctx.gh.graphql<GetItemFieldsResponse>(GET_ITEM_FIELDS_QUERY, {
         itemId: resolved.itemId,
       })
     );
@@ -280,7 +274,7 @@ export class StoryQueryService {
       issue,
       resolved.itemId,
       itemData?.node?.fieldValues?.nodes ?? [],
-      this.config,
+      this.ctx.config,
     );
     const comments = issueData ? buildCommentList(issue.comments?.nodes ?? []) : null;
     const linked_artifacts = issueData ? buildLinkedPrList(issue.timelineItems?.nodes ?? []) : null;
@@ -298,7 +292,7 @@ export class StoryQueryService {
       node?: GetDraftIssueDetailsQueryNode | null;
     }
 
-    const data = await this.gh.graphql<GetDraftIssueDetailsResponse>(
+    const data = await this.ctx.gh.graphql<GetDraftIssueDetailsResponse>(
       GET_DRAFT_ISSUE_DETAILS_QUERY,
       { itemId },
     );
@@ -324,7 +318,7 @@ export class StoryQueryService {
       fieldValues: { nodes: node.fieldValues?.nodes ?? [] },
     };
 
-    const story = buildStoryFromRaw(item, this.config);
+    const story = buildStoryFromRaw(item, this.ctx.config);
     if (!story) {
       throw new GitHubApiError(
         `Draft Issue ${itemId} is missing required content fields.`,
@@ -343,7 +337,7 @@ export class StoryQueryService {
 
   /** Fetch all project items (including issues, PRs, and draft issues). */
   fetchAllItems(): Promise<ProjectItem[]> {
-    const fetcher = new PaginatedProjectItemFetcher(this.config, this.gh);
+    const fetcher = new PaginatedProjectItemFetcher(this.ctx);
     return fetcher.collect(() => true);
   }
 
@@ -361,20 +355,20 @@ export class StoryQueryService {
     // Filter items assigned to this iteration
     const sprintItems = allItems.filter((item) => {
       const fv = item.fieldValues.nodes.find(
-        (v) => v.field?.id === this.config.live.fields.sprintFieldId,
+        (v) => v.field?.id === this.ctx.config.live.fields.sprintFieldId,
       );
       return fv?.iterationId === iterationId;
     });
 
     const stories = sprintItems
-      .map((item) => buildStoryFromRaw(item, this.config))
+      .map((item) => buildStoryFromRaw(item, this.ctx.config))
       .filter((s): s is Story => s !== null);
 
     // Build reverse map: display name → canonical status key.
     // story.status holds the display name (e.g. "Done"), but terminal
     // semantics are keyed by canonical key (e.g. "done") in scrumConfig.scrum.status.
     const statusReverseMap = new Map<string, string>();
-    const statusDisplay = this.config.ghConfig.status_display ?? {};
+    const statusDisplay = this.ctx.config.ghConfig.status_display ?? {};
     for (const [canonical, display] of Object.entries(statusDisplay)) {
       statusReverseMap.set(display, canonical);
     }
@@ -387,7 +381,7 @@ export class StoryQueryService {
       total += points;
       if (story.status) {
         const canonicalKey = statusReverseMap.get(story.status);
-        if (canonicalKey && this.config.scrumConfig.scrum.status[canonicalKey]?.terminal) {
+        if (canonicalKey && this.ctx.config.scrumConfig.scrum.status[canonicalKey]?.terminal) {
           completed += points;
         }
       }
@@ -413,7 +407,7 @@ export class StoryQueryService {
 
     // Map to domain Stories
     let stories: Story[] = allItems
-      .map((item) => buildStoryFromRaw(item, this.config))
+      .map((item) => buildStoryFromRaw(item, this.ctx.config))
       .filter((s): s is Story => s !== null);
 
     // Apply filters in order of selectivity
@@ -449,7 +443,7 @@ export class StoryQueryService {
     // Fix sprint.ref.id from hardcoded "" to actual iteration ID
     items = items.map((item) => {
       if (item.sprint.name) {
-        const iterEntry = this.config.live.iterations.all.find(
+        const iterEntry = this.ctx.config.live.iterations.all.find(
           (i) => i.title === item.sprint.name,
         );
         if (iterEntry) {
@@ -514,13 +508,13 @@ export class StoryQueryService {
     sprintRef: string | null,
   ): Story[] {
     if (sprintRef === null) return stories;
-    const iterationId = resolveSprint(sprintRef, this.config);
+    const iterationId = resolveSprint(sprintRef, this.ctx.config);
     if (iterationId === null) return [];
     const sprintItemIds = new Set(
       allItems
         .filter((item) => {
           const fv = item.fieldValues.nodes.find(
-            (v) => v.field?.id === this.config.live.fields.sprintFieldId,
+            (v) => v.field?.id === this.ctx.config.live.fields.sprintFieldId,
           );
           return fv?.iterationId === iterationId;
         })
@@ -587,6 +581,6 @@ export class StoryQueryService {
     stories: readonly Story[],
     allItems: readonly ProjectItem[],
   ): DependencyMap {
-    return buildDependencyMap(stories, allItems, this.config);
+    return buildDependencyMap(stories, allItems, this.ctx.config);
   }
 }

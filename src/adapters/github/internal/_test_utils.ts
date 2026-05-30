@@ -5,6 +5,8 @@
 
 import type { GitHubClient, RestResponse } from "./http-client.ts";
 import type { GitHubBootState } from "../bootstrap.ts";
+import type { GitHubInfraContext } from "./infra-context.ts";
+import type { GitHubBackendConfig } from "../types.ts";
 
 // ── GitHubClient spy ──────────────────────────────────────────────────────────
 
@@ -104,5 +106,39 @@ export function makeConfig(overrides: Partial<GitHubBootState> = {}): GitHubBoot
       },
     },
     ...overrides,
+  };
+}
+
+// ── GitHubInfraContext factory ────────────────────────────────────────────────
+
+/** Overrides type for makeCtx — allows Partial<GitHubBackendConfig> via ghConfig. */
+type CtxOverrides = Partial<Omit<GitHubBootState, "ghConfig">> & {
+  ghConfig?: Partial<GitHubBackendConfig>;
+};
+
+/**
+ * Build a GitHubInfraContext for tests. Accepts a GitHubClientSpy (or any
+ * GitHubClient) and optional config overrides. ghConfig overrides are
+ * deep-merged so callers can set only owner_type without re-specifying
+ * the entire ghConfig object.
+ */
+export function makeCtx(
+  gh: GitHubClient,
+  overrides: CtxOverrides = {},
+): GitHubInfraContext {
+  const { ghConfig: ghConfigOverrides, ...restOverrides } = overrides;
+  const mergedGhConfig = ghConfigOverrides
+    ? { ...makeConfig().ghConfig, ...ghConfigOverrides }
+    : undefined;
+  const config = makeConfig({
+    ...restOverrides,
+    ...(mergedGhConfig ? { ghConfig: mergedGhConfig } : {}),
+  } as Partial<GitHubBootState>);
+  return {
+    config,
+    gh,
+    owner: config.ghConfig.owner,
+    repo: config.ghConfig.tracked_repos[0],
+    ghConfig: config.ghConfig,
   };
 }

@@ -16,9 +16,8 @@
 
 import { assert, assertEquals, assertRejects } from "@std/assert";
 import { isBacklogItem, PaginatedProjectItemFetcher } from "./pagination.ts";
-import { createGhSpy, makeConfig } from "./_test_utils.ts";
+import { createGhSpy, makeCtx } from "./_test_utils.ts";
 import { GitHubApiError } from "../errors.ts";
-import type { GitHubBootState } from "../bootstrap.ts";
 
 // ── Fixture imports ───────────────────────────────────────────────────────────
 // JSON captured from the live API via `deno task capture-fixtures`.
@@ -30,14 +29,8 @@ import p2Fixture from "./__fixtures__/project-items-p2.json" with { type: "json"
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 // The fixture data comes from a user account, not an org.
-// Override owner_type so the fetcher looks at the correct response key.
-function makeUserConfig(overrides: Partial<GitHubBootState> = {}): GitHubBootState {
-  const base = makeConfig();
-  return makeConfig({
-    ...overrides,
-    ghConfig: { ...base.ghConfig, owner_type: "user" as const },
-  });
-}
+// makeCtx() deep-merges ghConfig overrides — pass { ghConfig: { owner_type: "user" } }
+// to route to the user response key.
 
 // Derive expected counts directly from fixtures so tests stay valid after re-capture.
 const P1_NODES = (p1Fixture as { user: { projectV2: { items: { nodes: unknown[] } } } })
@@ -70,11 +63,12 @@ function makeNotFoundPage(ownerType: "user" | "org" = "user") {
 Deno.test({
   name: "collect() - returns all items across two fixture pages",
   async fn() {
-    const config = makeUserConfig();
     const gh = createGhSpy();
     gh.enqueue(p1Fixture, p2Fixture);
 
-    const fetcher = new PaginatedProjectItemFetcher(config, gh);
+    const fetcher = new PaginatedProjectItemFetcher(
+      makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
+    );
     const items = await fetcher.collect(() => true);
 
     assertEquals(items.length, FIXTURE_TOTAL);
@@ -85,11 +79,12 @@ Deno.test({
 Deno.test({
   name: "collect() - items are non-empty (regression: collect() previously returned [])",
   async fn() {
-    const config = makeUserConfig();
     const gh = createGhSpy();
     gh.enqueue(p1Fixture, p2Fixture);
 
-    const fetcher = new PaginatedProjectItemFetcher(config, gh);
+    const fetcher = new PaginatedProjectItemFetcher(
+      makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
+    );
     const items = await fetcher.collect(() => true);
 
     // The core regression: before the fix, this was always 0.
@@ -100,11 +95,12 @@ Deno.test({
 Deno.test({
   name: "collect() - every item has a non-empty id",
   async fn() {
-    const config = makeUserConfig();
     const gh = createGhSpy();
     gh.enqueue(p1Fixture, p2Fixture);
 
-    const fetcher = new PaginatedProjectItemFetcher(config, gh);
+    const fetcher = new PaginatedProjectItemFetcher(
+      makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
+    );
     const items = await fetcher.collect(() => true);
 
     for (const item of items) {
@@ -120,11 +116,12 @@ Deno.test({
     // This test catches the query bug where `field { id name }` was placed directly
     // on the ProjectV2ItemFieldValue union. GitHub silently dropped the field selection,
     // making every fieldValue.field undefined. The fix uses `... on ProjectV2FieldCommon`.
-    const config = makeUserConfig();
     const gh = createGhSpy();
     gh.enqueue(p1Fixture, p2Fixture);
 
-    const fetcher = new PaginatedProjectItemFetcher(config, gh);
+    const fetcher = new PaginatedProjectItemFetcher(
+      makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
+    );
     const items = await fetcher.collect(() => true);
 
     const itemsWithFields = items.filter((item) => item.fieldValues.nodes.length > 0);
@@ -158,11 +155,12 @@ Deno.test({
   name: "collect() - first page is fetched lazily on first call (not in constructor)",
   async fn() {
     // Confirms the lazy-init guard: graphql must not be called until collect() runs.
-    const config = makeUserConfig();
     const gh = createGhSpy();
     gh.enqueue(p1Fixture, p2Fixture);
 
-    const fetcher = new PaginatedProjectItemFetcher(config, gh);
+    const fetcher = new PaginatedProjectItemFetcher(
+      makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
+    );
     assertEquals(gh.graphqlCalls.length, 0, "No calls should happen in constructor");
 
     await fetcher.collect(() => true);
@@ -177,11 +175,12 @@ Deno.test({
 Deno.test({
   name: "collect() - predicate limits returned items without skipping pages",
   async fn() {
-    const config = makeUserConfig();
     const gh = createGhSpy();
     gh.enqueue(p1Fixture, p2Fixture);
 
-    const fetcher = new PaginatedProjectItemFetcher(config, gh);
+    const fetcher = new PaginatedProjectItemFetcher(
+      makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
+    );
     // p1 has 10 PULL_REQUEST + 1 DRAFT_ISSUE, so ISSUE count < FIXTURE_TOTAL
     const issues = await fetcher.collect((item) => item.type === "ISSUE");
 
@@ -198,11 +197,12 @@ Deno.test({
 Deno.test({
   name: "collect() - predicate returning false for all items yields []",
   async fn() {
-    const config = makeUserConfig();
     const gh = createGhSpy();
     gh.enqueue(p1Fixture, p2Fixture);
 
-    const fetcher = new PaginatedProjectItemFetcher(config, gh);
+    const fetcher = new PaginatedProjectItemFetcher(
+      makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
+    );
     const none = await fetcher.collect(() => false);
 
     assertEquals(none.length, 0);
@@ -264,11 +264,12 @@ Deno.test({
 Deno.test({
   name: "collect() - returns [] on project with zero items",
   async fn() {
-    const config = makeUserConfig();
     const gh = createGhSpy();
     gh.enqueue(makeEmptyPage("user"));
 
-    const fetcher = new PaginatedProjectItemFetcher(config, gh);
+    const fetcher = new PaginatedProjectItemFetcher(
+      makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
+    );
     const items = await fetcher.collect(() => true);
 
     assertEquals(items.length, 0);
@@ -279,11 +280,12 @@ Deno.test({
 Deno.test({
   name: "collect() - throws GitHubApiError when project is not found",
   async fn() {
-    const config = makeUserConfig();
     const gh = createGhSpy();
     gh.enqueue(makeNotFoundPage("user"));
 
-    const fetcher = new PaginatedProjectItemFetcher(config, gh);
+    const fetcher = new PaginatedProjectItemFetcher(
+      makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
+    );
     await assertRejects(
       () => fetcher.collect(() => true),
       GitHubApiError,
@@ -294,11 +296,10 @@ Deno.test({
 Deno.test({
   name: "collect() - uses organization key for org-owned projects",
   async fn() {
-    const config = makeConfig(); // default is owner_type: "org"
     const gh = createGhSpy();
     gh.enqueue(makeEmptyPage("org"));
 
-    const fetcher = new PaginatedProjectItemFetcher(config, gh);
+    const fetcher = new PaginatedProjectItemFetcher(makeCtx(gh));
     const items = await fetcher.collect(() => true);
 
     assertEquals(items.length, 0);
@@ -308,11 +309,12 @@ Deno.test({
 Deno.test({
   name: "collect() - single page project makes exactly one graphql call",
   async fn() {
-    const config = makeUserConfig();
     const gh = createGhSpy();
     gh.enqueue(makeEmptyPage("user"));
 
-    const fetcher = new PaginatedProjectItemFetcher(config, gh);
+    const fetcher = new PaginatedProjectItemFetcher(
+      makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
+    );
     await fetcher.collect(() => true);
 
     assertEquals(gh.graphqlCalls.length, 1);

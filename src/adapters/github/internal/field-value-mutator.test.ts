@@ -10,7 +10,7 @@
 import { assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { FieldValueMutator } from "./field-value-mutator.ts";
 import { UserMilestoneResolver } from "./user-milestone-resolver.ts";
-import { createGhSpy, makeConfig } from "./_test_utils.ts";
+import { createGhSpy, makeConfig, makeCtx } from "./_test_utils.ts";
 import type { GitHubClientSpy } from "./_test_utils.ts";
 import type { RepoNodeIdProvider } from "./label-resolver.ts";
 import type { GitHubBootState } from "../bootstrap.ts";
@@ -85,6 +85,7 @@ interface CreateMutatorOptions {
 const createMutator = (options: CreateMutatorOptions = {}) => {
   const gh = createGhSpy();
   const config = makeConfig(options.configOverrides ?? {});
+  const ctx = makeCtx(gh, options.configOverrides ?? {});
 
   const repoNodeIdProvider: RepoNodeIdProvider = {
     fetchRepoNodeId(): Promise<string> {
@@ -92,16 +93,11 @@ const createMutator = (options: CreateMutatorOptions = {}) => {
     },
   };
 
-  const userResolver = new UserMilestoneResolver(
-    gh,
-    "test-owner",
-    "test-repo",
-    repoNodeIdProvider,
-  );
+  const userResolver = new UserMilestoneResolver(ctx, repoNodeIdProvider);
 
-  const mutator = new FieldValueMutator(config, gh, userResolver);
+  const mutator = new FieldValueMutator(ctx, userResolver);
 
-  return { mutator, gh, config, userResolver };
+  return { mutator, gh, config, userResolver, ctx };
 };
 
 const TEST_ITEM_ID = "PVTI_item1";

@@ -6,9 +6,8 @@
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
-import type { GitHubClient } from "./http-client.ts";
 import { PaginatedProjectItemFetcher } from "./pagination.ts";
-import type { GitHubBootState } from "../bootstrap.ts";
+import type { GitHubInfraContext } from "./infra-context.ts";
 import type { SprintHistoryEntry } from "../../../scrum/ports.ts";
 import type { ProjectItemIssueContent, ProjectItemPRContent } from "../types.ts";
 
@@ -19,22 +18,17 @@ import type { ProjectItemIssueContent, ProjectItemPRContent } from "../types.ts"
  * Injected into GitHubProjectBackend via constructor (DIP).
  */
 export class SprintHistoryService {
-  constructor(
-    private readonly config: GitHubBootState,
-    private readonly gh: GitHubClient,
-    private readonly owner: string,
-    private readonly repo: string,
-  ) {}
+  constructor(private readonly ctx: GitHubInfraContext) {}
 
   async getCompletedSprintHistory(window: number): Promise<SprintHistoryEntry[]> {
-    const completedSorted = [...this.config.live.iterations.completed].sort(
+    const completedSorted = [...this.ctx.config.live.iterations.completed].sort(
       (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime(),
     );
     const windowSlice = completedSorted.slice(0, window);
     if (windowSlice.length === 0) return [];
 
     const allItems = await this.fetchAllItems();
-    const { sprintFieldId, statusFieldId, storyPointsFieldId } = this.config.live.fields;
+    const { sprintFieldId, statusFieldId, storyPointsFieldId } = this.ctx.config.live.fields;
 
     return windowSlice.map((iter) => {
       const iterItems = allItems.filter((item) => {
@@ -93,10 +87,7 @@ export class SprintHistoryService {
    * exclude them explicitly, preserving the original query shape from the paginator.
    */
   private fetchAllItems() {
-    const fetcher = new PaginatedProjectItemFetcher(
-      this.config,
-      { graphql: this.gh.graphql },
-    );
+    const fetcher = new PaginatedProjectItemFetcher(this.ctx);
     return fetcher.collect(() => true);
   }
 }

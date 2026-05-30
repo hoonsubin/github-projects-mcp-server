@@ -25,6 +25,7 @@ import { bootstrapGitHub, type GitHubBootState } from "./bootstrap.ts";
 import { GitHubProjectBackend } from "./backend.ts";
 import type { GitHubBackendDependencies } from "./backend.ts";
 import { graphql, rest } from "./internal/http-client.ts";
+import type { GitHubInfraContext } from "./internal/infra-context.ts";
 import { BurndownCalculator } from "./internal/burndown-calculator.ts";
 import { ConfigReloader } from "./internal/config-reloader.ts";
 import { FieldValueMutator } from "./internal/field-value-mutator.ts";
@@ -110,41 +111,30 @@ export class GitHubAdapterFactory implements AdapterFactory {
       live,
     };
 
-    // ── Service construction - each service receives only what it needs ──
-
-    const labelResolver = new LabelResolver(bootState, ghClient, owner, primaryRepo);
-
-    const userMilestoneResolver = new UserMilestoneResolver(
-      ghClient,
+    // ── Tier 1: Infrastructure context ────────────────────────────────────
+    const ctx: GitHubInfraContext = {
+      config: bootState,
+      gh: ghClient,
       owner,
-      primaryRepo,
-      labelResolver,
-    );
+      repo: primaryRepo,
+      ghConfig: resolvedGhConfig,
+    };
 
-    const fieldValueMutator = new FieldValueMutator(
-      bootState,
-      ghClient,
-      userMilestoneResolver,
-    );
+    // ── Tier 2: Domain services (ctx + named domain deps) ──────────────────
 
-    const burndownCalculator = new BurndownCalculator(bootState, ghClient, owner, primaryRepo);
+    const labelResolver = new LabelResolver(ctx);
 
-    const sprintHistoryService = new SprintHistoryService(bootState, ghClient, owner, primaryRepo);
+    const userMilestoneResolver = new UserMilestoneResolver(ctx, labelResolver);
 
-    const vocabularyManager = new VocabularyManager(
-      bootState,
-      ghClient,
-      labelResolver,
-      owner,
-      primaryRepo,
-    );
+    const fieldValueMutator = new FieldValueMutator(ctx, userMilestoneResolver);
 
-    const storyQueryService = new StoryQueryService(
-      bootState,
-      ghClient,
-      owner,
-      primaryRepo,
-    );
+    const burndownCalculator = new BurndownCalculator(ctx);
+
+    const sprintHistoryService = new SprintHistoryService(ctx);
+
+    const vocabularyManager = new VocabularyManager(ctx, labelResolver);
+
+    const storyQueryService = new StoryQueryService(ctx);
 
     const epicService = new EpicService(
       ghClient,
@@ -154,23 +144,13 @@ export class GitHubAdapterFactory implements AdapterFactory {
     );
 
     const storyMutationService = new StoryMutationService(
-      bootState,
-      ghClient,
-      owner,
-      primaryRepo,
+      ctx,
       labelResolver,
       userMilestoneResolver,
       fieldValueMutator,
     );
 
-    const impedimentService = new ImpedimentService(
-      bootState,
-      ghClient,
-      owner,
-      primaryRepo,
-      labelResolver,
-      storyMutationService,
-    );
+    const impedimentService = new ImpedimentService(ctx, labelResolver, storyMutationService);
 
     const configReloader = new ConfigReloader(
       resolvedGhConfig,
@@ -180,7 +160,7 @@ export class GitHubAdapterFactory implements AdapterFactory {
       configDesc,
     );
 
-    // ── New unified services (P7) ───────────────────────────────────────
+    // ── Tier 3: Composed services ─────────────────────────────────────────
 
     const analyticsService = new AnalyticsService(
       bootState,

@@ -13,7 +13,7 @@
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
-import type { GitHubBootState } from "../bootstrap.ts";
+import type { GitHubInfraContext } from "./infra-context.ts";
 import type {
   ItemFieldValue,
   OwnerType,
@@ -44,8 +44,7 @@ export interface ItemFetchConfig {
  *
  * Automatically fetches the first page on construction.
  *
- * @param config - GitHubBootState with project identity and field metadata
- * @param github - GraphQL client
+ * @param ctx - GitHubInfraContext carrying config, gh, owner, repo
  * @param options - Fetch configuration controlling payload size
  */
 export class PaginatedProjectItemFetcher {
@@ -58,11 +57,10 @@ export class PaginatedProjectItemFetcher {
   private _totalCount = 0;
 
   constructor(
-    private config: GitHubBootState,
-    private github: { graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> },
+    private ctx: GitHubInfraContext,
     private options: ItemFetchConfig = {},
   ) {
-    const ghConfig = config.ghConfig;
+    const ghConfig = ctx.config.ghConfig;
     this.login = ghConfig.owner;
     this.projectNumber = ghConfig.project_number;
     this.ownerType = ghConfig.owner_type;
@@ -81,7 +79,7 @@ export class PaginatedProjectItemFetcher {
 
   /** Fetch the first page. Called lazily by collect() on first invocation. */
   private async fetchFirstPage(): Promise<void> {
-    const result = await this.github.graphql<ProjectItemsResponse>(this.query, {
+    const result = await this.ctx.gh.graphql<ProjectItemsResponse>(this.query, {
       login: this.login,
       number: this.projectNumber,
     });
@@ -105,7 +103,7 @@ export class PaginatedProjectItemFetcher {
   /** Fetch all remaining pages. Call after construction to get complete dataset. */
   async fetchRemaining(): Promise<void> {
     while (this.pageInfo?.hasNextPage && this.pageInfo.endCursor) {
-      const result = await this.github.graphql<ProjectItemsResponse>(this.query, {
+      const result = await this.ctx.gh.graphql<ProjectItemsResponse>(this.query, {
         login: this.login,
         number: this.projectNumber,
         cursor: this.pageInfo.endCursor,
@@ -131,7 +129,7 @@ export class PaginatedProjectItemFetcher {
       if (predicate(item)) results.push(item);
     }
     while (this.pageInfo?.hasNextPage && this.pageInfo.endCursor) {
-      const result = await this.github.graphql<ProjectItemsResponse>(this.query, {
+      const result = await this.ctx.gh.graphql<ProjectItemsResponse>(this.query, {
         login: this.login,
         number: this.projectNumber,
         cursor: this.pageInfo.endCursor,
