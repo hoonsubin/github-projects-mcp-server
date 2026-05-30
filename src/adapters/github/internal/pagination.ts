@@ -2,8 +2,9 @@
 // src/adapters/github/internal/pagination.ts - PaginatedProjectItemFetcher
 //
 // Cursor-based pagination infrastructure for GitHub Projects v2 items.
-// Receives a pre-built GraphQL query (built by ProjectItemsQueryBuilder)
-// and does nothing but page through results.
+// Phase 4: delegates execution to ExecutionEngine (Humble Object pattern).
+// The fetcher is now a thin convenience wrapper — its public API is unchanged
+// so no consumer code needs modification.
 //
 // Phase 1 of adapter refactoring — query-building responsibility moved to
 // project-items-query-builder.ts. The fetcher is pure cursor iteration.
@@ -11,17 +12,50 @@
 
 import { GitHubApiError } from "../errors.ts";
 import type { GitHubInfraContext } from "./infra-context.ts";
+import { ExecutionEngine, type PageExtractor } from "./execution-engine.ts";
+import type { PlatformRequest } from "./assemblers/types.ts";
 import type { ProjectItemsResponse } from "./project-items-query-builder.ts";
 import type {
   ItemFieldValue,
   OwnerType,
-  PageInfoRef,
   ProjectItem,
   ProjectItemDraftContent,
   ProjectItemIssueContent,
   ProjectItemPRContent,
   ProjectV2ItemRef,
 } from "../types.ts";
+
+// ── Page extractor for project items responses ───────────────────────────────
+
+/**
+ * Navigate a ProjectItemsResponse to extract nodes, pageInfo, and totalCount.
+ * Throws GitHubApiError when the project is not found — the engine propagates this.
+ */
+const projectItemsExtractor = (
+  ownerType: OwnerType,
+  projectNumber: number,
+  login: string,
+): PageExtractor<ProjectItemsResponse> => {
+  return (response: ProjectItemsResponse) => {
+    const project = ownerType === "user"
+      ? response.user?.projectV2
+      : response.organization?.projectV2;
+    if (!project) {
+      throw new GitHubApiError(
+        `Project #${projectNumber} not found for ${ownerType} '${login}'.`,
+        {
+          code: "NOT_FOUND",
+          recovery: "Verify the project number and owner in backends.github config.",
+        },
+      );
+    }
+    return {
+      nodes: project.items?.nodes ?? [],
+      pageInfo: project.items?.pageInfo ?? { hasNextPage: false, endCursor: null },
+      totalCount: project.items?.totalCount ?? 0,
+    };
+  };
+};
 
 // ---------------------------------------------------------------------------
 // PaginatedProjectItemFetcher
@@ -30,31 +64,41 @@ import type {
 /**
  * Cursor-based paginated fetcher for GitHub Projects v2 items.
  *
- * Receives a pre-built query (from ProjectItemsQueryBuilder) and pages
- * through results. No query logic lives here — this is pure iteration
- * infrastructure.
+ * Thin wrapper over ExecutionEngine — the engine handles raw cursor iteration;
+ * the fetcher interprets the project-items-specific response shape and provides
+ * the collect(predicate) convenience API.
+ *
+ * Public API is unchanged from Phase 1-3 so no consumer code modifications
+ * are required (BurndownCalculator, SprintHistoryService, StoryQueryService,
+ * ImpedimentService all construct this class with the same (ctx, query) args).
  *
  * @param ctx - GitHubInfraContext carrying config, gh, owner, repo
  * @param query - Pre-built GraphQL query document from ProjectItemsQueryBuilder
  */
 export class PaginatedProjectItemFetcher {
-  private login: string;
-  private projectNumber: number;
-  private ownerType: OwnerType;
-  private query: string;
+  private readonly login: string;
+  private readonly projectNumber: number;
+  private readonly ownerType: OwnerType;
+  private readonly engine: ExecutionEngine;
+  private readonly request: PlatformRequest;
   private items: ProjectItem[] = [];
-  private pageInfo: PageInfoRef | null = null;
   private _totalCount = 0;
+  private _hasFetched = false;
 
   constructor(
-    private ctx: GitHubInfraContext,
+    private readonly ctx: GitHubInfraContext,
     query: string,
   ) {
     const ghConfig = ctx.config.ghConfig;
     this.login = ghConfig.owner;
     this.projectNumber = ghConfig.project_number;
     this.ownerType = ghConfig.owner_type;
-    this.query = query;
+
+    this.engine = new ExecutionEngine(ctx.gh);
+    this.request = {
+      document: query,
+      variables: { login: this.login, number: this.projectNumber },
+    };
   }
 
   /** Get total item count from the first page response. */
@@ -67,74 +111,33 @@ export class PaginatedProjectItemFetcher {
     return this.items;
   }
 
-  /** Fetch the first page. Called lazily by collect() on first invocation. */
-  private async fetchFirstPage(): Promise<void> {
-    const result = await this.ctx.gh.graphql<ProjectItemsResponse>(this.query, {
-      login: this.login,
-      number: this.projectNumber,
-    });
-    const project = this.ownerType === "user"
-      ? result.user?.projectV2
-      : result.organization?.projectV2;
-    if (!project) {
-      throw new GitHubApiError(
-        `Project #${this.projectNumber} not found for ${this.ownerType} '${this.login}'.`,
-        {
-          code: "NOT_FOUND",
-          recovery: "Verify the project number and owner in backends.github config.",
-        },
-      );
-    }
-    this.items = [...(project.items?.nodes ?? [])];
-    this.pageInfo = project.items?.pageInfo ?? null;
-    this._totalCount = project.items?.totalCount ?? 0;
-  }
+  /** Fetch all pages via the execution engine. Called lazily on first access. */
+  private async fetchAll(): Promise<void> {
+    if (this._hasFetched) return;
 
-  /** Fetch all remaining pages. Call after construction to get complete dataset. */
-  async fetchRemaining(): Promise<void> {
-    while (this.pageInfo?.hasNextPage && this.pageInfo.endCursor) {
-      const result = await this.ctx.gh.graphql<ProjectItemsResponse>(this.query, {
-        login: this.login,
-        number: this.projectNumber,
-        cursor: this.pageInfo.endCursor,
-      });
-      const project = this.ownerType === "user"
-        ? result.user?.projectV2
-        : result.organization?.projectV2;
-      const moreItems = project?.items?.nodes ?? [];
-      this.items.push(...moreItems);
-      this.pageInfo = project?.items?.pageInfo ?? null;
-    }
+    const extractor = projectItemsExtractor(
+      this.ownerType,
+      this.projectNumber,
+      this.login,
+    );
+    const result = await this.engine.execute(this.request, extractor);
+
+    this.items = result.nodes as ProjectItem[];
+    this._totalCount = result.totalCount;
+    this._hasFetched = true;
   }
 
   /**
-   * Collect all items matching the predicate, fetching additional pages as needed.
+   * Collect all items matching the predicate, fetching pages via the engine.
+   *
+   * All pages are fetched in one batch by ExecutionEngine.execute().
+   * Client-side filtering (predicate) is applied after all nodes are collected.
    */
   async collect(
     predicate: (item: ProjectItem) => boolean,
   ): Promise<ProjectItem[]> {
-    if (this.pageInfo === null) await this.fetchFirstPage();
-    const results: ProjectItem[] = [];
-    for (const item of this.items) {
-      if (predicate(item)) results.push(item);
-    }
-    while (this.pageInfo?.hasNextPage && this.pageInfo.endCursor) {
-      const result = await this.ctx.gh.graphql<ProjectItemsResponse>(this.query, {
-        login: this.login,
-        number: this.projectNumber,
-        cursor: this.pageInfo.endCursor,
-      });
-      const project = this.ownerType === "user"
-        ? result.user?.projectV2
-        : result.organization?.projectV2;
-      const moreItems = project?.items?.nodes ?? [];
-      for (const item of moreItems) {
-        if (predicate(item)) results.push(item);
-        this.items.push(item);
-      }
-      this.pageInfo = project?.items?.pageInfo ?? null;
-    }
-    return results;
+    await this.fetchAll();
+    return this.items.filter(predicate);
   }
 }
 
