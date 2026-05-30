@@ -111,9 +111,13 @@ Examples:
   Deno.exit(0);
 }
 
-// Resolve --config to a ContentLocation. undefined → adapter uses its default.
-const _configLocation: ContentLocation | undefined = _cliArgs.config
-  ? resolveLocation(_cliArgs.config, resolvePath(Deno.cwd()))
+// Resolve --config (or SCRUM_CONFIG_PATH env fallback) to a ContentLocation.
+// The env fallback allows mcpb installers that only support user_config
+// interpolation in `env` (not `args`) to pass the config path cleanly.
+const _rawConfigPath: string | undefined =
+  _cliArgs.config || Deno.env.get("SCRUM_CONFIG_PATH") || undefined;
+const _configLocation: ContentLocation | undefined = _rawConfigPath
+  ? resolveLocation(_rawConfigPath, resolvePath(Deno.cwd()))
   : undefined;
 
 // ── Runtime permission guard ─────────────────────────────────────────────────

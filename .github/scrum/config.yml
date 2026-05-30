@@ -181,19 +181,19 @@ backends:
     type_mapping:
       user_story: # REQUIRED
         display: "User Story"
-        template: ".github/ISSUE_TEMPLATE/user_story.yml"
+        template: "../ISSUE_TEMPLATE/user_story.yml"
       bug:
         display: "Bug"
-        template: ".github/ISSUE_TEMPLATE/bug_report.yml"
+        template: "../ISSUE_TEMPLATE/bug_report.yml"
       tech_debt:
         display: "Tech Debt"
-        template: ".github/ISSUE_TEMPLATE/tech_debt.yml"
+        template: "../ISSUE_TEMPLATE/tech_debt.yml"
       spike:
         display: "Spike"
-        template: ".github/ISSUE_TEMPLATE/spike.yml"
+        template: "../ISSUE_TEMPLATE/spike.yml"
       impediment: # REQUIRED
         display: "Impediment"
-        template: ".github/ISSUE_TEMPLATE/impediment.yml"
+        template: "../ISSUE_TEMPLATE/impediment.yml"
 
     # Maps canonical status keys → exact GitHub single-select option names.
     # Every key in scrum.status must appear here.

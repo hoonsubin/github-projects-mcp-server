@@ -1,7 +1,7 @@
 {
   "tasks": {
     "dev": "deno run --env-file --allow-env --watch --allow-net --allow-read src/server.ts",
-    "start": "deno run --env-file --allow-env --allow-net --allow-read src/server.ts",
+    "start": "deno run --env-file --allow-env --allow-net --allow-read src/server.ts --config .github/scrum/config.yml",
     "inspector": "deno run --allow-env --allow-net --allow-read --allow-run src/server.ts",
     "diagram-gen": "deno run --allow-read --allow-env --allow-write scripts/generate-project-diagram.ts --output ./docs --src ./src --include-external",
     "test": "GITHUB_TOKEN=test-token deno test --allow-env=DEBUG,GITHUB_TOKEN,NODE_ENV --allow-net --allow-read src/",

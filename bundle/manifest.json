@@ -13,12 +13,11 @@
     "mcp_config": {
       "command": "node",
       "args": [
-        "${__dirname}/server/index.js",
-        "--config",
-        "${user_config.config_path}"
+        "${__dirname}/server/index.js"
       ],
       "env": {
-        "GITHUB_TOKEN": "${user_config.github_token}"
+        "GITHUB_TOKEN": "${user_config.github_token}",
+        "SCRUM_CONFIG_PATH": "${user_config.config_path}"
       }
     }
   },

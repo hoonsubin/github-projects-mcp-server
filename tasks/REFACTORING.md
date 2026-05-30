@@ -4,29 +4,72 @@
 
 ---
 
+## Completed Work
+
+### ContentLocation Portability Refactoring (shipped)
+
+The config loading, template resolution, and file reading pipeline has been unified around a [`ContentLocation`](src/domain/content-location.ts) discriminated union (`kind: "file" | "url" | "inline"`). This replaced raw `string` path parameters throughout the system:
+
+- [`resolveLocation()`](src/scrum/resolve-location.ts) — converts raw strings from CLI args or config YAML into typed `ContentLocation` values
+- [`fetchContent()`](src/scrum/fetch-location.ts) — dispatches on `ContentLocation.kind` to fetch content (local file, remote URL, or inline data)
+- [`FileReaderPort.fetchContent()`](src/scrum/ports.ts) — port method signature updated from `fetchRepoFile(path: string)` to `fetchContent(location: ContentLocation)`
+- [`GitHubFileReader`](src/adapters/github/internal/file-reader.ts) — intercepts `github.com` blob URLs, validates owner/repo match, fetches via `raw.githubusercontent.com` with auth; delegates all other locations to the use-case `fetchContent()`
+- `contents.ts` deleted — its sole consumer (`file-reader.ts`) was rewritten
+- `--root` / `-r` CLI flag removed — replaced by `projRoot` in the config YAML (relative to the config file's directory)
+- Template paths in `type_mapping` now accept full `https://` URLs in addition to local paths
+
+### Port Interface Decomposition (shipped)
+
+The [`ProjectBackend`](src/scrum/ports.ts) interface is composed of focused sub-interfaces:
+
+| Sub-interface                           | Responsibility                      |
+| --------------------------------------- | ----------------------------------- |
+| [`StoryPort`](src/scrum/ports.ts)       | Single-story detail fetch           |
+| [`FindItemsPort`](src/scrum/ports.ts)   | Unified item search across all PBIs |
+| [`AnalyticsPort`](src/scrum/ports.ts)   | Burndown + velocity history         |
+| [`BoardHealthPort`](src/scrum/ports.ts) | Aggregated board metrics            |
+| [`ImpedimentPort`](src/scrum/ports.ts)  | Impediment CRUD                     |
+| [`FileReaderPort`](src/scrum/ports.ts)  | Template/config content fetch       |
+
+New use-case code imports specific ports rather than the monolithic [`ProjectBackend`](src/scrum/ports.ts).
+
+### Fragment Library Foundation (shipped, partial)
+
+The [`operations.graphql`](src/adapters/github/operations.graphql) file defines named GraphQL fragments ([`ProjectCore`](src/adapters/github/operations.graphql:48), [`ItemContent`](src/adapters/github/operations.graphql:89), [`ItemFieldValues`](src/adapters/github/operations.graphql:121)) that are parsed at module init by [`queries.ts`](src/adapters/github/queries.ts) and bundled into operation documents automatically. The operations registered in `queries.ts` use these fragments.
+
+**Gap:** [`buildItemsQuery()`](src/adapters/github/internal/pagination.ts:94) in [`pagination.ts`](src/adapters/github/internal/pagination.ts) still constructs GraphQL strings inline and does not use the fragment registry. Phase 2 addresses this.
+
+### AbstractProjectBackend (shipped)
+
+[`AbstractProjectBackend`](src/adapters/abstract-backend.ts) provides:
+
+- Default throwing implementations for optional methods (`createImpediment`, `updateImpediment`) via [`UnsupportedCapabilityError`](src/adapters/abstract-backend.ts:50)
+- A `protected resolveRef()` helper for converting `{ number }` refs to `{ id }` refs
+- Declares `abstract readonly capabilities: PlatformCapabilities`
+
+---
+
 ## Current State
 
 ### Adapter-to-Use-Case Plugging (High Level)
-
-The current plugging chain looks like this:
 
 ```
 Tool Handler
   → use-case function (e.g., findItemsUseCase)
     → port method call (backend.findItems(filter))
-      → GitHubProjectBackend.findItems(filter)
+      → GitHubProjectBackend.findItems(filter)        ← thin facade delegation
         → StoryQueryService.findItems(filter)
-          → fetchAllItems()                       ← always a full board scan
-            → PaginatedProjectItemFetcher          ← owns query building + pagination
-              → buildItemsQuery(ownerType, config) ← constructs GraphQL in-line
+          → fetchAllItems()                            ← always a full board scan
+            → PaginatedProjectItemFetcher               ← owns query building + pagination
+              → buildItemsQuery(ownerType, config)      ← constructs GraphQL in-line (NOT using fragment registry)
               → cursor-paginated GitHub API calls
             → client-side filter chain (scope, keys, search, labels, assignee, …)
-          → buildStoryFromRaw() per item          ← raw → Story
-          → toItemListing() per story             ← Story → BacklogItemListing
+          → buildStoryFromRaw() per item               ← raw → Story
+          → toItemListing() per story                  ← Story → BacklogItemListing
         → ItemSearchResult
 ```
 
-The backend facade (`GitHubProjectBackend`) is a thin delegation layer. The real logic lives in `StoryQueryService`, but the query construction is embedded inside `PaginatedProjectItemFetcher`, which is supposed to be pagination infrastructure.
+The backend facade ([`GitHubProjectBackend`](src/adapters/github/backend.ts)) is a thin delegation layer. The real logic lives in [`StoryQueryService`](src/adapters/github/internal/story-query-service.ts), but the query construction is embedded inside [`PaginatedProjectItemFetcher`](src/adapters/github/internal/pagination.ts), which is supposed to be pagination infrastructure.
 
 ### The Core Problem
 
@@ -147,13 +190,13 @@ repo:{owner}/{repo} is:issue is:open
 
 **Constraint:** Draft Issues are not GitHub Issues and do not appear in search results. The search path returns only issues. If the filter scope must include draft items, the assembler falls back to the project items path.
 
-### CapabilityMap and Error Surfacing
+### Capability Error Surfacing (aspirational)
 
-`AbstractProjectBackend.getCapabilities()` returns a `CapabilityMap` declaring which operations are available for a given backend configuration. When a port method is called that the backend has declared unsupported, it throws a `CapabilityError` rather than returning empty data or silently failing.
+> **Note:** The [`CapabilityMap`](src/scrum/ports.ts) return type and use-case-layer `CapabilityError` catching described here are aspirational — they do not exist in the current codebase. Currently, [`PlatformCapabilities`](src/adapters/capabilities.ts) uses boolean flags and is consumed only by the composition root for gating optional behavior (template registration, etc.). Adapters throw [`UnsupportedCapabilityError`](src/adapters/abstract-backend.ts:50) for unimplemented optional methods.
+
+The target design: `AbstractProjectBackend.getCapabilities()` returns a `CapabilityMap` declaring which operations are available for a given backend configuration. When a port method is called that the backend has declared unsupported, it throws a `CapabilityError` rather than returning empty data or silently failing.
 
 Use-case functions catch `CapabilityError` and surface it as a string entry in `UseCaseResult.warnings[]`. The tool handler includes these warnings in the tool response. The agent receives a factual statement of what was possible and what was not - no silent degradation.
-
-This means the tool server's responsibility is bounded: it ensures the minimum viable fields and item types exist (or can be created via `scrum_add_vocabulary`), and it reports accurately on everything else. Extensions, non-canonical fields, and platform-specific capabilities are not hidden - they are declared and surfaced transparently.
 
 ---
 
@@ -161,7 +204,9 @@ This means the tool server's responsibility is bounded: it ensures the minimum v
 
 ### Phase 0 - Org project support (GitHub Issue Types)
 
-> **Prerequisite for Phases 1–4.** This phase touches only `config-loader.ts`, `backend.ts`, `FieldValueMutator`, and `operations.graphql`. It is self-contained and can ship independently.
+> **Prerequisite for Phases 1–4.** This phase touches only `config-loader.ts`, `backend.ts`, `FieldValueMutator`, `mappers.ts`, and `operations.graphql`. It is self-contained and can ship independently.
+>
+> **Status: NOT STARTED.** The [`config-loader.ts`](src/adapters/github/config-loader.ts) still throws a hard error on missing `typeFieldId` (line 234–242). There is no `typeResolution` field, no `GetOrgIssueTypesBootstrap` query, and no `SetIssueType` mutation.
 
 GitHub introduced org-level **Issue Types** and **Issue Fields** as organization-scoped entities. For org-owned projects these replace the project board's single-select type field - the item type lives directly on the issue (`issue.issueType`) and is set via a dedicated mutation, not via `updateProjectV2ItemFieldValue`.
 
@@ -218,9 +263,9 @@ GitHub introduced org-level **Issue Types** and **Issue Fields** as organization
    ```
    if fields.typeFieldId is non-null  → source: "board_field"   (existing path, no change)
    else if ownerType === "org"        → source: "org_issue_type" (fire GetOrgIssueTypesBootstrap,
-                                                                   build typeOptions from issueType IDs)
+                                                                    build typeOptions from issueType IDs)
    else                               → throw  (user project with item_type declared but field
-                                                 not found - existing config error, unchanged)
+                                                  not found - existing config error, unchanged)
    ```
 
    When `source === "org_issue_type"`, `typeOptions` is populated by matching `type_mapping[key].display` against `issueType.name` and storing the `issueType.id` as the value. The map shape (`Record<canonicalKey, id>`) is identical to the board-field path.
@@ -243,7 +288,7 @@ GitHub introduced org-level **Issue Types** and **Issue Fields** as organization
    // existing updateProjectV2ItemFieldValue path for all other fields
    ```
 
-5. **`StoryQueryService` / normalizer** - Branch on `typeResolution.source` when extracting item type from a raw API response:
+5. **`mappers.ts` (`extractBoardFields`)** - Branch on `typeResolution.source` when extracting item type:
 
    ```typescript
    const typeValue = config.typeResolution.source === "board_field"
@@ -251,37 +296,49 @@ GitHub introduced org-level **Issue Types** and **Issue Fields** as organization
      : raw.issueType?.name ?? null;
    ```
 
-**Files touched:** `operations.graphql`, `queries.ts`, `config-loader.ts`, `backend.ts`, `field-value-mutator.ts`, `story-query-service.ts` (normalizer path only).
+**Files touched:** `operations.graphql`, `queries.ts`, `config-loader.ts`, `backend.ts`, `field-value-mutator.ts`, `mappers.ts`.
 
 **Files not touched:** Port interfaces, use-case functions, tool handlers, Zod schemas, domain types.
 
-**Outcome:** Org-owned projects with issue types boot and operate correctly. The `typeResolution.source` field acts as a seam that Phase 3's assembler absorbs cleanly - `assembleFieldWrite()` will replace the mutator branch, and `normalizeItemList()` will replace the query-service branch, with no further changes to `RuntimeConfig`.
+**Outcome:** Org-owned projects with issue types boot and operate correctly. The `typeResolution.source` field acts as a seam that Phase 3's assembler absorbs cleanly - `assembleFieldWrite()` will replace the mutator branch, and `normalizeItemList()` will replace the mapper branch, with no further changes to `RuntimeConfig`.
 
 ---
 
 ### Phase 1 - Separate query building from pagination infrastructure
 
+> **Status: NOT STARTED.** [`buildItemsQuery()`](src/adapters/github/internal/pagination.ts:94) is still embedded inside [`PaginatedProjectItemFetcher`](src/adapters/github/internal/pagination.ts:227).
+
 Extract `buildItemsQuery()` from `PaginatedProjectItemFetcher` into a standalone `ProjectItemsQueryBuilder`. The fetcher becomes pure pagination infrastructure: it accepts a pre-built query document and handles cursor iteration. No behavior change; this is a responsibility reallocation that makes the next phases possible.
 
 **Outcome:** The fetcher no longer knows what it is fetching. The query assembler concept exists as an explicit, injectable component.
 
-### Phase 2 - Fragment library extraction
+### Phase 2 - Complete fragment library migration
 
-Identify the recurring field selections in `operations.graphql` and `pagination.ts` and extract them into named, composable fragments. Establish the convention: fragments live in a dedicated fragment registry; query documents are assembled from the registry, never hand-written inline.
+> **Status: PARTIALLY COMPLETE.** [`operations.graphql`](src/adapters/github/operations.graphql) defines `ProjectCore`, `ItemContent`, and `ItemFieldValues` fragments. [`queries.ts`](src/adapters/github/queries.ts) auto-parses and bundles them for registered operations. However, [`buildItemsQuery()`](src/adapters/github/internal/pagination.ts:94) in `pagination.ts` constructs GraphQL inline and does not use the fragment registry.
 
-Update `queries.ts` to serve as the fragment registry surface, not just a string-export module.
+The remaining work:
 
-**Outcome:** A field addition (e.g., adding `createdAt` to every listing) is a one-line fragment change. The `custom_fields` passthrough is implemented here by extending the `ItemFieldValues` fragment to include all field types without filtering. The `issueType { id name }` selection added in Phase 0 becomes part of the canonical issue content fragment here.
+1. **Migrate `buildItemsQuery()` to use the fragment registry.** Instead of constructing inline `... on Issue { id number title ... }` strings, it should reference `ItemContent` and `ItemFieldValues` from the parsed fragment library. This makes the paginated fetcher's query consistent with the named operations in `operations.graphql`.
+
+2. **Add `issueType { id name }` to `ItemContent` fragment** (once Phase 0 is complete) so it propagates to all listing and detail queries.
+
+3. **Implement `custom_fields` passthrough** by extending the `ItemFieldValues` fragment (or normalizer) to include all field types without filtering. Non-canonical field values pass through to `BacklogItemListing.custom_fields` rather than being dropped.
+
+**Outcome:** A field addition (e.g., adding `createdAt` to every listing) is a one-line fragment change. Every query path that uses the fragment registry picks it up automatically.
 
 ### Phase 3 - Query assembler + strategy router
 
+> **Status: NOT STARTED.**
+
 Introduce `FilterStrategyRouter` as the explicit routing decision point inside `findItems`. Introduce assembler classes (one per execution path) that take a `ResolvedItemFilter` and emit a query document + variables. Wire these into `GitHubProjectBackend.findItems()` replacing the direct `StoryQueryService` delegation.
 
-The `typeResolution.source` field introduced in Phase 0 migrates into the assembler at this point: `assembleFieldWrite()` reads it to select the correct mutation, and `normalizeItemList()` reads it to select the correct type extraction path. The branches in `FieldValueMutator` and `StoryQueryService` added in Phase 0 are removed and replaced by the assembler implementations.
+The `typeResolution.source` field introduced in Phase 0 migrates into the assembler at this point: `assembleFieldWrite()` reads it to select the correct mutation, and `normalizeItemList()` reads it to select the correct type extraction path. The branches in `FieldValueMutator` and `mappers.ts` added in Phase 0 are removed and replaced by the assembler implementations.
 
 **Outcome:** The adapter facade becomes the assembly coordinator. Adding a new execution path is adding a new assembler class and a routing rule - no changes to existing assemblers, services, or the port interface.
 
 ### Phase 4 - Search API integration
+
+> **Status: NOT STARTED.** No search-related code exists in the adapter.
 
 Implement `SearchQueryBuilder` using the query shape above. Implement `SearchResultNormalizer` to map the inverted response shape (issue with nested `projectItems`) into `BacklogItemListing[]`. Wire into the strategy router as the `SEARCH_API` path.
 
@@ -291,16 +348,18 @@ Implement `SearchQueryBuilder` using the query shape above. Implement `SearchRes
 
 ## What Does Not Change
 
-- `ProjectBackend` interface and all port sub-interfaces
+- [`ProjectBackend`](src/scrum/ports.ts) interface and all port sub-interfaces
 - Use-case functions (`findItemsUseCase`, `getStoryUseCase`, etc.)
 - Tool handlers and Zod schemas
 - Domain types (`BacklogItemListing`, `ItemSearchResult`, `Story`, etc.)
-- `CapabilityMap` structure and `CapabilityError` semantics
-- Agent-facing tool descriptions (except the `scope_summary` shape correction)
+- [`PlatformCapabilities`](src/adapters/capabilities.ts) structure (boolean flags remain; tri-state migration is deferred)
+- Agent-facing tool descriptions
 
 ---
 
 ## Multi-Backend Abstract Design
+
+> **Note:** This entire section is aspirational. None of the types or classes described below exist in the current codebase. It describes the target state after all phases (0–4) are complete and a second backend adapter has been implemented.
 
 This section extends the assembly-layer pattern to cover any backend, not just GitHub. The goal is a single abstract contract that makes adding a new backend (Notion, Trello, Linear, etc.) a matter of filling in assembly methods - not redesigning the data flow.
 
@@ -308,20 +367,18 @@ This section extends the assembly-layer pattern to cover any backend, not just G
 
 ### Capability Status Taxonomy
 
-The current `PlatformCapabilities` type uses boolean flags (`canCreateSprints: boolean`). Booleans are insufficient: many operations are possible but require emulation - they work, but with limitations the agent should know about. Replace boolean flags with a three-value enum:
+The current [`PlatformCapabilities`](src/adapters/capabilities.ts) type uses boolean flags (`canCreateSprints: boolean`). Booleans are insufficient: many operations are possible but require emulation - they work, but with limitations the agent should know about. Replace boolean flags with a three-value enum:
 
 ```
 NATIVE      - operation maps directly to a platform API call; full fidelity guaranteed
 EMULATED    - operation is supported by encoding scrum semantics onto available primitives
-              (e.g., item type stored as a special label); some constraints apply
+               (e.g., item type stored as a special label); some constraints apply
 UNAVAILABLE - operation cannot be expressed on this platform at all
 ```
 
 Every field in `PlatformCapabilities` becomes `CapabilityStatus` instead of `boolean`. The abstract base class derives the `CapabilityMap` it returns from `getCapabilities()` directly from these statuses.
 
 Operations with `EMULATED` status must document their emulation contract - specifically the encoding convention the adapter uses, so that the agent's warning message contains enough context to understand what it is getting (or not getting).
-
----
 
 ### Platform Vocabulary Map
 
@@ -344,8 +401,6 @@ PlatformVocabularyMap
 ```
 
 The vocabulary map is constructed once per backend configuration and injected into the assembler. When the normalizer maps a raw platform response into a `BacklogItemListing`, it uses `decode()` for each field and `extractUserLabels()` to separate platform metadata from user-facing labels.
-
----
 
 ### Abstract Assembler Contract
 
@@ -391,9 +446,9 @@ findItems(filter):
 
 If any capability required by the operation has status `UNAVAILABLE`, the abstract class throws a `CapabilityUnavailableError` before assembly begins. If the capability is `EMULATED`, it proceeds but appends an emulation notice to `warnings[]`.
 
----
-
 ### Error Decoration Hierarchy
+
+> **Note:** Only [`AdapterError`](src/domain/errors.ts) and [`UnsupportedCapabilityError`](src/adapters/abstract-backend.ts:50) exist in the current codebase. The error subclasses below are aspirational.
 
 All backend errors extend a common base that carries agent-interpretable metadata alongside the technical message. The agent receives these via `UseCaseResult.warnings[]` (for non-fatal) or as a structured error string in the tool response (for fatal). The agent never sees a raw stack trace.
 
@@ -431,8 +486,6 @@ BackendRateLimitError extends BackendError
 
 The abstract class catches raw HTTP/GraphQL errors from the execution engine and re-throws them as decorated `BackendError` subclasses. Concrete assemblers do not need to handle raw errors - they only produce requests. The execution engine emits raw failures; the abstract class's `execute()` wrapper translates them.
 
----
-
 ### Trello: Concrete Vocabulary Mapping
 
 Trello has no native Scrum concepts. The adapter maps everything onto Trello's four primitives: cards, lists, labels, and custom fields.
@@ -459,8 +512,6 @@ Trello has no native Scrum concepts. The adapter maps everything onto Trello's f
 
 **Dependency tracking:** The checklist emulation is write-capable but has no integrity guarantees - if the linked card is deleted, the checklist item becomes a dead reference. The assembler surfaces this via `CapabilityEmulationWarning` on any call that reads or writes `blocked_by`.
 
----
-
 ### What a New Backend Must Implement
 
 To add a backend, a developer implements one concrete class and one vocabulary map. Nothing else changes.
@@ -476,3 +527,5 @@ To add a backend, a developer implements one concrete class and one vocabulary m
 4. A `getCapabilities()` implementation - returns the `CapabilityMap` reflecting the concrete vocabulary map's support statuses.
 
 **Not required:** Port interface changes, use-case changes, tool handler changes, Zod schema changes, domain type changes. The use-case layer calls `backend.findItems(filter)` and receives `ItemSearchResult` - it has no visibility into whether the backend is GitHub, Trello, or anything else.
+
+3. An execution engine - takes `PlatformRequest[]`, handles auth, pagination, and rate limiting for that platform, returns `PlatformResponse[]`. Emits raw platform errors that the abstract class's `execute()` wrapper translates into
