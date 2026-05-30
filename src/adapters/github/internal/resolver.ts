@@ -7,7 +7,7 @@
 
 import { GitHubApiError } from "../errors.ts";
 import type * as GH from "../generated/github-types.ts";
-import type { RuntimeConfig } from "../config-loader.ts";
+import type { GitHubBootState } from "../bootstrap.ts";
 import type { SprintRef, StoryRef } from "../../../domain/types.ts";
 import type { GitHubIssueId, GitHubItemId } from "../types.ts";
 import { GET_PROJECT_ITEM_BY_ID_QUERY } from "../queries.ts";
@@ -51,12 +51,12 @@ interface ItemByIdResponse {
  * Resolve a SprintRef to a GitHub iteration ID (or null to clear the sprint field).
  * Overload: accepts the strict SprintRef type.
  *
- * - "current"   → config.iterations.active.id - throws SprintNotScheduledError if none
- * - "next"      → config.iterations.next.id   - throws SprintNotScheduledError if none
+ * - "current"   → config.live.iterations.active.id - throws SprintNotScheduledError if none
+ * - "next"      → config.live.iterations.next.id   - throws SprintNotScheduledError if none
  * - null        → returns null (clears the sprint field on an item)
- * - SprintName  → case-insensitive title match against config.iterations.all; throws if no match
+ * - SprintName  → case-insensitive title match against config.live.iterations.all; throws if no match
  */
-export function resolveSprint(ref: SprintRef, config: RuntimeConfig): string | null;
+export function resolveSprint(ref: SprintRef, config: GitHubBootState): string | null;
 
 /**
  * Resolve a sprint string (from user input or scope parameter) to a GitHub iteration ID.
@@ -65,7 +65,7 @@ export function resolveSprint(ref: SprintRef, config: RuntimeConfig): string | n
  */
 export function resolveSprint(
   ref: string | null | undefined,
-  config: RuntimeConfig,
+  config: GitHubBootState,
 ): string | null;
 
 /**
@@ -73,14 +73,14 @@ export function resolveSprint(
  */
 export function resolveSprint(
   ref: SprintRef | string | null | undefined,
-  config: RuntimeConfig,
+  config: GitHubBootState,
 ): string | null {
   if (ref === null || ref === undefined) {
     return null;
   }
 
   if (ref === "current") {
-    if (!config.iterations.active) {
+    if (!config.live.iterations.active) {
       throw new GitHubApiError(
         "No active sprint iteration configured in this project.",
         {
@@ -91,11 +91,11 @@ export function resolveSprint(
         },
       );
     }
-    return config.iterations.active.id;
+    return config.live.iterations.active.id;
   }
 
   if (ref === "next") {
-    if (!config.iterations.next) {
+    if (!config.live.iterations.next) {
       throw new GitHubApiError(
         "No next sprint is scheduled in this project.",
         {
@@ -106,13 +106,13 @@ export function resolveSprint(
         },
       );
     }
-    return config.iterations.next.id;
+    return config.live.iterations.next.id;
   }
 
   // For SprintRef (SprintName branded type) - throw on not found.
   // For plain string - return null on not found (user input may be invalid).
   const normalised = ref.toLowerCase();
-  const match = config.iterations.all.find(
+  const match = config.live.iterations.all.find(
     (iter) => iter.title.toLowerCase() === normalised,
   );
   if (!match) {

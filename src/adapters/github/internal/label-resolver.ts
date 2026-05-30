@@ -8,7 +8,7 @@
 import { GitHubApiError } from "../errors.ts";
 import { GitHubClient } from "./http-client.ts";
 import { CREATE_LABEL_MUTATION, GET_REPO_LABELS_QUERY, GET_REPO_QUERY } from "../queries.ts";
-import type { RuntimeConfig } from "../config-loader.ts";
+import type { GitHubBootState } from "../bootstrap.ts";
 import type { CreateResult } from "../../../scrum/ports.ts";
 
 // ── Helper types ─────────────────────────────────────────────────────────────
@@ -40,13 +40,13 @@ interface RepoLabelsResponse {
  * Injected into GitHubProjectBackend via constructor (DIP).
  */
 export class LabelResolver {
-  private readonly config: RuntimeConfig;
+  private readonly config: GitHubBootState;
   private readonly gh: GitHubClient;
   private readonly owner: string;
   private readonly repo: string;
 
   constructor(
-    config: RuntimeConfig,
+    config: GitHubBootState,
     gh: GitHubClient,
     owner: string,
     repo: string,

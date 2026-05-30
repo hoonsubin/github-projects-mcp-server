@@ -94,6 +94,21 @@ Deno.test("resolveLocation — URL with no extension throws (empty ext)", () => 
   );
 });
 
+Deno.test("resolveLocation — .ts extension throws (unsupported)", () => {
+  assertThrows(
+    () => resolveLocation("fetch-location.ts", "/base"),
+    Error,
+    "Unsupported file extension",
+  );
+});
+
+Deno.test("resolveLocation — empty string throws", () => {
+  assertThrows(
+    () => resolveLocation("", "/base"),
+    Error,
+  );
+});
+
 Deno.test("resolveLocation — baseDir is irrelevant for absolute path", () => {
   const a = resolveLocation("/abs/path/config.yml", "/base-a");
   const b = resolveLocation("/abs/path/config.yml", "/base-b");

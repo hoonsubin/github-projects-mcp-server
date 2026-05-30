@@ -12,14 +12,14 @@ import { PaginatedProjectItemFetcher } from "./pagination.ts";
 import { buildBurndownStoryInput } from "../mappers.ts";
 import { resolveSprint } from "./resolver.ts"; // standalone function - not a class method
 import { computeSprintEndDate } from "../../../scrum/sprint-math.ts";
-import type { RuntimeConfig } from "../config-loader.ts";
+import type { GitHubBootState } from "../bootstrap.ts";
 import type { BurndownInput, BurndownStoryInput, CompletionMap } from "../../../scrum/ports.ts";
 import type { SprintRef } from "../../../domain/types.ts";
 import { log } from "../../../services/logger.ts";
 
 export class BurndownCalculator {
   constructor(
-    private readonly config: RuntimeConfig,
+    private readonly config: GitHubBootState,
     private readonly gh: GitHubClient,
     private readonly owner: string,
     private readonly repo: string,
@@ -44,7 +44,7 @@ export class BurndownCalculator {
       );
     }
 
-    const iterEntry = this.config.iterations.all.find((i) => i.id === iterationId);
+    const iterEntry = this.config.live.iterations.all.find((i) => i.id === iterationId);
     if (!iterEntry) {
       throw new GitHubApiError(
         `Iteration with ID ${iterationId} not found in configuration.`,
@@ -63,15 +63,13 @@ export class BurndownCalculator {
     const fetcher = new PaginatedProjectItemFetcher(
       this.config,
       { graphql: this.gh.graphql },
-      {
-        includeIssueContent: true,
-      },
     );
 
     const items = await fetcher.collect((item) => {
       return item.fieldValues.nodes.some(
         (node) =>
-          node.field?.id === this.config.fields.sprintFieldId && node.iterationId === iterationId,
+          node.field?.id === this.config.live.fields.sprintFieldId &&
+          node.iterationId === iterationId,
       );
     });
 

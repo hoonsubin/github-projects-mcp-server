@@ -12,7 +12,8 @@ import { buildStoryFromRaw } from "../mappers.ts";
 import { computeReadinessSummary } from "../../../domain/rules/readiness.ts";
 import { ITEM_TYPES } from "../../../domain/types.ts";
 import type { ReadinessBreakdown } from "../../../domain/types.ts";
-import type { RuntimeConfig } from "../config-loader.ts";
+import type { GitHubBootState } from "../bootstrap.ts";
+import type { GitHubBackendConfig } from "../types.ts";
 import type { ImpedimentListing } from "../../../scrum/ports.ts";
 import type { BacklogHealth, SprintRef, SprintRisk, Story } from "../../../domain/types.ts";
 
@@ -25,7 +26,8 @@ import type { BacklogHealth, SprintRef, SprintRisk, Story } from "../../../domai
  */
 export class BoardHealthService {
   constructor(
-    private readonly config: RuntimeConfig,
+    private readonly config: GitHubBootState,
+    private readonly ghConfig: GitHubBackendConfig,
     private readonly storyQueryService: StoryQueryService,
     private readonly impedimentService: ImpedimentService,
   ) {}
@@ -40,8 +42,7 @@ export class BoardHealthService {
 
     // Exclude Done items from all active-work metrics - they're already resolved
     // and inflate risk counts and readiness percentages when included.
-    const ghConfig = this.config.scrumConfig.backends.github as Record<string, unknown>;
-    const statusDisplay = (ghConfig?.status_display ?? {}) as Record<string, string>;
+    const statusDisplay = this.ghConfig.status_display ?? {};
     const doneDisplayName = statusDisplay["done"] ?? "Done";
     const activeStories = stories.filter((s) => s.status !== doneDisplayName);
 
@@ -140,7 +141,7 @@ export class BoardHealthService {
     return allItems
       .filter((item) => {
         const sprintFv = item.fieldValues.nodes.find(
-          (v) => v.field?.id === this.config.fields.sprintFieldId,
+          (v) => v.field?.id === this.config.live.fields.sprintFieldId,
         );
         return sprintFv?.iterationId === iterationId;
       })

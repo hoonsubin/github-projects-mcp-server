@@ -11,7 +11,7 @@ import { BurndownCalculator } from "./burndown-calculator.ts";
 import { resolveSprint } from "./resolver.ts";
 import { buildDaySeries, buildIdealLine, buildSprintWindow } from "../../../scrum/sprint-math.ts";
 import { historyEntryToItemListing } from "../../../scrum/listing-mappers.ts";
-import type { RuntimeConfig } from "../config-loader.ts";
+import type { GitHubBootState } from "../bootstrap.ts";
 import type { AnalyticsQuery } from "../../../scrum/ports.ts";
 import type {
   AnalyticsResult,
@@ -34,7 +34,7 @@ import type {
  */
 export class AnalyticsService {
   constructor(
-    private readonly config: RuntimeConfig,
+    private readonly config: GitHubBootState,
     private readonly sprintHistoryService: SprintHistoryService,
     private readonly burndownCalculator: BurndownCalculator,
   ) {}
@@ -156,7 +156,7 @@ export class AnalyticsService {
       sprintRef as SprintRef,
     );
 
-    const iterEntry = this.config.iterations.all.find((i) => i.id === sprint);
+    const iterEntry = this.config.live.iterations.all.find((i) => i.id === sprint);
     if (!iterEntry) {
       throw new GitHubApiError(
         `Iteration ${sprint} resolved but not found in config iterations list.`,

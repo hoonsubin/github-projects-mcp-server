@@ -2,38 +2,23 @@
 // src/adapters/github/internal/story-query-service.test.ts
 //
 // Unit tests for buildDependencyMap() - pure function, no mocks needed.
-// Tests A-bug-1 (blocks/blocked_by direction) and A-bug-2 (cross-repo stub nodes).
+// Tests A-bug-1 (blocks/blocked_by direction), A-bug-2 (cross-repo stub nodes),
+// and an integration test with real ProjectItem data from captured fixtures.
 // =============================================================================
 
-import { assertEquals, assertFalse } from "jsr:@std/assert@^1.0.0";
+import { assertEquals, assertFalse } from "@std/assert";
 import { buildDependencyMap } from "./story-query-service.ts";
+import { makeConfig } from "./_test_utils.ts";
 import { toIssueKey } from "../../../domain/types.ts";
 import type { DependencyEntry, EntityRef, ItemType, Story } from "../../../domain/types.ts";
 import type { IssueStory, ProjectItem } from "../types.ts";
-import type { RuntimeConfig } from "../config-loader.ts";
+import projectItemsP1 from "./__fixtures__/project-items-p1.json" with { type: "json" };
+import projectItemsP2 from "./__fixtures__/project-items-p2.json" with { type: "json" };
+import { buildStoryFromRaw } from "../mappers.ts";
 
 // =============================================================================
-// Test helpers
+// Test helpers (hand-crafted for edge case tests)
 // =============================================================================
-
-/** Minimal RuntimeConfig for buildDependencyMap tests. */
-const mockConfig = {
-  scrumConfig: { templates: {}, backends: { github: {} } },
-  projectId: "PVT_test",
-  fields: {
-    sprintFieldId: "SPRINT_FIELD",
-    statusFieldId: "STATUS_FIELD",
-    storyPointsFieldId: null,
-    priorityFieldId: null,
-    epicFieldId: null,
-    assigneeFieldId: null,
-    typeFieldId: null,
-  },
-  statusOptions: {},
-  priorityOptions: {},
-  typeOptions: {},
-  iterations: { active: null, next: null, completed: [], all: [] },
-} as unknown as RuntimeConfig;
 
 const makeRef = (id: string): EntityRef => ({ id });
 const TEST_TYPE: ItemType = "feature" as ItemType;
@@ -89,7 +74,7 @@ const makeIssueStory = (opts: {
 
 /**
  * Build a minimal ProjectItem (issue content) for the second-pass allItems lookup.
- * Only includes the fields buildStoryFromRaw reads - matched to ProjectItemIssueContent shape.
+ * Only includes the fields buildStoryFromRaw reads.
  */
 const makeProjectItem = (opts: { id: string; key: string; title: string }): ProjectItem => ({
   id: opts.id,
@@ -114,7 +99,23 @@ const makeProjectItem = (opts: { id: string; key: string; title: string }): Proj
 });
 
 // =============================================================================
-// Test cases
+// Real fixture data — loaded from captured API responses
+// =============================================================================
+
+// JSON imports produce loose types; cast through unknown for ProjectV2ItemType
+const allRealItems: ProjectItem[] = [
+  ...(projectItemsP1.user?.projectV2?.items?.nodes ?? []),
+  ...(projectItemsP2.user?.projectV2?.items?.nodes ?? []),
+] as unknown as ProjectItem[];
+
+// Pre-build stories from real items using the same production mapper
+const config = makeConfig();
+const realStories: Story[] = allRealItems
+  .map((item) => buildStoryFromRaw(item, config))
+  .filter((s): s is Story => s !== null);
+
+// =============================================================================
+// Test cases — edge cases with hand-crafted data
 // =============================================================================
 
 Deno.test("A-bug-1: dependency direction - A blocked by B", () => {
@@ -134,7 +135,7 @@ Deno.test("A-bug-1: dependency direction - A blocked by B", () => {
   const stories: Story[] = [storyA, storyB];
   const allItems: ProjectItem[] = [];
 
-  const map = buildDependencyMap(stories, allItems, mockConfig);
+  const map = buildDependencyMap(stories, allItems, makeConfig());
 
   const keyA = toIssueKey("10");
   const keyB = toIssueKey("20");
@@ -157,7 +158,7 @@ Deno.test("A-bug-1: no dependencies - blocks and blocked_by are empty", () => {
   const stories: Story[] = [story10, story20];
   const allItems: ProjectItem[] = [];
 
-  const map = buildDependencyMap(stories, allItems, mockConfig);
+  const map = buildDependencyMap(stories, allItems, makeConfig());
 
   for (const key of ["10", "20"]) {
     assertEquals(map[toIssueKey(key)].blocks, [], `${key}.blocks should be empty`);
@@ -177,7 +178,7 @@ Deno.test("A-bug-2: cross-repo/off-board dependency → stub node", () => {
   const stories: Story[] = [story10];
   const allItems: ProjectItem[] = []; // cross-repo: not in allItems
 
-  const map = buildDependencyMap(stories, allItems, mockConfig);
+  const map = buildDependencyMap(stories, allItems, makeConfig());
 
   const stubKey = toIssueKey("99");
   const stub = map[stubKey];
@@ -199,30 +200,37 @@ Deno.test("A-bug-2: cross-repo/off-board dependency → stub node", () => {
   assertEquals(map[toIssueKey("10")].blocked_by, [stubKey]);
 });
 
-Deno.test("A-bug-2: out-of-scope dependency (in allItems but not in filtered stories) → unresolved node", () => {
-  // Story 10 is blocked by issue 30, which exists in allItems but not in stories
-  const story10 = makeIssueStory({
-    key: "10",
-    refId: "PVTI_10",
-    blocked_by: [makeDepEntry("30", "Out-of-scope Story", "PVTI_30")],
-  });
+Deno.test(
+  "A-bug-2: out-of-scope dependency (in allItems but not in filtered stories) → unresolved node",
+  () => {
+    // Story 10 is blocked by issue 30, which exists in allItems but not in stories
+    const story10 = makeIssueStory({
+      key: "10",
+      refId: "PVTI_10",
+      blocked_by: [makeDepEntry("30", "Out-of-scope Story", "PVTI_30")],
+    });
 
-  const stories: Story[] = [story10];
-  const unresolvedItem = makeProjectItem({ id: "PVTI_30", key: "30", title: "Out-of-scope Story" });
-  const allItems: ProjectItem[] = [unresolvedItem];
+    const stories: Story[] = [story10];
+    const unresolvedItem = makeProjectItem({
+      id: "PVTI_30",
+      key: "30",
+      title: "Out-of-scope Story",
+    });
+    const allItems: ProjectItem[] = [unresolvedItem];
 
-  const map = buildDependencyMap(stories, allItems, mockConfig);
+    const map = buildDependencyMap(stories, allItems, makeConfig());
 
-  const key30 = toIssueKey("30");
-  const node = map[key30];
+    const key30 = toIssueKey("30");
+    const node = map[key30];
 
-  assertEquals(typeof node, "object", "unresolved node should exist");
-  assertEquals(node.key, key30);
-  assertEquals(node.resolved, false, "out-of-scope node should be unresolved");
-  assertEquals(node.status, null, "no status field in mock config");
-  assertEquals(node.blocks, [toIssueKey("10")], "unresolved node blocks story 10 (third pass)");
-  assertEquals(node.blocked_by, []);
-});
+    assertEquals(typeof node, "object", "unresolved node should exist");
+    assertEquals(node.key, key30);
+    assertEquals(node.resolved, false, "out-of-scope node should be unresolved");
+    assertEquals(node.status, null, "no status field in mock config");
+    assertEquals(node.blocks, [toIssueKey("10")], "unresolved node blocks story 10 (third pass)");
+    assertEquals(node.blocked_by, []);
+  },
+);
 
 Deno.test("A-bug-1: circular dependency A↔B - direction is consistent", () => {
   // Story 10 blocked by 20, AND 20 blocked by 10
@@ -240,7 +248,7 @@ Deno.test("A-bug-1: circular dependency A↔B - direction is consistent", () => 
   const stories: Story[] = [story10, story20];
   const allItems: ProjectItem[] = [];
 
-  const map = buildDependencyMap(stories, allItems, mockConfig);
+  const map = buildDependencyMap(stories, allItems, makeConfig());
 
   const keyA = toIssueKey("10");
   const keyB = toIssueKey("20");
@@ -279,7 +287,71 @@ Deno.test("draft stories are excluded from dependency map", () => {
   const stories: Story[] = [draft];
   const allItems: ProjectItem[] = [];
 
-  const map = buildDependencyMap(stories, allItems, mockConfig);
+  const map = buildDependencyMap(stories, allItems, makeConfig());
 
   assertEquals(Object.keys(map).length, 0, "draft stories should not appear in dependency map");
+});
+
+// =============================================================================
+// Integration test — real data from captured fixtures
+// =============================================================================
+
+Deno.test({
+  name: "buildDependencyMap - handles all real project items without throwing",
+  fn() {
+    // Smoke test: buildStoryFromRaw + buildDependencyMap should not throw
+    // on real API response shapes. This catches runtime errors caused by
+    // schema drift or unexpected null values in live API responses.
+    assertEquals(realStories.length > 0, true, "should have real stories from fixtures");
+
+    const map = buildDependencyMap(realStories, allRealItems, makeConfig());
+
+    // Verify every issue story has a node in the map
+    const issueStories = realStories.filter((s) => s.kind === "issue");
+    for (const story of issueStories) {
+      const key = toIssueKey(story.key!);
+      assertEquals(typeof map[key], "object", `node should exist for issue story ${story.key}`);
+      assertEquals(map[key].resolved, true, `node for ${story.key} should be resolved`);
+    }
+
+    // Verify the map has no orphaned blocks pointing to non-existent nodes
+    for (const [, node] of Object.entries(map)) {
+      for (const depKey of node.blocked_by) {
+        assertEquals(
+          typeof map[depKey],
+          "object",
+          `blocked_by target ${depKey} (from ${node.key}) must exist in map`,
+        );
+      }
+      for (const blockKey of node.blocks) {
+        assertEquals(
+          typeof map[blockKey],
+          "object",
+          `blocks target ${blockKey} (computed for ${node.key}) must exist in map`,
+        );
+      }
+    }
+  },
+});
+
+Deno.test({
+  name: "buildDependencyMap - real items have consistent direction (blocks ↔ blocked_by)",
+  fn() {
+    const map = buildDependencyMap(realStories, allRealItems, makeConfig());
+
+    // For every node: for each depKey in blocked_by, the target's blocks
+    // must include the source node's key.
+    for (const [nodeKey, node] of Object.entries(map)) {
+      for (const depKey of node.blocked_by) {
+        const target = map[depKey];
+        if (target) {
+          assertEquals(
+            target.blocks.includes(toIssueKey(nodeKey)),
+            true,
+            `${depKey}.blocks should include ${nodeKey} because ${nodeKey}.blocked_by includes ${depKey}`,
+          );
+        }
+      }
+    }
+  },
 });

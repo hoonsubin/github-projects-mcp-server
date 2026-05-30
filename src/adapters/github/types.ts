@@ -12,6 +12,7 @@
 //   - FieldValueNode          - minimal structural interface for extractBoardFields
 //   - BoardFields             - board field extraction output
 //   - Comment / LinkedPr      - issue detail output shapes
+//   - ResolvedToken           - branded token type for compile-time safety
 //
 // Nothing in the domain layer (src/domain/, src/scrum/) imports from this file.
 // =============================================================================
@@ -24,6 +25,7 @@ import type {
   ItemType,
   StoryBase,
 } from "../../domain/types.ts";
+import { GitHubApiError } from "./errors.ts";
 
 // ── Adapter-internal branded node ID types ───────────────────────────────────
 //
@@ -383,3 +385,80 @@ export interface IssueStory extends StoryBase {
   url: string; // canonical URL in the backend UI
   epic: { ref: EpicRef; name: string } | null;
 }
+
+// ── Auth token types ──────────────────────────────────────────────────────────
+
+/**
+ * A token value that has been resolved from its environment variable.
+ * Never a "$VAR" reference — always a literal bearer token.
+ */
+export type ResolvedToken = string & { readonly _brand: "ResolvedToken" };
+
+/**
+ * Resolve a raw auth.token value — resolves "$VAR" refs, passes literals through.
+ * Called exactly once in the adapter factory.
+ *
+ * Throws GitHubApiError (not Error) so auth failures follow the same structured
+ * error-handling path as all other adapter errors.
+ */
+export const resolveToken = (raw: string, configDesc: string): ResolvedToken => {
+  if (!raw.startsWith("$")) return raw as ResolvedToken;
+  const varName = raw.slice(1);
+  const resolved = Deno.env.get(varName);
+  if (!resolved) {
+    throw new GitHubApiError(
+      `Config error in ${configDesc}: backends.github.auth.token references ` +
+        `$${varName} but that environment variable is not set.`,
+      {
+        code: "AUTH_FAILED",
+        recovery:
+          `Set the ${varName} environment variable to a fine-grained personal access token ` +
+          `generated at https://github.com/settings/tokens with at minimum: ` +
+          `Projects (read/write), Issues (read/write), Metadata (read-only).`,
+      },
+    );
+  }
+  return resolved as ResolvedToken;
+};
+
+/**
+ * GitHub token prefixes as of 2024:
+ *   ghp_       — classic personal access tokens
+ *   github_pat_ — fine-grained personal access tokens
+ *   ghs_       — GitHub Apps installation tokens
+ */
+const TOKEN_SYNTAX = /^(ghp_|github_pat_|ghs_)[A-Za-z0-9_]+$/;
+
+/**
+ * Validate a resolved token's syntax before any API call is made.
+ *
+ * The empty-string check is safety-critical — prevents sending an empty
+ * bearer token to GitHub. The prefix check is a best-effort early warning;
+ * if GitHub introduces new token formats, widen the regex rather than
+ * working around it.
+ */
+export const validateToken = (token: ResolvedToken, configDesc: string): void => {
+  if (token.length === 0) {
+    throw new GitHubApiError(
+      `${configDesc}: backends.github.auth.token resolved to an empty string.`,
+      {
+        code: "AUTH_FAILED",
+        recovery:
+          "Check that the environment variable referenced in auth.token is set and non-empty.",
+      },
+    );
+  }
+  if (!TOKEN_SYNTAX.test(token)) {
+    throw new GitHubApiError(
+      `GitHub token syntax validation failed in ${configDesc}. ` +
+        `Expected a classic (ghp_...), fine-grained (github_pat_...), ` +
+        `or installation (ghs_...) token.`,
+      {
+        code: "AUTH_FAILED",
+        recovery:
+          "Check that the env var referenced in backends.github.auth.token contains the correct token. " +
+          "Generate a new token at https://github.com/settings/tokens if needed.",
+      },
+    );
+  }
+};

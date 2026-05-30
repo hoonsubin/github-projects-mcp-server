@@ -2,74 +2,43 @@
 // src/adapters/github/internal/user-milestone-resolver.test.ts
 //
 // Unit tests for UserMilestoneResolver: resolveUserNodeId and resolveUserNodeIds.
-// Mocks all injected dependencies via a queue-based GitHubClient spy.
+// Uses real GraphQL response fixtures captured via scripts/api-capture/github-capturer.ts.
+// The fixture data flows through the same spy.enqueue() → graphql() → production
+// code path that the real adapter uses.
 // =============================================================================
 
-import { assertEquals, assertRejects, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
+import { assert, assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { UserMilestoneResolver } from "./user-milestone-resolver.ts";
-import type { GitHubClient, RestResponse } from "./http-client.ts";
+import { createGhSpy, type GitHubClientSpy } from "./_test_utils.ts";
 import type { RepoNodeIdProvider } from "./label-resolver.ts";
 import { GitHubApiError } from "../errors.ts";
+import userNodeIds from "./__fixtures__/user-node-ids.json" with { type: "json" };
 
 // =============================================================================
-// GraphQL response fixtures
+// Fixture-derived constants
 // =============================================================================
 
-/** User found - { user: { id: "MDQ6VXNlcjE=" } } */
-const USER_FOUND = { user: { id: "MDQ6VXNlcjE=" } };
+/** The real owner login from the captured fixture — matches the config owner. */
+const REAL_LOGIN = "hoonsubin";
 
-/** User null - { user: null } (triggers NOT_FOUND) */
-const USER_NULL = { user: null };
+/** Real API response for a valid assignee user. */
+const USER_FOUND = userNodeIds[REAL_LOGIN] as { user: { id: string } };
 
-/** User undefined - {} (no user key at all) */
+/** Synthesized NOT_FOUND response — API returns { user: null } for unknown logins. */
+const USER_NULL = userNodeIds["_not_found_"] as { user: null };
+
+/** Malformed response — no user key at all (edge case). */
 const USER_UNDEF = {};
 
-// =============================================================================
-// GitHubClient spy - queue-based to handle sequential graphql calls
-// =============================================================================
-
-interface GitHubClientSpy extends GitHubClient {
-  graphqlCalls: Array<{
-    queryExcerpt: string;
-    variables: Record<string, unknown>;
-  }>;
-  enqueue(...responses: unknown[]): void;
-  remaining(): number;
-}
-
-const createGhSpy = (): GitHubClientSpy => {
-  const queue: unknown[] = [];
-  const spy: GitHubClientSpy = {
-    graphqlCalls: [],
-    async graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
-      spy.graphqlCalls.push({
-        queryExcerpt: query.slice(0, 80).replace(/\s+/g, " "),
-        variables: variables ?? {},
-      });
-      if (queue.length === 0) {
-        throw new Error(
-          `Unmocked graphql (empty queue): ${query.slice(0, 120)}`,
-        );
-      }
-      const r = queue.shift()!;
-      if (r instanceof Error) throw r;
-      return await Promise.resolve(r as T);
-    },
-    async rest<T>(
-      _path: string,
-      _options?: Record<string, unknown>,
-    ): Promise<RestResponse<T>> {
-      return await Promise.resolve({ data: {} as T, linkHeader: null });
-    },
-    enqueue(...responses: unknown[]) {
-      queue.push(...responses);
-    },
-    remaining() {
-      return queue.length;
-    },
-  };
-  return spy;
-};
+// Assert fixture integrity at module-load time
+assertEquals(typeof USER_FOUND, "object", "USER_FOUND fixture must be an object");
+assertEquals(typeof USER_FOUND.user, "object", "USER_FOUND.user must be an object");
+assertEquals(typeof USER_FOUND.user.id, "string", "USER_FOUND.user.id must be a string");
+assert(
+  USER_FOUND.user.id.startsWith("U_") || USER_FOUND.user.id.startsWith("MDQ6VXNlcj"),
+  `GitHub user node ID should start with "U_" or "MDQ6VXNlcj", got: ${USER_FOUND.user.id}`,
+);
+assertEquals(USER_NULL.user, null, "USER_NULL fixture must have user: null");
 
 // =============================================================================
 // Service factory
@@ -96,7 +65,7 @@ const createResolver = (options: CreateResolverOptions = {}) => {
 };
 
 // =============================================================================
-// Test-specification helpers - express intent, not wiring
+// Test-specification helpers — express intent, not wiring
 // =============================================================================
 
 const givenUserExists = (spy: GitHubClientSpy): void => {
@@ -112,14 +81,14 @@ const givenUserNotFound = (spy: GitHubClientSpy): void => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 Deno.test({
-  name: "resolveUserNodeId - returns user node ID when user exists",
+  name: "resolveUserNodeId - returns user node ID from real fixture when user exists",
   async fn() {
     const { resolver, gh } = createResolver();
     givenUserExists(gh);
 
-    const nodeId = await resolver.resolveUserNodeId("testuser");
+    const nodeId = await resolver.resolveUserNodeId(REAL_LOGIN);
 
-    assertEquals(nodeId, "MDQ6VXNlcjE=");
+    assertEquals(nodeId, USER_FOUND.user.id);
     assertEquals(gh.graphqlCalls.length, 1);
     assertEquals(gh.remaining(), 0);
   },
@@ -131,20 +100,20 @@ Deno.test({
     const { resolver, gh } = createResolver();
     givenUserExists(gh);
 
-    await resolver.resolveUserNodeId("specific-user");
+    await resolver.resolveUserNodeId(REAL_LOGIN);
 
-    assertEquals(gh.graphqlCalls[0].variables.login, "specific-user");
+    assertEquals(gh.graphqlCalls[0].variables.login, REAL_LOGIN);
   },
 });
 
 Deno.test({
-  name: "resolveUserNodeId - throws NOT_FOUND when user is null",
+  name: "resolveUserNodeId - throws NOT_FOUND when user is null (fixture-driven)",
   async fn() {
     const { resolver, gh } = createResolver();
     givenUserNotFound(gh);
 
     const result = await assertRejects(
-      () => resolver.resolveUserNodeId("ghost-user"),
+      () => resolver.resolveUserNodeId("nonexistent-user"),
       GitHubApiError,
     );
 
@@ -227,7 +196,7 @@ Deno.test({
 // ═══════════════════════════════════════════════════════════════════════════════
 
 Deno.test({
-  name: "resolveUserNodeIds - resolves multiple logins sequentially",
+  name: "resolveUserNodeIds - resolves multiple logins sequentially using real fixture",
   async fn() {
     const { resolver, gh } = createResolver();
     givenUserExists(gh);
@@ -235,15 +204,15 @@ Deno.test({
     givenUserExists(gh);
 
     const nodeIds = await resolver.resolveUserNodeIds([
-      "user1",
-      "user2",
-      "user3",
+      REAL_LOGIN,
+      REAL_LOGIN,
+      REAL_LOGIN,
     ]);
 
     assertEquals(nodeIds, [
-      "MDQ6VXNlcjE=",
-      "MDQ6VXNlcjE=",
-      "MDQ6VXNlcjE=",
+      USER_FOUND.user.id,
+      USER_FOUND.user.id,
+      USER_FOUND.user.id,
     ]);
     assertEquals(gh.graphqlCalls.length, 3);
     assertEquals(gh.remaining(), 0);
@@ -286,14 +255,14 @@ Deno.test({
 });
 
 Deno.test({
-  name: "resolveUserNodeIds - resolves single login",
+  name: "resolveUserNodeIds - resolves single login using real fixture",
   async fn() {
     const { resolver, gh } = createResolver();
     givenUserExists(gh);
 
-    const nodeIds = await resolver.resolveUserNodeIds(["single-user"]);
+    const nodeIds = await resolver.resolveUserNodeIds([REAL_LOGIN]);
 
-    assertEquals(nodeIds, ["MDQ6VXNlcjE="]);
+    assertEquals(nodeIds, [USER_FOUND.user.id]);
     assertEquals(gh.graphqlCalls.length, 1);
   },
 });

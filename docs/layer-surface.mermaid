@@ -2,6 +2,12 @@ classDiagram
 
     namespace UseCaseLayer {
 
+        class BootConfig:::uc_interface {
+            <<interface>>
+            +scrumConfig : ScrumConfig
+            +projectRoot : string
+        }
+
         class SEARCH_SCOPES:::uc_tuple {
             <<const-tuple>>
             backlog
@@ -99,7 +105,7 @@ classDiagram
             +fields : [ status: FieldWithOptions, sprint: FieldPresence, story_points: FieldPresence, priority: FieldWithOptions, type: FieldPresence and [ configured: boolean ] ]
             +labels : [ existing: readonly string[], expected: readonly string[], missing: readonly string[] ]
             +iterations : [ active: SprintInfo or null, next: SprintInfo or null, completed: readonly SprintInfo[], completedCount: number ]
-            +vocabulary : [ statusDisplay: DisplayMap, priorityDisplay: DisplayMap, typeDisplay: DisplayMap, typeTemplatePaths: Record~string,string~ ]
+            +vocabulary : [ statusDisplay: DisplayMap, priorityDisplay: DisplayMap, typeDisplay: DisplayMap, typeTemplatePaths: Record~string,ContentLocation~ ]
             +epics : [ active: readonly EpicSummary[], totalCount: number ]
             +templateUris : TemplateUriMap or null
         }
@@ -235,6 +241,14 @@ classDiagram
             <<interface>>
         }
 
+        class SUPPORTED_TEMPLATE_EXTENSIONS:::uc_tuple {
+            <<const-tuple>>
+            .md
+            .json
+            .yml
+            .yaml
+        }
+
         class AdapterError:::uc_abstract {
             <<abstract>>
             +backendName : SupportedBackend
@@ -242,6 +256,27 @@ classDiagram
             +recovery : string
             +context : Record~string,unknown~ opt
             +constructor(message: string, context?: Record~string,unknown~)
+        }
+
+        class CONTENT_LOCATION_KINDS:::uc_tuple {
+            <<const-tuple>>
+            file
+            url
+            inline
+        }
+
+        class ContentLocation:::uc_union_warn {
+            <<union>>
+            [ kind: file, path: string ]
+            [ kind: url, url: URL ]
+            [ kind: inline, content: string ]
+        }
+
+        class SupportedMimeType:::uc_union {
+            <<union>>
+            text/markdown
+            application/json
+            application/x-yaml
         }
 
         class EntityRef:::uc_type {
@@ -579,7 +614,7 @@ classDiagram
 
         class ScrumConfig:::uc_interface_warn {
             <<interface>>
-            +project : [ name: string, agent: [ name: string, autonomy: [ level: AutonomyLevel, require_confirmation_above_n_items: number ] ], team: Array~[ name: string, role: TeamRole, contact: string ]~ ]
+            +project : [ name: string, projRoot: string, agent: [ name: string, autonomy: [ level: AutonomyLevel, require_confirmation_above_n_items: number ] ], team: Array~[ name: string, role: TeamRole, contact: string ]~ ]
             +scrum : [ sprint: [ length_weeks: number, start_day: string, story_point_scale: string, story_point_values: number[], velocity_window: number, carry_over_threshold_days: number ], priority: PriorityTier[], status: Record~string,StatusSemantics~ ]
             +definition_of_ready : string[] opt
             +definition_of_done : string[] opt
@@ -603,8 +638,9 @@ classDiagram
 
         class AdapterStartupOptions:::ad_interface {
             <<interface>>
-            +configPath : string opt
-            +projectRoot : string opt
+            +configLocation : ContentLocation
+            +scrumConfig : ScrumConfig
+            +projectRoot : string
         }
 
         class AdapterFactory:::ad_interface {
@@ -617,8 +653,7 @@ classDiagram
             +backend : ProjectReader and ProjectWriter
             +capabilities : PlatformCapabilities
             +fileReader : FileReaderPort or null
-            +scrumConfig : ScrumConfig
-            +typeTemplatePaths : Record~string,string~
+            +typeTemplatePaths : Record~string,ContentLocation~
         }
 
         class GitHubErrorCode:::ad_union {
@@ -670,14 +705,13 @@ classDiagram
 
         class ConfigReloader:::ad_class {
             <<class>>
-            +constructor(config: RuntimeConfig, github: GitHubClient)
+            +constructor(ghConfig: GitHubBackendConfig, bootState: GitHubBootState, github: GitHubClient, projectRoot: string, configDesc: string)
             +reload() : Promise~void~
-            +replaceMap(target: Record~string,string~, source: Record~string,string~) : void
         }
 
         class BurndownCalculator:::ad_class {
             <<class>>
-            +constructor(config: RuntimeConfig, gh: GitHubClient, owner: string, repo: string)
+            +constructor(config: GitHubBootState, gh: GitHubClient, owner: string, repo: string)
             +getBurndownInput(sprint: SprintRef) : Promise~BurndownInput~
             +resolveCompletionTimestamps(input: BurndownInput) : Promise~CompletionMap~
         }
@@ -691,37 +725,39 @@ classDiagram
 
         class AnalyticsService:::ad_class {
             <<class>>
-            +constructor(config: RuntimeConfig, sprintHistoryService: SprintHistoryService, burndownCalculator: BurndownCalculator)
+            +constructor(config: GitHubBootState, sprintHistoryService: SprintHistoryService, burndownCalculator: BurndownCalculator)
             +getAnalytics(query: AnalyticsQuery) : Promise~AnalyticsResult~
             +buildHistory(window: number) : Promise~SprintSnapshot[]~
             +buildBurndown(sprintRef: string) : Promise~BurndownResponse or null~
         }
 
+        class ItemFetchConfig:::ad_interface {
+            <<interface>>
+            +sprint : boolean opt
+        }
+
         class PaginatedProjectItemFetcher:::ad_class_warn {
             <<class>>
-            +hasNextPage : boolean
-            +endCursor : string or null
-            +totalCount : number
-            +buffer : ProjectItem[]
-            +bufferIndex : number
-            +query : string
             +login : string
             +projectNumber : number
             +ownerType : OwnerType
-            +constructor(config: RuntimeConfig, github: [  ], options: ItemFetchConfig)
-            +getTotalCount() : number
-            +hasMore() : boolean
-            +_fetchPage() : Promise~void~
-            +_rawToItem(raw: RawProjectItem) : ProjectItem
-            +collect(filter?: (item: ProjectItem) => boolean) : Promise~ProjectItem[]~
+            +query : string
+            +items : ProjectItem[]
+            +pageInfo : PageInfoRef or null
+            +_totalCount
+            +constructor(config: GitHubBootState, github: [  ], options: ItemFetchConfig)
+            +getAll() : ProjectItem[]
+            +fetchFirstPage() : Promise~void~
+            +fetchRemaining() : Promise~void~
+            +collect(predicate: (item: ProjectItem) => boolean) : Promise~ProjectItem[]~
         }
 
         class FieldValueMutator:::ad_class {
             <<class>>
-            +config : RuntimeConfig
+            +config : GitHubBootState
             +gh : GitHubClient
             +userMilestoneResolver : UserMilestoneResolver
-            +constructor(config: RuntimeConfig, gh: GitHubClient, userMilestoneResolver: UserMilestoneResolver)
+            +constructor(config: GitHubBootState, gh: GitHubClient, userMilestoneResolver: UserMilestoneResolver)
             +clearField(itemId: string, fieldId: string) : Promise~void~
             +setFieldStatus(itemId: string, value: string) : Promise~void~
             +setFieldSprint(itemId: string, value: SprintRef) : Promise~void~
@@ -756,11 +792,11 @@ classDiagram
 
         class LabelResolver:::ad_class_warn {
             <<class>>
-            +config : RuntimeConfig
+            +config : GitHubBootState
             +gh : GitHubClient
             +owner : string
             +repo : string
-            +constructor(config: RuntimeConfig, gh: GitHubClient, owner: string, repo: string)
+            +constructor(config: GitHubBootState, gh: GitHubClient, owner: string, repo: string)
             +fetchRepoNodeId() : Promise~string~
             +fetchAllLabels() : Promise~GitHubLabel[]~
             +auditTypeLabels() : Promise~[ existing: string[], expected: string[] ]~
@@ -772,27 +808,34 @@ classDiagram
             +hashToColor(name: string) : string
         }
 
+        class GitHubClientSpy:::ad_interface_warn {
+            <<interface>>
+            +graphqlCalls : Array~[ queryExcerpt: string, variables: Record~string,unknown~ ]~
+            +restCalls : Array~[ path: string, options: unknown ]~
+        }
+
         class SprintHistoryService:::ad_class {
             <<class>>
-            +constructor(config: RuntimeConfig, gh: GitHubClient, owner: string, repo: string)
+            +constructor(config: GitHubBootState, gh: GitHubClient, owner: string, repo: string)
             +getCompletedSprintHistory(window: number) : Promise~SprintHistoryEntry[]~
             +fetchAllItems()
         }
 
         class GitHubFileReader:::ad_class {
             <<class>>
-            +constructor(owner: string, repo: string, localRoot: string)
-            +fetchRepoFile(path: string) : Promise~string~
+            +constructor(owner: string, repo: string, token: ResolvedToken)
+            +fetchContent(location: ContentLocation) : Promise~string~
+            +fetchGitHubBlobAsRaw(blobUrl: URL) : Promise~string~
         }
 
         class VocabularyManager:::ad_class {
             <<class>>
-            +config : RuntimeConfig
+            +config : GitHubBootState
             +gh : GitHubClient
             +labelResolver : LabelResolver
             +owner : string
             +repo : string
-            +constructor(config: RuntimeConfig, gh: GitHubClient, labelResolver: LabelResolver, owner: string, repo: string)
+            +constructor(config: GitHubBootState, gh: GitHubClient, labelResolver: LabelResolver, owner: string, repo: string)
             +addVocabulary(kind: VocabularyKind, value: string) : Promise~CreateResult~
             +addStatusOption(value: string) : Promise~CreateResult~
             +addPriorityOption(value: string) : Promise~CreateResult~
@@ -801,7 +844,7 @@ classDiagram
 
         class StoryMutationService:::ad_class {
             <<class>>
-            +constructor(config: RuntimeConfig, gh: GitHubClient, owner: string, repo: string, labelResolver: LabelResolver, userMilestoneResolver: UserMilestoneResolver, fieldValueMutator: FieldValueMutator)
+            +constructor(config: GitHubBootState, gh: GitHubClient, owner: string, repo: string, labelResolver: LabelResolver, userMilestoneResolver: UserMilestoneResolver, fieldValueMutator: FieldValueMutator)
             +createStory(input: CreateStoryInput) : Promise~StoryRef~
             +updateStory(ref: StoryRef, updates: StoryUpdates) : Promise~void~
             +setField(ref: StoryRef, field: ScrumField, value: string or number or SprintRef or null) : Promise~void~
@@ -811,7 +854,7 @@ classDiagram
 
         class BoardHealthService:::ad_class_warn {
             <<class>>
-            +constructor(config: RuntimeConfig, storyQueryService: StoryQueryService, impedimentService: ImpedimentService)
+            +constructor(config: GitHubBootState, ghConfig: GitHubBackendConfig, storyQueryService: StoryQueryService, impedimentService: ImpedimentService)
             +getBoardHealth(sprintScope: string) : Promise~BacklogHealth~
             +computeReadinessByType(stories: readonly Story[]) : [ by_type: Record~string,ReadinessBreakdown~, overall_pct: number ]
             +fetchStoriesForScope(sprintScope: string) : Promise~Story[]~
@@ -821,7 +864,7 @@ classDiagram
 
         class StoryQueryService:::ad_class_warn {
             <<class>>
-            +constructor(config: RuntimeConfig, gh: GitHubClient, owner: string, repo: string)
+            +constructor(config: GitHubBootState, gh: GitHubClient, owner: string, repo: string)
             +getSprintStories(sprint: SprintRef) : Promise~[ stories: Story[], sprintInfo: SprintInfo ]~
             +getBacklogStories() : Promise~Story[]~
             +getStoryDetail(ref: StoryRef) : Promise~BackendCallResult~StoryDetail~~
@@ -855,7 +898,7 @@ classDiagram
 
         class ImpedimentService:::ad_class_warn {
             <<class>>
-            +constructor(config: RuntimeConfig, gh: GitHubClient, owner: string, repo: string, labelResolver: LabelResolver, storyMutationService: StoryMutationService)
+            +constructor(config: GitHubBootState, gh: GitHubClient, owner: string, repo: string, labelResolver: LabelResolver, storyMutationService: StoryMutationService)
             +createImpediment(input: CreateStoryInput) : Promise~[ listing: ImpedimentListing, itemRef: StoryRef ]~
             +getOrphanImpediments() : Promise~ImpedimentListing[]~
             +getSprintImpediments(sprint: SprintRef) : Promise~ImpedimentListing[]~
@@ -1037,19 +1080,12 @@ classDiagram
             +epic : [ ref: EpicRef, name: string ] or null
         }
 
-        class RuntimeConfig:::ad_interface_warn {
-            <<interface>>
-            +scrumConfig : ScrumConfig
-            +projectId : string
-            +fields : [ sprintFieldId: string, statusFieldId: string, storyPointsFieldId: string or null, priorityFieldId: string or null, epicFieldId: string or null, assigneeFieldId: string or null, typeFieldId: string or null ]
-            +statusOptions : Record~string,string~
-            +priorityOptions : Record~string,string~
-            +typeOptions : Record~string,string~
-            +typeTemplatePaths : Record~string,string~
-            +iterations : [ active: IterationEntry or null, next: IterationEntry or null, completed: IterationEntry[], all: IterationEntry[] ]
+        class ResolvedToken:::ad_branded {
+            <<branded>>
+            string & [ readonly _brand: "ResolvedToken" ]
         }
 
-        class GitHubBackendDependencies:::ad_interface_warn {
+        class GitHubBackendDependencies:::ad_interface {
             <<interface>>
             +labelResolver : LabelResolver
             +fieldValueMutator : FieldValueMutator
@@ -1058,13 +1094,13 @@ classDiagram
             +storyMutationService : StoryMutationService
             +impedimentService : ImpedimentService
             +epicService : EpicService
-            +config : RuntimeConfig
+            +config : GitHubBootState
+            +ghConfig : GitHubBackendConfig
             +owner : string
             +repo : string
             +configReloader : ConfigReloader
             +analyticsService : AnalyticsService
             +boardHealthService : BoardHealthService
-            +displayConfig : [ statusDisplay: Record~string,string~, priorityDisplay: Record~string,string~, typeDisplay: Record~string,string~ or null ]
         }
 
         class GitHubProjectBackend:::ad_class_warn {
@@ -1089,6 +1125,24 @@ classDiagram
             +getOrphanImpediments() : Promise~ImpedimentListing[]~
             +getSprintImpediments(sprint: SprintRef) : Promise~ImpedimentListing[]~
             +updateImpediment(ref: ImpedimentRef, status: ImpedimentStatus, resolutionNotes?: string) : Promise~ImpedimentListing~
+        }
+
+        class GitHubLiveMetadata:::ad_interface_warn {
+            <<interface>>
+            +projectId : string
+            +fields : [ sprintFieldId: string, statusFieldId: string, storyPointsFieldId: string or null, priorityFieldId: string or null, epicFieldId: string or null, assigneeFieldId: string or null, typeFieldId: string or null ]
+            +statusOptions : Record~string,string~
+            +priorityOptions : Record~string,string~
+            +typeOptions : Record~string,string~
+            +typeTemplatePaths : Record~string,ContentLocation~
+            +iterations : [ active: IterationEntry or null, next: IterationEntry or null, completed: IterationEntry[], all: IterationEntry[] ]
+        }
+
+        class GitHubBootState:::ad_interface {
+            <<interface>>
+            +scrumConfig : ScrumConfig
+            +ghConfig : GitHubBackendConfig
+            +live : GitHubLiveMetadata
         }
 
         class UnsupportedCapabilityError:::ad_class {
@@ -1126,11 +1180,13 @@ classDiagram
 
     }
 
+    BootConfig --> ScrumConfig : scrumConfig
     FieldWithOptions --|> FieldPresence : extends
     PlatformState --> FieldWithOptions : fields
     PlatformState --> FieldPresence : fields
     PlatformState --> SprintInfo : iterations
     PlatformState --> DisplayMap : vocabulary
+    PlatformState --> ContentLocation : vocabulary
     StoryDetail --> StoryComment : comments
     StoryDetail --> LinkedArtifact : linked_artifacts
     BurndownStoryInput --> EntityRef : ref
@@ -1179,17 +1235,20 @@ classDiagram
     ScrumConfig --> AutonomyLevel : project
     ScrumConfig --> TeamRole : project
     ScrumConfig --> ArtifactType : templates
+    AdapterStartupOptions --> ContentLocation : configLocation
+    AdapterStartupOptions --> ScrumConfig : scrumConfig
     BackendResult --> ProjectReader : backend
     BackendResult --> ProjectWriter : backend
     BackendResult --> PlatformCapabilities : capabilities
     BackendResult --> FileReaderPort : fileReader
-    BackendResult --> ScrumConfig : scrumConfig
+    BackendResult --> ContentLocation : typeTemplatePaths
     GitHubApiError --|> AdapterError : extends
     GitHubApiError --> GitHubErrorCode : code
     IssueDetailsInput --> AssigneeNodes : assignees
-    ConfigReloader --> RuntimeConfig : constructor
+    ConfigReloader --> GitHubBackendConfig : constructor
+    ConfigReloader --> GitHubBootState : constructor
     ConfigReloader --> GitHubClient : constructor
-    BurndownCalculator --> RuntimeConfig : constructor
+    BurndownCalculator --> GitHubBootState : constructor
     BurndownCalculator --> GitHubClient : constructor
     BurndownCalculator --> BurndownInput : getBurndownInput
     BurndownCalculator --> SprintRef : getBurndownInput
@@ -1197,35 +1256,39 @@ classDiagram
     EpicService --> GitHubClient : constructor
     EpicService --> StoryQueryService : constructor
     EpicService --> EpicListing : getEpics
-    AnalyticsService --> RuntimeConfig : constructor
+    AnalyticsService --> GitHubBootState : constructor
     AnalyticsService --> SprintHistoryService : constructor
     AnalyticsService --> BurndownCalculator : constructor
     AnalyticsService --> AnalyticsResult : getAnalytics
     AnalyticsService --> AnalyticsQuery : getAnalytics
     AnalyticsService --> SprintSnapshot : buildHistory
     AnalyticsService --> BurndownResponse : buildBurndown
-    PaginatedProjectItemFetcher --> ProjectItem : buffer
     PaginatedProjectItemFetcher --> OwnerType : ownerType
-    PaginatedProjectItemFetcher --> RuntimeConfig : constructor
-    FieldValueMutator --> RuntimeConfig : config
+    PaginatedProjectItemFetcher --> ProjectItem : items
+    PaginatedProjectItemFetcher --> GitHubBootState : constructor
+    PaginatedProjectItemFetcher --> ItemFetchConfig : constructor
+    FieldValueMutator --> GitHubBootState : config
     FieldValueMutator --> GitHubClient : gh
     FieldValueMutator --> UserMilestoneResolver : userMilestoneResolver
     FieldValueMutator --> SprintRef : setFieldSprint
     UserMilestoneResolver --> GitHubClient : gh
     UserMilestoneResolver --> RepoNodeIdProvider : repoNodeIdProvider
-    LabelResolver --> RuntimeConfig : config
+    LabelResolver --> GitHubBootState : config
     LabelResolver --> GitHubClient : gh
     LabelResolver --> GitHubLabel : fetchAllLabels
     LabelResolver --> CreateResult : addLabel
-    SprintHistoryService --> RuntimeConfig : constructor
+    GitHubClientSpy --|> GitHubClient : extends
+    SprintHistoryService --> GitHubBootState : constructor
     SprintHistoryService --> GitHubClient : constructor
     SprintHistoryService --> SprintHistoryEntry : getCompletedSprintHistory
     GitHubFileReader ..|> FileReaderPort : implements
-    VocabularyManager --> RuntimeConfig : config
+    GitHubFileReader --> ResolvedToken : constructor
+    GitHubFileReader --> ContentLocation : fetchContent
+    VocabularyManager --> GitHubBootState : config
     VocabularyManager --> GitHubClient : gh
     VocabularyManager --> LabelResolver : labelResolver
     VocabularyManager --> CreateResult : addVocabulary
-    StoryMutationService --> RuntimeConfig : constructor
+    StoryMutationService --> GitHubBootState : constructor
     StoryMutationService --> GitHubClient : constructor
     StoryMutationService --> LabelResolver : constructor
     StoryMutationService --> UserMilestoneResolver : constructor
@@ -1234,13 +1297,14 @@ classDiagram
     StoryMutationService --> CreateStoryInput : createStory
     StoryMutationService --> StoryUpdates : updateStory
     StoryMutationService --> SprintRef : setField
-    BoardHealthService --> RuntimeConfig : constructor
+    BoardHealthService --> GitHubBootState : constructor
+    BoardHealthService --> GitHubBackendConfig : constructor
     BoardHealthService --> StoryQueryService : constructor
     BoardHealthService --> ImpedimentService : constructor
     BoardHealthService --> BacklogHealth : getBoardHealth
     BoardHealthService --> ReadinessBreakdown : computeReadinessByType
     BoardHealthService --> SprintRisk : computeSprintRiskCounts
-    StoryQueryService --> RuntimeConfig : constructor
+    StoryQueryService --> GitHubBootState : constructor
     StoryQueryService --> GitHubClient : constructor
     StoryQueryService --> SprintInfo : getSprintStories
     StoryQueryService --> SprintRef : getSprintStories
@@ -1249,7 +1313,7 @@ classDiagram
     StoryQueryService --> ProjectItem : fetchAllItems
     StoryQueryService --> ItemSearchResult : findItems
     StoryQueryService --> ResolvedItemFilter : findItems
-    ImpedimentService --> RuntimeConfig : constructor
+    ImpedimentService --> GitHubBootState : constructor
     ImpedimentService --> GitHubClient : constructor
     ImpedimentService --> LabelResolver : constructor
     ImpedimentService --> StoryMutationService : constructor
@@ -1277,8 +1341,6 @@ classDiagram
     DraftStory --|> StoryBase : extends
     DraftStory --> DependencyEntry : blocked_by
     IssueStory --|> StoryBase : extends
-    RuntimeConfig --> ScrumConfig : scrumConfig
-    RuntimeConfig --> IterationEntry : iterations
     GitHubBackendDependencies --> LabelResolver : labelResolver
     GitHubBackendDependencies --> FieldValueMutator : fieldValueMutator
     GitHubBackendDependencies --> VocabularyManager : vocabularyManager
@@ -1286,7 +1348,8 @@ classDiagram
     GitHubBackendDependencies --> StoryMutationService : storyMutationService
     GitHubBackendDependencies --> ImpedimentService : impedimentService
     GitHubBackendDependencies --> EpicService : epicService
-    GitHubBackendDependencies --> RuntimeConfig : config
+    GitHubBackendDependencies --> GitHubBootState : config
+    GitHubBackendDependencies --> GitHubBackendConfig : ghConfig
     GitHubBackendDependencies --> ConfigReloader : configReloader
     GitHubBackendDependencies --> AnalyticsService : analyticsService
     GitHubBackendDependencies --> BoardHealthService : boardHealthService
@@ -1307,6 +1370,11 @@ classDiagram
     GitHubProjectBackend --> SprintRef : setField
     GitHubProjectBackend --> CreateResult : addVocabulary
     GitHubProjectBackend --> ImpedimentStatus : updateImpediment
+    GitHubLiveMetadata --> ContentLocation : typeTemplatePaths
+    GitHubLiveMetadata --> IterationEntry : iterations
+    GitHubBootState --> ScrumConfig : scrumConfig
+    GitHubBootState --> GitHubBackendConfig : ghConfig
+    GitHubBootState --> GitHubLiveMetadata : live
     UnsupportedCapabilityError --|> AdapterError : extends
     AbstractProjectBackend ..|> ProjectReader : implements
     AbstractProjectBackend ..|> ProjectWriter : implements

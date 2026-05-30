@@ -1,4 +1,4 @@
-FROM denoland/deno:2.3.3 AS runtime
+FROM denoland/deno:latest AS runtime
 
 WORKDIR /app
 

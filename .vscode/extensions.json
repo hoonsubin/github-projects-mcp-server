@@ -6,6 +6,7 @@
     "wayou.vscode-todo-highlight",
     "anthropic.claude-code",
     "streetsidesoftware.code-spell-checker",
-    "zoocodeorganization.zoo-code"
+    "zoocodeorganization.zoo-code",
+    "corschenzi.mermaid-graphical-editor"
   ]
 }

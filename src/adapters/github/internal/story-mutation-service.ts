@@ -20,7 +20,7 @@ import {
   SET_LABELS_MUTATION,
   SET_MILESTONE_MUTATION,
 } from "../queries.ts";
-import type { RuntimeConfig } from "../config-loader.ts";
+import type { GitHubBootState } from "../bootstrap.ts";
 import type { CreateStoryInput, ScrumField, StoryUpdates } from "../../../scrum/ports.ts";
 import type { SprintRef, StoryRef } from "../../../domain/types.ts";
 
@@ -119,7 +119,7 @@ interface MutationField {
  */
 export class StoryMutationService {
   constructor(
-    private readonly config: RuntimeConfig,
+    private readonly config: GitHubBootState,
     private readonly gh: GitHubClient,
     private readonly owner: string,
     private readonly repo: string,
@@ -146,7 +146,7 @@ export class StoryMutationService {
       ADD_DRAFT_ISSUE_MUTATION,
       {
         input: {
-          projectId: this.config.projectId,
+          projectId: this.config.live.projectId,
           title: input.title,
           body: input.body,
           ...(assigneeIds.length > 0 ? { assigneeIds } : {}),
@@ -163,7 +163,7 @@ export class StoryMutationService {
           recovery: "Check that your token has Projects (read/write) permission and that " +
             "the project number in your configuration is correct, then retry.",
           context: {
-            projectId: this.config.projectId,
+            projectId: this.config.live.projectId,
             title: input.title,
             responseShape: JSON.stringify(draftResult),
           },
@@ -175,18 +175,18 @@ export class StoryMutationService {
 
     // Type is a project board field - works on draft issues without conversion.
     // Config validation at startup guarantees typeFieldId and typeOptions are populated.
-    const optionId = this.config.typeOptions[input.type];
+    const optionId = this.config.live.typeOptions[input.type];
     if (!optionId) {
       throw new GitHubApiError(
         `Cannot set story type: "${input.type}" is not a recognized canonical type key. ` +
-          `Valid keys: ${Object.keys(this.config.typeOptions).join(", ")}. ` +
+          `Valid keys: ${Object.keys(this.config.live.typeOptions).join(", ")}. ` +
           `Check backends.github.type_mapping in your config file.`,
         {
           code: "OPTION_NOT_FOUND",
           recovery: `Call scrum_orient to see valid type keys (vocabulary.type). ` +
             `If "${input.type}" is a new type, add it to type_mapping in your config file and ` +
             `ensure the matching option exists on the Type project field.`,
-          context: { requested: input.type, valid: Object.keys(this.config.typeOptions) },
+          context: { requested: input.type, valid: Object.keys(this.config.live.typeOptions) },
         },
       );
     }

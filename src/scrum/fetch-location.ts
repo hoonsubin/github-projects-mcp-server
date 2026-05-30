@@ -14,6 +14,7 @@
 
 import type { ContentLocation } from "../domain/content-location.ts";
 import { describeContentLocation } from "../domain/content-location.ts";
+import { assertNever } from "../domain/errors.ts";
 
 /**
  * Fetch the string content from wherever a ContentLocation points.
@@ -23,12 +24,18 @@ import { describeContentLocation } from "../domain/content-location.ts";
 export const fetchContent = async (
   location: ContentLocation,
 ): Promise<string> => {
+  // TypeScript narrows ContentLocation to `never` after all three branches are
+  // handled. The assertNever guard provides a runtime backstop if a fourth
+  // variant is added to the ContentLocation discriminated union.
   switch (location.kind) {
     case "file":
       return Deno.readTextFile(location.path);
     case "inline":
       return location.content;
     case "url": {
+      // fetch follows redirects by default (redirect: "follow"); 3xx responses
+      // are not an error case managed by this function — they are resolved to
+      // the final response before reaching res.ok.
       const res = await fetch(location.url);
       if (!res.ok) {
         throw new Error(
@@ -37,5 +44,7 @@ export const fetchContent = async (
       }
       return res.text();
     }
+    default:
+      return assertNever(location);
   }
 };

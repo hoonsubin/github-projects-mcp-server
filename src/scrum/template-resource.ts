@@ -19,6 +19,31 @@ interface TemplateData {
   mimeType: SupportedMimeType;
 }
 
+/**
+ * Resolves and fetches instructional template content for a given PBI item type.
+ *
+ * Looks up the {@link ContentLocation} registered for `type` in the backend-provided
+ * `typeTemplatePaths` map, fetches the raw content via the {@link FileReaderPort},
+ * and returns it paired with the correct MIME type for the resource transport.
+ *
+ * ## MIME type resolution by location kind
+ *
+ * | `location.kind` | MIME source                                            |
+ * |-----------------|--------------------------------------------------------|
+ * | `"inline"`      | Hardcoded `"text/markdown"`                            |
+ * | `"file"`        | Derived from `location.path` via {@link mimeTypeForPath} |
+ * | `"url"`         | Derived from `location.url.pathname` via {@link mimeTypeForPath} |
+ *
+ * @param type               Canonical PBI type key (e.g. `"feature"`, `"bug"`). Must be a
+ *                           key present in `vocabulary.template_uris` from `scrum_orient`.
+ * @param fileReader         Port abstraction for reading file/URL/inline content.
+ * @param typeTemplatePaths  Map from type key → resolved {@link ContentLocation}, composed
+ *                           by the backend from its `type_mapping` config.
+ * @returns                  The fetched template content and its {@link SupportedMimeType}.
+ * @throws                   Error when `type` has no entry in `typeTemplatePaths`, with a
+ *                           message directing the caller to add a template path to their
+ *                           backend config or consult `scrum_orient` for available types.
+ */
 export const templateResourceUseCase = async (
   type: string,
   fileReader: FileReaderPort,

@@ -5,7 +5,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CreateStoryInput, ProjectBackend, StoryUpdates } from "../scrum/ports.ts";
 import type { Story, StoryRef } from "../domain/types.ts";
 import type { ScrumConfig } from "../domain/config.ts";
-import { resolveHighestPriorityDisplay } from "../scrum/config-helpers.ts";
 import { updateImpedimentUseCase } from "../scrum/update-impediment.ts";
 import {
   AddVocabularySchema,
@@ -41,7 +40,8 @@ export const registerScrumWriteTools = (
   backend: ProjectBackend,
   scrumConfig: ScrumConfig,
 ): void => {
-  const p0PriorityDisplay = resolveHighestPriorityDisplay(scrumConfig);
+  const p0PriorityDisplay =
+    scrumConfig.priority_display?.[scrumConfig.scrum.priority?.[0]?.key ?? "p0"] ?? "Must";
 
   server.registerTool(
     "scrum_add_vocabulary",

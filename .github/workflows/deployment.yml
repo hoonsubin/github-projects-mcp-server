@@ -101,15 +101,6 @@ jobs:
       - name: Compile all targets
         run: deno task compile:all
 
-      # Bundle the server as a single self-contained Node.js ESM file.
-      # Requires Node.js 18+ at runtime; no Deno needed.
-      - name: Bundle Node.js
-        run: deno task bundle:node
-
-      # Package the Node.js bundle as a .mcpb (MCP Bundle) for one-click
-      # installation in Claude Desktop. See scripts/bundle-mcpb.ts for details.
-      - name: Package as .mcpb
-        run: deno task bundle:mcpb
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.value }}
 

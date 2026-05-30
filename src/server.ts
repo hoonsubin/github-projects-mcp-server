@@ -32,6 +32,7 @@ import { registerScrumReadTools } from "./tools/scrum-read.ts";
 import { registerScrumWriteTools } from "./tools/scrum-write.ts";
 import { templateResourceUseCase } from "./scrum/template-resource.ts";
 import { type AdapterFactory, createBackend } from "./adapters/factory.ts";
+import { loadScrumConfig } from "./scrum/config-boot.ts";
 import { GitHubAdapterFactory } from "./adapters/github/factory.ts";
 import { AdapterError } from "./domain/errors.ts";
 import { log } from "./services/logger.ts";
@@ -77,10 +78,9 @@ Usage:
 
 Options:
   --help, -h           Show this help message
-  --config, -c <path>  Path or URL to the scrum config YAML.
+  --config, -c <path>  Path or URL to the scrum config YAML (required).
                        Accepts a local path (relative or absolute) or an
                        https:// URL to a remote config file.
-                       (default: .github/scrum/config.yml)
                        The project root is declared in the config file itself
                        via project.projRoot (relative to the config file's
                        directory). When absent, defaults to the config
@@ -111,10 +111,26 @@ Examples:
   Deno.exit(0);
 }
 
-// Resolve --config to a ContentLocation. undefined → adapter uses its default.
-const _configLocation: ContentLocation | undefined = _cliArgs.config
-  ? resolveLocation(_cliArgs.config, resolvePath(Deno.cwd()))
-  : undefined;
+// Resolve --config (or SCRUM_CONFIG_PATH env fallback) to a ContentLocation.
+// The env fallback allows mcpb installers that only support user_config
+// interpolation in `env` (not `args`) to pass the config path cleanly.
+// --config is mandatory: no default path fallback exists.
+const _rawConfigPath: string | undefined = _cliArgs.config || Deno.env.get("SCRUM_CONFIG_PATH");
+
+if (!_rawConfigPath) {
+  console.error(
+    "Error: no config file specified.\n" +
+      "Pass --config <path-or-url> when starting the server, " +
+      "or set the SCRUM_CONFIG_PATH environment variable.\n" +
+      "Example: mcp-server --config .github/scrum/config.yml",
+  );
+  Deno.exit(1);
+}
+
+const _configLocation: ContentLocation = resolveLocation(
+  _rawConfigPath,
+  resolvePath(Deno.cwd()),
+);
 
 // ── Runtime permission guard ─────────────────────────────────────────────────
 //
@@ -239,7 +255,7 @@ const registerStubTools = (server: McpServer, errorMessage: string): void => {
 // ── Server factory ───────────────────────────────────────────────────────────
 
 const createMcpServer = async (
-  configLocation?: ContentLocation,
+  configLocation: ContentLocation,
 ): Promise<McpServer> => {
   const server = new McpServer({
     name: "scrum-master-toolkit-server",
@@ -252,28 +268,29 @@ const createMcpServer = async (
   // SCRUM_PLATFORM env var controls which platform is selected (default: "github").
   const factories: AdapterFactory[] = [new GitHubAdapterFactory()];
 
+  // Phase 1: Load the ScrumConfig YAML in the use-case layer, before any
+  // adapter construction. This way the adapter never touches the YAML file.
+  const { scrumConfig, projectRoot } = await loadScrumConfig(configLocation);
+
   let backendResult: Awaited<ReturnType<typeof createBackend>>;
   try {
-    backendResult = await createBackend(factories, { configLocation });
+    backendResult = await createBackend(factories, { configLocation, scrumConfig, projectRoot });
   } catch (err) {
     let hint: string;
     if (err instanceof AdapterError && err.code === "AUTH_FAILED") {
       hint =
         `Backend authentication failed - check that the platform token (e.g. GITHUB_TOKEN) is set and valid.`;
-    } else if (configLocation) {
-      hint = `Config not found or invalid at: ${describeContentLocation(configLocation)}`;
     } else {
-      hint = `Config not found at default path: .github/scrum/config.yml`;
+      hint = `Config not found or invalid at: ${describeContentLocation(configLocation)}`;
     }
     const errorMessage = `${hint}\n` +
-      `Pass --config <path-or-url> when starting the server.\n` +
       `Original error: ${err instanceof Error ? err.message : String(err)}`;
     registerStubTools(server, errorMessage);
     log.warn("Server started in degraded mode.", { hint });
     return server;
   }
 
-  const { backend, fileReader, scrumConfig, typeTemplatePaths } = backendResult;
+  const { backend, fileReader, typeTemplatePaths } = backendResult;
 
   registerScrumReadTools(server, backend, scrumConfig);
   registerScrumWriteTools(server, backend, scrumConfig);
@@ -333,7 +350,7 @@ const emitJsonRpcError = (message: string): void => {
 };
 
 const runStdio = async (
-  configLocation?: ContentLocation,
+  configLocation: ContentLocation,
 ): Promise<void> => {
   try {
     const server = await createMcpServer(configLocation);
@@ -359,7 +376,7 @@ const runStdio = async (
 // isInitializeRequest, then forward it to handleRequest via { parsedBody } so the
 // transport doesn't attempt a second read on the already-consumed stream.
 
-const runHttp = (configLocation?: ContentLocation): void => {
+const runHttp = (configLocation: ContentLocation): void => {
   const transports: Record<string, WebStandardStreamableHTTPServerTransport> = {};
   const port = parseInt(Deno.env.get("PORT") || "3000", 10);
 

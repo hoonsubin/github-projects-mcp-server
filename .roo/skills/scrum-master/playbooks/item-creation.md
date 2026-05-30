@@ -7,8 +7,8 @@ on existing items - see §field_mutation.
 
 ## Phase 1 - Duplicate scan (mandatory before drafting)
 
-1. `scrum_get_backlog` - load open backlog items.
-2. If sprint active: `scrum_get_sprint` - include in-progress items.
+1. `scrum_find_items(scope: "backlog")` - load open backlog items.
+2. If sprint active: `scrum_find_items(scope: "sprint")` - include in-progress items.
 3. Compare titles and type for semantic overlap (same outcome, problem domain, component, or
    subset/superset relationship).
 4. If matches found, stop and surface:

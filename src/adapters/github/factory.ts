@@ -8,11 +8,20 @@
 // Keeping this logic inside the adapter package means server.ts only needs
 // one import - it calls createBackend([new GitHubAdapterFactory()]) without
 // knowing which internal services exist or how they depend on each other.
+//
+// Key architectural boundaries (per config-loader refactor):
+//   - YAML I/O lives in src/scrum/config-boot.ts (use-case layer).
+//   - Token resolution + validation happens HERE, once, from the config file's
+//     declared env var name — never from a hardcoded GITHUB_TOKEN.
+//   - GitHubBackendConfig is cast ONCE here (from unknown). All services
+//     receive typed ghConfig via constructor injection.
+//   - Immutable boot constants (scrumConfig, ghConfig) vs mutable live metadata
+//     (GitHubLiveMetadata) are separated at the type level.
 // =============================================================================
 
 import { GITHUB_CAPABILITIES } from "../capabilities.ts";
 import type { AdapterFactory, AdapterStartupOptions, BackendResult } from "../factory.ts";
-import { loadConfig } from "./config-loader.ts";
+import { bootstrapGitHub, type GitHubBootState } from "./bootstrap.ts";
 import { GitHubProjectBackend } from "./backend.ts";
 import type { GitHubBackendDependencies } from "./backend.ts";
 import { graphql, rest } from "./internal/http-client.ts";
@@ -31,6 +40,9 @@ import { AnalyticsService } from "./internal/analytics-service.ts";
 import { BoardHealthService } from "./internal/board-health-service.ts";
 import { GitHubFileReader } from "./internal/file-reader.ts";
 import type { GitHubBackendConfig } from "./types.ts";
+import type { ResolvedToken } from "./types.ts";
+import { resolveToken, validateToken } from "./types.ts";
+import { describeContentLocation } from "../../domain/content-location.ts";
 
 // ── GitHubAdapterFactory ─────────────────────────────────────────────────────
 
@@ -43,30 +55,64 @@ export class GitHubAdapterFactory implements AdapterFactory {
   readonly platform = "github";
 
   async create(options?: AdapterStartupOptions): Promise<BackendResult> {
-    const config = await loadConfig({
-      github: { graphql },
-      configLocation: options?.configLocation,
+    const { configLocation, scrumConfig, projectRoot } = options!;
+    const configDesc = describeContentLocation(configLocation);
+
+    // ── Single-point-of-cast: backends.github → typed GitHubBackendConfig ──
+    // This is the ONLY place in the codebase that casts backends.github from
+    // unknown. Every internal service receives ghConfig via constructor injection.
+    const ghConfig = scrumConfig.backends.github as GitHubBackendConfig;
+
+    // ── Token resolution — one Deno.env.get() call, from the env var declared
+    //    in the config file (not hardcoded GITHUB_TOKEN). ──────────────────
+    const resolvedToken: ResolvedToken = resolveToken(ghConfig.auth.token, configDesc);
+    validateToken(resolvedToken, configDesc);
+
+    // Patch the token into ghConfig so services can read the literal value.
+    const resolvedGhConfig: GitHubBackendConfig = {
+      ...ghConfig,
+      auth: { ...ghConfig.auth, token: resolvedToken },
+    };
+
+    // ── Curry the resolved token into graphql/rest so internal services
+    //    never handle the token directly. ─────────────────────────────────
+    const ghClient = {
+      graphql: <T>(query: string, variables?: Record<string, unknown>) =>
+        graphql<T>(resolvedToken, query, variables),
+      rest: <T>(
+        path: string,
+        options?: {
+          method?: "GET" | "POST" | "PATCH" | "DELETE";
+          params?: Record<string, string>;
+          body?: unknown;
+          accept?: string;
+        },
+      ) => rest<T>(resolvedToken, path, options),
+    };
+
+    const { owner } = resolvedGhConfig;
+    const primaryRepo = resolvedGhConfig.tracked_repos[0];
+
+    // ── Bootstrap live GitHub project field metadata ──────────────────────
+    //    Uses the same ghClient (with resolved token) to fetch field IDs,
+    //    option maps, iterations, and template paths from the GitHub API.
+    const live = await bootstrapGitHub({
+      ghConfig: resolvedGhConfig,
+      github: ghClient,
+      projectRoot,
+      configDesc,
     });
-    const gh = config.scrumConfig.backends.github as GitHubBackendConfig;
-    const ghClient = { graphql, rest };
-    const { owner } = gh;
-    const primaryRepo = gh.tracked_repos[0]; // multi-repo support is future work
 
-    // ── Resolve display config at construction time ──────────────────────
-
-    const typeDisplay: Record<string, string> | null = gh.type_mapping
-      ? Object.fromEntries(Object.entries(gh.type_mapping).map(([k, v]) => [k, v.display]))
-      : null;
-
-    const displayConfig: GitHubBackendDependencies["displayConfig"] = {
-      statusDisplay: gh.status_display ?? {},
-      priorityDisplay: gh.priority_display ?? {},
-      typeDisplay,
+    // ── Assemble boot state ───────────────────────────────────────────────
+    const bootState: GitHubBootState = {
+      scrumConfig,
+      ghConfig: resolvedGhConfig,
+      live,
     };
 
     // ── Service construction - each service receives only what it needs ──
 
-    const labelResolver = new LabelResolver(config, ghClient, owner, primaryRepo);
+    const labelResolver = new LabelResolver(bootState, ghClient, owner, primaryRepo);
 
     const userMilestoneResolver = new UserMilestoneResolver(
       ghClient,
@@ -76,29 +122,39 @@ export class GitHubAdapterFactory implements AdapterFactory {
     );
 
     const fieldValueMutator = new FieldValueMutator(
-      config,
+      bootState,
       ghClient,
       userMilestoneResolver,
     );
 
-    const burndownCalculator = new BurndownCalculator(config, ghClient, owner, primaryRepo);
+    const burndownCalculator = new BurndownCalculator(bootState, ghClient, owner, primaryRepo);
 
-    const sprintHistoryService = new SprintHistoryService(config, ghClient, owner, primaryRepo);
+    const sprintHistoryService = new SprintHistoryService(bootState, ghClient, owner, primaryRepo);
 
     const vocabularyManager = new VocabularyManager(
-      config,
+      bootState,
       ghClient,
       labelResolver,
       owner,
       primaryRepo,
     );
 
-    const storyQueryService = new StoryQueryService(config, ghClient, owner, primaryRepo);
+    const storyQueryService = new StoryQueryService(
+      bootState,
+      ghClient,
+      owner,
+      primaryRepo,
+    );
 
-    const epicService = new EpicService(ghClient, owner, gh.tracked_repos, storyQueryService);
+    const epicService = new EpicService(
+      ghClient,
+      owner,
+      resolvedGhConfig.tracked_repos,
+      storyQueryService,
+    );
 
     const storyMutationService = new StoryMutationService(
-      config,
+      bootState,
       ghClient,
       owner,
       primaryRepo,
@@ -108,7 +164,7 @@ export class GitHubAdapterFactory implements AdapterFactory {
     );
 
     const impedimentService = new ImpedimentService(
-      config,
+      bootState,
       ghClient,
       owner,
       primaryRepo,
@@ -116,26 +172,32 @@ export class GitHubAdapterFactory implements AdapterFactory {
       storyMutationService,
     );
 
-    const configReloader = new ConfigReloader(config, ghClient);
+    const configReloader = new ConfigReloader(
+      resolvedGhConfig,
+      bootState,
+      ghClient,
+      projectRoot,
+      configDesc,
+    );
 
     // ── New unified services (P7) ───────────────────────────────────────
 
     const analyticsService = new AnalyticsService(
-      config,
+      bootState,
       sprintHistoryService,
       burndownCalculator,
     );
 
     const boardHealthService = new BoardHealthService(
-      config,
+      bootState,
+      resolvedGhConfig,
       storyQueryService,
       impedimentService,
     );
 
     // ── File reader ──────────────────────────────────────────────────────
 
-    // gh.auth.token is already the resolved literal value (env refs expanded by loadConfig).
-    const fileReader = new GitHubFileReader(owner, primaryRepo, gh.auth.token);
+    const fileReader = new GitHubFileReader(owner, primaryRepo, resolvedToken);
 
     // ── Facade assembly - single parameter object, no positional args ────
 
@@ -147,11 +209,11 @@ export class GitHubAdapterFactory implements AdapterFactory {
       storyMutationService,
       impedimentService,
       epicService,
-      config,
+      config: bootState,
+      ghConfig: resolvedGhConfig,
       owner,
       repo: primaryRepo,
       configReloader,
-      displayConfig,
       analyticsService,
       boardHealthService,
     };
@@ -162,8 +224,7 @@ export class GitHubAdapterFactory implements AdapterFactory {
       backend,
       capabilities: GITHUB_CAPABILITIES,
       fileReader,
-      scrumConfig: config.scrumConfig,
-      typeTemplatePaths: config.typeTemplatePaths,
+      typeTemplatePaths: live.typeTemplatePaths,
     };
   }
 }

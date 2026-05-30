@@ -13,14 +13,21 @@ import type { ContentLocation } from "../domain/content-location.ts";
 
 /**
  * Startup options passed from the composition root to every adapter factory.
- * All fields are optional; adapters fall back to their own defaults when absent.
+ * scrumConfig and projectRoot come from loadScrumConfig() in the use-case layer
+ * — the adapter never touches the YAML file directly.
  */
 export interface AdapterStartupOptions {
   /**
    * Where to load the scrum config from.
-   * undefined → adapter uses its default: { kind: "file", path: ".github/scrum/config.yml" }
+   * Always provided by the server composition root.
    */
-  readonly configLocation?: ContentLocation;
+  readonly configLocation: ContentLocation;
+
+  /** Parsed ScrumConfig from the use-case layer's loadScrumConfig(). */
+  readonly scrumConfig: ScrumConfig;
+
+  /** Resolved project root from loadScrumConfig(). */
+  readonly projectRoot: string;
 }
 
 // ── AdapterFactory ──────────────────────────────────────────────────────────
@@ -46,9 +53,10 @@ export interface AdapterFactory {
 /**
  * Unified return type for all adapter factories.
  *
- * Replaces the adapter-specific GitHubBackendResult. The composition root
- * receives this and uses it for tool registration - it never knows which
- * concrete adapter produced it.
+ * The composition root receives this and uses it for tool registration.
+ * scrumConfig is no longer carried on BackendResult — the caller already has
+ * it from loadScrumConfig(). typeTemplatePaths is also removed — it lives
+ * inside the adapter's bootState.live.typeTemplatePaths.
  *
  * fileReader is nullable because not every platform has a file-reader
  * capability. The composition root checks this before registering template
@@ -64,13 +72,10 @@ export interface BackendResult {
   /** File reader for template fetching, or null if the platform lacks file-reader support. */
   readonly fileReader: FileReaderPort | null;
 
-  /** Platform-agnostic Scrum configuration (resolved by the adapter factory). */
-  readonly scrumConfig: ScrumConfig;
-
   /**
-   * Maps canonical type keys → resolved template locations.
-   * Only present for types that declare a template in the backend config.
-   * Passed to the MCP template resource at registration time.
+   * Canonical type key → template ContentLocation map.
+   * Populated from the adapter's bootState.live.typeTemplatePaths.
+   * Used by server.ts to register MCP template resources.
    */
   readonly typeTemplatePaths: Record<string, ContentLocation>;
 }

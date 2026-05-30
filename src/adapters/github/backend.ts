@@ -11,7 +11,7 @@
 import { GITHUB_CAPABILITIES } from "../capabilities.ts";
 import { AbstractProjectBackend } from "../abstract-backend.ts";
 import { GitHubApiError } from "./errors.ts";
-import { type RuntimeConfig } from "./config-loader.ts";
+import { type GitHubBootState } from "./bootstrap.ts";
 import { LabelResolver } from "./internal/label-resolver.ts";
 import { FieldValueMutator } from "./internal/field-value-mutator.ts";
 import { VocabularyManager } from "./internal/vocabulary-manager.ts";
@@ -23,6 +23,7 @@ import { ConfigReloader } from "./internal/config-reloader.ts";
 import { AnalyticsService } from "./internal/analytics-service.ts";
 import { BoardHealthService } from "./internal/board-health-service.ts";
 import { resolveSprintGoal } from "./mappers.ts";
+import type { GitHubBackendConfig } from "./types.ts";
 import type {
   AnalyticsQuery,
   CreateResult,
@@ -64,18 +65,13 @@ export interface GitHubBackendDependencies {
   readonly storyMutationService: StoryMutationService;
   readonly impedimentService: ImpedimentService;
   readonly epicService: EpicService;
-  readonly config: RuntimeConfig;
+  readonly config: GitHubBootState;
+  readonly ghConfig: GitHubBackendConfig;
   readonly owner: string;
   readonly repo: string;
   readonly configReloader: ConfigReloader;
   readonly analyticsService: AnalyticsService;
   readonly boardHealthService: BoardHealthService;
-  /** Pre-resolved display name maps (from GitHubBackendConfig) - no cast needed at call time. */
-  readonly displayConfig: {
-    readonly statusDisplay: Record<string, string>;
-    readonly priorityDisplay: Record<string, string>;
-    readonly typeDisplay: Record<string, string> | null;
-  };
 }
 
 // ── GitHubProjectBackend ──────────────────────────────────────────────────────
@@ -132,9 +128,6 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
   }): Promise<BackendCallResult<PlatformState>> {
     const warnings: string[] = [];
 
-    // Builds a SprintInfo for a single iteration, attempting to resolve the
-    // sprint goal. Always produces a NOT_IMPLEMENTED warning since the GitHub
-    // Projects API does not expose iteration goals.
     const buildSprintInfo = async (iter: IterationEntry | null): Promise<SprintInfo | null> => {
       if (!iter) return null;
       const { value: goal, warnings: gw } = await catchBackend(
@@ -153,7 +146,13 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
       };
     };
 
-    const { statusDisplay, priorityDisplay, typeDisplay } = this.deps.displayConfig;
+    const statusDisplay = this.deps.ghConfig.status_display ?? {};
+    const priorityDisplay = this.deps.ghConfig.priority_display ?? {};
+    const typeDisplay: Record<string, string> | null = this.deps.ghConfig.type_mapping
+      ? Object.fromEntries(
+        Object.entries(this.deps.ghConfig.type_mapping).map(([k, v]) => [k, v.display]),
+      )
+      : null;
 
     const statusDisplayMap: Record<string, string> = {};
     for (const key of declaredVocabulary.canonicalStatusKeys) {
@@ -164,8 +163,8 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
       if (priorityDisplay[key]) priorityDisplayMap[key] = priorityDisplay[key];
     }
 
-    const liveStatusOptions = Object.keys(this.deps.config.statusOptions);
-    const livePriorityOptions = Object.keys(this.deps.config.priorityOptions);
+    const liveStatusOptions = Object.keys(this.deps.config.live.statusOptions);
+    const livePriorityOptions = Object.keys(this.deps.config.live.priorityOptions);
     const missingStatusOptions = Object.values(statusDisplayMap).filter(
       (v) => !liveStatusOptions.includes(v),
     );
@@ -177,29 +176,29 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
     const missingLabels = typeLabels.expected.filter((l) => !typeLabels.existing.includes(l));
 
     const [active, next, ...completedOrNull] = await Promise.all([
-      buildSprintInfo(this.deps.config.iterations.active),
-      buildSprintInfo(this.deps.config.iterations.next),
-      ...this.deps.config.iterations.completed.map((i) => buildSprintInfo(i)),
+      buildSprintInfo(this.deps.config.live.iterations.active),
+      buildSprintInfo(this.deps.config.live.iterations.next),
+      ...this.deps.config.live.iterations.completed.map((i) => buildSprintInfo(i)),
     ]);
     const completed = completedOrNull.filter((info): info is SprintInfo => info !== null);
 
     const value: PlatformState = {
       fields: {
         status: {
-          exists: !!this.deps.config.fields.statusFieldId,
+          exists: !!this.deps.config.live.fields.statusFieldId,
           options: liveStatusOptions,
           missingOptions: missingStatusOptions,
         },
-        sprint: { exists: !!this.deps.config.fields.sprintFieldId },
-        story_points: { exists: !!this.deps.config.fields.storyPointsFieldId },
+        sprint: { exists: !!this.deps.config.live.fields.sprintFieldId },
+        story_points: { exists: !!this.deps.config.live.fields.storyPointsFieldId },
         priority: {
-          exists: !!this.deps.config.fields.priorityFieldId,
+          exists: !!this.deps.config.live.fields.priorityFieldId,
           options: livePriorityOptions,
           missingOptions: missingPriorityOptions,
         },
         type: {
-          exists: !!this.deps.config.fields.typeFieldId,
-          configured: Object.keys(this.deps.config.typeOptions).length > 0,
+          exists: !!this.deps.config.live.fields.typeFieldId,
+          configured: Object.keys(this.deps.config.live.typeOptions).length > 0,
         },
       },
       labels: {
@@ -211,13 +210,13 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
         active: active ?? null,
         next: next ?? null,
         completed,
-        completedCount: this.deps.config.iterations.completed.length,
+        completedCount: this.deps.config.live.iterations.completed.length,
       },
       vocabulary: {
         statusDisplay: Object.keys(statusDisplayMap).length > 0 ? statusDisplayMap : null,
         priorityDisplay: Object.keys(priorityDisplayMap).length > 0 ? priorityDisplayMap : null,
         typeDisplay: typeDisplay,
-        typeTemplatePaths: this.deps.config.typeTemplatePaths,
+        typeTemplatePaths: this.deps.config.live.typeTemplatePaths,
       },
       epics: { active: [], totalCount: 0 },
       templateUris: null,
