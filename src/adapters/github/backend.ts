@@ -23,6 +23,11 @@ import { ConfigReloader } from "./internal/config-reloader.ts";
 import { AnalyticsService } from "./internal/analytics-service.ts";
 import { BoardHealthService } from "./internal/board-health-service.ts";
 import { resolveSprintGoal } from "./mappers.ts";
+import { classifyFilter } from "./internal/filter-strategy-router.ts";
+import { DirectLookupAssembler } from "./internal/assemblers/direct-lookup-assembler.ts";
+import { ProjectItemsAssembler } from "./internal/assemblers/project-items-assembler.ts";
+import { SearchApiAssembler } from "./internal/assemblers/search-api-assembler.ts";
+import { MixedAssembler } from "./internal/assemblers/mixed-assembler.ts";
 import type { GitHubBackendConfig } from "./types.ts";
 import type {
   AnalyticsQuery,
@@ -56,6 +61,12 @@ import type {
  * All dependencies needed to construct a GitHubProjectBackend.
  * AnalyticsService and BoardHealthService wrap the lower-level services
  * (BurndownCalculator, SprintHistoryService) behind the new port interfaces.
+ *
+ * Phase 3: adds assembler instances for the filter-strategy-routing pipeline.
+ *   directLookupAssembler — keys-only filter (issue number lookup)
+ *   projectItemsAssembler — board-field-based queries
+ *   searchApiAssembler    — shell (empty result, implemented in Phase 4b)
+ *   mixedAssembler        — delegates to projectItemsAssembler
  */
 export interface GitHubBackendDependencies {
   readonly labelResolver: LabelResolver;
@@ -72,6 +83,10 @@ export interface GitHubBackendDependencies {
   readonly configReloader: ConfigReloader;
   readonly analyticsService: AnalyticsService;
   readonly boardHealthService: BoardHealthService;
+  readonly directLookupAssembler: DirectLookupAssembler;
+  readonly projectItemsAssembler: ProjectItemsAssembler;
+  readonly searchApiAssembler: SearchApiAssembler;
+  readonly mixedAssembler: MixedAssembler;
 }
 
 // ── GitHubProjectBackend ──────────────────────────────────────────────────────
@@ -231,8 +246,30 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
 
   // ── Port methods (P7 - real implementations) ──────────────────────────────
 
-  findItems(filter: ResolvedItemFilter): Promise<ItemSearchResult> {
-    return this.deps.storyQueryService.findItems(filter);
+  async findItems(filter: ResolvedItemFilter): Promise<ItemSearchResult> {
+    const profile = classifyFilter(filter);
+    const { items, totalCount, scopeSummary, dependencyMap, warnings: _warnings } = await (() => {
+      switch (profile.kind) {
+        case "direct_lookup":
+          return this.deps.directLookupAssembler.assemble(profile);
+        case "search_api":
+          return this.deps.searchApiAssembler.assemble(profile);
+        case "project_items":
+          return this.deps.projectItemsAssembler.assemble(profile.filter);
+        case "mixed":
+          return this.deps.mixedAssembler.assemble(profile.filter);
+      }
+    })();
+
+    return {
+      items: items as import("../../domain/types.ts").BacklogItemListing[],
+      total_count: totalCount,
+      scope_summary: {
+        sprint_count: scopeSummary.sprint_count,
+        backlog_count: scopeSummary.backlog_count,
+      },
+      dependency_map: dependencyMap,
+    };
   }
 
   getAnalytics(query: AnalyticsQuery): Promise<AnalyticsResult> {

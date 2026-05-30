@@ -39,6 +39,10 @@ import { EpicService } from "./internal/epic-service.ts";
 import { VocabularyManager } from "./internal/vocabulary-manager.ts";
 import { AnalyticsService } from "./internal/analytics-service.ts";
 import { BoardHealthService } from "./internal/board-health-service.ts";
+import { DirectLookupAssembler } from "./internal/assemblers/direct-lookup-assembler.ts";
+import { ProjectItemsAssembler } from "./internal/assemblers/project-items-assembler.ts";
+import { SearchApiAssembler } from "./internal/assemblers/search-api-assembler.ts";
+import { MixedAssembler } from "./internal/assemblers/mixed-assembler.ts";
 import { GitHubFileReader } from "./internal/file-reader.ts";
 import type { GitHubBackendConfig } from "./types.ts";
 import type { ResolvedToken } from "./types.ts";
@@ -136,6 +140,12 @@ export class GitHubAdapterFactory implements AdapterFactory {
 
     const storyQueryService = new StoryQueryService(ctx);
 
+    // ── Tier 2.5: Assemblers (Phase 3 filter-strategy-routing pipeline) ──
+    const directLookupAssembler = new DirectLookupAssembler(storyQueryService);
+    const projectItemsAssembler = new ProjectItemsAssembler(storyQueryService);
+    const searchApiAssembler = new SearchApiAssembler();
+    const mixedAssembler = new MixedAssembler(projectItemsAssembler);
+
     const epicService = new EpicService(
       ghClient,
       owner,
@@ -196,6 +206,10 @@ export class GitHubAdapterFactory implements AdapterFactory {
       configReloader,
       analyticsService,
       boardHealthService,
+      directLookupAssembler,
+      projectItemsAssembler,
+      searchApiAssembler,
+      mixedAssembler,
     };
 
     const backend = new GitHubProjectBackend(deps);
