@@ -83,9 +83,9 @@
 
 ## Team dysfunctions
 
-**Low psychological safety** — Signs: no one speaks in retros; blockers reported late or hidden; mistakes covered up. Fixes: SM sets explicit norms each retro; PO thanks team for surfacing bad news; celebrate learnings from failures.
+**Low psychological safety** - Signs: no one speaks in retros; blockers reported late or hidden; mistakes covered up. Fixes: SM sets explicit norms each retro; PO thanks team for surfacing bad news; celebrate learnings from failures.
 
-**Knowledge concentration** — Signs: one person is the only one who can do a critical thing; velocity collapses when they're absent. Fixes: pair on critical paths; "truck number" exercise; rotate ownership.
+**Knowledge concentration** - Signs: one person is the only one who can do a critical thing; velocity collapses when they're absent. Fixes: pair on critical paths; "truck number" exercise; rotate ownership.
 
 ## Organisational dysfunctions
 

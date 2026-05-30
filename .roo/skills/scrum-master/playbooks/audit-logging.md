@@ -1,6 +1,6 @@
 # Audit Logging Playbook
 
-All item comments via `scrum_update_story`. Comments are factual and specific — audit trail, not
+All item comments via `scrum_update_story`. Comments are factual and specific - audit trail, not
 status narrative. Do not duplicate information already visible in field values.
 
 ## When to log
@@ -8,7 +8,7 @@ status narrative. Do not duplicate information already visible in field values.
 | Event | What to record |
 |---|---|
 | Implementation status changes | What changed, when, and by whom |
-| Deadline shift | Old date, new date, human-stated reason — before updating the field |
+| Deadline shift | Old date, new date, human-stated reason - before updating the field |
 | Item reclassification | What triggered the review, old type → new type, body changes |
 | Impediment logged | What is blocked and the resolution path |
 | Impediment resolved | Outcome and how it was resolved |
@@ -17,7 +17,7 @@ status narrative. Do not duplicate information already visible in field values.
 
 ## Deadline shift rule
 
-Comment must precede the field update — no exceptions:
+Comment must precede the field update - no exceptions:
 1. Write comment (old date + reason) via `scrum_update_story`
 2. Confirm comment saved
 3. Update `expected_delivery_date` via `scrum_set_field`

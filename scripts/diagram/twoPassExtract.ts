@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/diagram/twoPassExtract.ts — Two-pass collection helper for type-surface extraction
+// scripts/diagram/twoPassExtract.ts - Two-pass collection helper for type-surface extraction
 // =============================================================================
 
 import type { ExtractedClass, ExtractedRelationship } from "./types.ts";
@@ -19,7 +19,7 @@ export const twoPassExtract = (extractors: ExtractorFn[]): {
   warnings: string[];
   warningNodes: Set<string>;
 } => {
-  // Pass 1: names only (warnings and warningNodes discarded — re-emitted on pass 2)
+  // Pass 1: names only (warnings and warningNodes discarded - re-emitted on pass 2)
   const knownNames = new Set<string>();
   for (const fn of extractors) {
     const { classes } = fn(new Set());

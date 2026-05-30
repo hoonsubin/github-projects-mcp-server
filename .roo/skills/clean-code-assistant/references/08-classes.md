@@ -2,7 +2,7 @@
 
 Smallness in classes is measured by **responsibilities**, not lines of code.
 
-**The test:** Write a brief description of the class. If you use "and", "but", or "or" — it has too many responsibilities.
+**The test:** Write a brief description of the class. If you use "and", "but", or "or" - it has too many responsibilities.
 
 ## Single Responsibility Principle (SRP)
 
@@ -31,7 +31,7 @@ class VersionSqlGenerator:
 A class is cohesive when most methods use most instance variables. When a subset of methods only uses a subset of variables, the class wants to split.
 
 ```python
-# Smell: low cohesion — _description is unrelated to stack operations
+# Smell: low cohesion - _description is unrelated to stack operations
 class Stack:
     def __init__(self):
         self._top: int = 0
@@ -62,7 +62,7 @@ class Sql:
         if sql_type == "CREATE": ...
         elif sql_type == "INSERT": ...
 
-# Good: adding UPDATE is a new class — nothing else changes
+# Good: adding UPDATE is a new class - nothing else changes
 class Sql(ABC):
     @abstractmethod
     def generate(self) -> str: ...
@@ -84,7 +84,7 @@ class UserService:
     def __init__(self):
         self.db = MySQLDatabase(host="localhost")
 
-# Good: depends on abstraction — can swap MySQL for Postgres or a mock
+# Good: depends on abstraction - can swap MySQL for Postgres or a mock
 class UserRepository(ABC):
     @abstractmethod
     def find_by_id(self, id: int) -> User: ...
@@ -96,7 +96,7 @@ class UserService:
 
 ## Organizing for Change
 
-When you find yourself "opening up" a class to add functionality, the design isn't right. Ask: *"What will change? What will stay the same?"* — encapsulate what changes.
+When you find yourself "opening up" a class to add functionality, the design isn't right. Ask: *"What will change? What will stay the same?"* - encapsulate what changes.
 
 ## Quick Checklist
 

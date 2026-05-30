@@ -64,12 +64,12 @@ As a [type of user], I want [goal] so that [benefit].
 
 ### `spike`
 
-**Purpose:** Time-boxed investigation to resolve an unknown or evaluate an option. Output is a finding, decision, or recommendation — not working code or a feature.
+**Purpose:** Time-boxed investigation to resolve an unknown or evaluate an option. Output is a finding, decision, or recommendation - not working code or a feature.
 
 **Mismatch signals (flag if present):**
 - AC describes a deliverable (code, feature, UI) rather than a decision or document
 - No time-box defined (story points or calendar limit)
-- Body reads as a user story ("As a user, I want…") — investigation has no user persona
+- Body reads as a user story ("As a user, I want…") - investigation has no user persona
 - Title frames it as a delivery ("Build X") rather than an inquiry ("Evaluate X" / "Spike: Determine if X is feasible")
 
 **Canonical fallback format:**
@@ -79,7 +79,7 @@ As a [type of user], I want [goal] so that [benefit].
 [The specific question this spike must answer or the uncertainty it must resolve]
 
 ## Time-box
-[Maximum SP or calendar days allocated — must not exceed one sprint]
+[Maximum SP or calendar days allocated - must not exceed one sprint]
 
 ## Approach
 [How the investigation will be conducted]
@@ -90,7 +90,7 @@ As a [type of user], I want [goal] so that [benefit].
 - [ ] Any follow-on stories or tasks are created on the board
 
 ## Output
-[Where the findings will be recorded — e.g., comment on this item, ADR, wiki page]
+[Where the findings will be recorded - e.g., comment on this item, ADR, wiki page]
 ```
 
 ### `tech_debt`
@@ -100,14 +100,14 @@ As a [type of user], I want [goal] so that [benefit].
 **Mismatch signals (flag if present):**
 - Describes a user-facing feature or behaviour change → likely a `user_story`
 - No description of what the debt is (e.g., no mention of the current problematic state)
-- No cost-of-deferral rationale — why does this matter now?
+- No cost-of-deferral rationale - why does this matter now?
 - AC describes outcomes observable by end users without technical context
 
 **Canonical fallback format:**
 
 ```markdown
 ## Debt Description
-[What is the current state that constitutes debt — be specific about the code,
+[What is the current state that constitutes debt - be specific about the code,
  module, pattern, or practice involved]
 
 ## Cost of Deferral
@@ -132,13 +132,13 @@ As a [type of user], I want [goal] so that [benefit].
 - Describes work to be done rather than a factor blocking work → likely a `user_story` or `task`
 - No indication of what item(s) or person(s) are being blocked
 - No owner identified (someone must be responsible for resolution)
-- Described as a permanent process or policy — impediments are temporary and resolvable
+- Described as a permanent process or policy - impediments are temporary and resolvable
 
 **Canonical fallback format:**
 
 ```markdown
 ## Blocker Description
-[What is preventing progress — be specific]
+[What is preventing progress - be specific]
 
 ## Blocked Item(s)
 - [Link or ID of each item this impediment is blocking]
@@ -150,7 +150,7 @@ As a [type of user], I want [goal] so that [benefit].
 [What needs to happen for this impediment to be cleared]
 
 ## Escalation
-[Who to escalate to if not resolved by Day 2 — per impediment_tracking protocol]
+[Who to escalate to if not resolved by Day 2 - per impediment_tracking protocol]
 
 ## Log
 | Date | Update |
@@ -158,13 +158,13 @@ As a [type of user], I want [goal] so that [benefit].
 | [date] | Impediment logged |
 ```
 
-## §ac_quality — Acceptance criteria quality rules
+## §ac_quality - Acceptance criteria quality rules
 
 ### user_story
 
 **Minimum count:** At least 3 criteria per story: 1+ happy path, 1+ error or edge case path, additional criteria for any other significant variation in behaviour.
 
-**Observable behaviour only:** Each criterion must describe something a person or automated test can directly observe — not an internal system action.
+**Observable behaviour only:** Each criterion must describe something a person or automated test can directly observe - not an internal system action.
 - ✓ "The user sees an error message stating their session has expired."
 - ✗ "The auth service returns a 401 status code." ← internal, not user-observable
 - ✓ "The export file downloads as `report-2024-01.csv` with correct column headers."
@@ -179,19 +179,19 @@ If any of these rules are violated in a draft, surface the specific failing crit
 
 ### bug
 
-**Minimum count:** At least 1 criterion — the specific, observable behaviour that confirms the bug is resolved. Generic criteria ("the bug is fixed") do not qualify.
+**Minimum count:** At least 1 criterion - the specific, observable behaviour that confirms the bug is resolved. Generic criteria ("the bug is fixed") do not qualify.
 
 **Regression path:** When the bug has a known repro path, the AC should confirm that the exact reproduction steps from the bug description now produce the expected (not actual) behaviour.
 
 ### tech_debt
 
-**Minimum count:** At least 2 criteria: 1 technical outcome criterion (the improved state is measurable or observable in code/tests) and 1 regression guard (existing behaviour is preserved — tests pass, no new failures).
+**Minimum count:** At least 2 criteria: 1 technical outcome criterion (the improved state is measurable or observable in code/tests) and 1 regression guard (existing behaviour is preserved - tests pass, no new failures).
 
-**No user-facing scope creep:** AC should not describe new user-visible behaviour. If a criterion does, the item has drifted into `user_story` territory — surface a type mismatch flag.
+**No user-facing scope creep:** AC should not describe new user-visible behaviour. If a criterion does, the item has drifted into `user_story` territory - surface a type mismatch flag.
 
 ### spike
 
-Spikes do not use standard AC. Their "Definition of Done" section replaces AC. The done criteria must describe a deliverable artefact (document, ADR, prototype, decision record) — not code or a feature. If the spike output section describes working software, flag a type mismatch: this should be a `user_story` or `tech_debt`.
+Spikes do not use standard AC. Their "Definition of Done" section replaces AC. The done criteria must describe a deliverable artefact (document, ADR, prototype, decision record) - not code or a feature. If the spike output section describes working software, flag a type mismatch: this should be a `user_story` or `tech_debt`.
 
 ## Reclassification protocol
 

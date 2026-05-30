@@ -1,10 +1,10 @@
 # Emergence (Ch. 12)
 
-Kent Beck's **Four Rules of Simple Design** — when followed consistently, good architecture emerges naturally. Apply in priority order.
+Kent Beck's **Four Rules of Simple Design** - when followed consistently, good architecture emerges naturally. Apply in priority order.
 
 ## Rule 1: Runs All the Tests (Highest Priority)
 
-A system that cannot be tested should never be deployed. The discipline of testability pushes you toward SRP, DIP, and smaller classes automatically — tightly coupled code is hard to test, so making things testable forces good design.
+A system that cannot be tested should never be deployed. The discipline of testability pushes you toward SRP, DIP, and smaller classes automatically - tightly coupled code is hard to test, so making things testable forces good design.
 
 ## Rule 2: No Duplication
 
@@ -43,12 +43,12 @@ class EUVacationPolicy(VacationPolicy):
 
 ## Rule 3: Expressive
 
-Code must clearly communicate intent — you understand your code now, but maintainers may not have that depth.
+Code must clearly communicate intent - you understand your code now, but maintainers may not have that depth.
 
-- Choose good names — the most powerful expressiveness tool
-- Keep functions and classes small — small things are easier to name well
-- Use standard patterns by name — a class called `Command` communicates its intent to anyone who knows the pattern
-- Write tests as documentation — well-named tests explain what the code is supposed to do
+- Choose good names - the most powerful expressiveness tool
+- Keep functions and classes small - small things are easier to name well
+- Use standard patterns by name - a class called `Command` communicates its intent to anyone who knows the pattern
+- Write tests as documentation - well-named tests explain what the code is supposed to do
 
 ## Rule 4: Minimal Classes and Methods (Lowest Priority)
 
@@ -70,4 +70,4 @@ Don't over-apply rules 1–3 to the point of creating hundreds of trivial classe
   - Strive for minimalism by only including necessary components and features.
   - Focus on essential functionality to keep the design clean and efficient.
 
-Apply all four together. The emergent result is clean, maintainable architecture — without an upfront grand design.
+Apply all four together. The emergent result is clean, maintainable architecture - without an upfront grand design.

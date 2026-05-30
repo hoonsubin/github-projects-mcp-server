@@ -1,63 +1,61 @@
 # AGENT.md
 
-Project guidance for all coding agents. Concise by design - linked docs provide depth.
+This file provides guidance to agents when working with code in this repository.
 
 ## Reference Documents
 
-- `README.md` - Project installation.
-- `tasks/TODO.md` - Active work items.
-- `tasks/REFACTORING.md` - Ongoing refactor plan.
-- `docs/ARCHITECTURE.MD` - Project architecture
+- [`docs/ARCHITECTURE.MD`](docs/ARCHITECTURE.MD) — Domain model, tool surface, agent behavior, and server architecture.
+- [`tasks/REFACTORING.md`](tasks/REFACTORING.md) — Ongoing adapter refactoring plan (phases 0–4 + multi-backend).
+- [`tasks/TODO.md`](tasks/TODO.md) — Active work items.
+- [`README.md`](README.md) — Project installation.
 
-## High-Level Architecture
+## Layer Contract
 
 Three layers. Inner layers never import outer.
 
-```mermaid
-flowchart TD
-
-  subgraph Framework["FRAMEWORK LAYER src/tools/ + src/schemas/"]
-    direction TB
-    FW["MCP tool registration thin handlers Zod param parsing"]
-  end
-
-  subgraph UseCase["USE-CASE LAYER src/scrum/ + src/domain/ + src/services/"]
-    direction TB
-    UC["Scrum orchestration domain rules pure computation"]
-    PB["interface ProjectBackend (src/scrum/ports.ts)"]
-  end
-
-  subgraph Adapter["ADAPTER LAYER src/adapters/"]
-    direction TB
-    AD["GitHubProjectBackend implements ProjectBackend"]
-    SVC["internal/ services (LabelResolver, FieldValueMutator, etc.)"]
-    AD -->|delegates to| SVC
-  end
-
-  FW -->|calls use-case functions| UC
-  UC -->|depends on focused port| PB
-  AD -.->|implements Dependency Inversion| PB
+```
+Framework (src/tools/ + src/schemas/)  →  Zod validation, thin handlers
+Use-Case (src/scrum/ + src/domain/ + src/services/)  →  Pure computation, depends on port interface
+Adapter  (src/adapters/)               →  Implements ProjectBackend port
 ```
 
-- **Entry:** `src/index.ts` - bootstraps McpServer, registers tools, selects transport.
+Entry: [`src/server.ts`](src/server.ts) — bootstraps McpServer, registers tools, selects transport.
 
-## Code Style
-
-- **Imports:** Full relative paths with `.ts` extension; no bare specifiers for local modules.
-- **Naming:** `PascalCase` types · `camelCase` functions/vars · `UPPER_SNAKE_CASE` constants.
-- **Functions:** Arrow only - `const fn = (arg: Type): Return => {}`.
-- **Errors:** Throw `GitHubApiError`; handlers return structured text via format helper.
-- **Zod:** Always `.strict()` on object schemas.
-- **Types:** No inline concrete types; define named types. Compose or extend existing ones.
-- **Lint:** `deno lint` must pass before marking any task complete.
-- **Readability:** Code must be clean, maintainable, and beautiful for the humans to read. No type or logic repetition. Keep things modular and extendable.
+Violation signal: a handler that imports GraphQL queries, `loadConfig`, or any raw GitHub type is a layer breach.
 
 ## Commands
 
 ```bash
-mempalance search "your search string"  # semantic codebase search
-deno lint                                # lint
-deno task test                                # unit tests
-deno fmt --check                         # format check
-deno task diagram-gen                    # regenerate module dependency report
+deno lint                          # must pass before marking any task complete
+deno fmt --check                   # format check (--check, not auto-fix)
+deno task test
+deno task diagram-gen              # regenerate module dependency diagrams
+deno task compile:all              # cross-compile all platform binaries
 ```
+
+## Code Style
+
+- **Imports:** Full relative paths with `.ts` extension; no bare specifiers for local modules.
+- **MCP SDK:** Imports from `@modelcontextprotocol/sdk/*` MUST end in `.js` (CJS interop).
+- **Naming:** `PascalCase` types · `camelCase` functions/vars · `UPPER_SNAKE_CASE` constants.
+- **Functions:** Arrow only — `const fn = (arg: Type): Return => {}`.
+- **Zod:** Always `.strict()` on object schemas.
+- **Types:** No inline concrete types; define named types. Compose or extend existing ones.
+- **Lint:** `no-explicit-any` and `eqeqeq` are enforced — avoid `any` and loose equality.
+- **Errors:** Throw `AdapterError` subclasses; handlers wrap with [`enrichError()`](src/services/error-enrichment.ts) to produce structured agent-readable text. Never throw to the MCP transport.
+
+## Non-Obvious Conventions
+
+- **`console.log` is FORBIDDEN** — it pollutes the MCP stdio wire protocol. Use `log.*` from [`src/services/logger.ts`](src/services/logger.ts) which writes to stderr. `DEBUG=1` enables debug level; `TRACE=1` enables raw JSON-RPC wire tracing.
+- **[`pickDefined()`](src/services/pick-defined.ts)** — null ≠ undefined: `null` values ARE included (explicit clear intent), `undefined` values are excluded.
+- **[`assertNever()`](src/domain/errors.ts)** — exhaustive switch guard for discriminated unions.
+- **Port interface:** [`src/scrum/ports.ts`](src/scrum/ports.ts) is THE contract. Use-case functions depend only on this, never on adapter internals.
+
+## Available MCP Servers
+
+| Server                 | Use                                                          |
+| ---------------------- | ------------------------------------------------------------ |
+| **scrum-master**       | `scrum_*` tools (read always-allowed)                        |
+| **mempalace**          | `mempalace_search` — semantic codebase search                |
+| **sequentialthinking** | Structured reasoning before complex decisions                |
+| **searxng**            | `searxng_web_search` — web search for unfamiliar APIs/errors |

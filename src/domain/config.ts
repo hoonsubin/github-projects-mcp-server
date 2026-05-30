@@ -55,6 +55,12 @@ export interface ScrumConfig {
   /** Platform-agnostic project identity, agent behaviour, and team roster. */
   project: {
     name: string;
+    /**
+     * Project root directory, relative to the config file's directory.
+     * When absent, defaults to the config file's own directory.
+     * Used by config-loader to anchor repo-relative template paths.
+     */
+    projRoot?: string;
     agent?: {
       name?: string;
       autonomy?: {

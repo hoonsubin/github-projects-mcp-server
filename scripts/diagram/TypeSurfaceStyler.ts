@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/diagram/TypeSurfaceStyler.ts — Stereotype-based coloring for type-surface diagrams
+// scripts/diagram/TypeSurfaceStyler.ts - Stereotype-based coloring for type-surface diagrams
 // =============================================================================
 
 import type { ExtractedClass, NamespaceDef, NamespaceName } from "./types.ts";

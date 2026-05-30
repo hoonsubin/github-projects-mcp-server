@@ -32,7 +32,7 @@ If uncertain whether a criterion is met → initiate `playbooks/delivery-verific
 
 ## §content_quality
 
-- Title: clear and action-specific — not generic ("Fix bug", "Update code"). Flag and offer to
+- Title: clear and action-specific - not generic ("Fix bug", "Update code"). Flag and offer to
   improve after asking for context.
 - AC: written in testable terms. Apply rules from `references/item-types.md §ac_quality`.
 - Scope: completable within one sprint. If not, flag for splitting via

@@ -18,7 +18,7 @@ import type { SprintRef, StoryRef } from "../../../domain/types.ts";
 import { GitHubApiError } from "../errors.ts";
 
 // =============================================================================
-// Response shapes (minimal — only the fields resolveStory / mutations read)
+// Response shapes (minimal - only the fields resolveStory / mutations read)
 // =============================================================================
 
 const ADD_DRAFT_SUCCESS = {
@@ -79,7 +79,7 @@ const REPO_ID = { repository: { id: "R_repo1" } };
 const ADD_COMMENT_OK = { addComment: { commentEdge: { node: { id: "C_1" } } } };
 
 // =============================================================================
-// GitHubClient spy — queue-based to handle sequential resolveStory calls
+// GitHubClient spy - queue-based to handle sequential resolveStory calls
 // =============================================================================
 
 interface GitHubClientSpy extends GitHubClient {
@@ -253,7 +253,7 @@ const createServiceWithConfig = (configOverrides: Partial<RuntimeConfig>) =>
   createService({ configOverrides });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Group A — createStory
+// Group A - createStory
 // ═══════════════════════════════════════════════════════════════════════════════
 
 Deno.test({
@@ -271,7 +271,7 @@ Deno.test({
 });
 
 Deno.test({
-  name: "createStory - draft-only path (no labels, no epic, no priority) — single graphql call",
+  name: "createStory - draft-only path (no labels, no epic, no priority) - single graphql call",
   async fn() {
     const { service, gh, fieldCalls } = createService();
     gh.enqueue(ADD_DRAFT_SUCCESS);
@@ -327,7 +327,7 @@ Deno.test({
 
     await service.createStory(input);
 
-    // Verify setFieldPriority was called — check graphql hadn't queued extra mutations
+    // Verify setFieldPriority was called - check graphql hadn't queued extra mutations
     assertEquals(gh.remaining(), 0); // no convert/label/epic mutations queued
   },
 });
@@ -384,7 +384,7 @@ Deno.test({
     const input = makeCreateInput({ labels: ["nonexistent"], epic: undefined });
 
     await service.createStory(input);
-    // Only 2 calls: AddDraft + Convert — no SetLabels because labelIds was empty
+    // Only 2 calls: AddDraft + Convert - no SetLabels because labelIds was empty
     assertEquals(gh.graphqlCalls.length, 2);
   },
 });
@@ -463,11 +463,11 @@ Deno.test({
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Group B — updateStory
+// Group B - updateStory
 // ═══════════════════════════════════════════════════════════════════════════════
 
 Deno.test({
-  name: "updateStory - updates title only — single-field dynamic mutation",
+  name: "updateStory - updates title only - single-field dynamic mutation",
   async fn() {
     const { service, gh } = createService();
     gh.enqueue(RESOLVED_ISSUE, UPDATE_ISSUE_OK);
@@ -518,7 +518,7 @@ Deno.test({
   name: "updateStory - skips label mutation when labels array is empty",
   async fn() {
     const { service, gh } = createService();
-    gh.enqueue(RESOLVED_ISSUE); // no updateIssue needed — fields.length === 0
+    gh.enqueue(RESOLVED_ISSUE); // no updateIssue needed - fields.length === 0
     const updates: StoryUpdates = { labels: [] };
 
     await service.updateStory(makeStoryRef(), updates);
@@ -724,7 +724,7 @@ Deno.test({
 
     await service.updateStory(makeStoryRef(), updates);
 
-    // Mutation is still sent — GitHub API will reject self-references
+    // Mutation is still sent - GitHub API will reject self-references
     const batchCall = gh.graphqlCalls[3];
     assert(batchCall.queryExcerpt.includes("addBlockedBy"));
   },
@@ -746,7 +746,7 @@ Deno.test({
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Group C — setField
+// Group C - setField
 // ═══════════════════════════════════════════════════════════════════════════════
 
 Deno.test({
@@ -846,7 +846,7 @@ Deno.test({
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Group D — addComment
+// Group D - addComment
 // ═══════════════════════════════════════════════════════════════════════════════
 
 Deno.test({

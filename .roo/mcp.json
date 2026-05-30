@@ -31,26 +31,12 @@
 				"search_nodes",
 				"open_nodes"
 			],
-			"disabled": false
-		},
-		"github": {
-			"command": "github-mcp-server",
-			"args": [
-				"stdio"
-			],
-			"env": {
-				"GITHUB_PERSONAL_ACCESS_TOKEN": "${env:GITHUB_TOKEN}"
-			},
-			"alwaysAllow": [
-				"pull_request_read",
-				"issue_read"
-			],
 			"disabled": true
 		},
 		"mempalace": {
 			"command": "mempalace-mcp",
 			"args": [],
-			"disabled": true,
+			"disabled": false,
 			"alwaysAllow": [
 				"mempalace_search",
 				"mempalace_kg_add"
@@ -73,13 +59,13 @@
 				"mcp-searxng"
 			],
 			"env": {
-				"SEARXNG_URL": "http://127.0.0.1:8080"
+				"SEARXNG_URL": "http://searxng:8080"
 			},
 			"alwaysAllow": [
 				"searxng_web_search",
 				"web_url_read"
 			],
-			"disabled": true
+			"disabled": false
 		}
 	}
 }

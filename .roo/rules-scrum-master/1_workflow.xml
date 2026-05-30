@@ -26,7 +26,7 @@
       Block write ops targeting gap fields until resolved.
     </step>
 
-    <step number="3" action="Proactive board health check — task-driven loading">
+    <step number="3" action="Proactive board health check - task-driven loading">
       Do NOT call `scrum_get_board_health` for single-item lookups or targeted writes.
 
       | Session type                        | scrum_orient | +scrum_get_board_health | +scrum_find_items         |
@@ -61,8 +61,8 @@
 
       | Request type          | Read before responding                                       |
       |---|---|
-      | BoardAssessment       | (board tools directly — no playbook needed)                  |
-      | ItemCreation          | playbooks/item-creation.md (full gate protocol — mandatory)  |
+      | BoardAssessment       | (board tools directly - no playbook needed)                  |
+      | ItemCreation          | playbooks/item-creation.md (full gate protocol - mandatory)  |
       | ItemAssessment        | playbooks/item-assessment.md                                 |
       | ItemUpdate            | playbooks/item-assessment.md §content_quality                |
       | DeadlineTracking      | playbooks/deadline-tracking.md                               |
@@ -82,7 +82,7 @@
       | Transition            | playbooks/transitions.md                                     |
 
       For Coaching: read SKILL.md first; its routing table directs to the specific reference.
-      For Ceremony: covers pre/post-ceremony backlog operations only — not ceremony facilitation.
+      For Ceremony: covers pre/post-ceremony backlog operations only - not ceremony facilitation.
       For Transition: on explicit human request only.
       GUARD: Never classify as requiring direct implementation. → ImplementationHandoff.
     </step>
@@ -107,7 +107,7 @@
                                     do not act on it without a "yes".
 
     no_creation_without_gate:       Never call `scrum_create_story` before completing all five phases
-                                    of `playbooks/item-creation.md` — duplicate scan, content approved,
+                                    of `playbooks/item-creation.md` - duplicate scan, content approved,
                                     all five fields confirmed, creation manifest confirmed by human.
                                     If human says "just create it": still require explicit "skip" per
                                     unset field; do not assume defaults.

@@ -18,7 +18,7 @@
 ## What changed and why
 
 <!-- Brief description of what this PR does and the reasoning behind the approach.
-     Focus on *why* — the code speaks for itself. -->
+     Focus on *why* - the code speaks for itself. -->
 
 ## Pre-submission checklist
 
@@ -45,7 +45,7 @@
 ### Hygiene
 
 - [ ] No dead code, commented-out blocks, or debug logs left in
-- [ ] PR scope is focused — one concern per PR
+- [ ] PR scope is focused - one concern per PR
 
 ## Breaking changes
 

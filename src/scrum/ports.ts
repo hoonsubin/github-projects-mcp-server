@@ -30,6 +30,7 @@ import type {
   TemplateUriMap,
 } from "../domain/types.ts";
 import type { BackendCallResult } from "../services/error-enrichment.ts";
+import type { ContentLocation } from "../domain/content-location.ts";
 
 // ── Input types (cross the port boundary) ─────────────────────────────────────
 
@@ -162,7 +163,7 @@ export interface PlatformState {
     readonly typeDisplay: DisplayMap; // canonical → display
     /** Repo-relative template file paths, keyed by canonical type key. Only keys with a
      *  declared template are present. Empty when no templates are configured. */
-    readonly typeTemplatePaths: Record<string, string>;
+    readonly typeTemplatePaths: Record<string, ContentLocation>;
   };
   /** Active epics - populated by orientUseCase via backend.getEpics(). */
   readonly epics: { readonly active: readonly EpicSummary[]; readonly totalCount: number };
@@ -340,12 +341,12 @@ export interface ImpedimentPort {
 }
 
 /**
- * File reader port - fetches files from the repository backing the PM platform.
+ * File reader port - fetches content from any location the platform supports.
  * Used by: templateResourceUseCase
- * todo: this should be more generalized so it's not strictly fetching from a repository
  */
 export interface FileReaderPort {
-  fetchRepoFile(path: string): Promise<string>;
+  /** Fetch content from a file, URL, or inline data. */
+  fetchContent(location: ContentLocation): Promise<string>;
 }
 
 /**

@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/diagram/ModuleImportGenerator.ts — Module-per-class Mermaid diagram generator
+// scripts/diagram/ModuleImportGenerator.ts - Module-per-class Mermaid diagram generator
 // =============================================================================
 
 import { ParsedModule } from "./ParsedModule.ts";

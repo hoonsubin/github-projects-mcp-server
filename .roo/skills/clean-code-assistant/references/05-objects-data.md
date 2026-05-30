@@ -7,12 +7,12 @@ Understanding the tension between objects and data structures prevents major des
 Keep variables **private**. Mindless getters/setters just make them public with extra steps, destroying abstraction. Expose _operations_, not storage format.
 
 ```python
-# Bad: exposes implementation — callers know it's stored as x, y
+# Bad: exposes implementation - callers know it's stored as x, y
 class Point:
     def get_x(self): return self.x
     def get_y(self): return self.y
 
-# Good: hides implementation — callers work with behavior
+# Good: hides implementation - callers work with behavior
 class Point:
     def get_distance_from_origin(self) -> float: ...
     def translate(self, delta: Vector) -> 'Point': ...
@@ -42,7 +42,7 @@ Choose based on what's likely to change: new _types_ → use objects; new _opera
 A method may only call methods on: itself, objects it created, arguments passed to it, objects held in its instance variables.
 
 ```python
-# Bad: train wreck — navigates through the object graph
+# Bad: train wreck - navigates through the object graph
 output_dir = context.get_options().get_scratch_dir().get_absolute_path()
 
 # Good: ask the object for what you need
@@ -53,9 +53,9 @@ Note: the rule applies to _objects_. Plain data structures (no behavior) are fin
 
 ## Data Transfer Objects (DTOs)
 
-Pure data structures with public fields and no behavior — used to move data between layers. **Do not add business logic to DTOs.** Either it's a DTO (data) or a domain object (behavior) — never a hybrid.
+Pure data structures with public fields and no behavior - used to move data between layers. **Do not add business logic to DTOs.** Either it's a DTO (data) or a domain object (behavior) - never a hybrid.
 
-Active Records (`save()` / `find()` on a DTO) are data structures — treat them as such and keep business rules in separate domain objects.
+Active Records (`save()` / `find()` on a DTO) are data structures - treat them as such and keep business rules in separate domain objects.
 
 ## Quick Rules
 

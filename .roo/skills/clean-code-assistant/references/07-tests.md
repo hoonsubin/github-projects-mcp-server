@@ -16,10 +16,10 @@ This creates a cycle measured in seconds with comprehensive coverage that evolve
 
 ## The FIRST Rules
 
-- Fast: Must run quickly — slow tests don't get run
-- Independent: Must not depend on each other — any order, any subset
-- Repeatable: Must work in any environment — no network, no database required
-- Self-Validating: Boolean output: pass or fail — no manual inspection
+- Fast: Must run quickly - slow tests don't get run
+- Independent: Must not depend on each other - any order, any subset
+- Repeatable: Must work in any environment - no network, no database required
+- Self-Validating: Boolean output: pass or fail - no manual inspection
 - Timely: Write just _before_ the production code they test
 
 ## Clean Tests
@@ -60,7 +60,7 @@ def test_turn_on_cooler_when_too_hot():
 
 ### Test-Specific Abstractions
 
-Build helper functions that make tests read like specifications. Low-level setup noise duplicated across every test is a smell — extract it.
+Build helper functions that make tests read like specifications. Low-level setup noise duplicated across every test is a smell - extract it.
 
 ```python
 # Bad: setup noise drowns the intent
@@ -90,7 +90,7 @@ def test_page_renders_with_setup():
 
 ## Test Names as Documentation
 
-The name is the first thing a developer reads when something breaks — make it count:
+The name is the first thing a developer reads when something breaks - make it count:
 
 ```python
 # Bad

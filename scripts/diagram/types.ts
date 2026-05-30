@@ -56,7 +56,7 @@ export interface LayerMapping {
  * Shared contract between DiagramStyler and ClassDiagramGenerator.
  * A named group of nodes that maps to one `namespace Name { ... }` block.
  * Defined here (not in DiagramStyler.ts) because it flows between the styler
- * and the generator — both depend on it, neither owns it.
+ * and the generator - both depend on it, neither owns it.
  */
 export interface NamespaceDef<T> {
   name: string;
@@ -66,7 +66,7 @@ export interface NamespaceDef<T> {
 /**
  * Per-node data returned by ClassDiagramGenerator.getClassBody().
  * Carries `name` so the base class emitNode() can write `class Name:::style`
- * without a separate abstract getNodeName() method — keeping the node
+ * without a separate abstract getNodeName() method - keeping the node
  * contract in a single place.
  */
 export interface ClassBodyResult {

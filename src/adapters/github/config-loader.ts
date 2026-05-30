@@ -1,8 +1,8 @@
 // =============================================================================
 // src/adapters/github/config-loader.ts - Bootstrap + config loading
 //
-// Single responsibility: read the local config file, resolve credentials,
-// fetch live GitHub field metadata, and return a RuntimeConfig.
+// Single responsibility: read the config file (from any location), resolve
+// credentials, fetch live GitHub field metadata, and return a RuntimeConfig.
 //
 // The only environment variable the server requires is whatever the config
 // file references via $VAR notation in backends.*.auth.*. Everything else
@@ -10,6 +10,7 @@
 // =============================================================================
 
 import { parse } from "@std/yaml";
+import { dirname, resolve } from "@std/path";
 import type { GitHubBackendConfig } from "./types.ts";
 import type { ScrumConfig } from "../../domain/config.ts";
 import type { IterationEntry } from "../../domain/types.ts";
@@ -17,6 +18,10 @@ import {
   GET_ORG_PROJECT_FIELDS_BOOTSTRAP_QUERY,
   GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY,
 } from "./queries.ts";
+import type { ContentLocation } from "../../domain/content-location.ts";
+import { describeContentLocation } from "../../domain/content-location.ts";
+import { fetchContent } from "../../scrum/fetch-location.ts";
+import { resolveLocation } from "../../scrum/resolve-location.ts";
 
 // ── Runtime types ─────────────────────────────────────────────────────────────
 
@@ -46,11 +51,11 @@ export interface RuntimeConfig {
   priorityOptions: Record<string, string>;
   typeOptions: Record<string, string>;
   /**
-   * Maps canonical type keys → repo-relative template file paths.
+   * Maps canonical type keys → resolved template locations.
    * Only keys where type_mapping[key].template is declared are present.
    * Empty when no templates are configured.
    */
-  typeTemplatePaths: Record<string, string>;
+  typeTemplatePaths: Record<string, ContentLocation>;
   iterations: {
     active: IterationEntry | null;
     next: IterationEntry | null;
@@ -67,8 +72,8 @@ interface GitHubClient {
 /** Config loader parameters. Only the GitHub client is required. */
 interface ConfigParams {
   github: GitHubClient;
-  /** Path to the config file. Defaults to ".github/scrum/config.yml". */
-  configPath?: string;
+  /** Where to load the config from. Defaults to { kind: "file", path: ".github/scrum/config.yml" }. */
+  configLocation?: ContentLocation;
 }
 
 // ── Env-var resolution ────────────────────────────────────────────────────────
@@ -139,12 +144,12 @@ const validateDisplayMap = (
   displayMap: Record<string, string>,
   fieldLabel: string,
   backendName: string,
-  configPath: string,
+  configDesc: string,
 ): void => {
   const missing = canonicalKeys.filter((k) => !(k in displayMap));
   if (missing.length > 0) {
     throw new Error(
-      `Config error in ${configPath}: backends.${backendName}.${fieldLabel}_display is missing ` +
+      `Config error in ${configDesc}: backends.${backendName}.${fieldLabel}_display is missing ` +
         `entries for canonical ${fieldLabel} keys: ${missing.join(", ")}. ` +
         `Add a display name for each key or remove the key from scrum.${fieldLabel}.`,
     );
@@ -159,13 +164,13 @@ const validateTeamRefs = (
   backendTeam: Array<{ ref: string }> | undefined,
   projectTeamNames: Set<string>,
   backendName: string,
-  configPath: string,
+  configDesc: string,
 ): void => {
   if (!backendTeam) return;
   const unresolved = backendTeam.filter((m) => !projectTeamNames.has(m.ref));
   if (unresolved.length > 0) {
     throw new Error(
-      `Config error in ${configPath}: backends.${backendName}.team has refs that do not ` +
+      `Config error in ${configDesc}: backends.${backendName}.team has refs that do not ` +
         `match any project.team[].name: ${unresolved.map((m) => `"${m.ref}"`).join(", ")}.`,
     );
   }
@@ -192,7 +197,7 @@ const resolveFieldIds = (
   fieldNodes: FieldNode[],
   mapping: GitHubBackendConfig["field_mapping"],
   projectNumber: number,
-  configPath: string,
+  configDesc: string,
 ): ResolvedFieldIds => {
   let sprintFieldId = "";
   let statusFieldId = "";
@@ -215,13 +220,13 @@ const resolveFieldIds = (
   if (!sprintFieldId) {
     throw new Error(
       `Sprint field '${mapping.sprint}' not found in project #${projectNumber}. ` +
-        `Update backends.github.field_mapping.sprint in ${configPath} to match the project field name.`,
+        `Update backends.github.field_mapping.sprint in ${configDesc} to match the project field name.`,
     );
   }
   if (!statusFieldId) {
     throw new Error(
       `Status field '${mapping.status}' not found in project #${projectNumber}. ` +
-        `Update backends.github.field_mapping.status in ${configPath} to match the project field name.`,
+        `Update backends.github.field_mapping.status in ${configDesc} to match the project field name.`,
     );
   }
 
@@ -231,7 +236,7 @@ const resolveFieldIds = (
       `Type field '${
         mapping.item_type ?? "(not configured)"
       }' not found in project #${projectNumber}. ` +
-        `Update backends.github.field_mapping.item_type in ${configPath} to match ` +
+        `Update backends.github.field_mapping.item_type in ${configDesc} to match ` +
         `the exact SINGLE_SELECT field name in GitHub Projects, or add the field to the project.`,
     );
   }
@@ -350,19 +355,24 @@ const classifyIterations = (
 // ── Main function ─────────────────────────────────────────────────────────────
 
 export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> => {
-  // todo: hard-coded path might not be scalable when we want to distribute the project as a stdio binary
-  const { github, configPath = ".github/scrum/config.yml" } = params;
+  const { github } = params;
 
-  // Read and parse the local config file.
+  const configLocation: ContentLocation = params.configLocation ?? {
+    kind: "file",
+    path: resolve(Deno.cwd(), ".github/scrum/config.yml"),
+  };
+  const configDesc = describeContentLocation(configLocation);
+
+  // Fetch and parse the config file from wherever its location points.
   let rawYml: string;
   try {
-    rawYml = await Deno.readTextFile(configPath);
+    rawYml = await fetchContent(configLocation);
   } catch (err) {
     throw new Error(
-      `Cannot read config file at '${configPath}': ${
+      `Cannot read config at '${configDesc}': ${
         err instanceof Error ? err.message : String(err)
       }. ` +
-        `Ensure the server is started from the project root.`,
+        `Ensure the server is started from the project root, or pass --config <path>.`,
     );
   }
 
@@ -371,24 +381,37 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
     parsedConfig = parse(rawYml) as ScrumConfig;
   } catch (err) {
     throw new Error(
-      `Failed to parse ${configPath}: ${err instanceof Error ? err.message : String(err)}`,
+      `Failed to parse ${configDesc}: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
 
   // Validate required top-level sections.
   if (!parsedConfig.project) {
-    throw new Error(`${configPath} is missing required 'project' section.`);
+    throw new Error(`${configDesc} is missing required 'project' section.`);
   }
-  if (!parsedConfig.scrum) throw new Error(`${configPath} is missing required 'scrum' section.`);
+  if (!parsedConfig.scrum) throw new Error(`${configDesc} is missing required 'scrum' section.`);
   if (!parsedConfig.backends) {
-    throw new Error(`${configPath} is missing required 'backends' section.`);
+    throw new Error(`${configDesc} is missing required 'backends' section.`);
   }
   if (!parsedConfig.backends.github) {
     throw new Error(
-      `${configPath} is missing 'backends.github'. ` +
+      `${configDesc} is missing 'backends.github'. ` +
         `Only the GitHub backend is supported in this version.`,
     );
   }
+
+  // Compute baseDir: the directory portion of the config location.
+  // For inline configs, fall back to the process working directory.
+  const baseDir: string = (() => {
+    switch (configLocation.kind) {
+      case "file":
+        return dirname(configLocation.path);
+      case "url":
+        return dirname(configLocation.url.pathname);
+      case "inline":
+        return Deno.cwd();
+    }
+  })();
 
   const ghConfig = parsedConfig.backends.github as GitHubBackendConfig;
 
@@ -400,6 +423,11 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
     auth: { ...ghConfig.auth, token: resolvedToken },
   };
 
+  // Compute projectRoot: resolve projRoot relative to baseDir, or use baseDir itself.
+  const projectRoot = parsedConfig.project.projRoot
+    ? resolve(baseDir, parsedConfig.project.projRoot)
+    : baseDir;
+
   // Validate config cross-references.
   const canonicalStatusKeys = Object.keys(parsedConfig.scrum.status);
   const canonicalPriorityKeys = parsedConfig.scrum.priority.map((p) => p.key);
@@ -410,16 +438,16 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
     patchedGhConfig.status_display,
     "status",
     "github",
-    configPath,
+    configDesc,
   );
   validateDisplayMap(
     canonicalPriorityKeys,
     patchedGhConfig.priority_display,
     "priority",
     "github",
-    configPath,
+    configDesc,
   );
-  validateTeamRefs(patchedGhConfig.team, projectTeamNames, "github", configPath);
+  validateTeamRefs(patchedGhConfig.team, projectTeamNames, "github", configDesc);
 
   // Validate type_mapping - required when field_mapping.item_type is declared.
   if (
@@ -427,7 +455,7 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
     (!patchedGhConfig.type_mapping || Object.keys(patchedGhConfig.type_mapping).length === 0)
   ) {
     throw new Error(
-      `${configPath}: backends.github.type_mapping is missing or empty, but field_mapping.item_type is set. ` +
+      `${configDesc}: backends.github.type_mapping is missing or empty, but field_mapping.item_type is set. ` +
         `type_mapping declares each canonical type key alongside its board display name and optional template path. Example:\n` +
         `  type_mapping:\n` +
         `    bug:\n` +
@@ -474,7 +502,7 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
     fieldNodes,
     patchedGhConfig.field_mapping,
     projectNumber,
-    configPath,
+    configDesc,
   );
   const { statusOptions, priorityOptions, typeOptions } = buildOptionMaps(
     fieldNodes,
@@ -492,7 +520,7 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
       );
     if (mismatched.length > 0) {
       throw new Error(
-        `${configPath}: type_mapping declares types whose display names are not present on the board:\n` +
+        `${configDesc}: type_mapping declares types whose display names are not present on the board:\n` +
           mismatched.join("\n") + "\n" +
           `For each entry above, either add the option to the ` +
           `"${patchedGhConfig.field_mapping.item_type}" single-select field on your project board, ` +
@@ -501,11 +529,13 @@ export const loadConfig = async (params: ConfigParams): Promise<RuntimeConfig> =
     }
   }
 
-  // Extract template paths - only for keys that declare a template.
-  const typeTemplatePaths: Record<string, string> = {};
+  // Resolve template paths into ContentLocation values anchored to projectRoot.
+  const typeTemplatePaths: Record<string, ContentLocation> = {};
   if (patchedGhConfig.type_mapping) {
     for (const [key, entry] of Object.entries(patchedGhConfig.type_mapping)) {
-      if (entry.template) typeTemplatePaths[key] = entry.template;
+      if (entry.template) {
+        typeTemplatePaths[key] = resolveLocation(entry.template, projectRoot);
+      }
     }
   }
 

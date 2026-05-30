@@ -337,9 +337,9 @@ Each field in the diagram carries a tag in its comment column indicating how its
 
 **SPRINT.completed_points** is annotated `computed` because it is a rollup of `SPRINT_BACKLOG_ITEM.committed_points` filtered to stories whose status equals Done. Storing it independently would create a second source of truth that the adapter would need to keep synchronised with backlog item state.
 
-**MEMBER.platform_id** holds the opaque backend identity handle that the adapter uses for API calls — the GitHub login on the GitHub backend, a user ID on Notion, and so on. The `name` and `email` fields are display values and are not reliable adapter keys.
+**MEMBER.platform_id** holds the opaque backend identity handle that the adapter uses for API calls - the GitHub login on the GitHub backend, a user ID on Notion, and so on. The `name` and `email` fields are display values and are not reliable adapter keys.
 
-**EPIC.rank and USER_STORY.rank** provide stable sort order within their parent containers. MoSCoW priority is not a sort key — two `Must` items still require a tiebreaker position to produce a deterministic ordered backlog.
+**EPIC.rank and USER_STORY.rank** provide stable sort order within their parent containers. MoSCoW priority is not a sort key - two `Must` items still require a tiebreaker position to produce a deterministic ordered backlog.
 
 **USER_STORY.body** replaces the original `as_a`, `i_want`, and `so_that` triple from the human-workflow model. The user-story sentence format is a markdown convention the agent writes into the body field; it is not stored as separate columns in the backend. The body also contains the acceptance criteria checklist and the dependencies section.
 
@@ -347,13 +347,13 @@ Each field in the diagram carries a tag in its comment column indicating how its
 
 **IMPEDIMENT** has two nullable foreign keys: `sprint_id` and `story_id`. At least one must be set for a linked impediment. When both are null the record is a project-level orphan, surfaced through `scrum_get_backlog.orphan_impediments` and requiring Scrum Master triage. The tool surface enforces this through the `affects` argument on `scrum_log_impediment` rather than at the schema level.
 
-**PRODUCT_BACKLOG** is not a stored entity on GitHub Projects. It is a logical container implemented in the adapter as a filtered projection — items where `sprint = null`. Its `id` mirrors the `project_id`. The `last_refined` field is computed from the most recent Refinement ceremony timestamp. No MCP write tool targets this entity directly.
+**PRODUCT_BACKLOG** is not a stored entity on GitHub Projects. It is a logical container implemented in the adapter as a filtered projection - items where `sprint = null`. Its `id` mirrors the `project_id`. The `last_refined` field is computed from the most recent Refinement ceremony timestamp. No MCP write tool targets this entity directly.
 
-**BURNDOWN_ACTUAL and BURNDOWN_IDEAL** are modelled as separate entities because they have different production paths. `BURNDOWN_ACTUAL` is derived from real platform event timestamps (audit log or issue-close proxy), making its `date` field genuinely stored data. `BURNDOWN_IDEAL` is pure arithmetic — `committed_points × (1 − day_index ÷ duration_days)` — and has no stored fields at all. The original single `BURNDOWN_DATAPOINT` entity with a `series` enum conflated these two distinct origins, making it impossible to distinguish what was retrieved from what was calculated.
+**BURNDOWN_ACTUAL and BURNDOWN_IDEAL** are modelled as separate entities because they have different production paths. `BURNDOWN_ACTUAL` is derived from real platform event timestamps (audit log or issue-close proxy), making its `date` field genuinely stored data. `BURNDOWN_IDEAL` is pure arithmetic - `committed_points × (1 − day_index ÷ duration_days)` - and has no stored fields at all. The original single `BURNDOWN_DATAPOINT` entity with a `series` enum conflated these two distinct origins, making it impossible to distinguish what was retrieved from what was calculated.
 
 **VELOCITY_RECORD** is a server-computed projection over closed `SPRINT` rows, not a stored entity. It is assembled by the use-case layer when the agent calls `scrum_get_analytics` with `view=history`. There is no adapter write path for it, and it carries no fields that are not derivable from existing sprint data.
 
-**RETRO_ACTION** carries two distinct sprint foreign keys with different semantics. `created_sprint_id` records which sprint's retrospective generated the action and is always set. `target_sprint_id` records by which sprint the action should be resolved and is nullable — a null value means the action has no fixed deadline. The original naming of `sprint_id` and `sprint_target_id` was ambiguous about which described the source and which described the target.
+**RETRO_ACTION** carries two distinct sprint foreign keys with different semantics. `created_sprint_id` records which sprint's retrospective generated the action and is always set. `target_sprint_id` records by which sprint the action should be resolved and is nullable - a null value means the action has no fixed deadline. The original naming of `sprint_id` and `sprint_target_id` was ambiguous about which described the source and which described the target.
 
 **STANDUP_ENTRY.blockers** is an optional free-text field. A non-empty value is the signal for the agent to call `scrum_log_impediment` and create a formal `IMPEDIMENT` record. The schema cannot enforce this linkage; the agent skill is responsible for recognising the signal and acting on it.
 
@@ -468,9 +468,9 @@ flowchart TD
 
 ### Layer Reference
 
-**Framework Layer** is the MCP protocol boundary. Each tool is a named function with a Zod-validated input schema and a typed return shape. The framework layer performs no business logic — it validates input, delegates to the use-case layer, and serialises the result. `scrum://template/{type}` is a URI-addressed MCP resource, not a callable tool; it is shown in a stadium shape to distinguish it from tools.
+**Framework Layer** is the MCP protocol boundary. Each tool is a named function with a Zod-validated input schema and a typed return shape. The framework layer performs no business logic - it validates input, delegates to the use-case layer, and serialises the result. `scrum://template/{type}` is a URI-addressed MCP resource, not a callable tool; it is shown in a stadium shape to distinguish it from tools.
 
-**Use-Case Layer** is where all computation, aggregation, and domain reasoning lives. Use-cases receive validated input from the framework layer, call one or more adapter methods to fetch raw platform data, apply the computations listed in each node, and return a typed result. Use-cases never import adapter implementations — they depend only on the `ProjectBackend` port interface.
+**Use-Case Layer** is where all computation, aggregation, and domain reasoning lives. Use-cases receive validated input from the framework layer, call one or more adapter methods to fetch raw platform data, apply the computations listed in each node, and return a typed result. Use-cases never import adapter implementations - they depend only on the `ProjectBackend` port interface.
 
 **Adapter Interface** is the abstract port (`ProjectBackend`) that declares the minimum read/write surface needed to back the entire tool set. The `GitHubProjectBackend` implementation translates these calls into GitHub Projects v2 GraphQL queries and REST calls. A different backend (Notion, Trello, Gitea) fulfills the same interface without touching the use-case or framework layers.
 
@@ -511,9 +511,9 @@ sequenceDiagram
     participant MCP as ⚙️ MCP Server · tool surface
     participant Platform as 🗄️ Platform · GitHub Projects
 
-    Note over Human,Platform: Scenario 1 — Sprint Planning
+    Note over Human,Platform: Scenario 1 - Sprint Planning
 
-    Human->>Agent: "Let's plan the sprint — what should we commit to?"
+    Human->>Agent: "Let's plan the sprint - what should we commit to?"
 
     Agent->>MCP: scrum_orient()
     MCP->>Platform: getPlatformState() + getEpics()
@@ -533,7 +533,7 @@ sequenceDiagram
     Note over Agent: Selects stories up to velocity_avg capacity<br/>Orders by Must > Should > Could priority<br/>Checks epic coverage balance<br/>Flags any unresolved open_impediments
 
     Agent->>Human: "Proposing 8 stories · 34 pts · goal: [draft]. Confirm?"
-    Human->>Agent: "Confirmed — go ahead."
+    Human->>Agent: "Confirmed - go ahead."
 
     Agent->>MCP: scrum_plan_sprint { sprint:"current", stories:[...], goal:"..." }
     MCP->>Platform: setItemField(ref, sprint, "current") × 8
@@ -544,9 +544,9 @@ sequenceDiagram
 
     Agent->>Human: "Sprint planned. 8 stories · 34 pts committed to goal."
 
-    Note over Human,Platform: Scenario 2 — Standup: Impediment Raised
+    Note over Human,Platform: Scenario 2 - Standup: Impediment Raised
 
-    Human->>Agent: "I'm blocked waiting on the auth service — can't start #42."
+    Human->>Agent: "I'm blocked waiting on the auth service - can't start #42."
 
     Note over Agent: Resolves story ref before logging impediment
 
@@ -555,7 +555,7 @@ sequenceDiagram
     Platform-->>MCP: RawItemDetail
     MCP-->>Agent: ItemSearchResult { items:[story #42 with ref.id] }
 
-    Agent->>MCP: scrum_log_impediment { description:"Auth service unavailable — blocking story #42", affects:{ story:{ id:"..." } } }
+    Agent->>MCP: scrum_log_impediment { description:"Auth service unavailable - blocking story #42", affects:{ story:{ id:"..." } } }
     MCP->>Platform: createImpediment(draft)
     Platform-->>MCP: RawImpediment { ref:"PVTI_imp..." }
     MCP->>Platform: updateItemContent(story #42, comment:"⚠️ Blocked: auth service unavailable")
@@ -566,7 +566,7 @@ sequenceDiagram
 
     Agent->>Human: "Impediment #89 logged. Story #42 marked as blocked. Escalate to SM?"
 
-    Note over Human,Platform: Scenario 3 — Ad-hoc Board Update
+    Note over Human,Platform: Scenario 3 - Ad-hoc Board Update
 
     Human->>Agent: "Move #37 to In Progress and assign it to me."
 
@@ -582,7 +582,7 @@ sequenceDiagram
 
     Note over Platform: USER_STORY #37 status + assignee fields updated
 
-    Agent->>Human: "Done — #37 is In Progress, assigned to you."
+    Agent->>Human: "Done - #37 is In Progress, assigned to you."
 ```
 
 ### Interaction Pattern Reference
@@ -600,7 +600,7 @@ sequenceDiagram
 
 _Human prompt interaction._ The agent receives free-form natural language and is responsible for interpreting Scrum intent, translating it into one or more tool calls, and synthesising the structured responses back into a human-readable reply. The agent may ask a clarifying question (e.g. "Confirm?") before issuing any destructive write.
 
-_MCP tool surface interaction._ Every tool call is a structured JSON request matched against a Zod schema. The agent supplies only Scrum-vocabulary arguments (SprintRef, StoryRef, vocabulary display names) — never platform IDs. The MCP server validates the input, runs the use-case, and returns a typed domain object (OrientResult, BacklogHealth, Story, ImpedimentResult, etc.).
+_MCP tool surface interaction._ Every tool call is a structured JSON request matched against a Zod schema. The agent supplies only Scrum-vocabulary arguments (SprintRef, StoryRef, vocabulary display names) - never platform IDs. The MCP server validates the input, runs the use-case, and returns a typed domain object (OrientResult, BacklogHealth, Story, ImpedimentResult, etc.).
 
 _Scrum artifact interaction._ Platform note blocks in the diagram show which domain objects are created or mutated at the platform tier. The agent never writes directly to the platform; it only observes mutations through the typed return shapes the MCP server hands back.
 
@@ -687,4 +687,4 @@ style future stroke-dasharray: 5 5
 style future fill:#f9f9f9
 ```
 
-**Dependency rule:** source-code arrows point only inward — adapters depend on the `ProjectBackend` interface; the interface and use cases know nothing about GitHub. Adding a Trello or Notion backend means creating one new adapter directory and updating one import in `index.ts`.
+**Dependency rule:** source-code arrows point only inward - adapters depend on the `ProjectBackend` interface; the interface and use cases know nothing about GitHub. Adding a Trello or Notion backend means creating one new adapter directory and updating one import in `index.ts`.

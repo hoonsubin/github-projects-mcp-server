@@ -53,7 +53,7 @@ export class EpicService {
     if (!sprintIterationId) return allMilestones;
 
     // Fetch items in the active sprint and collect their epic IDs.
-    // sprintIterationId is a raw GitHub iteration ID (e.g. "iteration_abc123") —
+    // sprintIterationId is a raw GitHub iteration ID (e.g. "iteration_abc123") -
     // resolveSprint does a title-based lookup, so pass "current" as the SprintRef
     // to match the active sprint by semantic reference rather than opaque ID.
     const sprintItems = await this.storyQueryService.findItems({

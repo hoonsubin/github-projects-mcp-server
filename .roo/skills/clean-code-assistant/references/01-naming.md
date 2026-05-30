@@ -19,7 +19,7 @@ elapsed_time_in_days = 0
 
 ## Make Meaningful Distinctions
 
-Noise words add no meaning: `ProductInfo` vs. `ProductData` — what's the difference? None.
+Noise words add no meaning: `ProductInfo` vs. `ProductData` - what's the difference? None.
 Don't suffix with `a`, `an`, `the`, `1`, `2` to avoid naming conflicts.
 
 ## Use Pronounceable Names
@@ -55,7 +55,7 @@ No Hungarian notation: `m_description` → `description`. No interface prefixes:
 
 ## Pick One Word per Concept
 
-Choose one word per abstract concept and stick with it: pick `get` or `fetch` or `retrieve` — never all three in the same codebase.
+Choose one word per abstract concept and stick with it: pick `get` or `fetch` or `retrieve` - never all three in the same codebase.
 
 ## Use Solution and Problem Domain Names
 

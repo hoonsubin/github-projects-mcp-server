@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/diagram/LayerSurfaceStyler.ts — Layer-specific coloring for use-case
+// scripts/diagram/LayerSurfaceStyler.ts - Layer-specific coloring for use-case
 // and adapter layer class diagrams.
 //
 // Every stereotype maps to a style key prefixed by layer: "uc_" for

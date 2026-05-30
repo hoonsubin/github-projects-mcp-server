@@ -37,8 +37,11 @@ import { AdapterError } from "./domain/errors.ts";
 import { log } from "./services/logger.ts";
 import { parseArgs } from "@std/cli/parse-args";
 import { resolve as resolvePath } from "@std/path";
+import { resolveLocation } from "./scrum/resolve-location.ts";
 import { SCRUM_READ_TOOL_NAMES } from "./tools/scrum-read.ts";
 import { SCRUM_WRITE_TOOL_NAMES } from "./tools/scrum-write.ts";
+import type { ContentLocation } from "./domain/content-location.ts";
+import { describeContentLocation } from "./domain/content-location.ts";
 
 // ── Process-level crash guard ────────────────────────────────────────────────
 //
@@ -60,8 +63,8 @@ addEventListener("unhandledrejection", (event: Event) => {
 
 const _cliArgs = parseArgs(Deno.args, {
   boolean: ["help"],
-  string: ["config", "root"],
-  alias: { h: "help", c: "config", r: "root" },
+  string: ["config"],
+  alias: { h: "help", c: "config" },
 });
 
 if (_cliArgs.help) {
@@ -74,11 +77,14 @@ Usage:
 
 Options:
   --help, -h           Show this help message
-  --config, -c <path>  Path to scrum config YAML
+  --config, -c <path>  Path or URL to the scrum config YAML.
+                       Accepts a local path (relative or absolute) or an
+                       https:// URL to a remote config file.
                        (default: .github/scrum/config.yml)
-  --root, -r <path>    Project root directory for resolving template paths
-                       (default: current working directory)
-                       Required when --config points outside the project root.
+                       The project root is declared in the config file itself
+                       via project.projRoot (relative to the config file's
+                       directory). When absent, defaults to the config
+                       file's directory.
 
 Environment variables:
   GITHUB_TOKEN         GitHub personal access token (required; referenced as
@@ -94,24 +100,20 @@ Examples:
   mcp-server
 
   # Run from anywhere, pointing at a specific project:
-  mcp-server --config /home/user/myproject/.github/scrum/config.yml \\
-             --root   /home/user/myproject
+  mcp-server --config /home/user/myproject/.github/scrum/config.yml
+
+  # Run with a remote config file:
+  mcp-server --config https://example.com/configs/scrum.yml
 
   # Run as HTTP server:
-  MCP_TRANSPORT=http PORT=3000 mcp-server --config ./scrum.yml --root .
+  MCP_TRANSPORT=http PORT=3000 mcp-server --config ./scrum.yml
 `);
   Deno.exit(0);
 }
 
-// Resolve config path and root. Both are optional:
-//   configPath  undefined → GitHubAdapterFactory uses its own default
-//   projectRoot undefined → GitHubFileReader uses Deno.cwd()
-const _configPath: string | undefined = _cliArgs.config
-  ? resolvePath(Deno.cwd(), _cliArgs.config)
-  : undefined;
-
-const _projectRoot: string | undefined = _cliArgs.root
-  ? resolvePath(Deno.cwd(), _cliArgs.root)
+// Resolve --config to a ContentLocation. undefined → adapter uses its default.
+const _configLocation: ContentLocation | undefined = _cliArgs.config
+  ? resolveLocation(_cliArgs.config, resolvePath(Deno.cwd()))
   : undefined;
 
 // ── Runtime permission guard ─────────────────────────────────────────────────
@@ -237,8 +239,7 @@ const registerStubTools = (server: McpServer, errorMessage: string): void => {
 // ── Server factory ───────────────────────────────────────────────────────────
 
 const createMcpServer = async (
-  configPath?: string,
-  projectRoot?: string,
+  configLocation?: ContentLocation,
 ): Promise<McpServer> => {
   const server = new McpServer({
     name: "scrum-master-toolkit-server",
@@ -253,19 +254,19 @@ const createMcpServer = async (
 
   let backendResult: Awaited<ReturnType<typeof createBackend>>;
   try {
-    backendResult = await createBackend(factories, { configPath, projectRoot });
+    backendResult = await createBackend(factories, { configLocation });
   } catch (err) {
     let hint: string;
     if (err instanceof AdapterError && err.code === "AUTH_FAILED") {
       hint =
         `Backend authentication failed - check that the platform token (e.g. GITHUB_TOKEN) is set and valid.`;
-    } else if (configPath) {
-      hint = `Config not found or invalid at: ${configPath}`;
+    } else if (configLocation) {
+      hint = `Config not found or invalid at: ${describeContentLocation(configLocation)}`;
     } else {
       hint = `Config not found at default path: .github/scrum/config.yml`;
     }
     const errorMessage = `${hint}\n` +
-      `Pass --config <path> and --root <project-dir> when starting the server.\n` +
+      `Pass --config <path-or-url> when starting the server.\n` +
       `Original error: ${err instanceof Error ? err.message : String(err)}`;
     registerStubTools(server, errorMessage);
     log.warn("Server started in degraded mode.", { hint });
@@ -332,11 +333,10 @@ const emitJsonRpcError = (message: string): void => {
 };
 
 const runStdio = async (
-  configPath?: string,
-  projectRoot?: string,
+  configLocation?: ContentLocation,
 ): Promise<void> => {
   try {
-    const server = await createMcpServer(configPath, projectRoot);
+    const server = await createMcpServer(configLocation);
     const transport = new StdioServerTransport();
     await server.connect(transport);
     if (Deno.env.get("TRACE")) wrapTransportLogging(transport, "stdio");
@@ -359,7 +359,7 @@ const runStdio = async (
 // isInitializeRequest, then forward it to handleRequest via { parsedBody } so the
 // transport doesn't attempt a second read on the already-consumed stream.
 
-const runHttp = (configPath?: string, projectRoot?: string): void => {
+const runHttp = (configLocation?: ContentLocation): void => {
   const transports: Record<string, WebStandardStreamableHTTPServerTransport> = {};
   const port = parseInt(Deno.env.get("PORT") || "3000", 10);
 
@@ -419,7 +419,7 @@ const runHttp = (configPath?: string, projectRoot?: string): void => {
             }
           };
 
-          const server = await createMcpServer(configPath, projectRoot);
+          const server = await createMcpServer(configLocation);
           await server.connect(transport);
           if (Deno.env.get("TRACE")) wrapTransportLogging(transport, `http:${transport.sessionId}`);
 
@@ -460,9 +460,9 @@ const runHttp = (configPath?: string, projectRoot?: string): void => {
 const transportType = Deno.env.get("MCP_TRANSPORT") ?? "stdio";
 
 if (transportType === "http") {
-  runHttp(_configPath, _projectRoot);
+  runHttp(_configLocation);
 } else {
-  runStdio(_configPath, _projectRoot).catch((err: unknown) => {
+  runStdio(_configLocation).catch((err: unknown) => {
     log.error("fatal", err);
     Deno.exit(1);
   });

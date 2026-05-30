@@ -1,4 +1,4 @@
-# Project Skeleton — A Starter Directory Layout
+# Project Skeleton - A Starter Directory Layout
 
 A reference layout for a new clean-architecture project, **packaged by component** rather than packaged by layer. Adapt names and depth to your domain.
 
@@ -27,7 +27,7 @@ project-root/
 │   ├── usecase/
 │   └── port/
 │
-├── shared_kernel/               ← OPTIONAL — only for genuinely cross-domain primitives
+├── shared_kernel/               ← OPTIONAL - only for genuinely cross-domain primitives
 │   ├── money.<ext>
 │   ├── identifier.<ext>
 │   └── clock.<ext>
@@ -73,7 +73,7 @@ Read as: **a folder may import from folders below it in this list, never above.*
 7.  main/                         ← depends on EVERYTHING; the only place that does
 ```
 
-## What goes where — quick lookup
+## What goes where - quick lookup
 
 | Code that does this...                                 | ...lives here                  |
 | ------------------------------------------------------ | ------------------------------ |
@@ -114,7 +114,7 @@ Read as: **a folder may import from folders below it in this list, never above.*
 
 **Existing project (strangler):** add the clean structure for the first migrated slice alongside the existing layout. Old code stays in place; new slices appear in clean form; retire the old structure piece by piece.
 
-## ARCHITECTURE.md — what to include
+## ARCHITECTURE.md - what to include
 
 - The Dependency Rule as it applies to this project
 - Which directories belong to which layer

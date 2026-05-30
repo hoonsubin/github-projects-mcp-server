@@ -30,7 +30,7 @@ Config templates take precedence. Fall back to `references/item-types.md` only w
 
 ## Estimation scale
 
-SP and priority are independent dimensions. Conflating them is a dysfunction — surface it when seen.
+SP and priority are independent dimensions. Conflating them is a dysfunction - surface it when seen.
 
 | Dimension | What it measures | Who decides |
 |---|---|---|
@@ -39,14 +39,14 @@ SP and priority are independent dimensions. Conflating them is a dysfunction —
 
 ## Quality gates
 
-**Definition of Ready** — item enters Planning only if ALL are true:
+**Definition of Ready** - item enters Planning only if ALL are true:
 1. Written in the format required for its type
 2. Acceptance criteria defined, specific, and testable
 3. Estimated by the team
 4. Dependencies identified and de-risked
 5. Completable within one sprint
 
-**Definition of Done** — increment is Done only if ALL are true:
+**Definition of Done** - increment is Done only if ALL are true:
 1. All AC met and verified (via DeliveryVerification if in doubt)
 2. Code reviewed and approved
 3. Tests written and passing
@@ -114,7 +114,7 @@ Read only the file and section the request requires. Do not load speculatively.
 | INVEST criteria, story splitting, estimation methods | `references/advanced-practices.md` |
 | Ceremony document drafting | `references/templates-ceremonies.md` |
 | Management artifact drafting | `references/templates-management.md` |
-| Coaching — GROW, SBI, powerful questions | `references/sm-coaching.md` §Coaching models |
+| Coaching - GROW, SBI, powerful questions | `references/sm-coaching.md` §Coaching models |
 | Facilitation technique | `references/sm-coaching.md` §Facilitation techniques |
 | Retrospective format selection | `references/sm-coaching.md` §Retrospective formats |
 | Conflict between team members | `references/sm-coaching.md` §Conflict resolution |

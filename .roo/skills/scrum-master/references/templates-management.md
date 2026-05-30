@@ -10,7 +10,7 @@ Ceremony-level templates (PBI, DoR, DoD, planning board, standup, review, retro)
 ```markdown
 # Sprint Archive
 
-## Sprint [N] — [Start] to [End]
+## Sprint [N] - [Start] to [End]
 
 | Field | Value |
 |---|---|
@@ -29,7 +29,7 @@ _[Paste full sprint backlog table for history]_
 ## Velocity Tracker
 
 ```markdown
-## Velocity — [Team]
+## Velocity - [Team]
 
 | Sprint | Start | End | Committed | Completed | Ratio | Goal Met | Retro Commitment |
 |---|---|---|---|---|---|---|---|
@@ -48,7 +48,7 @@ _[Paste full sprint backlog table for history]_
 ## Impediment Log
 
 ```markdown
-## Impediment Log — Sprint [N]
+## Impediment Log - Sprint [N]
 
 | # | Impediment | Raised By | Date | Owner | Status | Resolved |
 |---|---|---|---|---|---|---|
@@ -64,7 +64,7 @@ _[Paste full sprint backlog table for history]_
 
 ```markdown
 ## Decision Log
-> Append-only. Never edit or delete — only add new entries that supersede prior ones.
+> Append-only. Never edit or delete - only add new entries that supersede prior ones.
 
 | # | Decision | Alternatives | Rationale | Owner | Date |
 |---|---|---|---|---|---|
@@ -76,8 +76,8 @@ _[Paste full sprint backlog table for history]_
 ## Team Charter
 
 ```markdown
-# Team Charter — [Team]
-_v[N] — [YYYY-MM-DD]_
+# Team Charter - [Team]
+_v[N] - [YYYY-MM-DD]_
 
 ## Members
 
@@ -95,7 +95,7 @@ _v[N] — [YYYY-MM-DD]_
 1. Update Sprint Backlog right after standup, not end of day.
 2. Raise blockers the day they appear.
 3. Swarm on in-progress items before pulling new ones.
-4. Retrospective is sacred — never skipped.
+4. Retrospective is sacred - never skipped.
 5. [team-specific]
 
 ## Communication Norms
@@ -104,10 +104,10 @@ _v[N] — [YYYY-MM-DD]_
 - Decisions: append-only Decision Log
 - Async standup deadline: [time]
 
-## Definition of Done — v[N]
+## Definition of Done - v[N]
 _See separate DoD; reviewed every retro._
 
-## Definition of Ready — v[N]
+## Definition of Ready - v[N]
 _See separate DoR; reviewed quarterly._
 ```
 
@@ -116,7 +116,7 @@ _See separate DoR; reviewed quarterly._
 ## Release Roadmap (multi-sprint)
 
 ```markdown
-## Release Roadmap — [Release Name / Quarter]
+## Release Roadmap - [Release Name / Quarter]
 
 | Sprint | Dates | Sprint Goal | Key Deliverables | Status |
 |---|---|---|---|---|
@@ -126,9 +126,9 @@ _See separate DoR; reviewed quarterly._
 | Sprint 4 | YYYY-MM-DD → YYYY-MM-DD | Hardening | Regression, docs, release notes | 🟢 Planned |
 
 ### Milestones
-- **YYYY-MM-DD** — Stakeholder sign-off
-- **YYYY-MM-DD** — Release candidate freeze
-- **YYYY-MM-DD** — **Target release date**
+- **YYYY-MM-DD** - Stakeholder sign-off
+- **YYYY-MM-DD** - Release candidate freeze
+- **YYYY-MM-DD** - **Target release date**
 
 **Status:** 🟢 Planned · 🔵 In Progress · ✅ Done · ⚠️ At Risk · 🔴 Blocked
 ```
@@ -140,7 +140,7 @@ _See separate DoR; reviewed quarterly._
 ## Capacity Calendar (multi-sprint)
 
 ```markdown
-## Capacity Calendar — [Team] — Sprints [N] to [N+M]
+## Capacity Calendar - [Team] - Sprints [N] to [N+M]
 
 | Member | Sprint [N] | Sprint [N+1] | Sprint [N+2] | Notes |
 |---|---|---|---|---|
@@ -192,7 +192,7 @@ Items >2 days in this column are impediments.
 ### Game release / milestone tracker
 
 ```markdown
-## Release Tracker — [Project]
+## Release Tracker - [Project]
 
 | Milestone | Target Date | Stage | Status | Sprint |
 |---|---|---|---|---|

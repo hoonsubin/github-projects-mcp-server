@@ -9,7 +9,7 @@
 | **Production** | Build 8–12 hr of content from locked mechanics | Scrum + kanban for asset streams | Asset-driven; pipeline timeboxed |
 | **Post-production** | Polish, tune, fix; submit to platform cert | Bug-burndown; daily-prioritized | Bug database may replace product backlog |
 
-Never enter production with mechanics still iterating — production wastes effort retrofitting assets to changed metrics (e.g. jump height changes invalidate hundreds of ledges). Pre-production ends when core mechanics + production cost are known, not when the schedule says so.
+Never enter production with mechanics still iterating - production wastes effort retrofitting assets to changed metrics (e.g. jump height changes invalidate hundreds of ledges). Pre-production ends when core mechanics + production cost are known, not when the schedule says so.
 
 Stages overlap. Production work ramps up as pre-production ramps down; different asset classes transition at different times.
 
@@ -23,7 +23,7 @@ A 2-year game ≈ 6–8 releases of 2–3 months. Each release groups sprints to
 | **Functional team** | Mostly one discipline (e.g. all PS5 platform programmers) | Foundational/infrastructure work only |
 | **Production team** | Cross-disciplinary tilted to content creators | Production stage; uses kanban |
 | **Tool team** | Programmers + tech artists + QA, internal customers | Editor, exporters, build pipeline |
-| **Shared Infrastructure (SI)** | Engine, audio middleware, cinematics — own backlog + own PO | Multiple games depend on the same tech |
+| **Shared Infrastructure (SI)** | Engine, audio middleware, cinematics - own backlog + own PO | Multiple games depend on the same tech |
 | **Pool team** | Single discipline, no sprint goal; lends members | Resource leveling (animators, FX artists) during production |
 | **Integration team** | Cross-disciplinary; owns whole-game feel | Large projects (40+) where mechanics have drifted |
 
@@ -37,7 +37,7 @@ Cross-discipline is non-negotiable for feature teams. Discipline silos delay int
 
 ## 3. Production: lean + kanban
 
-In production, asset pipelines (concept → model → rig → animate → texture → audio → integrate) don't fit cleanly into sprints. Layer kanban on top — don't abandon Scrum.
+In production, asset pipelines (concept → model → rig → animate → texture → audio → integrate) don't fit cleanly into sprints. Layer kanban on top - don't abandon Scrum.
 
 ### Kanban for asset streams
 
@@ -61,7 +61,7 @@ Goal: cycle time of each step ≤ takt time. If a step exceeds takt, parallelize
 | Smaller assets | Break levels into "zones"; gives faster gameplay/production/velocity feedback |
 | Smaller batches | Don't pre-build 12 character models before rigging starts |
 | Reduce waste | Eliminate handoff delays (move concept artist next to level designer) |
-| Empower the team | Crew of relay racers — watch the baton, not the runners |
+| Empower the team | Crew of relay racers - watch the baton, not the runners |
 
 ### Hybrid Scrum + kanban board
 
@@ -89,11 +89,11 @@ Outsource pipeline components (props, environment sets, modular geometry), not w
 - **"95-mph art."** Detail the player won't see at gameplay speed is waste.
 - **Approval is a bottleneck risk.** Art directors aren't on a single team, but their sign-off is often DoD. Add a `Pending Approval` column before `Done`; maintain a visible approval backlog; SM treats lingering approvals as impediments.
 - **Build art knowledge in pre-production.** Refine asset budgets (poly counts, texture resolution, animation states) before production starts.
-- **Art QA tooling.** Physics geometry view, texel density view, wireframe view, sound min/max view — let artists verify their own work in-game on the target platform.
+- **Art QA tooling.** Physics geometry view, texel density view, wireframe view, sound min/max view - let artists verify their own work in-game on the target platform.
 
 ### Design
 
-- **Designs don't create knowledge — playable mechanics do.** Design docs are for sharing vision and identifying unknowns, not pre-resolving them.
+- **Designs don't create knowledge - playable mechanics do.** Design docs are for sharing vision and identifying unknowns, not pre-resolving them.
 - **Designer per cross-discipline team.** Senior designers on hard mechanics; usability-strong designers on HUD/UI teams.
 - **"Parts on the garage floor" anti-pattern.** Building infrastructure for an unproven mechanic across many sprints before checking whether the mechanic is fun. Each sprint must integrate to a playable increment, not stockpile parts.
 - **Set-based design > point-based design.** When a key decision is uncertain, prototype 2–3 alternatives in parallel until one is clearly best.
@@ -116,7 +116,7 @@ Producer responsibilities shift from "make sure everything gets done" to work te
 - Licensing and franchise approval workflows
 - Critical-chain resource scheduling for production
 
-Tasks that fall away: building/maintaining detailed schedules, tracking individual tasks, managing intra-team dependencies — the team owns these.
+Tasks that fall away: building/maintaining detailed schedules, tracking individual tasks, managing intra-team dependencies - the team owns these.
 
 ## 5. Role mapping
 
@@ -138,7 +138,7 @@ Holds 2–3× weekly for 30–60 min. Reps from each team answer:
 1. What did the team do since we last met?
 2. What will the team do next?
 3. What is blocking the team?
-4. **What is the team about to throw in another team's way?** (e.g. "we're committing an animation engine change Tuesday — characters may walk strangely for a day")
+4. **What is the team about to throw in another team's way?** (e.g. "we're committing an animation engine change Tuesday - characters may walk strangely for a day")
 
 ### Hierarchy of Product Owners
 
@@ -146,7 +146,7 @@ For 40+ developer projects: a lead PO owns whole-game vision; feature POs own in
 
 ### Communities of Practice
 
-Cross-team groups of same-discipline members meet to share knowledge, prevent duplication of effort, propose engine/tool improvements. Communities don't have sprint goals — only knowledge-sharing.
+Cross-team groups of same-discipline members meet to share knowledge, prevent duplication of effort, propose engine/tool improvements. Communities don't have sprint goals - only knowledge-sharing.
 
 ### Aligned vs staggered sprints
 
@@ -162,7 +162,7 @@ Mid-sprint, teams + leads spend 1–2 hrs scanning the next 2–3 sprints' likel
 - Each location gets a local PO under the lead PO.
 - Scrum of Scrums via video with rotating call times so no location always takes the bad slot.
 - One in-person release planning meeting is worth the airfare; vision drift between locations is the highest cost.
-- Build pipeline robustness matters 10× more — a bad export commit at 6pm in Stockholm wastes a full day in Vancouver.
+- Build pipeline robustness matters 10× more - a bad export commit at 6pm in Stockholm wastes a full day in Vancouver.
 
 ## 7. Game-specific dysfunctions
 
