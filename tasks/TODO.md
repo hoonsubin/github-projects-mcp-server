@@ -1,28 +1,31 @@
 # Template & Config Location Resolution Refactor
 
-> **Goal:** Replace the hard-coded local filesystem assumption in config and template loading with a unified `TemplateLocation` ADT that supports local files, remote URLs, and inline content. Remove the `--root` CLI flag. Make the "project root" self-describing from the config file itself.
->
-> **Scope:** `src/domain/`, `src/scrum/`, `src/adapters/factory.ts`, `src/adapters/github/` internals, `src/server.ts`. No changes to tool handlers, use-case functions (except `template-resource.ts`), or the MCP tool surface.
->
-> **Unchanged:** `src/tools/` (all tool handlers), `src/schemas/`, `src/scrum/find-items.ts`, `src/scrum/get-analytics.ts`, `src/scrum/get-board-health.ts`, `src/scrum/get-story.ts`, `src/scrum/listing-mappers.ts`, `src/scrum/update-impediment.ts`, `src/scrum/sprint-math.ts`, `src/scrum/config-helpers.ts`, `src/adapters/github/backend.ts` (logic unchanged), `src/adapters/github/internal/contents.ts`, `src/adapters/github/internal/story-mutation-service.ts`, `src/adapters/github/internal/story-query-service.ts`, `src/adapters/abstract-backend.ts`, `src/domain/types.ts`, `src/domain/errors.ts`, `src/services/`.
+## Problem Statements
+
+1. **Local-only config loading.** [`config-loader.ts`](src/adapters/github/config-loader.ts) calls `Deno.readTextFile(configPath)` — a raw filesystem call that crashes on any remote URL passed via `--config`.
+2. **Raw strings for template paths.** Template values in config `type_mapping` are untyped repo-relative strings (`".github/ISSUE_TEMPLATE/story.yml"`). There is no type-level signal about whether a path is local, remote, or inline — callers cannot reason about resolution behaviour.
+3. **`--root` hides a design gap.** The `--root` / `-r` CLI flag exists solely to tell [`GitHubFileReader`](src/adapters/github/internal/file-reader.ts) where to anchor relative paths when `--config` points outside the working directory. It is an ergonomic workaround for the fact that the project root is never declared in the config file itself.
+4. **No remote template support.** Template values cannot be URLs. A team that wants to share templates from a central repository has no way to express that in config.
+5. **Hidden dispatch.** [`GitHubFileReader.fetchRepoFile()`](src/adapters/github/internal/file-reader.ts) silently tries the local filesystem first, then falls back to the GitHub Contents API — all from a single `string` parameter. The caller gets no visibility into which strategy will be used.
+6. **No seam for future `scrum_orient` inline config.** The tool will eventually accept an inline YAML config argument. The current architecture has no `TemplateLocation`-like type to represent "content that is already in memory."
+
+## Objective Statements
+
+1. **Introduce a unified `TemplateLocation` discriminated union** (`kind: "file" | "url" | "inline"`) that replaces raw path strings throughout config and template resolution. Every path-carrying value becomes a self-describing algebraic type.
+2. **Remove the `--root` CLI flag.** The project root is declared as `projRoot` in the config YAML, relative to the config file's directory. When absent, it defaults to the config file's directory.
+3. **Move resolution and fetch to the use-case layer.** Two pure utilities — [`resolveLocation()`](src/scrum/resolve-location.ts) (`string → TemplateLocation`) and [`fetchContent()`](src/scrum/fetch-location.ts) (`TemplateLocation → string`) — live in `src/scrum/`. Every adapter imports them without adapter-to-adapter coupling.
+4. **Scope the changes to the domain, use-case, and adapter layers, plus the composition root.** Values change in `src/domain/`, `src/scrum/`, `src/adapters/`, and `src/server.ts`. Tool handlers, schemas, and MCP tool surface are untouched.
+5. **Keep FileReaderPort as the use-case contract.** The port interface is updated from `fetchRepoFile(path: string)` to `fetchFile(location: TemplateLocation)`, but use-case functions continue to code against the port — they never import adapter internals.
 
 ---
 
-## Background & Motivation
+## Background
 
 ### Current behaviour
 
 Config loading (`config-loader.ts`) reads the YAML config with `Deno.readTextFile(configPath)` - a raw local-path string hardwired to the filesystem. Template paths declared in `type_mapping[key].template` are stored as raw repo-relative strings (e.g. `".github/ISSUE_TEMPLATE/story.yml"`). When the server resolves them to actual files, `GitHubFileReader` prepends a `localRoot` string and tries the local filesystem first, then falls back silently to the GitHub Contents API.
 
 The `--root` / `-r` CLI flag exists solely to tell `GitHubFileReader` where to anchor relative paths when `--config` points outside the working directory. This is an ergonomic workaround for a design gap: the server doesn't know where "the project" lives unless you tell it explicitly.
-
-### Why this needs to change
-
-1. **No remote config support.** Passing a URL to `--config` crashes at `Deno.readTextFile`.
-2. **No remote template support via URL.** Template values can only be local repo-relative paths. A team wanting to share templates from a central repository can't express that in config.
-3. **`--root` is confusing.** Users have to know to pass it when `--config` is a non-standard path. The config file itself should declare where the project root is.
-4. **Hidden dispatch.** `GitHubFileReader.fetchRepoFile(path: string)` silently tries local then remote with no type-level signal about what kind of path it received. The caller can't reason about the behaviour.
-5. **Future: `scrum_orient` config arg.** The tool will eventually accept a config path/URL/inline YAML as an optional argument. The current architecture has no clean seam for this.
 
 ---
 
@@ -33,7 +36,7 @@ The refactor introduces a single new domain type - `TemplateLocation` - that rep
 ```
 use-case layer (src/scrum/)
   resolveLocation(string, baseDir)                 ← Step 2:  string → TemplateLocation
-  fetchContent(TemplateLocation)                   ← Step 2c: TemplateLocation → string (no auth)
+  fetchContent(TemplateLocation)                   ← Step 2b: TemplateLocation → string (no auth)
 
 server.ts
   --config <string>
@@ -69,15 +72,16 @@ Steps are grouped into phases by dependency. Phases must be completed in order; 
 
 ```
 Phase A — Domain foundation (no deps, ships atomically)
-  Step 0   Pre-flight: audit FileReaderPort references in test files
-  Step 1   New domain type: TemplateLocation
-  Step 2   New use-case utility: resolveLocation (string → TemplateLocation)
-  Step 2b  Unit tests for resolveLocation
-  Step 2c  New use-case utility: fetchContent (TemplateLocation → string)
+  Step 0    Pre-flight: audit FileReaderPort references in test files
+  Step 1    New domain type: TemplateLocation
+  Step 2    New use-case utility: resolveLocation (string → TemplateLocation)
+  Step 2a   Unit tests for resolveLocation
+  Step 2b   New use-case utility: fetchContent (TemplateLocation → string)
+  Step 2c   Unit tests for fetchContent
 
 Phase B — Port contract (depends on A)
   Step 3   Extend ScrumConfig.project with projRoot
-  Step 4   Extend FileReaderPort (doc comment only; signature unchanged)
+  Step 4   Extend FileReaderPort (rename method, retype parameter)
   Step 5   Update AdapterStartupOptions and BackendResult
 
 Phase C — Adapter implementation (depends on B)
@@ -217,7 +221,7 @@ export const resolveLocation = (input: string, baseDir: string): TemplateLocatio
 
 ---
 
-### Step 2b — Unit tests for `resolveLocation`
+### Step 2a — Unit tests for `resolveLocation`
 
 **File to create:** `src/scrum/resolve-location.test.ts`
 
@@ -234,7 +238,7 @@ export const resolveLocation = (input: string, baseDir: string): TemplateLocatio
 | `"template.txt"`                     | any             | throws — unsupported extension                                     |
 | `"https://example.com/template.txt"` | any             | throws — unsupported extension                                     |
 
-### Step 2c — New use-case utility: `fetchContent`
+### Step 2b — New use-case utility: `fetchContent`
 
 **File to create:** `src/scrum/fetch-location.ts`
 
@@ -274,6 +278,25 @@ export const fetchContent = async (location: TemplateLocation): Promise<string> 
 **I/O precedent:** `resolve-location.ts` imports `@std/path`; `fetch-location.ts` uses `Deno.readTextFile` and `fetch`. Both are Deno platform primitives and the standard library — stable dependencies, not volatile framework details.
 
 **Not the port:** `FileReaderPort.fetchFile` is the contract use-cases code against. `fetchContent` is the raw utility that adapter implementations of that port wrap with platform-specific auth. `config-loader.ts` imports `fetchContent` directly (not through the port) because config loading happens before `FileReaderPort` implementers exist.
+
+---
+
+### Step 2c — Unit tests for `fetchContent`
+
+**File to create:** `src/scrum/fetch-location.test.ts`
+
+`fetchContent` has three dispatch branches — test them with a local temp file, an inline string, and a controlled HTTP endpoint. Create test fixtures for the `file` and `url` cases:
+
+| Input                                  | Expected outcome                                            |
+| -------------------------------------- | ----------------------------------------------------------- |
+| `{ kind: "file", path: tempFilePath }` | returns `Deno.readTextFile(tempFilePath)` content           |
+| `{ kind: "inline", content: rawYaml }` | returns `rawYaml` as-is                                     |
+| `{ kind: "url", url: testServerUrl }`  | returns the test server's response body                     |
+| `{ kind: "url", url: badUrl }`         | throws `Error` with `"Cannot fetch"` prefix and status code |
+
+For the `url` branch, spin up a lightweight HTTP listener with `Deno.serve` (or fetch a known public URL if that's impractical). For the `file` branch, write a temp file with `Deno.makeTempFile` / `Deno.writeTextFile` and clean it up in the test teardown.
+
+Do this in Phase A after Step 2b so `fetchContent` is tested before it flows into `config-loader.ts`.
 
 ---
 
@@ -421,7 +444,7 @@ import { fetchContent } from "../../../scrum/fetch-location.ts";
 
 Then call `fetchContent(configLocation)` instead of `Deno.readTextFile(configPath)` and instead of the previously-planned local `fetchContent` function.
 
-The shared `fetchContent` lives at `src/scrum/fetch-location.ts` (Step 2c) and dispatches on `TemplateLocation.kind` using only platform primitives (`Deno.readTextFile`, `fetch`). No adapter dependencies — safe to import during boot before `GitHubFileReader` exists.
+The shared `fetchContent` lives at `src/scrum/fetch-location.ts` (Step 2b) and dispatches on `TemplateLocation.kind` using only platform primitives (`Deno.readTextFile`, `fetch`). No adapter dependencies — safe to import during boot before `GitHubFileReader` exists.
 
 Note: config file fetching uses plain `fetch` (no GitHub auth). If the config lives in a private GitHub repo, the user must supply a raw URL with a token in the query string, or use a local file. This is an intentional constraint - authenticating config fetches is out of scope for this change.
 
@@ -700,6 +723,9 @@ import { describeLocation } from "./domain/template-location.ts";
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `src/domain/template-location.ts`             | **New**                                                                                                                              |
 | `src/scrum/resolve-location.ts`               | **New**                                                                                                                              |
+| `src/scrum/fetch-location.ts`                 | **New**                                                                                                                              |
+| `src/scrum/resolve-location.test.ts`          | **New**                                                                                                                              |
+| `src/scrum/fetch-location.test.ts`            | **New**                                                                                                                              |
 | `src/domain/config.ts`                        | Add `project.projRoot?: string`                                                                                                      |
 | `src/scrum/ports.ts`                          | `FileReaderPort` method rename+retype; `PlatformState.vocabulary.typeTemplatePaths` type; add import                                 |
 | `src/scrum/template-resource.ts`              | Parameter type + method call update                                                                                                  |
@@ -727,11 +753,11 @@ Test file stub updates are handled in Step 0 (pre-flight audit). No further test
 
 `ConfigReloader` calls `loadConfig({ github: this.github })` without a `configLocation`, which defaults to the local `.github/scrum/config.yml`. When the server started with a remote config (`--config https://…`), reload will silently fall back to the local file.
 
-**Decision:** This is an intentional limitation. `ConfigReloader.reload()` refreshes live GitHub project field metadata (iterations, field option IDs) — it does not re-fetch the config YAML. Remote config sources are immutable from the reloader's perspective. If reloading a remote config is needed later, store the original `configLocation` in `ConfigReloader` and pass it through.
+**Decision:** This is an intentional limitation. `ConfigReloader.reload()` refreshes live GitHub project field metadata (iterations, field option IDs) — it does not re-fetch the config YAML. Remote config sources are immutable from the reloader's perspective. If reloading a remote config is needed later, store the original `configLocation` in `ConfigReloader` and pass it through. (See [Verification item #10](#10-configreloader-with-remote-config-is-a-documented-no-op).)
 
 ### `fetchContent` sharing
 
-The shared `fetchContent` function lives at `src/scrum/fetch-location.ts` (Step 2c) at the use-case layer. Both `config-loader.ts` and `GitHubFileReader` import it. This eliminates the previously-planned duplication between two local dispatch implementations.
+The shared `fetchContent` function lives at `src/scrum/fetch-location.ts` (Step 2b) at the use-case layer. Both `config-loader.ts` and `GitHubFileReader` import it. This eliminates the previously-planned duplication between two local dispatch implementations.
 
 **Why use-case layer:** Keeps adapter-to-use-case as the only dependency direction. A hypothetical `TrelloFileReader` imports `fetchContent` from `src/scrum/` without ever touching `src/adapters/github/`. The pattern is symmetric across all adapters — each only adds platform-specific auth for its own domain URLs.
 
