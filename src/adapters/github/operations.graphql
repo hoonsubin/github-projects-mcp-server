@@ -383,6 +383,59 @@ query GetIssueDetails($issueId: ID!) {
   }
 }
 
+# ── GetIssueProjectItem ───────────────────────────────────────────────────────
+# Direct lookup: resolve an issue number to its project item in a specific project.
+# Used by DirectLookupAssembler — avoids a full board scan for keys-only filters.
+
+query GetIssueProjectItem($owner: String!, $repo: String!, $number: Int!, $projectNumber: Int!) {
+  repository(owner: $owner, name: $repo) {
+    issue(number: $number) {
+      id
+      projectItems(first: 10) {
+        nodes {
+          project { number }
+          id
+          type
+          createdAt
+          updatedAt
+          isArchived
+          ...ItemContent
+          ...ItemFieldValues
+        }
+      }
+    }
+  }
+}
+
+# ── SearchIssues ──────────────────────────────────────────────────────────────
+# Server-side issue search with nested project item context for board-field mapping.
+# Used by SearchApiAssembler for label/assignee/text filters without board fields.
+
+query SearchIssues($query: String!, $first: Int!, $after: String) {
+  search(query: $query, type: ISSUE, first: $first, after: $after) {
+    issueCount
+    pageInfo { hasNextPage endCursor }
+    nodes {
+      ... on Issue {
+        id number title body url state createdAt updatedAt
+        issueType { id name }
+        assignees(first: 5)  { nodes { login } }
+        labels(first: 10)    { nodes { name color } }
+        milestone            { id title dueOn }
+        blockedBy(first: 10) { nodes { id number title } }
+        repository { name nameWithOwner }
+        projectItems(first: 5) {
+          nodes {
+            project { id number }
+            id type createdAt updatedAt isArchived
+            ...ItemFieldValues
+          }
+        }
+      }
+    }
+  }
+}
+
 # ── GetIssue ──────────────────────────────────────────────────────────────────
 # AGENT: Fetch issue details by owner + repo + number (human-readable reference).
 # Use when investigating a specific item for DoR/DoD assessment or blocker context.

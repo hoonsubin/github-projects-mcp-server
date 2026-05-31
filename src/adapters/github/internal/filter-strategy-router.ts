@@ -33,6 +33,10 @@ export const classifyFilter = (filter: ResolvedItemFilter): FilterProfile => {
     filter.priority
   );
   if (hasSearchableOnly && !hasBoardFields) {
+    // Draft Issues are not indexed by GitHub search — use board scan for scope=all.
+    if (filter.scope === "all") {
+      return { kind: "project_items", filter };
+    }
     return {
       kind: "search_api",
       search: filter.search,
