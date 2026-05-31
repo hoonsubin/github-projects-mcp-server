@@ -31,6 +31,37 @@ classDiagram
             resolved
         }
 
+        class SEARCH_SCOPES:::ts_tuple {
+            <<const-tuple>>
+            backlog
+            sprint
+            all
+        }
+
+        class SCRUM_FIELDS:::ts_tuple {
+            <<const-tuple>>
+            status
+            sprint
+            story_points
+            priority
+            assignee
+            type
+        }
+
+        class ANALYTICS_VIEWS:::ts_tuple {
+            <<const-tuple>>
+            burndown
+            history
+            both
+        }
+
+        class VOCABULARY_KINDS:::ts_tuple {
+            <<const-tuple>>
+            status_option
+            priority_option
+            label
+        }
+
         class ItemListingRef:::ts_type {
             +id : string
             +key : string
@@ -244,7 +275,7 @@ classDiagram
 
         class ItemSearchResult:::ts_interface_warn {
             <<interface>>
-            +items : BacklogItemListing[]
+            +items : readonly BacklogItemListing[]
             +total_count : number
             +scope_summary : [ sprint_count: number or null, backlog_count: number or null ]
             +dependency_map : DependencyMap or null
@@ -496,7 +527,6 @@ classDiagram
     StoryBase --> EpicRefWithName : epic
     BurndownResponse --> SprintWindowMeta : sprint
     BurndownResponse --> DataSource : data_source
-    ItemSearchResult --> BacklogItemListing : items
     SprintSnapshot --> SprintWindowMeta : sprint
     SprintSnapshot --> SprintTotals : totals
     AnalyticsResult --> BurndownResponse : burndown

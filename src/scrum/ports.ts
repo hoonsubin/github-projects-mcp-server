@@ -29,34 +29,17 @@ import type {
   StoryRef,
   TemplateUriMap,
 } from "../domain/types.ts";
+import { ANALYTICS_VIEWS, SCRUM_FIELDS, SEARCH_SCOPES, VOCABULARY_KINDS } from "../domain/types.ts";
+import type { AnalyticsView, ScrumField, SearchScope, VocabularyKind } from "../domain/types.ts";
 import type { BackendCallResult } from "../services/error-enrichment.ts";
 import type { ContentLocation } from "../domain/content-location.ts";
 
+// ── Re-exports (domain vocabulary — single source of truth) ─────────────────
+
+export { ANALYTICS_VIEWS, SCRUM_FIELDS, SEARCH_SCOPES, VOCABULARY_KINDS };
+export type { AnalyticsView, ScrumField, SearchScope, VocabularyKind };
+
 // ── Input types (cross the port boundary) ─────────────────────────────────────
-
-/** Search scope for item queries. */
-export const SEARCH_SCOPES = ["backlog", "sprint", "all"] as const;
-
-export type SearchScope = (typeof SEARCH_SCOPES)[number];
-
-/** Writable board fields on a story. */
-export const SCRUM_FIELDS = [
-  "status",
-  "sprint",
-  "story_points",
-  "priority",
-  "assignee",
-  "type",
-] as const;
-
-/** Board field to update via setField. */
-export type ScrumField = (typeof SCRUM_FIELDS)[number];
-
-/** Which analytics view to return. */
-export const ANALYTICS_VIEWS = ["burndown", "history", "both"] as const;
-
-/** Analytics view selector. */
-export type AnalyticsView = (typeof ANALYTICS_VIEWS)[number];
 
 /**
  * Input filter for findItems port method.
@@ -238,10 +221,6 @@ export interface StoryUpdates {
   readonly epic?: EpicRef | null;
   readonly blocked_by?: readonly StoryRef[] | null; // null clears all; omit to leave unchanged
 }
-
-export const VOCABULARY_KINDS = ["status_option", "priority_option", "label"] as const;
-
-export type VocabularyKind = (typeof VOCABULARY_KINDS)[number];
 
 /** Result of an idempotent create operation. */
 export type CreateResult = { readonly created: boolean };

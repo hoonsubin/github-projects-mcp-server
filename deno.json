@@ -2,7 +2,6 @@
   "tasks": {
     "dev": "deno run --env-file --allow-env --watch --allow-net --allow-read src/server.ts",
     "start": "deno run --env-file --allow-env --allow-net --allow-read src/server.ts --config .github/scrum/config.yml",
-    "inspector": "deno run --allow-env --allow-net --allow-read --allow-run src/server.ts",
     "diagram-gen": "deno run --allow-read --allow-env --allow-write scripts/generate-project-diagram.ts --output ./docs --src ./src --include-external",
     "test": "GITHUB_TOKEN=test-token deno test --allow-env=DEBUG,GITHUB_TOKEN,NODE_ENV --allow-net --allow-read src/",
     "compile": "deno compile --allow-env --allow-net --allow-read --output mcp-server src/server.ts",
@@ -14,7 +13,10 @@
     "build:all": "deno task compile:mac:arm64 && deno task compile:mac:x64 && deno task compile:linux:x64 && deno task compile:linux:arm64 && deno task compile:win && deno task bundle:node && deno task bundle:mcpb",
     "bundle:node": "deno run --allow-read --allow-write --allow-env --allow-net --allow-run scripts/bundle-node.ts",
     "bundle:mcpb": "deno run --allow-read --allow-write --allow-env scripts/bundle-mcpb.ts",
-    "capture-fixtures": "deno run --allow-env=GITHUB_TOKEN,DEBUG,NODE_ENV --allow-net --allow-read --allow-write scripts/capture-test-fixtures.ts --config .github/scrum/config.yml"
+    "capture-fixtures": "deno run --allow-env=GITHUB_TOKEN,DEBUG,NODE_ENV --allow-net --allow-read --allow-write scripts/capture-test-fixtures.ts --config .github/scrum/config.yml",
+    "depcruise": "deno run --allow-read --allow-env --allow-run scripts/depcruise.ts",
+    "depcruise:json": "deno run --allow-read --allow-env --allow-run scripts/depcruise.ts --json",
+    "depcruise:html": "deno run --allow-read --allow-env --allow-run --allow-write scripts/depcruise.ts --html"
   },
   "imports": {
     "@anthropic-ai/mcpb": "npm:@anthropic-ai/mcpb@^2.1.2",
@@ -22,6 +24,7 @@
     "@modelcontextprotocol/inspector": "npm:@modelcontextprotocol/inspector@^0.21.2",
     "@modelcontextprotocol/sdk": "npm:@modelcontextprotocol/sdk@^1.29.0",
     "@std/path": "jsr:@std/path@^1.1.4",
+    "dependency-cruiser": "npm:dependency-cruiser@^17.4.3",
     "esbuild": "npm:esbuild@^0.28.0",
     "graphql": "npm:graphql@^16.13.2",
     "zod": "npm:zod@^4.3.6",

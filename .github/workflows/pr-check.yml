@@ -17,6 +17,8 @@ jobs:
         run: deno fmt --check
       - name: Lint
         run: deno lint
+      - name: Architecture boundary validation
+        run: deno task depcruise
       - name: Type-check
         run: deno check src/server.ts
       - name: Run tests
