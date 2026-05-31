@@ -11,8 +11,14 @@
 
 import { z } from "zod";
 import type { EpicRef, StoryRef } from "../domain/types.ts";
-import { IMPEDIMENT_STATUSES, toSprintName } from "../domain/types.ts";
-import { ANALYTICS_VIEWS, SCRUM_FIELDS, SEARCH_SCOPES, VOCABULARY_KINDS } from "../scrum/ports.ts";
+import {
+  ANALYTICS_VIEWS,
+  IMPEDIMENT_STATUSES,
+  SCRUM_FIELDS,
+  SEARCH_SCOPES,
+  toSprintName,
+  VOCABULARY_KINDS,
+} from "../domain/types.ts";
 
 // ── Primitive schemas (shared by multiple tools) ──────────────────────────────
 

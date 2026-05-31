@@ -627,63 +627,27 @@ The server is built in three layers separated by a `ProjectBackend` port interfa
 
 ```mermaid
 flowchart TB
-
-agent["🤖 LLM Agent\nscrum-agile-assistant skill"]
-
-  
-
-subgraph server["MCP Server · Deno / TypeScript"]
-
-direction TB
-
-  
-
-surface["Tool Surface\n14 scrum_* tools · Zod-validated · stateless per-call handlers"]
-
-  
-
-usecases["Use Cases\none per tool · pure domain logic · no I/O"]
-
-  
-
-port(["&lt;&lt;interface&gt;&gt;\nProjectBackend\n14 methods in Scrum vocabulary\nowned by the use-case layer"])
-
-  
-
-subgraph adapters["Adapters"]
-
-direction LR
-
-gh["GitHubProjectBackend\nGraphQL · REST\nfield mapping · ID resolution"]
-
-future["Future backends\nTrello · Notion · Linear · …"]
-
+	agent["🤖 LLM Agent\nscrum-agile-assistant skill"]
+	subgraph server["MCP Server · Deno / TypeScript"]
+		direction TB
+		surface["Tool Surface\n14 scrum_* tools · Zod-validated · stateless per-call handlers"]
+		usecases["Use Cases\none per tool · pure domain logic · no I/O"]
+		port(["&lt;&lt;interface&gt;&gt;\nProjectBackend\n14 methods in Scrum vocabulary\nowned by the use-case layer"])
+		subgraph adapters["Adapters"]
+		direction LR
+		gh["GitHubProjectBackend\nGraphQL · REST\nfield mapping · ID resolution"]
+		future["Future backends\nTrello · Notion · Linear · …"]
+	end
 end
-
-end
-
-  
 
 ghapi["GitHub Projects v2\nGraphQL API · REST API"]
-
-  
-
 agent <-->|"MCP protocol · stdio or Streamable HTTP"| surface
-
 surface --> usecases
-
 usecases --> port
-
 port --> gh
-
 port -.->|"add a new backend here\nwithout changing the\ntool surface or use cases"| future
-
 gh --> ghapi
-
-  
-
 style future stroke-dasharray: 5 5
-
 style future fill:#f9f9f9
 ```
 

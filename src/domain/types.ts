@@ -64,6 +64,36 @@ export type ImpedimentStatus = "open" | "in_progress" | "resolved";
 /** Const tuple for Zod z.enum(IMPEDIMENT_STATUSES). */
 export const IMPEDIMENT_STATUSES = ["open", "in_progress", "resolved"] as const;
 
+// ── Domain vocabulary (const tuples for Zod schemas and type narrowing) ─────────
+
+/** Search scope for item queries. */
+export const SEARCH_SCOPES = ["backlog", "sprint", "all"] as const;
+
+export type SearchScope = (typeof SEARCH_SCOPES)[number];
+
+/** Writable board fields on a story. */
+export const SCRUM_FIELDS = [
+  "status",
+  "sprint",
+  "story_points",
+  "priority",
+  "assignee",
+  "type",
+] as const;
+
+/** Board field to update via setField. */
+export type ScrumField = (typeof SCRUM_FIELDS)[number];
+
+/** Which analytics view to return. */
+export const ANALYTICS_VIEWS = ["burndown", "history", "both"] as const;
+
+/** Analytics view selector. */
+export type AnalyticsView = (typeof ANALYTICS_VIEWS)[number];
+
+export const VOCABULARY_KINDS = ["status_option", "priority_option", "label"] as const;
+
+export type VocabularyKind = (typeof VOCABULARY_KINDS)[number];
+
 // ── Output ref (server → agent, listing context only) ────────────────────────
 
 /**
