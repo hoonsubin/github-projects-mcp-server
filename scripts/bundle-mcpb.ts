@@ -6,8 +6,6 @@
 //
 // Prerequisites:
 //   - dist/server.mjs must already exist  (run `deno task bundle:node` first)
-//   - npm must be available on PATH        (present on all GitHub runners and
-//     most developer machines with Node.js installed)
 //
 // Environment:
 //   RELEASE_VERSION  Semver string baked into bundle/manifest.json
@@ -21,6 +19,7 @@
 // =============================================================================
 
 import { resolve } from "@std/path";
+import { packExtension } from "@anthropic-ai/mcpb/cli";
 
 const root = Deno.cwd();
 const version = Deno.env.get("RELEASE_VERSION") ?? "dev";
@@ -31,6 +30,7 @@ const serverMjs = resolve(distDir, "server.mjs");
 const serverEntry = resolve(bundleDir, "server", "index.js");
 const manifestPath = resolve(bundleDir, "manifest.json");
 const outputName = "scrum-master-toolkit.mcpb";
+const dest = resolve(distDir, outputName);
 
 console.error(`[bundle-mcpb] packaging version ${version} ...`);
 
@@ -42,20 +42,6 @@ try {
   console.error(
     "[bundle-mcpb] error: dist/server.mjs not found - run 'deno task bundle:node' first.",
   );
-  Deno.exit(1);
-}
-
-// ── Install mcpb CLI ─────────────────────────────────────────────────────────
-
-console.error("[bundle-mcpb] installing @anthropic-ai/mcpb ...");
-const install = new Deno.Command("npm", {
-  args: ["install", "-g", "@anthropic-ai/mcpb"],
-  stdout: "inherit",
-  stderr: "inherit",
-});
-const { success: installOk } = await install.output();
-if (!installOk) {
-  console.error("[bundle-mcpb] error: npm install failed.");
   Deno.exit(1);
 }
 
@@ -72,28 +58,13 @@ await Deno.mkdir(resolve(bundleDir, "server"), { recursive: true });
 await Deno.copyFile(serverMjs, serverEntry);
 console.error("[bundle-mcpb] staged dist/server.mjs → bundle/server/index.js");
 
-// ── Run mcpb pack ────────────────────────────────────────────────────────────
+// ── Pack the bundle ───────────────────────────────────────────────────────────
 
-const pack = new Deno.Command("mcpb", {
-  args: ["pack"],
-  cwd: bundleDir,
-  stdout: "inherit",
-  stderr: "inherit",
-});
-const { success: packOk } = await pack.output();
-if (!packOk) {
+const ok = await packExtension({ extensionPath: bundleDir, outputPath: dest });
+if (!ok) {
   console.error("[bundle-mcpb] error: mcpb pack failed.");
   Deno.exit(1);
 }
-
-// ── Move output to dist/ ─────────────────────────────────────────────────────
-
-// mcpb pack names the output after the directory it was run in, not the
-// manifest name field - so the actual file on disk is always "bundle.mcpb".
-const packed = resolve(bundleDir, "bundle.mcpb");
-const dest = resolve(distDir, outputName);
-await Deno.rename(packed, dest);
-console.error(`[bundle-mcpb] moved → dist/${outputName}`);
 
 // ── Report output size ───────────────────────────────────────────────────────
 
