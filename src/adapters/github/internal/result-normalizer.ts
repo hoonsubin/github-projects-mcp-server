@@ -50,9 +50,7 @@ const enrichListingCustomFields = (
             })),
           }
           : {}),
-        ...(fv.milestone
-          ? { milestone: { id: fv.milestone.id, title: fv.milestone.title } }
-          : {}),
+        ...(fv.milestone ? { milestone: { id: fv.milestone.id, title: fv.milestone.title } } : {}),
         ...(fv.repository
           ? {
             repository: {
