@@ -43,6 +43,9 @@ import { DirectLookupAssembler } from "./internal/assemblers/direct-lookup-assem
 import { ProjectItemsAssembler } from "./internal/assemblers/project-items-assembler.ts";
 import { SearchApiAssembler } from "./internal/assemblers/search-api-assembler.ts";
 import { MixedAssembler } from "./internal/assemblers/mixed-assembler.ts";
+import { ExecutionEngine } from "./internal/execution-engine.ts";
+import { ResultNormalizer } from "./internal/result-normalizer.ts";
+import { ProjectItemsQueryBuilder } from "./internal/project-items-query-builder.ts";
 import { GitHubFileReader } from "./internal/file-reader.ts";
 import type { GitHubBackendConfig } from "./types.ts";
 import type { ResolvedToken } from "./types.ts";
@@ -182,11 +185,28 @@ export class GitHubAdapterFactory implements AdapterFactory {
       impedimentService,
     );
 
-    // ── Assemblers (Phase 3 filter-strategy-routing pipeline) ─────────────
-    // Depend on storyQueryService (Tier 2) — constructed after all Tier 2/3 services.
-    const directLookupAssembler = new DirectLookupAssembler(storyQueryService);
-    const projectItemsAssembler = new ProjectItemsAssembler(storyQueryService);
-    const searchApiAssembler = new SearchApiAssembler();
+    // ── Assembler pipeline (Phase 4b/4c: engine → normalizer) ─────────────
+    const executionEngine = new ExecutionEngine(ghClient);
+    const resultNormalizer = new ResultNormalizer(bootState);
+    const projectItemsQueryBuilder = new ProjectItemsQueryBuilder(resolvedGhConfig.owner_type);
+
+    const projectItemsAssembler = new ProjectItemsAssembler(
+      executionEngine,
+      resultNormalizer,
+      projectItemsQueryBuilder,
+      bootState,
+    );
+    const directLookupAssembler = new DirectLookupAssembler(
+      ghClient,
+      resultNormalizer,
+      bootState,
+    );
+    const searchApiAssembler = new SearchApiAssembler(
+      executionEngine,
+      resultNormalizer,
+      projectItemsAssembler,
+      bootState,
+    );
     const mixedAssembler = new MixedAssembler(projectItemsAssembler);
 
     // ── File reader ──────────────────────────────────────────────────────

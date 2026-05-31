@@ -254,7 +254,7 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
         case "direct_lookup":
           return this.deps.directLookupAssembler.assemble(profile);
         case "search_api":
-          return this.deps.searchApiAssembler.assemble(profile);
+          return this.deps.searchApiAssembler.assemble(profile, filter);
         case "project_items":
           return this.deps.projectItemsAssembler.assemble(profile.filter);
         case "mixed":

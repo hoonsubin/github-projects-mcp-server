@@ -10,11 +10,10 @@
 // project-items-query-builder.ts. The fetcher is pure cursor iteration.
 // =============================================================================
 
-import { GitHubApiError } from "../errors.ts";
 import type { GitHubInfraContext } from "./infra-context.ts";
-import { ExecutionEngine, type PageExtractor } from "./execution-engine.ts";
+import { ExecutionEngine } from "./execution-engine.ts";
 import type { PlatformRequest } from "./assemblers/types.ts";
-import type { ProjectItemsResponse } from "./project-items-query-builder.ts";
+import { createProjectItemsExtractor } from "./assemblers/extractors.ts";
 import type {
   ItemFieldValue,
   OwnerType,
@@ -24,38 +23,6 @@ import type {
   ProjectItemPRContent,
   ProjectV2ItemRef,
 } from "../types.ts";
-
-// ── Page extractor for project items responses ───────────────────────────────
-
-/**
- * Navigate a ProjectItemsResponse to extract nodes, pageInfo, and totalCount.
- * Throws GitHubApiError when the project is not found — the engine propagates this.
- */
-const projectItemsExtractor = (
-  ownerType: OwnerType,
-  projectNumber: number,
-  login: string,
-): PageExtractor<ProjectItemsResponse> => {
-  return (response: ProjectItemsResponse) => {
-    const project = ownerType === "user"
-      ? response.user?.projectV2
-      : response.organization?.projectV2;
-    if (!project) {
-      throw new GitHubApiError(
-        `Project #${projectNumber} not found for ${ownerType} '${login}'.`,
-        {
-          code: "NOT_FOUND",
-          recovery: "Verify the project number and owner in backends.github config.",
-        },
-      );
-    }
-    return {
-      nodes: project.items?.nodes ?? [],
-      pageInfo: project.items?.pageInfo ?? { hasNextPage: false, endCursor: null },
-      totalCount: project.items?.totalCount ?? 0,
-    };
-  };
-};
 
 // ---------------------------------------------------------------------------
 // PaginatedProjectItemFetcher
@@ -115,7 +82,7 @@ export class PaginatedProjectItemFetcher {
   private async fetchAll(): Promise<void> {
     if (this._hasFetched) return;
 
-    const extractor = projectItemsExtractor(
+    const extractor = createProjectItemsExtractor(
       this.ownerType,
       this.projectNumber,
       this.login,

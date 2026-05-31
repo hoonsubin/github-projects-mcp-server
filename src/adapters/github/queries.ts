@@ -121,8 +121,10 @@ export const UPDATE_ITEM_FIELD_MUTATION = getQuery("UpdateItemField");
 
 // ── Item lookups (internal services) ──────────────────────────────────────────
 export const GET_PROJECT_ITEM_BY_ID_QUERY = getQuery("GetProjectItemById");
+export const GET_ISSUE_PROJECT_ITEM_QUERY = getQuery("GetIssueProjectItem");
 export const GET_ISSUE_BY_ID_QUERY = getQuery("GetIssueById");
 export const GET_BLOCKED_BY_QUERY = getQuery("GetBlockedBy");
+export const SEARCH_ISSUES_QUERY = getQuery("SearchIssues");
 
 // ── Repository and user lookups ────────────────────────────────────────────────
 export const GET_REPO_QUERY = getQuery("GetRepo");
