@@ -68,7 +68,7 @@ export const orientUseCase = async (
   // Pass the SprintRef "current" rather than the raw iteration ID so the adapter
   // can resolve it via semantic reference (resolveSprint performs title-based lookup).
   const { value: allEpics, warnings: epicWarnings } = await catchBackend(
-    () => backend.getEpics("current"),
+    () => backend.getEpics(),
   );
   warnings.push(...epicWarnings);
 

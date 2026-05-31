@@ -14,7 +14,7 @@ Supports two transports: **stdio** (Claude Desktop / Claude Code / LM Studio) an
 
 - A GitHub personal access token with **Projects: Read/Write** and **Issues: Read/Write** access
 - A GitHub Project (v2) set up and configured with your Scrum fields (Sprint, Status, Priority, etc.)
-- A `config.yml` for your project (see `.github/scrum/config.yml` in this repo as a reference)
+- A `config.yml` for your project (see [`.github/scrum/config.yml`](.github/scrum/config.yml) in this repo as a reference)
 
 ### Option A - Pre-built binary (no runtime required)
 
@@ -51,7 +51,15 @@ The compiled binary embeds a full JavaScript runtime. Download, make executable,
    node /path/to/server.mjs --config /path/to/.github/scrum/config.yml --root /path/to/project
    ```
 
-### Option C - Build from source
+### Option C - MCP Bundle (requires an MCPB-compatible client)
+
+`scrum-master-toolkit.mcpb` is a packaged MCP bundle that can be used with MCPB-compatible clients (e.g. Claude Code with the MCPB plugin).
+
+1. Go to the [Releases page](../../releases) and download `scrum-master-toolkit.mcpb`.
+
+2. Follow your client's instructions for loading `.mcpb` bundles.
+
+### Option D - Build from source
 
 Requires [Deno](https://deno.com) v2.x.
 
@@ -59,8 +67,7 @@ Requires [Deno](https://deno.com) v2.x.
 git clone https://github.com/hoonsubin/scrum-master-toolkit-server.git
 cd scrum-master-toolkit-server
 deno task compile          # builds ./mcp-server binary for your current platform
-deno task compile:all      # builds all five platform binaries into dist/
-deno task bundle:node      # builds dist/server.mjs (Node.js bundle)
+deno task build:all        # builds all five platform binaries + Node.js bundle + MCPB bundle into dist/
 ```
 
 ## Usage
@@ -110,9 +117,33 @@ Add one of the following blocks to your MCP client configuration (e.g. Claude De
 }
 ```
 
-**`--config`** - path to your project's `config.yml`. Supports
+**Development from source (Option D):**
+
+```json
+{
+  "mcpServers": {
+    "scrum-master": {
+      "command": "deno",
+      "args": [
+        "task",
+        "start"
+      ],
+      "env": {
+        "GITHUB_TOKEN": "ghp_your_token_here",
+        "MCP_TRANSPORT": "stdio"
+      }
+    }
+  }
+}
+```
+
+**`--config`** - path to your project's `config.yml`. Can also be set via the `SCRUM_CONFIG_PATH` environment variable.
+
+**`--root`** - (optional) path to the project root directory. Defaults to the current working directory.
 
 **`GITHUB_TOKEN`** - set in the `env` block or your shell environment. Referenced as `$GITHUB_TOKEN` in `backends.github.auth.token` in your `config.yml`.
+
+**`SCRUM_PLATFORM`** - (optional) backend platform key. Defaults to `"github"`. Set this to switch backend implementations when multi-backend support is added.
 
 ### Streamable HTTP mode (Open WebUI, Docker, homelab)
 
@@ -136,9 +167,52 @@ PORT=3000 \
 node /path/to/server.mjs --config /path/to/.github/scrum/config.yml --root /path/to/project
 ```
 
+### Docker
+
+The project includes a [`docker-compose.yml`](docker-compose.yml) for containerised deployment. The container exposes port 3030 by default.
+
+```bash
+cp .env.example .env
+# edit .env with your GITHUB_TOKEN and other values
+docker compose up -d
+```
+
+The server health check is available at `http://localhost:3030/health`. You can connect an Open WebUI instance by pointing it at `http://scrum-master-toolkit:3030/mcp`.
+
+## Deno Tasks
+
+All development workflows are defined as Deno tasks in [`deno.json`](deno.json). Run with `deno task <name>`.
+
+### Development
+
+| Task               | Description                                                 |
+| ------------------ | ----------------------------------------------------------- |
+| `dev`              | Start server in watch mode with hot-reload (`--watch`)      |
+| `start`            | Start server in production mode (stdio transport)           |
+| `test`             | Run all tests with `deno test`                              |
+| `audit`            | Generate architecture audit report                          |
+| `depcruise`        | Run dependency-cruiser (terminal output)                    |
+| `depcruise:json`   | Run dependency-cruiser and output JSON                      |
+| `depcruise:html`   | Run dependency-cruiser and output HTML report               |
+| `capture-fixtures` | Capture test fixtures from live GitHub API (requires token) |
+
+### Build
+
+| Task                  | Description                                                    |
+| --------------------- | -------------------------------------------------------------- |
+| `compile`             | Build single binary for current platform                       |
+| `compile:mac:arm64`   | Build macOS Apple Silicon binary → `dist/mcp-server-mac-arm64` |
+| `compile:mac:x64`     | Build macOS Intel binary → `dist/mcp-server-mac-x64`           |
+| `compile:linux:x64`   | Build Linux x64 binary → `dist/mcp-server-linux-x64`           |
+| `compile:linux:arm64` | Build Linux arm64 binary → `dist/mcp-server-linux-arm64`       |
+| `compile:win`         | Build Windows x64 binary → `dist/mcp-server-win.exe`           |
+| `bundle:node`         | Build Node.js bundle → `dist/server.mjs`                       |
+| `bundle:mcpb`         | Build MCPB bundle → `dist/scrum-master-toolkit.mcpb`           |
+| `build:all`           | Run all compile & bundle tasks (5 platforms + node + mcpb)     |
+
 ## Development Environment
 
-The project ships a fully configured devcontainer. All tools (Deno, Node, `gh` CLI, `act`, Docker-in-Docker, and the Python toolchain) are installed automatically. You do not need any of them on your host machine except Docker Desktop.
+The project ships a fully configured devcontainer. All tools (Deno, Node, `gh` CLI, `act`, Docker-in-Docker, and the Python toolchain) are installed automatically. You do not need any of them on your host machine except Docker.
 
 ### 1. Prerequisites (host machine)
 
@@ -158,8 +232,13 @@ Open `.env` and set at minimum:
 ```bash
 GITHUB_TOKEN=ghp_your_token_here   # needs Projects: Read/Write, Issues: Read/Write
 MCP_TRANSPORT=http                  # or stdio
+SCRUM_PLATFORM=github               # backend platform key
+SCRUM_CONFIG_PATH=.github/scrum/config.yml
 PORT=3000
+DEBUG=0
 SEARXNG_SECRET=change-me            # any random string, used by the SearXNG sidecar
+MEMPALACE_USER_NAME=your-name       # for mempalace AI memory tooling
+MEMPALACE_USER_EMAIL=user@email.com
 ```
 
 ### 3. Open in devcontainer
@@ -170,7 +249,7 @@ Open the project folder in VS Code, then when prompted click **Reopen in Contain
 Ctrl+Shift+P → Dev Containers: Reopen in Container
 ```
 
-VS Code will build the image and start all sidecar services (Qdrant, SearXNG, Valkey). The `postCreateCommand` runs automatically and installs:
+VS Code will build the image and start all sidecar services (Qdrant, SearXNG, Valkey). The [`postCreateCommand`](.devcontainer/post-create.sh) runs automatically and installs:
 
 - `uv` + Python 3.12 managed by uv
 - `mempalace` (AI memory tooling via uv)
@@ -183,49 +262,32 @@ First build takes a few minutes. Subsequent opens use the cached image and are n
 
 Run these inside the container terminal to confirm everything is wired up:
 
-````bash
+```bash
 deno --version
 gh --version
 docker info
 uv --version
 mempalace --version
+```
 
 ### 5. RooCode setup
 
-The repo ships three custom agent modes in `.roomodes`. After the devcontainer starts:
+The repo ships custom agent modes in [`.roomodes`](.roomodes). After the devcontainer starts:
 
 1. Open the RooCode panel in VS Code (the extension is pre-installed).
-2. Click the mode selector in the top-left of the panel - you should see the three project modes:
+2. Click the mode selector in the top-left of the panel - you should see the project modes:
    - **📋 Scrum Master** - board management, sprint ceremonies, backlog health
-   - **📝 User Story Creator** - delegate mode for authoring DoR-compliant stories
    - **🔍 Project Research** - read-only codebase analysis
-3. Connect the MCP server to RooCode. Add this to `.roo/mcp.json` inside the container (create it if it doesn't exist):
+3. The MCP servers are pre-configured in [`.roo/mcp.json`](.roo/mcp.json) and ready to use:
 
-```json
-{
-  "mcpServers": {
-    "scrum-master": {
-      "command": "deno",
-      "args": [
-        "run",
-        "--allow-env",
-        "--allow-net",
-        "--allow-read",
-        "src/index.ts",
-        "--config",
-        "/workspace/.github/scrum/config.yml",
-        "--root",
-        "/workspace"
-      ],
-      "env": {
-        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
-      }
-    }
-  }
-}
-````
+| Server               | Purpose                                               |
+| -------------------- | ----------------------------------------------------- |
+| `scrum-master`       | `scrum_*` tools (board management, sprint operations) |
+| `mempalace`          | AI memory / knowledge graph (`mempalace_*` tools)     |
+| `sequentialthinking` | Structured reasoning before complex decisions         |
+| `searxng`            | Web search for unfamiliar APIs or errors              |
 
-This runs the server directly from source so edits to `src/` take effect immediately without recompiling.
+The `scrum-master` server runs directly from source via `deno task start`, so edits to `src/` take effect immediately without recompiling.
 
 4. Select **📋 Scrum Master** mode and type a prompt - for example `show me the current sprint health` - to confirm the MCP tools are reachable.
 
@@ -239,7 +301,7 @@ This runs the server directly from source so edits to `src/` take effect immedia
 echo "GITHUB_TOKEN=ghp_your_token_here" > .secrets
 ```
 
-The `.actrc` at repo root already points `act` at the correct runner image and secrets file, so no extra flags are needed.
+The [`.actrc`](.actrc) at repo root already points `act` at the correct runner image and secrets file, so no extra flags are needed.
 
 **Run the pre-release workflow** (triggered by a push to `main`):
 
@@ -255,7 +317,43 @@ Under `act` the workflow automatically skips the four publish and prune steps th
 | Set up Deno               | Deno install and cache                                                              |
 | Derive version            | SHA-based version string format                                                     |
 | Patch version into source | `sed` regex against `src/server.ts`                                                 |
-| Compile all targets       | Cross-compilation for all five platforms                                            |
-| Bundle Node.js            | esbuild + deno-loader producing `dist/server.mjs`                                   |
-| Generate checksums        | `sha256sum` over `dist/` (binaries + bundle)                                        |
+| Compile all targets       | Cross-compilation for all five platforms + Node.js bundle + MCPB bundle             |
+| Generate checksums        | `sha256sum` over `dist/` (binaries + bundles)                                       |
 | Prune old pre-releases    | Pruning algorithm against 80 synthetic releases (mock + dry-run, no real API calls) |
+
+### 7. Running tests
+
+```bash
+deno task test
+```
+
+Tests live co-located with source files (`*.test.ts`) in `src/`. Use-cases are unit-tested with a stub `ProjectBackend` (pure TypeScript, no network). Adapter tests use fixture data captured via `deno task capture-fixtures`.
+
+## Project Structure
+
+```
+src/
+├── server.ts              # Composition root - transport wiring & bootstrap
+├── tools/                  # MCP tool registration (thin handlers, Zod validation)
+├── scrum/                  # Use-cases (pure computation, depend on ports.ts)
+├── domain/                 # Shared types, errors, rules (no dependencies)
+├── adapters/               # Backend implementations (GitHub adapter)
+│   └── github/
+│       ├── backend.ts      # Implements ProjectBackend port
+│       ├── operations.graphql  # All GitHub GraphQL queries
+│       └── internal/       # Adapter-internal services
+├── services/               # Cross-cutting: logger, error enrichment, pickDefined
+└── schemas/                # Zod input schemas (strict validation at handler boundary)
+
+scripts/                    # Build, audit, diagram generation, fixture capture
+.roo/                       # RooCode MCP config + agent skills + mode rules
+.github/                    # CI/CD workflows (deployment.yml, pr-check.yml)
+docs/                       # Architecture docs, audit reports
+plans/                      # Implementation plans and design documents
+```
+
+See [`docs/ARCHITECTURE.MD`](docs/ARCHITECTURE.MD) for the full domain model, tool surface, and layer contract.
+
+## License
+
+MIT

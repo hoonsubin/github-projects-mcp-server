@@ -23,14 +23,12 @@ export const buildItemFilterFn = (
   const hasKeys = filter.keys.length > 0;
   const keySet = hasKeys ? new Set(filter.keys) : null;
 
-  let sprintItemIds: Set<string> | null = null;
-  if (filter.sprint_ref !== null) {
-    const iterationId = resolveSprint(filter.sprint_ref, config);
-    if (iterationId === null) {
-      return () => false;
-    }
-    sprintItemIds = new Set(
-      allItems
+  const buildSprintItemIds = (
+    iterationId: string,
+    items: readonly ProjectItem[],
+  ): Set<string> =>
+    new Set(
+      items
         .filter((item) => {
           const fv = item.fieldValues.nodes.find(
             (v) => v.field?.id === config.live.fields.sprintFieldId,
@@ -39,12 +37,47 @@ export const buildItemFilterFn = (
         })
         .map((item) => item.id),
     );
+
+  let sprintItemIds: Set<string> | null = null;
+  if (filter.sprint_ref !== null) {
+    const iterationId = resolveSprint(filter.sprint_ref, config);
+    if (iterationId === null) {
+      return () => false;
+    }
+    sprintItemIds = buildSprintItemIds(iterationId, allItems);
+  } else if (filter.scope === "sprint" && config.live.iterations.active) {
+    sprintItemIds = buildSprintItemIds(
+      config.live.iterations.active.id,
+      allItems,
+    );
   }
 
   const typeSet = filter.types.length > 0 ? new Set(filter.types) : null;
   const statusSet = filter.statuses.length > 0 ? new Set(filter.statuses) : null;
   const labelList = filter.labels.length > 0 ? filter.labels : null;
   const searchQ = filter.search ? filter.search.toLowerCase() : null;
+
+  // Build reverse map: display name → canonical key, for terminal-status lookup.
+  const displayToCanonical = new Map<string, string>();
+  for (
+    const [canonical, display] of Object.entries(
+      config.ghConfig.status_display ?? {},
+    )
+  ) {
+    displayToCanonical.set(display, canonical);
+  }
+
+  // Pre-compute set of terminal status display names for backlog scope exclusion.
+  const terminalStatuses = new Set<string>();
+  for (
+    const [canonical, semantics] of Object.entries(
+      config.scrumConfig.scrum.status,
+    )
+  ) {
+    if (semantics.terminal && config.ghConfig.status_display[canonical]) {
+      terminalStatuses.add(config.ghConfig.status_display[canonical]);
+    }
+  }
 
   return (story: Story): boolean => {
     if (keySet) {
@@ -54,6 +87,16 @@ export const buildItemFilterFn = (
     if (!hasKeys) {
       if (filter.scope === "sprint" && story.sprint === null) return false;
       if (filter.scope === "backlog" && story.sprint !== null) return false;
+      // When no explicit statuses filter is provided, exclude terminal-status
+      // items from backlog scope to avoid contaminating grooming queries.
+      if (
+        filter.scope === "backlog" &&
+        statusSet === null &&
+        story.status !== null &&
+        terminalStatuses.has(story.status)
+      ) {
+        return false;
+      }
     }
 
     if (sprintItemIds !== null && !sprintItemIds.has(story.ref.id)) return false;

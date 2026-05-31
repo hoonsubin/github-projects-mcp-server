@@ -70,7 +70,7 @@ export class DirectLookupAssembler {
       for (const repo of tracked_repos) {
         const response = await this.gh.graphql<GetIssueProjectItemResponse>(
           GET_ISSUE_PROJECT_ITEM_QUERY,
-          { owner, repo, number, projectNumber: project_number },
+          { owner, repo, number },
         );
 
         const nodes = response.repository?.issue?.projectItems?.nodes ?? [];
