@@ -131,7 +131,7 @@ export class GitHubAdapterFactory implements AdapterFactory {
 
     const labelResolver = new LabelResolver(ctx);
 
-    const userMilestoneResolver = new UserMilestoneResolver(ctx, labelResolver);
+    const userMilestoneResolver = new UserMilestoneResolver(ctx);
 
     const fieldValueMutator = new FieldValueMutator(ctx, userMilestoneResolver);
 
@@ -152,14 +152,36 @@ export class GitHubAdapterFactory implements AdapterFactory {
 
     const impedimentService = new ImpedimentService(ctx, labelResolver, storyMutationService);
 
+    // ── Assembler pipeline ────────────────────────────────────────────────
+    const executionEngine = new ExecutionEngine(ghClient);
+    const resultNormalizer = new ResultNormalizer(bootState);
+    const projectItemsQueryBuilder = new ProjectItemsQueryBuilder(resolvedGhConfig.owner_type);
+
+    const projectItemsAssembler = new ProjectItemsAssembler(
+      executionEngine,
+      resultNormalizer,
+      projectItemsQueryBuilder,
+      bootState,
+    );
+    const directLookupAssembler = new DirectLookupAssembler(
+      ghClient,
+      resultNormalizer,
+      bootState,
+    );
+    const searchApiAssembler = new SearchApiAssembler(
+      executionEngine,
+      resultNormalizer,
+      projectItemsAssembler,
+      bootState,
+    );
+    const mixedAssembler = new MixedAssembler(projectItemsAssembler);
+
     // ── Excluded from ctx pattern (different dep shapes) ─────────────────────
-    // EpicService: uses tracked_repos (full list), not primaryRepo
-    // ConfigReloader: needs projectRoot + configDesc — process-startup values
     const epicService = new EpicService(
       ghClient,
       owner,
       resolvedGhConfig.tracked_repos,
-      storyQueryService,
+      projectItemsAssembler,
     );
 
     const configReloader = new ConfigReloader(
@@ -184,30 +206,6 @@ export class GitHubAdapterFactory implements AdapterFactory {
       storyQueryService,
       impedimentService,
     );
-
-    // ── Assembler pipeline (Phase 4b/4c: engine → normalizer) ─────────────
-    const executionEngine = new ExecutionEngine(ghClient);
-    const resultNormalizer = new ResultNormalizer(bootState);
-    const projectItemsQueryBuilder = new ProjectItemsQueryBuilder(resolvedGhConfig.owner_type);
-
-    const projectItemsAssembler = new ProjectItemsAssembler(
-      executionEngine,
-      resultNormalizer,
-      projectItemsQueryBuilder,
-      bootState,
-    );
-    const directLookupAssembler = new DirectLookupAssembler(
-      ghClient,
-      resultNormalizer,
-      bootState,
-    );
-    const searchApiAssembler = new SearchApiAssembler(
-      executionEngine,
-      resultNormalizer,
-      projectItemsAssembler,
-      bootState,
-    );
-    const mixedAssembler = new MixedAssembler(projectItemsAssembler);
 
     // ── File reader ──────────────────────────────────────────────────────
 

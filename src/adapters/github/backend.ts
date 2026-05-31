@@ -60,14 +60,9 @@ import type {
 
 /**
  * All dependencies needed to construct a GitHubProjectBackend.
- * AnalyticsService and BoardHealthService wrap the lower-level services
- * (BurndownCalculator, SprintHistoryService) behind the new port interfaces.
  *
- * Phase 3: adds assembler instances for the filter-strategy-routing pipeline.
- *   directLookupAssembler — keys-only filter (issue number lookup)
- *   projectItemsAssembler — board-field-based queries
- *   searchApiAssembler    — shell (empty result, implemented in Phase 4b)
- *   mixedAssembler        — delegates to projectItemsAssembler
+ * Item search flows through assembler instances (direct lookup, project items,
+ * search API, mixed) wired to ExecutionEngine + ResultNormalizer.
  */
 export interface GitHubBackendDependencies {
   readonly labelResolver: LabelResolver;
@@ -122,7 +117,10 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
       include_dependencies: false,
       limit: 1,
     });
-    if (result.items.length === 0) {
+    if (!result.value) {
+      throw new Error("findItems returned null value without throwing");
+    }
+    if (result.value.items.length === 0) {
       throw new GitHubApiError(
         `Story #${ref.number} not found on the project board.`,
         {
@@ -133,7 +131,7 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
         },
       );
     }
-    return { id: result.items[0].ref.id };
+    return { id: result.value.items[0].ref.id };
   }
 
   // ── Platform state ────────────────────────────────────────────────────────
@@ -247,12 +245,12 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
 
   // ── Port methods (P7 - real implementations) ──────────────────────────────
 
-  async findItems(filter: ResolvedItemFilter): Promise<ItemSearchResult> {
+  async findItems(filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResult>> {
     const profile = classifyFilter(filter);
-    const { items, totalCount, scopeSummary, dependencyMap, warnings: _warnings } = await (() => {
+    const { items, totalCount, scopeSummary, dependencyMap, warnings } = await (() => {
       switch (profile.kind) {
         case "direct_lookup":
-          return this.deps.directLookupAssembler.assemble(profile);
+          return this.deps.directLookupAssembler.assemble(profile, filter);
         case "search_api":
           return this.deps.searchApiAssembler.assemble(profile, filter);
         case "project_items":
@@ -265,13 +263,16 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
     })();
 
     return {
-      items,
-      total_count: totalCount,
-      scope_summary: {
-        sprint_count: scopeSummary.sprint_count,
-        backlog_count: scopeSummary.backlog_count,
+      value: {
+        items,
+        total_count: totalCount,
+        scope_summary: {
+          sprint_count: scopeSummary.sprint_count,
+          backlog_count: scopeSummary.backlog_count,
+        },
+        dependency_map: dependencyMap,
       },
-      dependency_map: dependencyMap,
+      warnings: [...warnings],
     };
   }
 

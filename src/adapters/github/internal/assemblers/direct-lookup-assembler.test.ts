@@ -58,10 +58,24 @@ Deno.test({
       config,
     );
 
-    const output = await assembler.assemble({
-      kind: "direct_lookup",
-      keys: [String(sampleItem.content.number)],
-    });
+    const output = await assembler.assemble(
+      { kind: "direct_lookup", keys: [String(sampleItem.content.number)] },
+      {
+        scope: "all",
+        keys: [String(sampleItem.content.number)],
+        search: "",
+        types: [],
+        statuses: [],
+        priority: "",
+        epic_id: "",
+        labels: [],
+        assignee: "",
+        estimated: undefined,
+        sprint_ref: null,
+        include_dependencies: false,
+        limit: 50,
+      },
+    );
 
     assertEquals(output.items.length, 1);
     assertEquals(output.totalCount, 1);
@@ -85,10 +99,24 @@ Deno.test({
       config,
     );
 
-    const output = await assembler.assemble({
-      kind: "direct_lookup",
-      keys: ["999999"],
-    });
+    const output = await assembler.assemble(
+      { kind: "direct_lookup", keys: ["999999"] },
+      {
+        scope: "all",
+        keys: ["999999"],
+        search: "",
+        types: [],
+        statuses: [],
+        priority: "",
+        epic_id: "",
+        labels: [],
+        assignee: "",
+        estimated: undefined,
+        sprint_ref: null,
+        include_dependencies: false,
+        limit: 50,
+      },
+    );
 
     assertEquals(output.items.length, 0);
     assertEquals(output.totalCount, 0);

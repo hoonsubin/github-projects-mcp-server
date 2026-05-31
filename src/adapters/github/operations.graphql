@@ -260,44 +260,6 @@ query GetOrgProjectFields($login: String!, $number: Int!) {
 # QUERIES - Items
 # ══════════════════════════════════════════════════════════════════════════════
 
-# ── GetUser/OrgProjectItems ────────────────────────────────────────────────────
-# AGENT: Returns all non-archived board items with field values and content.
-# Filter by sprint iterationId (from GetUserProjectFields) to isolate sprint items.
-# Items with no iteration field value are in the backlog.
-# Paginate via pageInfo.hasNextPage / pageInfo.endCursor.
-
-query GetUserProjectItems($login: String!, $number: Int!, $first: Int!, $after: String) {
-  user(login: $login) {
-    projectV2(number: $number) {
-      items(first: $first, after: $after) {
-        totalCount
-        pageInfo { hasNextPage endCursor }
-        nodes {
-          id type createdAt updatedAt isArchived
-          ...ItemContent
-          ...ItemFieldValues
-        }
-      }
-    }
-  }
-}
-
-query GetOrgProjectItems($login: String!, $number: Int!, $first: Int!, $after: String) {
-  organization(login: $login) {
-    projectV2(number: $number) {
-      items(first: $first, after: $after) {
-        totalCount
-        pageInfo { hasNextPage endCursor }
-        nodes {
-          id type createdAt updatedAt isArchived
-          ...ItemContent
-          ...ItemFieldValues
-        }
-      }
-    }
-  }
-}
-
 # ── GetItemFields ──────────────────────────────────────────────────────────────
 # Fetch field values for a single project item by its node ID.
 # Used internally after resolving a StoryRef to read board field assignments.

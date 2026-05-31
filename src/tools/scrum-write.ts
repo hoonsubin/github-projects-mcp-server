@@ -288,21 +288,32 @@ export const registerScrumWriteTools = (
             '"all" is not valid for plan_sprint - use "current", "next", null, or an explicit sprint name.',
           );
         }
-        interface BackendWithSprintStories {
-          getSprintStories(
-            s: typeof params.sprint,
-          ): Promise<{ stories: Array<{ ref: { id: string } }> }>;
+        const { value: sprintItems } = await backend.findItems({
+          scope: "sprint",
+          keys: [],
+          search: "",
+          types: [],
+          statuses: [],
+          priority: "",
+          epic_id: "",
+          labels: [],
+          assignee: "",
+          estimated: undefined,
+          sprint_ref: params.sprint,
+          include_dependencies: false,
+          limit: 500,
+        });
+        if (!sprintItems) {
+          throw new Error("findItems returned null value without throwing");
         }
-        const { stories: currentStories } = await (backend as unknown as BackendWithSprintStories)
-          .getSprintStories(params.sprint);
-        for (const story of currentStories) {
+        for (const item of sprintItems.items) {
           const { warnings: w } = await catchBackend(
-            () => backend.setField(story.ref, "sprint", null),
+            () => backend.setField(item.ref, "sprint", null),
           );
           if (w.length > 0) {
-            for (const reason of w) skipped.push({ ref: story.ref, reason });
+            for (const reason of w) skipped.push({ ref: item.ref, reason });
           } else {
-            assigned.push(story.ref);
+            assigned.push(item.ref);
           }
         }
       }

@@ -120,7 +120,7 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
    * Unified item search across all PBIs.
    * Replaces getSprintStories() and getBacklogStories().
    */
-  abstract findItems(filter: ResolvedItemFilter): Promise<ItemSearchResult>;
+  abstract findItems(filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResult>>;
 
   /**
    * Unified sprint analytics (burndown + history).

@@ -349,9 +349,9 @@ export const resolveSprintGoal = (_iter: IterationEntry): never =>
  * Second-pass resolver: fills in ref.id for dependency entries by matching
  * issue node IDs or issue numbers against in-memory project items.
  *
- * Called at the end of getBacklogStories() and getSprintStories() - both of which
- * have the full list of ProjectItems already in memory. Not called from
- * getStoryDetail() - ref.id stays as issue node ID in that context.
+ * Called after mapping stories from project items when the full item set is
+ * available in memory. Not called from getStoryDetail() — ref.id stays as
+ * issue node ID in that context.
  */
 export const resolveDependencyRefs = (
   stories: StoryBase[],

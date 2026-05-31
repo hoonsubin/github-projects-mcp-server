@@ -2,17 +2,11 @@
 // src/scrum/find-items.ts - findItemsUseCase
 //
 // Unified item search across all PBIs. Delegates to FindItemsPort.findItems().
-// The adapter must implement findItems() (P7) before this returns real data;
-// until then the adapter stub will throw.
 // =============================================================================
 
 import type { FindItemsPort, ItemFilter, ResolvedItemFilter } from "./ports.ts";
 import type { ItemSearchResult, UseCaseResult } from "../domain/types.ts";
 
-/**
- * Apply defaults to an ItemFilter, producing a ResolvedItemFilter
- * suitable for passing through the port boundary to the adapter.
- */
 const resolveFilter = (filter: ItemFilter): ResolvedItemFilter => ({
   scope: filter.scope ?? "all",
   keys: filter.keys ?? [],
@@ -29,18 +23,15 @@ const resolveFilter = (filter: ItemFilter): ResolvedItemFilter => ({
   limit: filter.limit ?? 50,
 });
 
-/**
- * Find items matching the given filter.
- *
- * This use-case is a thin bridge - it resolves defaults on the input filter
- * and delegates to the adapter. The adapter is responsible for translating
- * the filter into platform-specific queries (GraphQL, REST, etc.).
- */
+/** Find items matching the given filter via the adapter assembler pipeline. */
 export const findItemsUseCase = async (
   backend: FindItemsPort,
   filter: ItemFilter,
 ): Promise<UseCaseResult<ItemSearchResult>> => {
   const resolved = resolveFilter(filter);
-  const data = await backend.findItems(resolved);
-  return { data, warnings: [] };
+  const { value, warnings } = await backend.findItems(resolved);
+  if (!value) {
+    throw new Error("findItems returned null value without throwing");
+  }
+  return { data: value, warnings };
 };

@@ -2,7 +2,7 @@
 // src/adapters/github/internal/item-filter.ts
 //
 // Pure client-side filter predicate for findItems — extracted from
-// StoryQueryService.findItems() for use by the assembler → normalizer pipeline.
+// Client-side post-filter predicate for the assembler → normalizer pipeline.
 // Filter order matches the original sequential chain (AND semantics).
 // =============================================================================
 
@@ -13,8 +13,7 @@ import type { Story } from "../../../domain/types.ts";
 import { resolveSprint } from "./resolver.ts";
 
 /**
- * Build a post-filter predicate that replicates StoryQueryService.findItems()
- * client-side filtering. Requires allItems for sprint_ref resolution.
+ * Build a post-filter predicate matching the findItems filter chain order.
  */
 export const buildItemFilterFn = (
   filter: ResolvedItemFilter,

@@ -10,7 +10,6 @@
 import { assert, assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { UserMilestoneResolver } from "./user-milestone-resolver.ts";
 import { createGhSpy, type GitHubClientSpy, makeCtx } from "./_test_utils.ts";
-import type { RepoNodeIdProvider } from "./label-resolver.ts";
 import { GitHubApiError } from "../errors.ts";
 import userNodeIds from "./__fixtures__/user-node-ids.json" with { type: "json" };
 
@@ -44,20 +43,11 @@ assertEquals(USER_NULL.user, null, "USER_NULL fixture must have user: null");
 // Service factory
 // =============================================================================
 
-interface CreateResolverOptions {
-  repoNodeId?: string;
-}
-
-const createResolver = (options: CreateResolverOptions = {}) => {
+const createResolver = () => {
   const gh = createGhSpy();
-  const repoNodeIdProvider: RepoNodeIdProvider = {
-    fetchRepoNodeId(): Promise<string> {
-      return Promise.resolve(options.repoNodeId ?? "R_repo1");
-    },
-  };
   const ctx = makeCtx(gh);
-  const resolver = new UserMilestoneResolver(ctx, repoNodeIdProvider);
-  return { resolver, gh, repoNodeIdProvider };
+  const resolver = new UserMilestoneResolver(ctx);
+  return { resolver, gh };
 };
 
 // =============================================================================

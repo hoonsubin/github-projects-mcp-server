@@ -12,7 +12,6 @@ import { FieldValueMutator } from "./field-value-mutator.ts";
 import { UserMilestoneResolver } from "./user-milestone-resolver.ts";
 import { createGhSpy, makeConfig, makeCtx } from "./_test_utils.ts";
 import type { GitHubClientSpy } from "./_test_utils.ts";
-import type { RepoNodeIdProvider } from "./label-resolver.ts";
 import type { GitHubBootState } from "../bootstrap.ts";
 import { GitHubApiError } from "../errors.ts";
 import type { SprintRef } from "../../../domain/types.ts";
@@ -97,13 +96,7 @@ const createMutator = (options: CreateMutatorOptions = {}) => {
   const config = makeConfig(options.configOverrides ?? {});
   const ctx = makeCtx(gh, options.configOverrides ?? {});
 
-  const repoNodeIdProvider: RepoNodeIdProvider = {
-    fetchRepoNodeId(): Promise<string> {
-      return Promise.resolve("R_repo1");
-    },
-  };
-
-  const userResolver = new UserMilestoneResolver(ctx, repoNodeIdProvider);
+  const userResolver = new UserMilestoneResolver(ctx);
 
   const mutator = new FieldValueMutator(ctx, userResolver);
 
