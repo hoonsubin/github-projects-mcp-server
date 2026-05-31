@@ -30,5 +30,8 @@ export const findItemsUseCase = async (
 ): Promise<UseCaseResult<ItemSearchResult>> => {
   const resolved = resolveFilter(filter);
   const { value, warnings } = await backend.findItems(resolved);
+  if (!value) {
+    throw new Error("findItems returned null value without throwing");
+  }
   return { data: value, warnings };
 };

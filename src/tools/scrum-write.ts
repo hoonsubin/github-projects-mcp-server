@@ -303,6 +303,9 @@ export const registerScrumWriteTools = (
           include_dependencies: false,
           limit: 500,
         });
+        if (!sprintItems) {
+          throw new Error("findItems returned null value without throwing");
+        }
         for (const item of sprintItems.items) {
           const { warnings: w } = await catchBackend(
             () => backend.setField(item.ref, "sprint", null),

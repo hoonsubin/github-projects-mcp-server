@@ -117,6 +117,9 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
       include_dependencies: false,
       limit: 1,
     });
+    if (!result.value) {
+      throw new Error("findItems returned null value without throwing");
+    }
     if (result.value.items.length === 0) {
       throw new GitHubApiError(
         `Story #${ref.number} not found on the project board.`,
