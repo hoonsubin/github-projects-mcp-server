@@ -162,8 +162,7 @@ const resolveFieldIds = (
       {
         code: "FIELD_NOT_CONFIGURED",
         statusCode: 400,
-        recovery:
-          `Set backends.github.field_mapping.sprint in ${configDesc} to the exact ` +
+        recovery: `Set backends.github.field_mapping.sprint in ${configDesc} to the exact ` +
           "Iteration field name used on the project board, then reload the backend.",
         context: { projectNumber, configuredFieldName: mapping.sprint },
       },
@@ -176,8 +175,7 @@ const resolveFieldIds = (
       {
         code: "FIELD_NOT_CONFIGURED",
         statusCode: 400,
-        recovery:
-          `Set backends.github.field_mapping.status in ${configDesc} to the exact ` +
+        recovery: `Set backends.github.field_mapping.status in ${configDesc} to the exact ` +
           "single-select status field name used on the project board, then reload the backend.",
         context: { projectNumber, configuredFieldName: mapping.status },
       },
@@ -331,8 +329,7 @@ export const bootstrapGitHub = async (params: BootstrapParams): Promise<GitHubLi
       {
         code: "NOT_FOUND",
         statusCode: 404,
-        recovery:
-          "Verify backends.github.owner, owner_type, and project_number in config, " +
+        recovery: "Verify backends.github.owner, owner_type, and project_number in config, " +
           "and confirm the token can read this project.",
         context: { owner, ownerType, projectNumber },
       },
@@ -398,8 +395,7 @@ export const bootstrapGitHub = async (params: BootstrapParams): Promise<GitHubLi
           {
             code: "OPTION_NOT_FOUND",
             statusCode: 400,
-            recovery:
-              "Align type_mapping display names with the project Type field options, " +
+            recovery: "Align type_mapping display names with the project Type field options, " +
               "then reload the backend.",
             context: {
               projectNumber,
