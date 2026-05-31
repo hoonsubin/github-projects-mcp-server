@@ -40,7 +40,7 @@ const NODE_LABEL = (source: string): string => {
 };
 
 export const renderMermaid = (result: LayerGraphResult): string => {
-  const lines: string[] = ["```mermaid", "flowchart TB", ""];
+  const lines: string[] = ["```mermaid", "flowchart LR", ""];
 
   // Group nodes by layer
   const layerNodes = new Map<LayerName, string[]>();

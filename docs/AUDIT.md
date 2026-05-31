@@ -1,7 +1,7 @@
 # Architecture Audit Report
 
-**Generated:** 2026-05-31T16:40:00.918Z
-**Commit:** `7fae974`
+**Generated:** 2026-05-31T16:45:35.294Z
+**Commit:** `e2a191e`
 **Source directory:** `./src`
 
 ## 1. Architecture Compliance
@@ -22,7 +22,7 @@ Modules scanned: **76**
 ## 2. Layer Dependency Graph
 
 ```mermaid
-flowchart TB
+flowchart LR
 
   subgraph entrypoint["Entry Point Layer"]
     src_server_ts["src/server.ts"]
