@@ -349,7 +349,7 @@ query GetIssueDetails($issueId: ID!) {
 # Direct lookup: resolve an issue number to its project item in a specific project.
 # Used by DirectLookupAssembler — avoids a full board scan for keys-only filters.
 
-query GetIssueProjectItem($owner: String!, $repo: String!, $number: Int!, $projectNumber: Int!) {
+query GetIssueProjectItem($owner: String!, $repo: String!, $number: Int!) {
   repository(owner: $owner, name: $repo) {
     issue(number: $number) {
       id

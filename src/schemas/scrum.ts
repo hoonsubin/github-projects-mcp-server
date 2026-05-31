@@ -301,7 +301,7 @@ export const UpdateStorySchema = z
           "Call scrum_get_item_detail first to read current assignees if you want to add without removing.",
       ),
     epic: EpicRefSchema
-      .or(z.null())
+      .nullable()
       .optional()
       .describe(
         "Epic reference ({ id: string }) to assign to, or null to detach from the current epic. " +
