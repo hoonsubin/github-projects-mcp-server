@@ -80,9 +80,7 @@ Add one of the following blocks to your MCP client configuration (e.g. Claude De
       "command": "/absolute/path/to/mcp-server-mac-arm64",
       "args": [
         "--config",
-        "/absolute/path/to/your-project/.github/scrum/config.yml",
-        "--root",
-        "/absolute/path/to/your-project"
+        "/absolute/path/to/your-project/.github/scrum/config.yml"
       ],
       "env": {
         "GITHUB_TOKEN": "ghp_your_token_here"
@@ -102,9 +100,7 @@ Add one of the following blocks to your MCP client configuration (e.g. Claude De
       "args": [
         "/absolute/path/to/server.mjs",
         "--config",
-        "/absolute/path/to/your-project/.github/scrum/config.yml",
-        "--root",
-        "/absolute/path/to/your-project"
+        "/absolute/path/to/your-project/.github/scrum/config.yml"
       ],
       "env": {
         "GITHUB_TOKEN": "ghp_your_token_here"
@@ -114,9 +110,7 @@ Add one of the following blocks to your MCP client configuration (e.g. Claude De
 }
 ```
 
-**`--config`** - path to your project's `config.yml`. Defaults to `.github/scrum/config.yml` relative to the working directory.
-
-**`--root`** - the project root, used to resolve repo-relative template paths declared in `config.yml`. Defaults to `cwd`. Required whenever the binary or bundle is launched from outside the project directory - which is always the case when an MCP client spawns it.
+**`--config`** - path to your project's `config.yml`. Supports
 
 **`GITHUB_TOKEN`** - set in the `env` block or your shell environment. Referenced as `$GITHUB_TOKEN` in `backends.github.auth.token` in your `config.yml`.
 
