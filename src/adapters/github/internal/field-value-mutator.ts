@@ -199,8 +199,7 @@ export class FieldValueMutator {
       throw new GitHubApiError("Type cannot be cleared when using organization issue types.", {
         code: "PLATFORM_CONSTRAINT",
         statusCode: 400,
-        recovery:
-          "Organization issue types require an explicit type assignment. " +
+        recovery: "Organization issue types require an explicit type assignment. " +
           "Set a valid type key instead of null.",
       });
     }
@@ -231,7 +230,9 @@ export class FieldValueMutator {
             "then re-run the server so config-loader can pick it up.",
         });
       }
-      await this.ctx.gh.graphql<{ updateProjectV2ItemFieldValue: { projectV2Item: { id: string } } }>(
+      await this.ctx.gh.graphql<
+        { updateProjectV2ItemFieldValue: { projectV2Item: { id: string } } }
+      >(
         UPDATE_ITEM_FIELD_MUTATION,
         {
           input: {
@@ -281,8 +282,7 @@ export class FieldValueMutator {
       throw new GitHubApiError(`Project item "${itemId}" has no content.`, {
         code: "NOT_FOUND",
         statusCode: 404,
-        recovery:
-          "The item may have been deleted from the project. Refresh items and retry.",
+        recovery: "The item may have been deleted from the project. Refresh items and retry.",
         context: { itemId },
       });
     }

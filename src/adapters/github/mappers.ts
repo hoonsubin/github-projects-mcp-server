@@ -251,7 +251,11 @@ export const buildEnrichedStory = (
   fieldValueNodes: FieldValueNode[],
   config: GitHubBootState,
 ): IssueStory => {
-  const boardFields = extractBoardFields(fieldValueNodes, config, issueNode.issueType?.name ?? null);
+  const boardFields = extractBoardFields(
+    fieldValueNodes,
+    config,
+    issueNode.issueType?.name ?? null,
+  );
   // Type comes from either the board field or org issue type, depending on bootstrap typeResolution.
   // All repo labels are passed through unfiltered.
   const labels: string[] = issueNode.labels?.nodes.map((l: { name: string }) => l.name) ?? [];

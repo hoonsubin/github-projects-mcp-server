@@ -323,7 +323,12 @@ export const bootstrapGitHub = async (params: BootstrapParams): Promise<GitHubLi
   }
 
   // Resolve field IDs, option maps, and iterations from live field metadata.
-  const resolvedFieldIds = resolveFieldIds(fieldNodes, ghConfig.field_mapping, projectNumber, configDesc);
+  const resolvedFieldIds = resolveFieldIds(
+    fieldNodes,
+    ghConfig.field_mapping,
+    projectNumber,
+    configDesc,
+  );
   const {
     sprintFieldId,
     statusFieldId,
@@ -366,7 +371,8 @@ export const bootstrapGitHub = async (params: BootstrapParams): Promise<GitHubLi
       GET_ORG_ISSUE_TYPES_BOOTSTRAP_QUERY,
       { login: owner },
     );
-    const orgIssueTypes = response.organization?.issueTypes.nodes.filter((it) => it.isEnabled) ?? [];
+    const orgIssueTypes = response.organization?.issueTypes.nodes.filter((it) => it.isEnabled) ??
+      [];
     typeOptions = {};
     for (const [canonicalKey, mapping] of Object.entries(ghConfig.type_mapping ?? {})) {
       const expected = (mapping.display ?? canonicalKey).toLowerCase();

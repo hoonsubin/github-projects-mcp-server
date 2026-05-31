@@ -332,7 +332,10 @@ export class StoryMutationService {
         return this.fieldValueMutator.setFieldPriority(itemId, value as string | null);
       case "type":
         // Org issue-type writes require a real Issue; convert draft content first.
-        if (this.ctx.config.live.typeResolution.source === "org_issue_type" && resolved.issueId === null) {
+        if (
+          this.ctx.config.live.typeResolution.source === "org_issue_type" &&
+          resolved.issueId === null
+        ) {
           await this.convertDraftToIssue(resolved.itemId);
         }
         return this.fieldValueMutator.setFieldType(itemId, value as string | null);
