@@ -14,7 +14,7 @@ import type { GitHubBackendConfig } from "./types.ts";
 import type { ScrumConfig } from "../../domain/config.ts";
 import type { IterationEntry } from "../../domain/types.ts";
 import type { ContentLocation } from "../../domain/content-location.ts";
-import { resolveLocation } from "../../scrum/resolve-location.ts";
+import { resolveLocation, SUPPORTED_TEMPLATE_EXTENSIONS } from "../../scrum/resolve-location.ts";
 import { GitHubApiError } from "./errors.ts";
 import {
   GET_ORG_ISSUE_TYPES_BOOTSTRAP_QUERY,
@@ -330,7 +330,9 @@ export const bootstrapGitHub = async (params: BootstrapParams): Promise<GitHubLi
         code: "NOT_FOUND",
         statusCode: 404,
         recovery: "Verify backends.github.owner, owner_type, and project_number in config, " +
-          "and confirm the token can read this project.",
+          "and confirm the token can read this project. " +
+          "Make sure owner_type matches the project's owner type — " +
+          'set to "user" for user-owned projects or "org" for organization-owned projects.',
         context: { owner, ownerType, projectNumber },
       },
     );
@@ -474,7 +476,11 @@ export const bootstrapGitHub = async (params: BootstrapParams): Promise<GitHubLi
   if (ghConfig.type_mapping) {
     for (const [key, entry] of Object.entries(ghConfig.type_mapping)) {
       if (entry.template) {
-        typeTemplatePaths[key] = resolveLocation(entry.template, projectRoot);
+        typeTemplatePaths[key] = resolveLocation(
+          entry.template,
+          projectRoot,
+          SUPPORTED_TEMPLATE_EXTENSIONS,
+        );
       }
     }
   }

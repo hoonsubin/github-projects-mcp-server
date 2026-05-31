@@ -35,3 +35,27 @@ export abstract class AdapterError extends Error {
     this.context = context;
   }
 }
+
+/** Error codes for use-case layer ConfigError throws. */
+export type UseCaseErrorCode =
+  | "FETCH_FAILED"
+  | "NETWORK_ERROR"
+  | "HTTP_ERROR"
+  | "HTML_CONTENT"
+  | "YAML_PARSE_ERROR"
+  | "MISSING_SECTION"
+  | "UNSUPPORTED_EXTENSION"
+  | "UNKNOWN_PLATFORM";
+
+/** Config loading failure with machine-readable code and human-readable recovery hint. */
+export class ConfigError extends Error {
+  readonly code: UseCaseErrorCode;
+  readonly recovery: string;
+
+  constructor(message: string, code: UseCaseErrorCode, recovery: string) {
+    super(message);
+    this.name = "ConfigError";
+    this.code = code;
+    this.recovery = recovery;
+  }
+}

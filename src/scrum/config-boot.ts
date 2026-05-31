@@ -15,6 +15,8 @@ import { fetchContent } from "./fetch-location.ts";
 import { describeContentLocation } from "../domain/content-location.ts";
 import type { ContentLocation } from "../domain/content-location.ts";
 import type { ScrumConfig } from "../domain/config.ts";
+import { ConfigError } from "../domain/errors.ts";
+import { findRewriter } from "./url-rewriters.ts";
 
 export interface BootConfig {
   readonly scrumConfig: ScrumConfig;
@@ -36,11 +38,37 @@ export const loadScrumConfig = async (
   try {
     rawYml = await fetchContent(configLocation);
   } catch (err) {
-    throw new Error(
-      `Cannot read config at '${configDesc}': ${
-        err instanceof Error ? err.message : String(err)
-      }. ` +
-        `Ensure the server is started from the project root, or pass --config <path>.`,
+    const errMessage = err instanceof Error ? err.message : String(err);
+    const recovery = configLocation.kind === "file"
+      ? `Verify the file exists at: ${configLocation.path}`
+      : configLocation.kind === "url"
+      ? `Verify the URL is accessible: ${configLocation.url.toString()}`
+      : `Ensure the server is started from the project root, or pass --config <path>.`;
+
+    throw new ConfigError(
+      `Cannot read config at '${configDesc}': ${errMessage}.`,
+      "FETCH_FAILED",
+      recovery,
+    );
+  }
+
+  // Detect HTML content before YAML parsing. GitHub blob URLs and other
+  // UI pages return HTML instead of raw YAML. Each registered UrlRewriter
+  // contributes a platform-specific recovery hint.
+  if (rawYml.trimStart().startsWith("<")) {
+    const recoveryActions: string[] = [];
+    if (configLocation.kind === "url") {
+      const rewriter = findRewriter(configLocation.url);
+      if (rewriter) {
+        recoveryActions.push(rewriter.recoveryHint(configLocation.url));
+      }
+    }
+    throw new ConfigError(
+      `The URL at ${configDesc} returned HTML instead of expected YAML content.`,
+      "HTML_CONTENT",
+      recoveryActions.length > 0
+        ? recoveryActions.join(" ")
+        : "Use a raw content URL instead of a UI page URL.",
     );
   }
 
@@ -48,19 +76,34 @@ export const loadScrumConfig = async (
   try {
     parsed = parse(rawYml) as Record<string, unknown>;
   } catch (err) {
-    throw new Error(
-      `Failed to parse ${configDesc}: ${err instanceof Error ? err.message : String(err)}`,
+    const parseError = err instanceof Error ? err.message : String(err);
+    throw new ConfigError(
+      `Failed to parse ${configDesc}: ${parseError}`,
+      "YAML_PARSE_ERROR",
+      "Check that the file contains valid YAML syntax.",
     );
   }
 
   if (!parsed.project) {
-    throw new Error(`${configDesc} is missing required 'project' section.`);
+    throw new ConfigError(
+      `${configDesc} is missing required 'project' section.`,
+      "MISSING_SECTION",
+      "Add a 'project' section to the config file. See the documentation for the required fields.",
+    );
   }
   if (!parsed.scrum) {
-    throw new Error(`${configDesc} is missing required 'scrum' section.`);
+    throw new ConfigError(
+      `${configDesc} is missing required 'scrum' section.`,
+      "MISSING_SECTION",
+      "Add a 'scrum' section to the config file. See the documentation for the required fields.",
+    );
   }
   if (!parsed.backends) {
-    throw new Error(`${configDesc} is missing required 'backends' section.`);
+    throw new ConfigError(
+      `${configDesc} is missing required 'backends' section.`,
+      "MISSING_SECTION",
+      "Add a 'backends' section to the config file. See the documentation for the required fields.",
+    );
   }
 
   const scrumConfig = parsed as unknown as ScrumConfig;
