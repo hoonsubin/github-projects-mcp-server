@@ -5,7 +5,7 @@
 // No query construction. No response interpretation. No retry logic.
 // All policy (page limits, rate-limit handling) lives outside this class.
 //
-// Accepts PlatformRequest[] (document + variables), handles cursor pagination,
+// Accepts a PlatformRequest (document + variables), handles cursor pagination,
 // and returns PaginationResult with raw unknown[] nodes. The caller provides a
 // PageExtractor callback to navigate the response shape — the engine knows
 // nothing about what the response represents.

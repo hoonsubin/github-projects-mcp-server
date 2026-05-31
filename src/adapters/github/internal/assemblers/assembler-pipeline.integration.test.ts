@@ -169,7 +169,7 @@ Deno.test({
 
     const { directLookup } = buildPipeline(gh);
     if (profile.kind !== "direct_lookup") throw new Error("unexpected profile");
-    const output = await directLookup.assemble(profile);
+    const output = await directLookup.assemble(profile, filter);
 
     assertEquals(gh.graphqlCalls.length, 1);
     assertEquals(output.items.length, 1);

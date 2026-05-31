@@ -307,7 +307,7 @@ export interface StoryPort {
  * Replaces SprintPort.getSprintStories() and BacklogPort.getBacklogStories().
  */
 export interface FindItemsPort {
-  findItems(filter: ResolvedItemFilter): Promise<ItemSearchResult>;
+  findItems(filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResult>>;
 }
 
 /**

@@ -1,8 +1,8 @@
 // =============================================================================
 // src/adapters/github/internal/assemblers/direct-lookup-assembler.ts
 //
-// Handles `keys`-only filter profile via targeted issue → project-item lookup
-// (Phase 4b). Avoids a full board scan for direct key lookups.
+// Handles `keys`-only filter profile via targeted issue → project-item lookup.
+// Avoids a full board scan for direct key lookups.
 // =============================================================================
 
 import type { GitHubBootState } from "../../bootstrap.ts";
@@ -27,10 +27,7 @@ interface GetIssueProjectItemResponse {
   } | null;
 }
 
-/**
- * Handles direct issue-number lookups (keys-only filter).
- * Fetches each key via GetIssueProjectItem across tracked repos.
- */
+/** Direct issue-number lookups via GetIssueProjectItem (no board scan). */
 export class DirectLookupAssembler {
   constructor(
     private readonly gh: GitHubClient,
@@ -40,8 +37,9 @@ export class DirectLookupAssembler {
 
   async assemble(
     profile: { readonly kind: "direct_lookup"; readonly keys: readonly string[] },
+    filter: ResolvedItemFilter,
   ): Promise<AssemblerOutput> {
-    const filter = keysOnlyFilter(profile.keys);
+    const resolvedFilter: ResolvedItemFilter = { ...filter, keys: profile.keys };
     const projectItems = await this.fetchProjectItemsForKeys(profile.keys);
 
     const paginationResult: PaginationResult = {
@@ -51,14 +49,14 @@ export class DirectLookupAssembler {
       truncated: false,
     };
 
-    const filterFn = buildItemFilterFn(filter, this.config, projectItems);
+    const filterFn = buildItemFilterFn(resolvedFilter, this.config, projectItems);
     const output = this.normalizer.normalize(paginationResult, filterFn, {
       allItems: projectItems,
-      includeDependencies: filter.include_dependencies,
+      includeDependencies: resolvedFilter.include_dependencies,
       buildDependencyMap,
     });
 
-    return finalizeAssemblerOutput(output, filter, this.config);
+    return finalizeAssemblerOutput(output, resolvedFilter, this.config);
   }
 
   private async fetchProjectItemsForKeys(keys: readonly string[]): Promise<ProjectItem[]> {
@@ -88,19 +86,3 @@ export class DirectLookupAssembler {
     return items;
   }
 }
-
-const keysOnlyFilter = (keys: readonly string[]): ResolvedItemFilter => ({
-  scope: "all",
-  keys,
-  search: "",
-  types: [],
-  statuses: [],
-  priority: "",
-  epic_id: "",
-  labels: [],
-  assignee: "",
-  estimated: undefined,
-  sprint_ref: null,
-  include_dependencies: false,
-  limit: 50,
-});
