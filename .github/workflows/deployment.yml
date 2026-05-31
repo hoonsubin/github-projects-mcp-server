@@ -99,7 +99,7 @@ jobs:
       # deno compile embeds the JS bundle into a platform-specific denort
       # binary - no native toolchain is needed for cross-compilation.
       - name: Compile all targets
-        run: deno task compile:all
+        run: deno task build:all
 
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.value }}

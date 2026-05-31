@@ -21,5 +21,5 @@ jobs:
         run: deno check src/server.ts
       - name: Run tests
         run: deno task test
-      - name: Compile check
-        run: deno task compile:all
+      - name: Build check
+        run: deno task build:all
