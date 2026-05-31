@@ -197,7 +197,7 @@ export class FieldValueMutator {
         return;
       }
       throw new GitHubApiError("Type cannot be cleared when using organization issue types.", {
-        code: "PLATFORM_CONSTRAINT",
+        code: "NOT_IMPLEMENTED",
         statusCode: 400,
         recovery: "Organization issue types require an explicit type assignment. " +
           "Set a valid type key instead of null.",

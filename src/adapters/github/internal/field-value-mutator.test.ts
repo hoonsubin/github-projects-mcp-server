@@ -474,7 +474,7 @@ Deno.test({
       () => mutator.setFieldType(TEST_ITEM_ID, null),
       GitHubApiError,
     );
-    assertEquals(err.code, "PLATFORM_CONSTRAINT");
+    assertEquals(err.code, "NOT_IMPLEMENTED");
   },
 });
 
