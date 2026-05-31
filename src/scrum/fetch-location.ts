@@ -14,7 +14,7 @@
 
 import type { ContentLocation } from "../domain/content-location.ts";
 import { describeContentLocation } from "../domain/content-location.ts";
-import { assertNever } from "../domain/errors.ts";
+import { assertNever, ConfigError } from "../domain/errors.ts";
 
 /**
  * Fetch the string content from wherever a ContentLocation points.
@@ -36,13 +36,27 @@ export const fetchContent = async (
       // fetch follows redirects by default (redirect: "follow"); 3xx responses
       // are not an error case managed by this function — they are resolved to
       // the final response before reaching res.ok.
-      const res = await fetch(location.url);
-      if (!res.ok) {
-        throw new Error(
-          `Cannot fetch ${describeContentLocation(location)}: HTTP ${res.status} ${res.statusText}`,
+      let res: Response;
+      try {
+        res = await fetch(location.url);
+      } catch (fetchErr) {
+        throw new ConfigError(
+          `Cannot fetch ${describeContentLocation(location)}: ${
+            fetchErr instanceof Error ? fetchErr.message : String(fetchErr)
+          }`,
+          "NETWORK_ERROR",
+          "Check your network connection. If using a URL, ensure the server has internet access.",
         );
       }
-      return res.text();
+      if (!res.ok) {
+        throw new ConfigError(
+          `Cannot fetch ${describeContentLocation(location)}: HTTP ${res.status} ${res.statusText}`,
+          "HTTP_ERROR",
+          `The server returned HTTP ${res.status}. Verify the URL is correct and accessible.`,
+        );
+      }
+      const text = await res.text();
+      return text;
     }
     default:
       return assertNever(location);

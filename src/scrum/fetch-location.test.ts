@@ -203,3 +203,47 @@ Deno.test("fetchContent — url branch error message includes status code", asyn
     },
   );
 });
+
+// ── HTML content detection (loadScrumConfig integration) ────────────────────────
+//
+// When a URL returns HTML instead of YAML, loadScrumConfig() detects it
+// before parsing and throws a ConfigError with a platform-specific recovery hint.
+
+import { loadScrumConfig } from "./config-boot.ts";
+import { ConfigError } from "../domain/errors.ts";
+
+Deno.test("loadScrumConfig — throws ConfigError when URL returns HTML", async () => {
+  await withTestServer(
+    () =>
+      new Response("<!DOCTYPE html><html><head></head><body>GitHub page</body></html>", {
+        status: 200,
+        headers: { "Content-Type": "text/html" },
+      }),
+    async (base) => {
+      const location: ContentLocation = {
+        kind: "url",
+        url: new URL("/owner/repo/blob/main/config.yml", base),
+      };
+      const err = await assertRejects(
+        () => loadScrumConfig(location),
+        ConfigError,
+      );
+      assertEquals(err.code, "HTML_CONTENT");
+    },
+  );
+});
+
+Deno.test("loadScrumConfig — loads valid YAML from URL without error", async () => {
+  await withTestServer(
+    () =>
+      new Response(
+        "project:\n  name: test\nscrum:\n  priority: []\n  status: {}\nbackends:\n  github: {}\n",
+        { status: 200, headers: { "Content-Type": "application/x-yaml" } },
+      ),
+    async (base) => {
+      const location: ContentLocation = { kind: "url", url: new URL("/config.yml", base) };
+      const result = await loadScrumConfig(location);
+      assertEquals(result.scrumConfig.project.name, "test");
+    },
+  );
+});

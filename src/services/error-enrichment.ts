@@ -12,7 +12,7 @@
 // returned to the agent.
 // =============================================================================
 
-import { AdapterError } from "../domain/errors.ts";
+import { AdapterError, ConfigError } from "../domain/errors.ts";
 import { PartialResult } from "../domain/types.ts";
 
 // ── enrichError - fatal-error path ──────────────────────────────────────────────
@@ -28,6 +28,10 @@ export const enrichError = (err: unknown): string => {
     const detail = err.context ? `\nDetails: ${JSON.stringify(err.context)}` : "";
 
     return `[${err.code}] ${err.message}${detail}\n\n→ Recovery: ${err.recovery}`;
+  }
+
+  if (err instanceof ConfigError) {
+    return `[${err.code}] ${err.message}\n\n→ Recovery: ${err.recovery}`;
   }
 
   return err instanceof Error ? `Error: ${err.message}` : `Error: ${String(err)}`;

@@ -7,7 +7,7 @@
 import { parse } from "@std/yaml";
 import { dirname, resolve } from "@std/path";
 import { fetchContent } from "./fetch-location.ts";
-import { resolveLocation } from "./resolve-location.ts";
+import { resolveLocation, SUPPORTED_TEMPLATE_EXTENSIONS } from "./resolve-location.ts";
 import type { ContentLocation } from "../domain/content-location.ts";
 import type { FileReaderPort } from "./ports.ts";
 
@@ -33,7 +33,11 @@ export async function buildTypeTemplatePaths(): Promise<Record<string, ContentLo
   const paths: Record<string, ContentLocation> = {};
   for (const [key, entry] of Object.entries(typeMapping)) {
     if (entry.template) {
-      paths[key] = resolveLocation(entry.template, projectRoot);
+      paths[key] = resolveLocation(
+        entry.template,
+        projectRoot,
+        SUPPORTED_TEMPLATE_EXTENSIONS,
+      );
     }
   }
   return paths;

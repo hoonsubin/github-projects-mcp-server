@@ -124,7 +124,8 @@ export const graphql = async <T>(
       {
         code: "AUTH_FAILED",
         statusCode: 401,
-        recovery: "Your GITHUB_TOKEN is invalid or expired. Generate a new fine-grained token at " +
+        recovery: "Your GitHub token is invalid or expired. Check the env var declared in " +
+          "backends.github.auth.token in your config file. Generate a new fine-grained token at " +
           "https://github.com/settings/tokens with: Projects (read/write), " +
           "Issues (read/write), Metadata (read-only). Then restart the server.",
       },
@@ -298,7 +299,8 @@ export const rest = async <T>(
       {
         code: "AUTH_FAILED",
         statusCode: 401,
-        recovery: "Your GITHUB_TOKEN is invalid or expired. Generate a new fine-grained token at " +
+        recovery: "Your GitHub token is invalid or expired. Check the env var declared in " +
+          "backends.github.auth.token in your config file. Generate a new fine-grained token at " +
           "https://github.com/settings/tokens with: Projects (read/write), " +
           "Issues (read/write), Metadata (read-only). Then restart the server.",
       },

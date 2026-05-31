@@ -8,6 +8,7 @@ import type { FileReaderPort, ProjectReader, ProjectWriter } from "../scrum/port
 import type { ScrumConfig } from "../domain/config.ts";
 import type { PlatformCapabilities } from "./capabilities.ts";
 import type { ContentLocation } from "../domain/content-location.ts";
+import { ConfigError } from "../domain/errors.ts";
 
 // ── AdapterStartupOptions ───────────────────────────────────────────────────
 
@@ -106,10 +107,10 @@ export const createBackend = async (
   const factory = factories.find((f) => f.platform === target);
   if (!factory) {
     const registered = factories.map((f) => f.platform).join(", ") || "(none)";
-    throw new Error(
-      `Unknown SCRUM_PLATFORM "${target}". ` +
-        `Registered platforms: [${registered}]. ` +
-        `Set SCRUM_PLATFORM to one of those values or add a new adapter factory.`,
+    throw new ConfigError(
+      `Unknown SCRUM_PLATFORM "${target}". Registered platforms: [${registered}].`,
+      "UNKNOWN_PLATFORM",
+      `Set SCRUM_PLATFORM to one of the registered platforms: [${registered}], or add a new adapter factory.`,
     );
   }
 

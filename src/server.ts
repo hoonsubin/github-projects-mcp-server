@@ -34,15 +34,14 @@ import { templateResourceUseCase } from "./scrum/template-resource.ts";
 import { type AdapterFactory, createBackend } from "./adapters/factory.ts";
 import { loadScrumConfig } from "./scrum/config-boot.ts";
 import { GitHubAdapterFactory } from "./adapters/github/factory.ts";
-import { AdapterError } from "./domain/errors.ts";
+import { AdapterError, ConfigError } from "./domain/errors.ts";
 import { log } from "./services/logger.ts";
 import { parseArgs } from "@std/cli/parse-args";
 import { resolve as resolvePath } from "@std/path";
 import { resolveLocation } from "./scrum/resolve-location.ts";
 import { SCRUM_READ_TOOL_NAMES } from "./tools/scrum-read.ts";
 import { SCRUM_WRITE_TOOL_NAMES } from "./tools/scrum-write.ts";
-import type { ContentLocation } from "./domain/content-location.ts";
-import { describeContentLocation } from "./domain/content-location.ts";
+import type { ScrumConfig } from "./domain/config.ts";
 
 // ── Process-level crash guard ────────────────────────────────────────────────
 //
@@ -126,11 +125,6 @@ if (!_rawConfigPath) {
   );
   Deno.exit(1);
 }
-
-const _configLocation: ContentLocation = resolveLocation(
-  _rawConfigPath,
-  resolvePath(Deno.cwd()),
-);
 
 // ── Runtime permission guard ─────────────────────────────────────────────────
 //
@@ -254,9 +248,12 @@ const registerStubTools = (server: McpServer, errorMessage: string): void => {
 
 // ── Server factory ───────────────────────────────────────────────────────────
 
-const createMcpServer = async (
-  configLocation: ContentLocation,
-): Promise<McpServer> => {
+const createMcpServer = async (): Promise<McpServer> => {
+  const configLocation = resolveLocation(
+    _rawConfigPath as string,
+    resolvePath(Deno.cwd()),
+  );
+
   const server = new McpServer({
     name: "scrum-master-toolkit-server",
     version: Deno.env.get("RELEASE_VERSION") ?? "dev",
@@ -270,18 +267,23 @@ const createMcpServer = async (
 
   // Phase 1: Load the ScrumConfig YAML in the use-case layer, before any
   // adapter construction. This way the adapter never touches the YAML file.
-  const { scrumConfig, projectRoot } = await loadScrumConfig(configLocation);
-
+  // Both config loading and backend creation are wrapped in a single try/catch
+  // so any config parse or fetch failure enters degraded mode (stub tools)
+  // rather than crashing the process.
+  let scrumConfig: ScrumConfig;
+  let projectRoot: string;
   let backendResult: Awaited<ReturnType<typeof createBackend>>;
   try {
+    ({ scrumConfig, projectRoot } = await loadScrumConfig(configLocation));
     backendResult = await createBackend(factories, { configLocation, scrumConfig, projectRoot });
   } catch (err) {
     let hint: string;
-    if (err instanceof AdapterError && err.code === "AUTH_FAILED") {
-      hint =
-        `Backend authentication failed - check that the platform token (e.g. GITHUB_TOKEN) is set and valid.`;
+    if (err instanceof AdapterError) {
+      hint = err.recovery;
+    } else if (err instanceof ConfigError) {
+      hint = err.recovery;
     } else {
-      hint = `Config not found or invalid at: ${describeContentLocation(configLocation)}`;
+      hint = `Server initialization failed: ${err instanceof Error ? err.message : String(err)}.`;
     }
     const errorMessage = `${hint}\n` +
       `Original error: ${err instanceof Error ? err.message : String(err)}`;
@@ -349,11 +351,9 @@ const emitJsonRpcError = (message: string): void => {
   Deno.stdout.writeSync(encoder.encode(response + "\n"));
 };
 
-const runStdio = async (
-  configLocation: ContentLocation,
-): Promise<void> => {
+const runStdio = async (): Promise<void> => {
   try {
-    const server = await createMcpServer(configLocation);
+    const server = await createMcpServer();
     const transport = new StdioServerTransport();
     await server.connect(transport);
     if (Deno.env.get("TRACE")) wrapTransportLogging(transport, "stdio");
@@ -376,7 +376,7 @@ const runStdio = async (
 // isInitializeRequest, then forward it to handleRequest via { parsedBody } so the
 // transport doesn't attempt a second read on the already-consumed stream.
 
-const runHttp = (configLocation: ContentLocation): void => {
+const runHttp = (): void => {
   const transports: Record<string, WebStandardStreamableHTTPServerTransport> = {};
   const port = parseInt(Deno.env.get("PORT") || "3000", 10);
 
@@ -436,7 +436,7 @@ const runHttp = (configLocation: ContentLocation): void => {
             }
           };
 
-          const server = await createMcpServer(configLocation);
+          const server = await createMcpServer();
           await server.connect(transport);
           if (Deno.env.get("TRACE")) wrapTransportLogging(transport, `http:${transport.sessionId}`);
 
@@ -477,9 +477,9 @@ const runHttp = (configLocation: ContentLocation): void => {
 const transportType = Deno.env.get("MCP_TRANSPORT") ?? "stdio";
 
 if (transportType === "http") {
-  runHttp(_configLocation);
+  runHttp();
 } else {
-  runStdio(_configLocation).catch((err: unknown) => {
+  runStdio().catch((err: unknown) => {
     log.error("fatal", err);
     Deno.exit(1);
   });
