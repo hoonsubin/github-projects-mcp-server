@@ -4,6 +4,10 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   test:
     name: Test (Deno)
@@ -25,3 +29,26 @@ jobs:
         run: deno task test
       - name: Build check
         run: deno task build:all
+
+  audit-report:
+    name: Architecture Audit Report
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Generate audit report
+        id: audit
+        run: |
+          {
+            echo 'AUDIT_REPORT<<AUDIT_EOF'
+            deno task audit -- --output - --exclude-tests
+            echo 'AUDIT_EOF'
+          } >> "$GITHUB_OUTPUT"
+      - name: Post audit comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: architecture-audit
+          message: |
+            ${{ steps.audit.outputs.AUDIT_REPORT }}

@@ -14,6 +14,15 @@ const configPath = `${projectRoot}.dependency-cruiser.cjs`;
 const args = Deno.args;
 const isJson = args.includes("--json");
 const isHtml = args.includes("--html");
+const isMetrics = args.includes("--metrics");
+
+// Collect --exclude <pattern> arguments (repeatable)
+const excludePatterns: string[] = [];
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === "--exclude" && i + 1 < args.length) {
+    excludePatterns.push(args[++i]);
+  }
+}
 
 const cliArgs = [
   "run",
@@ -32,6 +41,15 @@ if (isJson) {
   // Default: use "err" reporter which produces a violation summary
   // and exits with non-zero on error-severity violations
   cliArgs.push("--output-type", "err");
+}
+
+if (isMetrics) {
+  cliArgs.push("--metrics");
+}
+
+// Add exclude patterns to depcruise CLI
+for (const pattern of excludePatterns) {
+  cliArgs.push("--exclude", `^${pattern}`);
 }
 
 const command = new Deno.Command("deno", {

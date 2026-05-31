@@ -2,7 +2,7 @@
   "tasks": {
     "dev": "deno run --env-file --allow-env --watch --allow-net --allow-read src/server.ts",
     "start": "deno run --env-file --allow-env --allow-net --allow-read src/server.ts --config .github/scrum/config.yml",
-    "diagram-gen": "deno run --allow-read --allow-env --allow-write scripts/generate-project-diagram.ts --output ./docs --src ./src --include-external",
+    "audit": "deno run --allow-read --allow-env --allow-write --allow-run scripts/generate-audit.ts",
     "test": "GITHUB_TOKEN=test-token deno test --allow-env=DEBUG,GITHUB_TOKEN,NODE_ENV --allow-net --allow-read src/",
     "compile": "deno compile --allow-env --allow-net --allow-read --output mcp-server src/server.ts",
     "compile:mac:arm64": "deno compile --target aarch64-apple-darwin   --allow-env --allow-net --allow-read --output dist/mcp-server-mac-arm64   src/server.ts",
