@@ -127,7 +127,8 @@ export class StoryMutationService {
   async createStory(input: CreateStoryInput): Promise<StoryRef> {
     const hasLabels = (input.labels?.length ?? 0) > 0;
     const hasEpic = input.epic !== undefined;
-    const needsFullIssue = hasLabels || hasEpic;
+    const requiresIssueForType = this.ctx.config.live.typeResolution.source === "org_issue_type";
+    const needsFullIssue = hasLabels || hasEpic || requiresIssueForType;
 
     // Resolve assignee IDs upfront - both the draft and full-issue paths use them.
     const assigneeIds = input.assignees
@@ -169,8 +170,12 @@ export class StoryMutationService {
 
     const storyRef: StoryRef = { id: itemId };
 
-    // Type is a project board field - works on draft issues without conversion.
-    // Config validation at startup guarantees typeFieldId and typeOptions are populated.
+    let issueId: string | null = null;
+    if (requiresIssueForType) {
+      issueId = await this.convertDraftToIssue(itemId);
+    }
+
+    // Config validation at startup guarantees typeOptions are populated.
     const optionId = this.ctx.config.live.typeOptions[input.type];
     if (!optionId) {
       throw new GitHubApiError(
@@ -196,14 +201,14 @@ export class StoryMutationService {
     // but promotes the underlying content to a real Issue, enabling label and
     // milestone mutations via updateIssue.
     if (needsFullIssue) {
-      const issueId = await this.convertDraftToIssue(itemId);
+      const ensuredIssueId = issueId ?? await this.convertDraftToIssue(itemId);
 
       if (hasLabels) {
         const labelIds = await this.labelResolver.resolveExistingLabelNodeIds(input.labels!);
         if (labelIds.length > 0) {
           await this.ctx.gh.graphql(
             SET_LABELS_MUTATION,
-            { issueId, labelIds },
+            { issueId: ensuredIssueId, labelIds },
           );
         }
       }
@@ -212,7 +217,7 @@ export class StoryMutationService {
         // EpicRef.id is the GitHub Milestone node ID (MI_...) - no resolution needed.
         await this.ctx.gh.graphql(
           SET_MILESTONE_MUTATION,
-          { issueId, milestoneId: input.epic!.id },
+          { issueId: ensuredIssueId, milestoneId: input.epic!.id },
         );
       }
     }
@@ -326,8 +331,13 @@ export class StoryMutationService {
       case "priority":
         return this.fieldValueMutator.setFieldPriority(itemId, value as string | null);
       case "type":
-        // Type is a project board field - works on draft issues without conversion,
-        // unlike assignee which requires a real Issue.
+        // Org issue-type writes require a real Issue; convert draft content first.
+        if (
+          this.ctx.config.live.typeResolution.source === "org_issue_type" &&
+          resolved.issueId === null
+        ) {
+          await this.convertDraftToIssue(resolved.itemId);
+        }
         return this.fieldValueMutator.setFieldType(itemId, value as string | null);
       case "assignee": {
         const assigneeIssueId = resolved.issueId ?? await this.convertDraftToIssue(resolved.itemId);

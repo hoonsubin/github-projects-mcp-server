@@ -88,6 +88,7 @@ export interface IssueDetailsInput {
   title: string | null;
   body: string | null;
   url: string | null;
+  issueType?: { id: string; name: string } | null;
   assignees?: AssigneeNodes;
   labels?: { nodes: Array<LabelNameOnly> };
   milestone?: MilestoneRefNode | null;
@@ -105,6 +106,7 @@ export interface IssueDetailsInput {
 const extractBoardFields = (
   nodes: FieldValueNode[],
   config: GitHubBootState,
+  issueTypeName: string | null = null,
 ): BoardFields => {
   const fields = config.live.fields;
   const typeMapping = config.ghConfig.type_mapping ?? {};
@@ -137,9 +139,17 @@ const extractBoardFields = (
       fv.name
     ) {
       priority = fv.name;
-    } else if (fields.typeFieldId && id === fields.typeFieldId && fv.name) {
+    } else if (
+      config.live.typeResolution.source === "board_field" &&
+      id === config.live.typeResolution.fieldId &&
+      fv.name
+    ) {
       type = (displayToCanonical[fv.name] ?? null) as ItemType | null;
     }
+  }
+
+  if (config.live.typeResolution.source === "org_issue_type" && issueTypeName) {
+    type = (displayToCanonical[issueTypeName] ?? null) as ItemType | null;
   }
 
   return { status, sprint, story_points, priority, type };
@@ -162,7 +172,11 @@ export const buildStoryFromRaw = (
   const content = item.content;
   if (!content) return null;
 
-  const boardFields = extractBoardFields(item.fieldValues.nodes, config);
+  const boardFields = extractBoardFields(
+    item.fieldValues.nodes,
+    config,
+    content.__typename === "Issue" ? content.issueType?.name ?? null : null,
+  );
 
   // ── DraftIssue branch ───────────────────────────────────────────────────────
   if (content.__typename === "DraftIssue") {
@@ -194,7 +208,7 @@ export const buildStoryFromRaw = (
   // Both have number, title, url, body, assignees, labels
   // labels/assignees are absent when includePRContent: false - skip this item
   if (!content.labels || !content.assignees) return null;
-  // Type comes from the Type board field - not from labels.
+  // Type comes from either the board field or org issue type, depending on bootstrap typeResolution.
   // All repo labels are passed through unfiltered.
   const labels: string[] = content.labels.nodes.map((l: { name: string }) => l.name);
   const epic = content.__typename === "Issue" && content.milestone
@@ -237,8 +251,12 @@ export const buildEnrichedStory = (
   fieldValueNodes: FieldValueNode[],
   config: GitHubBootState,
 ): IssueStory => {
-  const boardFields = extractBoardFields(fieldValueNodes, config);
-  // Type comes from the Type board field - not from labels.
+  const boardFields = extractBoardFields(
+    fieldValueNodes,
+    config,
+    issueNode.issueType?.name ?? null,
+  );
+  // Type comes from either the board field or org issue type, depending on bootstrap typeResolution.
   // All repo labels are passed through unfiltered.
   const labels: string[] = issueNode.labels?.nodes.map((l: { name: string }) => l.name) ?? [];
 

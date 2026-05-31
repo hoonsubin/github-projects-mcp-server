@@ -226,6 +226,7 @@ export type ProjectV2ItemRef = Required<
 export interface ProjectItemIssueContent extends IssueIdentity {
   __typename: "Issue";
   state: GH.IssueState;
+  issueType?: IssueTypeRef | null;
   assignees: AssigneeNodes;
   labels: LabelColorNodes;
   milestone: MilestoneRefNode | null;
@@ -307,6 +308,8 @@ export type IssueRefNode = Required<Pick<GH.Issue, "id" | "number" | "title">>;
 
 /** Minimal milestone reference used in issue content projections (no dueOn - use FieldValueMilestone where dueOn is needed). */
 export type MilestoneRefNode = Required<Pick<GH.Milestone, "id" | "title">>;
+/** Minimal issue type reference used in issue content projections. */
+export type IssueTypeRef = Required<Pick<GH.IssueType, "id" | "name">>;
 
 export interface ItemFieldValue {
   __typename: string;

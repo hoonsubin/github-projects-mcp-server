@@ -70,6 +70,16 @@ const SET_ASSIGNEE_OK = {
   updateIssue: { issue: { id: "I_test" } },
 };
 
+const SET_ISSUE_TYPE_OK = {
+  updateIssue: { issue: { id: "I_test" } },
+};
+
+const PROJECT_ITEM_ISSUE_OK = {
+  node: {
+    content: { __typename: "Issue", id: "I_issue1" },
+  },
+};
+
 // =============================================================================
 // Service factory
 // =============================================================================
@@ -406,7 +416,10 @@ Deno.test({
     const baseConfig = makeConfig();
     const { mutator } = createMutator({
       configOverrides: {
-        live: { ...baseConfig.live, fields: { ...baseConfig.live.fields, typeFieldId: "" } },
+        live: {
+          ...baseConfig.live,
+          typeResolution: { source: "board_field", fieldId: "" },
+        },
       },
     });
 
@@ -416,6 +429,52 @@ Deno.test({
     );
 
     assertEquals(err.code, "FIELD_NOT_CONFIGURED");
+  },
+});
+
+Deno.test({
+  name: "setFieldType - uses issue type mutation for org issue type resolution",
+  async fn() {
+    const baseConfig = makeConfig();
+    const { mutator, gh } = createMutator({
+      configOverrides: {
+        live: {
+          ...baseConfig.live,
+          typeResolution: { source: "org_issue_type", fieldId: null },
+          typeOptions: { feature: "IT_feature" },
+        },
+      },
+    });
+    gh.enqueue(PROJECT_ITEM_ISSUE_OK, SET_ISSUE_TYPE_OK);
+
+    await mutator.setFieldType(TEST_ITEM_ID, "feature");
+
+    assertEquals(gh.graphqlCalls.length, 2);
+    assertStringIncludes(gh.graphqlCalls[0].queryExcerpt, "GetProjectItemById");
+    assertStringIncludes(gh.graphqlCalls[1].queryExcerpt, "SetIssueType");
+    assertEquals(gh.graphqlCalls[1].variables.issueId, "I_issue1");
+    assertEquals(gh.graphqlCalls[1].variables.issueTypeId, "IT_feature");
+  },
+});
+
+Deno.test({
+  name: "setFieldType - rejects clearing type for org issue type resolution",
+  async fn() {
+    const baseConfig = makeConfig();
+    const { mutator } = createMutator({
+      configOverrides: {
+        live: {
+          ...baseConfig.live,
+          typeResolution: { source: "org_issue_type", fieldId: null },
+        },
+      },
+    });
+
+    const err = await assertRejects(
+      () => mutator.setFieldType(TEST_ITEM_ID, null),
+      GitHubApiError,
+    );
+    assertEquals(err.code, "NOT_IMPLEMENTED");
   },
 });
 

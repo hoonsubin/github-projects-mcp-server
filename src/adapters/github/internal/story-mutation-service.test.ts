@@ -221,6 +221,28 @@ Deno.test({
 });
 
 Deno.test({
+  name: "createStory - converts draft before type write for org issue type resolution",
+  async fn() {
+    const baseConfig = makeConfig();
+    const { service, gh } = createService({
+      configOverrides: {
+        live: {
+          ...baseConfig.live,
+          typeResolution: { source: "org_issue_type", fieldId: null },
+        },
+      },
+    });
+    gh.enqueue(ADD_DRAFT_SUCCESS, CONVERT_SUCCESS);
+    const input = makeCreateInput({ labels: undefined, epic: undefined, priority: undefined });
+
+    await service.createStory(input);
+
+    assertEquals(gh.graphqlCalls.length, 2);
+    assertStringIncludes(gh.graphqlCalls[1].queryExcerpt, "ConvertDraftIssue");
+  },
+});
+
+Deno.test({
   name: "createStory - throws when type value not in typeOptions",
   async fn() {
     // Merge the live override into the default config
@@ -717,6 +739,27 @@ Deno.test({
     gh.enqueue(RESOLVED_ISSUE);
 
     await service.setField(makeStoryRef(), "type", "bug");
+  },
+});
+
+Deno.test({
+  name: "setField - auto-converts draft for type when using org issue type resolution",
+  async fn() {
+    const baseConfig = makeConfig();
+    const { service, gh } = createService({
+      configOverrides: {
+        live: {
+          ...baseConfig.live,
+          typeResolution: { source: "org_issue_type", fieldId: null },
+        },
+      },
+    });
+    gh.enqueue(RESOLVED_DRAFT, CONVERT_SUCCESS);
+
+    await service.setField(makeStoryRef(), "type", "bug");
+
+    assertEquals(gh.graphqlCalls.length, 2);
+    assertStringIncludes(gh.graphqlCalls[1].queryExcerpt, "ConvertDraftIssue");
   },
 });
 

@@ -11,7 +11,12 @@ import { resolveSprint } from "./resolver.ts";
 import { UserMilestoneResolver } from "./user-milestone-resolver.ts";
 import type { GitHubInfraContext } from "./infra-context.ts";
 import type { SprintRef } from "../../../domain/types.ts";
-import { CLEAR_ITEM_FIELD_MUTATION, UPDATE_ITEM_FIELD_MUTATION } from "../queries.ts";
+import {
+  CLEAR_ITEM_FIELD_MUTATION,
+  GET_PROJECT_ITEM_BY_ID_QUERY,
+  SET_ISSUE_TYPE_MUTATION,
+  UPDATE_ITEM_FIELD_MUTATION,
+} from "../queries.ts";
 import { CLEAR_ASSIGNEES_MUTATION, SET_ASSIGNEE_MUTATION } from "../queries.ts";
 
 // ── FieldValueMutator class ──────────────────────────────────────────────────
@@ -185,21 +190,20 @@ export class FieldValueMutator {
 
   /** Update the type of a project item via the Type single-select field */
   async setFieldType(itemId: string, value: string | null): Promise<void> {
-    const fieldId = this.ctx.config.live.fields.typeFieldId;
-    if (!fieldId) {
-      throw new GitHubApiError("Type field is not configured in this project.", {
-        code: "FIELD_NOT_CONFIGURED",
+    const { typeResolution, typeOptions } = this.ctx.config.live;
+    if (value === null) {
+      if (typeResolution.source === "board_field") {
+        await this.clearField(itemId, typeResolution.fieldId);
+        return;
+      }
+      throw new GitHubApiError("Type cannot be cleared when using organization issue types.", {
+        code: "NOT_IMPLEMENTED",
         statusCode: 400,
-        recovery:
-          "Add a single-select field and set its name under field_mapping.item_type in config.yml, " +
-          "then re-run the server so config-loader can pick it up.",
+        recovery: "Organization issue types require an explicit type assignment. " +
+          "Set a valid type key instead of null.",
       });
     }
-    if (value === null) {
-      await this.clearField(itemId, fieldId);
-      return;
-    }
-    const optionId = this.ctx.config.live.typeOptions[value];
+    const optionId = typeOptions[value];
     if (!optionId) {
       throw new GitHubApiError(
         `Type option "${value}" is not in the project vocabulary.`,
@@ -211,21 +215,41 @@ export class FieldValueMutator {
           context: {
             field: "type",
             value,
-            knownOptions: Object.keys(this.ctx.config.live.typeOptions),
+            knownOptions: Object.keys(typeOptions),
           },
         },
       );
     }
-    await this.ctx.gh.graphql<{ updateProjectV2ItemFieldValue: { projectV2Item: { id: string } } }>(
-      UPDATE_ITEM_FIELD_MUTATION,
-      {
-        input: {
-          projectId: this.ctx.config.live.projectId,
-          itemId,
-          fieldId,
-          value: { singleSelectOptionId: optionId },
+    if (typeResolution.source === "board_field") {
+      if (!typeResolution.fieldId) {
+        throw new GitHubApiError("Type field is not configured in this project.", {
+          code: "FIELD_NOT_CONFIGURED",
+          statusCode: 400,
+          recovery:
+            "Add a single-select field and set its name under field_mapping.item_type in config.yml, " +
+            "then re-run the server so config-loader can pick it up.",
+        });
+      }
+      await this.ctx.gh.graphql<
+        { updateProjectV2ItemFieldValue: { projectV2Item: { id: string } } }
+      >(
+        UPDATE_ITEM_FIELD_MUTATION,
+        {
+          input: {
+            projectId: this.ctx.config.live.projectId,
+            itemId,
+            fieldId: typeResolution.fieldId,
+            value: { singleSelectOptionId: optionId },
+          },
         },
-      },
+      );
+      return;
+    }
+
+    const issueId = await this.resolveIssueNodeId(itemId);
+    await this.ctx.gh.graphql<{ updateIssue: { issue: { id: string } } }>(
+      SET_ISSUE_TYPE_MUTATION,
+      { issueId, issueTypeId: optionId },
     );
   }
 
@@ -245,5 +269,35 @@ export class FieldValueMutator {
       SET_ASSIGNEE_MUTATION,
       { issueId, userId },
     );
+  }
+
+  private async resolveIssueNodeId(itemId: string): Promise<string> {
+    const result = await this.ctx.gh.graphql<{
+      node?: {
+        content?: { __typename: string; id: string } | null;
+      } | null;
+    }>(GET_PROJECT_ITEM_BY_ID_QUERY, { itemId });
+    const content = result.node?.content;
+    if (!content) {
+      throw new GitHubApiError(`Project item "${itemId}" has no content.`, {
+        code: "NOT_FOUND",
+        statusCode: 404,
+        recovery: "The item may have been deleted from the project. Refresh items and retry.",
+        context: { itemId },
+      });
+    }
+    if (content.__typename !== "Issue") {
+      throw new GitHubApiError(
+        `Type writes for org issue types require a real Issue; item "${itemId}" is ${content.__typename}.`,
+        {
+          code: "DRAFT_ISSUE_CONSTRAINT",
+          statusCode: 400,
+          recovery:
+            "Convert the item to an Issue (for example by adding labels/epic) before setting type.",
+          context: { itemId, contentType: content.__typename },
+        },
+      );
+    }
+    return content.id;
   }
 }
