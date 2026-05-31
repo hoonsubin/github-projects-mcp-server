@@ -15,6 +15,7 @@ import type { ScrumConfig } from "../../domain/config.ts";
 import type { IterationEntry } from "../../domain/types.ts";
 import type { ContentLocation } from "../../domain/content-location.ts";
 import { resolveLocation } from "../../scrum/resolve-location.ts";
+import { GitHubApiError } from "./errors.ts";
 import {
   GET_ORG_ISSUE_TYPES_BOOTSTRAP_QUERY,
   GET_ORG_PROJECT_FIELDS_BOOTSTRAP_QUERY,
@@ -155,15 +156,31 @@ const resolveFieldIds = (
   }
 
   if (!sprintFieldId) {
-    throw new Error(
+    throw new GitHubApiError(
       `Sprint field '${mapping.sprint}' not found in project #${projectNumber}. ` +
         `Update backends.github.field_mapping.sprint in ${configDesc} to match the project field name.`,
+      {
+        code: "FIELD_NOT_CONFIGURED",
+        statusCode: 400,
+        recovery:
+          `Set backends.github.field_mapping.sprint in ${configDesc} to the exact ` +
+          "Iteration field name used on the project board, then reload the backend.",
+        context: { projectNumber, configuredFieldName: mapping.sprint },
+      },
     );
   }
   if (!statusFieldId) {
-    throw new Error(
+    throw new GitHubApiError(
       `Status field '${mapping.status}' not found in project #${projectNumber}. ` +
         `Update backends.github.field_mapping.status in ${configDesc} to match the project field name.`,
+      {
+        code: "FIELD_NOT_CONFIGURED",
+        statusCode: 400,
+        recovery:
+          `Set backends.github.field_mapping.status in ${configDesc} to the exact ` +
+          "single-select status field name used on the project board, then reload the backend.",
+        context: { projectNumber, configuredFieldName: mapping.status },
+      },
     );
   }
   return {
@@ -308,17 +325,33 @@ export const bootstrapGitHub = async (params: BootstrapParams): Promise<GitHubLi
     : fieldsResult.organization?.projectV2;
 
   if (!projectNode) {
-    throw new Error(
+    throw new GitHubApiError(
       `Project #${projectNumber} not found for ${ownerType} '${owner}'. ` +
         `Ensure the token has Projects: Read access.`,
+      {
+        code: "NOT_FOUND",
+        statusCode: 404,
+        recovery:
+          "Verify backends.github.owner, owner_type, and project_number in config, " +
+          "and confirm the token can read this project.",
+        context: { owner, ownerType, projectNumber },
+      },
     );
   }
 
   const fieldNodes = projectNode.fields.nodes;
   if (fieldNodes.length === 0) {
-    throw new Error(
+    throw new GitHubApiError(
       `No fields found in project #${projectNumber}. ` +
         `Ensure the project has at least the required fields (Sprint, Status).`,
+      {
+        code: "FIELD_NOT_CONFIGURED",
+        statusCode: 400,
+        recovery:
+          "Add the required Sprint (Iteration) and Status (single-select) fields to the project, " +
+          "then reload the backend.",
+        context: { projectNumber, owner, ownerType },
+      },
     );
   }
 
@@ -356,12 +389,24 @@ export const bootstrapGitHub = async (params: BootstrapParams): Promise<GitHubLi
           `"${ghConfig.field_mapping.item_type}" field options`
         );
       if (mismatched.length > 0) {
-        throw new Error(
+        throw new GitHubApiError(
           `${configDesc}: type_mapping declares types whose display names are not present on the board:\n` +
             mismatched.join("\n") + "\n" +
             `For each entry above, either add the option to the ` +
             `"${ghConfig.field_mapping.item_type}" single-select field on your project board, ` +
             `or remove the key from type_mapping.`,
+          {
+            code: "OPTION_NOT_FOUND",
+            statusCode: 400,
+            recovery:
+              "Align type_mapping display names with the project Type field options, " +
+              "then reload the backend.",
+            context: {
+              projectNumber,
+              configuredTypeField: ghConfig.field_mapping.item_type,
+              mismatched,
+            },
+          },
         );
       }
     }
@@ -387,23 +432,44 @@ export const bootstrapGitHub = async (params: BootstrapParams): Promise<GitHubLi
           `  - type_mapping.${canonicalKey}: display "${entry.display}" not found in organization issue types`
         );
       if (mismatched.length > 0) {
-        throw new Error(
+        throw new GitHubApiError(
           `${configDesc}: type_mapping declares types whose display names are not present in organization issue types:\n` +
             mismatched.join("\n") + "\n" +
             `For each entry above, either enable/create the matching organization issue type, ` +
             `or update/remove the key from type_mapping.`,
+          {
+            code: "OPTION_NOT_FOUND",
+            statusCode: 400,
+            recovery:
+              "Ensure organization issue types exist and are enabled for each configured type_mapping display name, " +
+              "then reload the backend.",
+            context: { owner, projectNumber, mismatched },
+          },
         );
       }
     }
 
     typeResolution = { source: "org_issue_type", fieldId: null };
   } else {
-    throw new Error(
+    throw new GitHubApiError(
       `Type field '${
         ghConfig.field_mapping.item_type ?? "(not configured)"
       }' not found in project #${projectNumber}. ` +
         `Update backends.github.field_mapping.item_type in ${configDesc} to match ` +
         `the exact SINGLE_SELECT field name in GitHub Projects.`,
+      {
+        code: "FIELD_NOT_CONFIGURED",
+        statusCode: 400,
+        recovery:
+          `Set backends.github.field_mapping.item_type in ${configDesc} to a valid single-select field ` +
+          "name on the project board, then reload the backend.",
+        context: {
+          projectNumber,
+          owner,
+          ownerType,
+          configuredTypeField: ghConfig.field_mapping.item_type ?? null,
+        },
+      },
     );
   }
 
