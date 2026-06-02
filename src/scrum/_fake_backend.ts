@@ -211,11 +211,12 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
     this.calls.push({ method, args });
   }
 
-  async reload(): Promise<void> {
+  reload(): Promise<void> {
     this.log("reload");
+    return Promise.resolve();
   }
 
-  async getPlatformState(_declaredVocabulary: {
+  getPlatformState(_declaredVocabulary: {
     canonicalStatusKeys: string[];
     canonicalPriorityKeys: string[];
   }): Promise<BackendCallResult<PlatformState>> {
@@ -224,7 +225,7 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
     const statusOptions = Object.values(p.statusDisplay);
     const priorityOptions = Object.values(p.priorityDisplay);
 
-    return {
+    return Promise.resolve({
       value: {
         fields: {
           status: { exists: true, options: statusOptions, missingOptions: [] },
@@ -250,23 +251,23 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
         templateUris: p.expectedTemplateUris,
       },
       warnings: [],
-    };
+    });
   }
 
-  async getEpics(_sprintIterationId?: string | null): Promise<EpicListing[]> {
+  getEpics(_sprintIterationId?: string | null): Promise<EpicListing[]> {
     this.log("getEpics", _sprintIterationId);
-    return [...this.epics];
+    return Promise.resolve([...this.epics]);
   }
 
-  async getSprintCompletion(_iterationId: string): Promise<{ completed: number; total: number }> {
+  getSprintCompletion(_iterationId: string): Promise<{ completed: number; total: number }> {
     this.log("getSprintCompletion", _iterationId);
-    return this.sprintCompletion;
+    return Promise.resolve(this.sprintCompletion);
   }
 
-  async findItems(filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResult>> {
+  findItems(filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResult>> {
     this.log("findItems", filter);
     const items = filter.limit > 0 ? this.items.slice(0, filter.limit) : [...this.items];
-    return {
+    return Promise.resolve({
       value: {
         items,
         total_count: this.items.length,
@@ -274,33 +275,33 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
         dependency_map: filter.include_dependencies ? {} : null,
       },
       warnings: [],
-    };
+    });
   }
 
-  async getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>> {
+  getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>> {
     this.log("getStoryDetail", ref);
-    return { value: this.storyDetail, warnings: [] };
+    return Promise.resolve({ value: this.storyDetail, warnings: [] });
   }
 
-  async composeStorySnapshot(
+  composeStorySnapshot(
     ref: StoryRef,
     overrides?: StorySnapshotOverrides,
   ): Promise<BackendCallResult<Story>> {
     this.log("composeStorySnapshot", ref, overrides);
     const story = { ...this.storyDetail.story, ...overrides } as Story;
-    return { value: story, warnings: [] };
+    return Promise.resolve({ value: story, warnings: [] });
   }
 
-  async composeStoryAfterSetField(
+  composeStoryAfterSetField(
     ref: StoryRef,
     field: ScrumField,
     value: string | number | SprintRef | null,
   ): Promise<BackendCallResult<Story>> {
     this.log("composeStoryAfterSetField", ref, field, value);
-    return { value: this.storyDetail.story, warnings: [] };
+    return Promise.resolve({ value: this.storyDetail.story, warnings: [] });
   }
 
-  async composeStoryAfterStoryUpdate(
+  composeStoryAfterStoryUpdate(
     ref: StoryRef,
     updates: StoryUpdates,
   ): Promise<BackendCallResult<Story>> {
@@ -314,64 +315,64 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
         ? this.storyDetail.story.blocked_by
         : [],
     } as Story;
-    return { value: story, warnings: [] };
+    return Promise.resolve({ value: story, warnings: [] });
   }
 
-  async composeStoryAfterCreateStory(
+  composeStoryAfterCreateStory(
     ref: StoryRef,
     input: CreateStoryInput,
   ): Promise<BackendCallResult<Story>> {
     this.log("composeStoryAfterCreateStory", ref, input);
-    return { value: this.storyDetail.story, warnings: [] };
+    return Promise.resolve({ value: this.storyDetail.story, warnings: [] });
   }
 
-  async getAnalytics(query: AnalyticsQuery): Promise<AnalyticsResult> {
+  getAnalytics(query: AnalyticsQuery): Promise<AnalyticsResult> {
     this.log("getAnalytics", query);
-    return this.analytics;
+    return Promise.resolve(this.analytics);
   }
 
-  async getBoardHealth(sprintScope: string): Promise<BacklogHealth> {
+  getBoardHealth(sprintScope: string): Promise<BacklogHealth> {
     this.log("getBoardHealth", sprintScope);
-    return this.boardHealth;
+    return Promise.resolve(this.boardHealth);
   }
 
-  async getSprintImpediments(_sprint: SprintRef): Promise<ImpedimentListing[]> {
+  getSprintImpediments(_sprint: SprintRef): Promise<ImpedimentListing[]> {
     this.log("getSprintImpediments", _sprint);
-    return [];
+    return Promise.resolve([]);
   }
 
-  async getOrphanImpediments(): Promise<ImpedimentListing[]> {
+  getOrphanImpediments(): Promise<ImpedimentListing[]> {
     this.log("getOrphanImpediments");
-    return [];
+    return Promise.resolve([]);
   }
 
-  override async updateImpediment(
+  override updateImpediment(
     ref: ImpedimentRef,
     status: ImpedimentStatus,
     resolutionNotes?: string,
   ): Promise<ImpedimentListing> {
     this.log("updateImpediment", ref, status, resolutionNotes);
-    return {
+    return Promise.resolve({
       ref,
       description: "Config-shaped impediment",
       status,
       raised_by: null,
       raised_at: "2026-01-01T00:00:00Z",
       resolved_at: status === "resolved" ? "2026-01-02T00:00:00Z" : null,
-    };
+    });
   }
 
-  async createStory(input: CreateStoryInput): Promise<StoryRef> {
+  createStory(input: CreateStoryInput): Promise<StoryRef> {
     this.log("createStory", input);
-    return { id: "PVTI_fake_new" };
+    return Promise.resolve({ id: "PVTI_fake_new" });
   }
 
-  override async createImpediment(
+  override createImpediment(
     input: CreateStoryInput,
   ): Promise<{ listing: ImpedimentListing; itemRef: StoryRef }> {
     this.log("createImpediment", input);
     const itemRef = { id: "PVTI_fake_imp" };
-    return {
+    return Promise.resolve({
       listing: {
         ref: itemRef,
         description: input.body,
@@ -381,28 +382,31 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
         resolved_at: null,
       },
       itemRef,
-    };
+    });
   }
 
-  async updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void> {
+  updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void> {
     this.log("updateStory", ref, updates);
+    return Promise.resolve();
   }
 
-  async setField(
+  setField(
     ref: StoryRef,
     field: ScrumField,
     value: string | number | SprintRef | null,
   ): Promise<void> {
     this.log("setField", ref, field, value);
+    return Promise.resolve();
   }
 
-  async addComment(ref: StoryRef, body: string): Promise<void> {
+  addComment(ref: StoryRef, body: string): Promise<void> {
     this.log("addComment", ref, body);
+    return Promise.resolve();
   }
 
-  async addVocabulary(kind: VocabularyKind, value: string): Promise<CreateResult> {
+  addVocabulary(kind: VocabularyKind, value: string): Promise<CreateResult> {
     this.log("addVocabulary", kind, value);
-    return { created: true };
+    return Promise.resolve({ created: true });
   }
 
   /** Write helpers not yet needed for read contract tests. */

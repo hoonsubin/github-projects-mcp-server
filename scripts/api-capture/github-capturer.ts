@@ -10,7 +10,7 @@ import type { CaptureResult } from "../capture-test-fixtures.ts";
 import type { FixtureManifestV2 } from "../../src/adapters/github/internal/fixture-replay/types.ts";
 import { captureWireFixtures } from "./github/wire-capturer.ts";
 import { captureScenarioFixtures } from "./github/scenario-capturer.ts";
-import { buildFixtureBackend, validateFixtureReplay } from "../../src/scrum/fixture-backend.ts";
+import { validateFixtureReplay } from "../../src/scrum/fixture-backend.ts";
 
 const DEFAULT_FIXTURES_DIR = resolve(
   dirname(fromFileUrl(import.meta.url)),

@@ -59,8 +59,6 @@ export const classifyIterations = (
     active,
     next,
     completed: [...completedIterations],
-    all: [...allMap.values()].sort(
-      (a, b) => utcDateOnly(a.startDate).getTime() - utcDateOnly(b.startDate).getTime(),
-    ),
+    all,
   };
 };

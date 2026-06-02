@@ -30,23 +30,25 @@ export class FixtureReplayClient implements GitHubClient {
     }
   }
 
-  async graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
+  graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
     const hash = computeQueryHash(query, variables);
     const hit = this.responseByHash.get(hash);
     if (hit !== undefined && hit !== null) {
-      return hit as T;
+      return Promise.resolve(hit as T);
     }
 
     if (this.fallbackIndex < this.orderedFallback.length) {
       const response = this.orderedFallback[this.fallbackIndex++];
-      return response as T;
+      return Promise.resolve(response as T);
     }
 
     const operation = extractOperationName(query);
-    throw new Error(
-      `FixtureReplayClient: no wire response for hash "${hash}" ` +
-        `(operation ${operation}, variables ${JSON.stringify(variables ?? {})}). ` +
-        `Re-run deno task capture-fixtures to record this call.`,
+    return Promise.reject(
+      new Error(
+        `FixtureReplayClient: no wire response for hash "${hash}" ` +
+          `(operation ${operation}, variables ${JSON.stringify(variables ?? {})}). ` +
+          `Re-run deno task capture-fixtures to record this call.`,
+      ),
     );
   }
 

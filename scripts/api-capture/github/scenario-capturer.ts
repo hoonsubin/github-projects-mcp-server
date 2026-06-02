@@ -14,7 +14,7 @@ import type {
 import { RecordingGitHubClient } from "../../../src/adapters/github/internal/fixture-replay/recording-client.ts";
 import { writeJsonSnapshot } from "./port-snapshot-writer.ts";
 import { CAPTURE_SCENARIOS, runHandlerSnapshot } from "./scenarios.ts";
-import { type McpTextResult, parseToolText } from "../../../src/tools/_mcp_result.ts";
+import { parseToolText } from "../../../src/tools/_mcp_result.ts";
 
 export const captureScenarioFixtures = async (opts: {
   scrumConfig: ScrumConfig;

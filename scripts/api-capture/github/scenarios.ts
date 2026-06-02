@@ -49,7 +49,7 @@ export const CAPTURE_SCENARIOS: CaptureScenario[] = [
   },
   {
     name: "find-items-all",
-    async run({ backend }) {
+    run({ backend }) {
       return backend.findItems({
         scope: "all",
         keys: [],
@@ -70,7 +70,7 @@ export const CAPTURE_SCENARIOS: CaptureScenario[] = [
   },
   {
     name: "find-items-deps",
-    async run({ backend }) {
+    run({ backend }) {
       return backend.findItems({
         scope: "all",
         keys: [],
@@ -90,14 +90,14 @@ export const CAPTURE_SCENARIOS: CaptureScenario[] = [
   },
   {
     name: "board-health",
-    async run({ backend }) {
+    run({ backend }) {
       return backend.getBoardHealth("current");
     },
     captureHandler: true,
   },
   {
     name: "analytics-both",
-    async run({ backend, scrumConfig }) {
+    run({ backend, scrumConfig }) {
       const window = scrumConfig.scrum.sprint?.velocity_window ?? 5;
       return backend.getAnalytics({
         view: "both",
@@ -109,9 +109,9 @@ export const CAPTURE_SCENARIOS: CaptureScenario[] = [
   },
   {
     name: "get-story-detail",
-    async run({ backend, catalog }) {
+    run({ backend, catalog }) {
       if (!catalog.sampleItemRef) {
-        return { skipped: true, reason: "no sample issue item on board" };
+        return Promise.resolve({ skipped: true, reason: "no sample issue item on board" });
       }
       return backend.getStoryDetail({ id: catalog.sampleItemRef.id });
     },
@@ -119,10 +119,10 @@ export const CAPTURE_SCENARIOS: CaptureScenario[] = [
   },
 ];
 
-export const runHandlerSnapshot = async (
+export const runHandlerSnapshot = (
   scenarioName: string,
   ctx: CaptureScenarioContext,
-  portOutput: unknown,
+  _portOutput: unknown,
 ): Promise<McpTextResult | null> => {
   switch (scenarioName) {
     case "orient":
@@ -150,10 +150,10 @@ export const runHandlerSnapshot = async (
       });
     }
     case "get-story-detail": {
-      if (!ctx.catalog.sampleItemRef) return null;
+      if (!ctx.catalog.sampleItemRef) return Promise.resolve(null);
       return handleGetItemDetail(ctx.backend, { ref: { id: ctx.catalog.sampleItemRef.id } });
     }
     default:
-      return null;
+      return Promise.resolve(null);
   }
 };
