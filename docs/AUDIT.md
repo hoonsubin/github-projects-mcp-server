@@ -578,47 +578,319 @@ Assumptions: single tracked repo, board has type on field (no org issue-types bo
 
 ---
 
-## Immediately fixable redundancies (follow-on candidates)
+# Adapter-layer query formation audit
 
-| ID | Issue | Suggested ticket |
-|----|-------|------------------|
-| R1 | `scrum_set_field` calls `getStoryDetail` after every mutation | Return mutation result or single `GetProjectItemById` |
-| R2 | `BoardHealthService` runs `ProjectItems×P` twice | Reuse one `fetchAllItems` for scope + sprint impediments |
-| R3 | `resolveRef({number})` uses full `findItems` router | Dedicated `GetIssueProjectItem` once per repo |
-| R4 | `AnalyticsService` `view=both` double full board fetch | Share one `ProjectItems` collection |
-| R5 | Orient `getSprintCompletion` full board scan | Incremental query or cache from prior tool in session |
+**Spike:** [github-projects-mcp-server#220](https://github.com/hoonsubin/github-projects-mcp-server/issues/220)  
+**Companion:** [github-projects-mcp-server#190](https://github.com/hoonsubin/github-projects-mcp-server/issues/190) (system-wide call graph — see [`docs/AUDIT.md`](../docs/AUDIT.md))  
+**Milestone:** Adapter Layer Assembly Pattern  
+**Date:** 2026-06-02  
+**Scope:** `src/adapters/github/` only — no port, use-case, or tool-handler changes in this spike.
 
 ---
 
-## Appendix: `scrum_plan_sprint` (12th tool)
+## Spike synthesis
 
-Not in #190 list; included for completeness.
+Issue #220 audits **how use-case inputs become GitHub GraphQL payloads** across the four `findItems` assembler branches, then ranks **adapter-only** optimizations by payload reduction × call frequency.
 
-| Phase | Operations |
-|-------|------------|
-| `replace: true` | `findItems` → `ProjectItems×P` (scope sprint) + per item `setField(sprint,null)` → `GetProjectItemById` + `UpdateItemField`/`Clear` |
-| Assign each story | `resolveRef?` + `setField(sprint)` each |
+| Dimension | Detail |
+|-----------|--------|
+| **Problem** | Query formation is implicit: the same `ItemContent` + `ItemFieldValues` bundle is used for lightweight aggregations and rich listings; board-field filters run client-side after a full `projectV2.items` scan. |
+| **Downstream of #190** | #190 maps *which* tools call *which* operations; this spike maps *what each operation selects* vs *what mappers actually read*. |
+| **Reframe (2026-06-02)** | Original scope was a binary `fieldValueFilters` check; expanded to all branches + full GitHub filtering survey ([issue comment](https://github.com/hoonsubin/github-projects-mcp-server/issues/220#issuecomment-4605645959)). |
+| **Deliverables** | Formation trace, payload table, server-side filtering survey, minimum viable queries, ranked optimization candidates, follow-on stories. |
+| **Live API validation** | Required for Q3 in the issue acceptance criteria. **Not executed in this workspace** (`GITHUB_TOKEN` unset, `gh` not authenticated). Schema + code trace + public API docs are documented below; live probes are listed as blocking follow-up. |
 
-Worst case: **P + 2×N mutations** for replace + assign.
-
----
-
-## Trace methodology
-
-1. Tool registration → use case → `GitHubProjectBackend` method.  
-2. Follow delegation into `internal/*` services.  
-3. Grep `gh.graphql` / `gh.rest` and `ExecutionEngine.execute`.  
-4. Map documents to operation names via `src/adapters/github/queries.ts` (`getQuery("…")`).  
-5. Classify pagination using `ProjectItemsQueryBuilder` (100/page) and `DEFAULT_PAGINATION_POLICY.maxPages` (20).
+Prior observational work on `scrum_orient` is captured in [issue comment #4605008366](https://github.com/hoonsubin/github-projects-mcp-server/issues/220#issuecomment-4605008366) and is incorporated into the non-assembler paths section.
 
 ---
 
-## Acceptance checklist (#190)
+## Q1 — Formation path: `ResolvedItemFilter` → `gh.graphql()`
 
-- [x] All 11 MCP tools traced end-to-end with operation names and service classes  
-- [x] Sequential vs parallelizable pairs classified  
-- [x] 8 PlantUML diagrams included  
-- [x] Cross-tool redundancy matrix  
-- [x] Theoretical minimum call table  
-- [x] Follow-on redundancy items listed (R1–R5)  
-- [ ] Findings comment on GitHub issue #190 (copy from this doc if closing spike in-repo)
+### Entry and classification
+
+1. **Port input:** `ResolvedItemFilter` (`src/scrum/ports.ts`) — keys, scope, search, board fields (statuses, sprint_ref, types, priority), labels, assignee, epic_id, estimated, include_dependencies, limit.
+2. **Classification:** `classifyFilter()` in `filter-strategy-router.ts` produces exactly one `FilterProfile` (priority: keys → search-only → board-only → mixed).
+3. **Routing:** `GitHubProjectBackend.findItems()` dispatches to one assembler (`backend.ts`).
+
+### Branch-specific assembly
+
+| Branch | Assembler | `PlatformRequest` | HTTP entry |
+|--------|-----------|-------------------|------------|
+| `direct_lookup` | `DirectLookupAssembler` | Per key × repo: `GET_ISSUE_PROJECT_ITEM_QUERY` (`GetIssueProjectItem`) | `gh.graphql()` directly (no `ExecutionEngine`) |
+| `search_api` | `SearchApiAssembler` | `SEARCH_ISSUES_QUERY` + variables `{ query, first: 100 }` | `ExecutionEngine.execute()` |
+| `project_items` | `ProjectItemsAssembler` | Dynamic doc from `ProjectItemsQueryBuilder.buildQuery()` | `ExecutionEngine.execute()` |
+| `mixed` | `MixedAssembler` | Delegates to `ProjectItemsAssembler` (identical wire shape) | Same as `project_items` |
+
+### Shared post-assembly pipeline (all branches except direct’s per-call loop)
+
+1. **Pagination:** `ExecutionEngine` adds `cursor` to variables, collects nodes (max 20 pages × 100 items).
+2. **Client filter:** `buildItemFilterFn()` — sprint scope, statuses, types, text search on title/body, etc.
+3. **Normalization:** `ResultNormalizer` → `buildStoryFromRaw()` → `resolveDependencyRefs()` → `toItemListing()` → `enrichListingCustomFields()`.
+4. **Finalize:** `finalizeAssemblerOutput()` applies `limit`, scope summary, warnings.
+
+### Information at each boundary
+
+| Boundary | Preserved | Added | Discarded |
+|----------|-----------|-------|-----------|
+| `ResolvedItemFilter` → `FilterProfile` | All filter dimensions | `kind` discriminator | Nothing (full filter kept on profile or parallel arg) |
+| Assembler → `PlatformRequest` | Owner login, project number | GraphQL document, operation name | Board-field predicates (not sent to GitHub on `project_items`) |
+| `ExecutionEngine` → `PaginationResult` | Raw nodes | `pagesConsumed`, `truncated` | Page boundaries |
+| `ResultNormalizer` → `AssemblerOutput` | Stories matching `filterFn` | `custom_fields` JSON blob | Non-matching items; non-selected fields never mapped to domain |
+
+### Fragment selection (project_items / mixed / bypass fetchers)
+
+`ProjectItemsQueryBuilder` composes an anonymous operation spreading:
+
+- `...ItemContent` — issue/PR/draft body, labels, assignees, milestone, blockedBy, repository
+- `...ItemFieldValues` — all configured field value typenames (first: 20)
+
+Source: `operations.graphql` fragments, injected via `getFragmentSource()` in `queries.ts`.
+
+---
+
+## Diagram — Query formation (`project_items` branch)
+
+```plantuml
+@startuml project_items_formation
+title project_items — ResolvedItemFilter → gh.graphql()
+
+actor "findItemsUseCase" as UC
+participant "GitHubProjectBackend" as BE
+participant "classifyFilter" as CF
+participant "ProjectItemsAssembler" as ASM
+participant "ProjectItemsQueryBuilder" as QB
+participant "PlatformRequest" as PR
+participant "ExecutionEngine" as EE
+participant "createProjectItemsExtractor" as EX
+participant "ResultNormalizer" as RN
+participant "buildItemFilterFn" as Filt
+participant "buildStoryFromRaw" as Map
+participant "GitHub API" as GH
+
+UC -> BE: findItems(ResolvedItemFilter)
+BE -> CF: classifyFilter(filter)
+CF --> BE: FilterProfile { kind: project_items, filter }
+
+BE -> ASM: assemble(filter)
+ASM -> QB: buildQuery()
+note right of QB
+  Spreads ItemContent +\nItemFieldValues from\noperations.graphql
+end note
+QB --> ASM: document string
+
+ASM -> PR: **create**\n{ document, variables:\n  { login, number },\n  operationName: ProjectItems }
+ASM -> EE: execute(request, extractor)
+loop pages ≤ 20
+  EE -> GH: graphql(document, vars + cursor?)
+  GH --> EE: ProjectItemsResponse
+  EE -> EX: extractor(response)
+  EX --> EE: nodes, pageInfo, totalCount
+end
+EE --> ASM: PaginationResult { nodes[] }
+
+ASM -> Filt: buildItemFilterFn(filter, config, allItems)
+ASM -> RN: normalize(result, filterFn, opts)
+loop each node
+  RN -> Map: buildStoryFromRaw(item, config)
+  Map --> RN: Story | null
+end
+RN --> ASM: AssemblerOutput
+ASM --> BE: listings + dependencyMap + warnings
+BE --> UC: BackendCallResult<ItemSearchResult>
+
+@enduml
+```
+
+---
+
+## Q2 — Payload analysis (fetched vs consumed)
+
+### Counting method
+
+- **Fetched:** Distinct GraphQL leaf selections on each `ProjectV2Item` node in the operation (node scalars + fragment fields; array multiplicity counted once per field path).
+- **Consumed:** Fields read by `buildStoryFromRaw`, `extractBoardFields`, `buildItemFilterFn` (search on body), `enrichListingCustomFields`, and `buildDependencyMap` when `include_dependencies` is true.
+- **Primary use case:** `scrum_find_items` listing path (full Story projection).
+
+### Payload analysis table
+
+| Branch | Operation | Fragments / shape | Field paths fetched (per item) | Field paths consumed (listing) | Excess % | Notes |
+|--------|-----------|-------------------|-------------------------------|--------------------------------|----------|-------|
+| `direct_lookup` | `GetIssueProjectItem` | `ItemContent`, `ItemFieldValues` on matched project item | ~52 | ~28 | **~46%** | Cost × `keys.length` × `tracked_repos` until match; same over-fetch as board scan per hit. |
+| `search_api` | `SearchIssues` | Issue-level issue fields + nested `ItemFieldValues` only on `projectItems`; **no** `ItemContent` on project item | ~48 on issue + ~22 on project item | ~28 | **~35–40%** | Search already filters repo/text/labels/assignee server-side; board fields still client-filtered. `scope: all` falls back to `project_items`. |
+| `project_items` | Anonymous `ProjectItems` | `ItemContent`, `ItemFieldValues` + node scalars | ~55 | ~28 | **~49%** | No server-side filter on `items()`; full board pagination then `buildItemFilterFn`. Dominant path for sprint/status/type filters. |
+| `mixed` | Same as `project_items` | Identical | ~55 | ~28 | **~49%** | `MixedAssembler` is a one-line delegate; pays full board scan + client text search. |
+
+### Highest-impact unused fetches (`ItemContent` / listing)
+
+| Fetched | Used by listing? | Used by aggregation-only paths? |
+|---------|------------------|--------------------------------|
+| `body` | Yes (search filter only when `filter.search` set) | No |
+| `state` | No | No |
+| `labels.color` | No | No |
+| `milestone.dueOn` | No | No |
+| `repository.*` | No | No |
+| `issueType.id` | No | No |
+| `blockedBy` | Only if `include_dependencies` | No |
+| Full `ItemFieldValues` (all typenames) | Only mapped fields + `custom_fields` passthrough | Only status, sprint `iterationId`, story points |
+
+### Mapper guard inflating “required” fetches
+
+`buildStoryFromRaw` returns `null` when `content.labels` or `content.assignees` is missing on Issue/PR (`mappers.ts`). That forces full label/assignee connections even for **`computeSprintCompletion`**, which only needs `fieldValues` + terminal status — see non-assembler section.
+
+---
+
+## Q3 — Server-side filtering capabilities
+
+### Schema findings (bundled `schema.graphql`)
+
+| Mechanism | Present in schema? | Supports iteration / single-select / number? |
+|-----------|-------------------|-----------------------------------------------|
+| `projectV2.items(fieldValueFilters: …)` | **No** | N/A — not in generated schema |
+| `projectV2.items(query: String)` | **Yes** (`"Search query for filtering items"`) | **Unknown syntax** — not used in codebase; needs live probe |
+| `ProjectV2Item.fieldValueByName(name:)` | **Yes** | Per-item; reduces field payload, not item count |
+| `search(query:)` (issues) | **Yes** — `SearchIssues` | Text, `label:`, `assignee:`, `repo:` — **not** board iteration/status |
+| `repository.issues(labels, states)` | **Yes** — `GetImpedimentIssues`, `ListIssues` | Labels/state only; not project board fields |
+| REST issue timeline | Used in burndown | Event-type filter server-side; separate from project items |
+
+Community/docs consensus: **no GraphQL filter on custom project field values** for the items connection; client-side filter after full fetch is the documented pattern ([Stack Overflow](https://stackoverflow.com/questions/73103486), [openillumi summary](https://openillumi.com/en/en-graphql-project-v2-custom-field-filter-limitation/)).
+
+### Live validation checklist (blocked — run before closing #220)
+
+Execute with project credentials and record response / errors:
+
+1. **`items(query:)`** — e.g. iteration title, status option name, `is:issue` style strings (GitHub docs are sparse; treat as experiment).
+2. **`SearchIssues`** — confirm board-field filters cannot be expressed; measure `issueCount` vs post-filter count.
+3. **`fieldValueByName`** — compare payload size vs `fieldValues(first: 20)` for a single item.
+4. **Closed issues on board** — search uses `is:issue` without `is:open` by design (`search-query-builder.ts`); confirm parity with board scan.
+
+---
+
+## Q4 — Minimum viable queries (per branch)
+
+### `project_items` / `mixed` — listing (current behavior preserved)
+
+Lean target: **selective fragments by intent** (adapter-only if fragment registry supports profiles):
+
+```graphql
+# Profile: listing-minimal (illustrative)
+nodes {
+  id type createdAt updatedAt isArchived
+  content {
+    __typename
+    ... on Issue {
+      id number title url body
+      issueType { name }
+      assignees(first: 5) { nodes { login } }
+      labels(first: 10) { nodes { name } }
+      milestone { id title }
+      blockedBy(first: 10) { nodes { id number title } }
+    }
+    # PR / DraftIssue: parallel minimal shapes
+  }
+  fieldValues(first: 20) { /* only typenames present in config field_mapping */ }
+}
+```
+
+Remove: `state`, `labels.color`, `milestone.dueOn`, `repository.*`, unused `ItemFieldValues` typenames.
+
+### `project_items` — aggregation-only (`computeSprintCompletion`, burndown input)
+
+```graphql
+# Profile: sprint-aggregate
+nodes {
+  id
+  content { __typename ... on Issue { id } ... on DraftIssue { id } }
+  fieldValues(first: 20) {
+    nodes {
+      ... on ProjectV2ItemFieldIterationValue { iterationId field { ... on ProjectV2FieldCommon { id } } }
+      ... on ProjectV2ItemFieldSingleSelectValue { name field { ... on ProjectV2FieldCommon { id } } }
+      ... on ProjectV2ItemFieldNumberValue { number field { ... on ProjectV2FieldCommon { id } } }
+    }
+  }
+}
+```
+
+Requires: relax `buildStoryFromRaw` null-guard for aggregation-only callers **or** add `buildSprintAggregateFromRaw` in `mappers.ts` (still adapter-local).
+
+### `search_api`
+
+Already omits `ItemContent` on project items; trim issue-level `body` when `filter.search` is empty; drop `blockedBy` unless `include_dependencies`.
+
+### `direct_lookup`
+
+Same profiles as `project_items` once key resolves; avoid `GetIssueProjectItem` fan-out by caching project item id after first resolve (adapter cache, optional).
+
+---
+
+## Non-assembler paths (same query shape)
+
+These **bypass** the assembler pipeline but reuse **`ProjectItemsQueryBuilder` + `PaginatedProjectItemFetcher`** (identical `ItemContent` + `ItemFieldValues`):
+
+| Caller | Method | Why it hurts |
+|--------|--------|--------------|
+| `StoryQueryService` | `fetchAllItems` / `computeSprintCompletion` | Full board scan for two SP numbers |
+| `BoardHealthService` | via `fetchAllItems` | Full scan for aggregates |
+| `BurndownCalculator` | paginated items + REST timeline | Full scan per burndown |
+| `SprintHistoryService` | `fetchAllItems` | Full scan |
+| `ImpedimentService` | board cross-reference | Full scan |
+
+`scrum_orient` profile (from issue comment): bootstrap ×2 + `ListMilestones` + **P** `ProjectItems` pages — ~700ms–1.2s @ ~100 items, linear in board size.
+
+---
+
+## Q5 — Optimization candidates
+
+**Urgency** = estimated payload reduction × path frequency (H / M / L).
+
+| Candidate | Change description | Layer-safe? | Est. payload reduction | Complexity | Urgency |
+|-----------|-------------------|-------------|------------------------|------------|---------|
+| **Sprint-aggregate query profile** | `ProjectItemsQueryBuilder.buildQuery(profile)` without `ItemContent`; use in `StoryQueryService.computeSprintCompletion`, burndown collection | Adapter-only | **60–80%** per orient/health page | Med | **H** |
+| **Relax mapper null-guard** | Allow missing `labels`/`assignees` when only board fields needed | Adapter-only (`mappers.ts`) | Enables aggregate profile | Low | **H** |
+| **`fieldValueByName` selective fetch** | Replace `fieldValues(first:20)` with named fields from `config.live.fields` | Adapter-only | **30–50%** field subgraph | Med | **M** |
+| **Listing-minimal `ItemContent`** | Drop `state`, `repository`, `label.color`, `milestone.dueOn`; conditional `body` | Adapter-only | **25–40%** listing | Med | **M** |
+| **Probe `items(query:)`** | Pass server filter string for sprint/status if syntax exists | Adapter-only | **Up to 90%** page count if viable | Low probe / High if refactor | **H** (after live proof) |
+| **Request-scoped board cache** | Single pagination per `findItems` + orient when multiple services need items | Adapter-only | Saves duplicate **P** pages | Med | **M** |
+| **Direct lookup cache** | Memoize issue# → project item id within process | Adapter-only | Cuts **K×R** `GetIssueProjectItem` | Low | **M** |
+| **`custom_fields` passthrough** | Stop JSON-serializing all field nodes unless tool requests | Adapter-only | CPU + response size | Med | **L** |
+| **Skip second `reload()` on orient** | Requires use-case change | **Requires port/use-case** | 1 bootstrap call | Low | Out of spike scope |
+| **Port: slim `findItems` result** | Return aggregate DTO without listings | **Requires port** | Large | High | Out of spike scope |
+
+---
+
+## Follow-on stories (adapter-safe, high urgency)
+
+Create in `github-projects-mcp-server` before closing #220:
+
+1. **Query profiles in `ProjectItemsQueryBuilder`** — `full | listing-minimal | sprint-aggregate` with tests asserting identical domain output for listing profile.
+2. **Aggregation mapper path** — `buildAggregateStoryFromRaw` or relaxed guards; wire `computeSprintCompletion` + burndown to aggregate profile.
+3. **Live spike: `projectV2.items(query:)`** — document supported filter grammar or close as non-viable.
+4. **Request-scoped `ProjectItem` cache** on `GitHubInfraContext` for orient + board health in one MCP request.
+
+---
+
+## Acceptance criteria status (#220)
+
+| Criterion | Status |
+|-----------|--------|
+| Formation path for all four branches | Done (this doc + `docs/AUDIT.md`) |
+| Payload analysis table | Done (approximate counts; refine with live response sampling) |
+| Server-side filtering validated live | **Blocked** — token/auth required |
+| Minimum viable query per branch | Done (profiles above) |
+| Optimization candidates classified | Done |
+| Follow-on issues created | **Pending** — list above ready to file |
+| Findings comment on #220 | **Pending** — paste summary + link to this file when posting |
+
+---
+
+## Key code references
+
+| Concern | Location |
+|---------|----------|
+| Filter classification | `src/adapters/github/internal/filter-strategy-router.ts` |
+| Dynamic ProjectItems doc | `src/adapters/github/internal/project-items-query-builder.ts` |
+| Fragments | `src/adapters/github/operations.graphql` (`ItemContent`, `ItemFieldValues`) |
+| Consumption | `src/adapters/github/mappers.ts` (`buildStoryFromRaw`, `extractBoardFields`) |
+| Client-side filter | `src/adapters/github/internal/item-filter.ts` |
+| Sprint completion scan | `src/adapters/github/internal/story-query-service.ts` (`computeSprintCompletion`) |
+| Bypass pagination | `src/adapters/github/internal/pagination.ts` |
+

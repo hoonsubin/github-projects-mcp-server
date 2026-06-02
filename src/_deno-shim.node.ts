@@ -29,17 +29,17 @@ import { serve as honoServe } from "@hono/node-server";
 //
 // Node.js fires "unhandledRejection" on `process`, not on `globalThis`, so
 // we bridge the two here.
-export function addEventListener(
+export const addEventListener = (
   type: string,
   handler: (event: { reason: unknown; preventDefault: () => void }) => void,
-): void {
+): void => {
   if (type === "unhandledrejection") {
     process.on("unhandledRejection", (reason: unknown) => {
       handler({ reason, preventDefault: () => {} });
     });
   }
   // Other event types are silently ignored - none are used in this project.
-}
+};
 
 export const Deno = {
   // ── CLI args ───────────────────────────────────────────────────────────────

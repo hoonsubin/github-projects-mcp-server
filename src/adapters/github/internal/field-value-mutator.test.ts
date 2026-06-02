@@ -426,6 +426,29 @@ Deno.test({
 });
 
 Deno.test({
+  name: "setFieldType - skips GetProjectItemById when issueId is provided",
+  async fn() {
+    const baseConfig = makeConfig();
+    const { mutator, gh } = createMutator({
+      configOverrides: {
+        live: {
+          ...baseConfig.live,
+          typeResolution: { source: "org_issue_type", fieldId: null },
+          typeOptions: { feature: "IT_feature" },
+        },
+      },
+    });
+    gh.enqueue(SET_ISSUE_TYPE_OK);
+
+    await mutator.setFieldType(TEST_ITEM_ID, "feature", "I_issue1");
+
+    assertEquals(gh.graphqlCalls.length, 1);
+    assertStringIncludes(gh.graphqlCalls[0].queryExcerpt, "SetIssueType");
+    assertEquals(gh.graphqlCalls[0].variables.issueId, "I_issue1");
+  },
+});
+
+Deno.test({
   name: "setFieldType - uses issue type mutation for org issue type resolution",
   async fn() {
     const baseConfig = makeConfig();

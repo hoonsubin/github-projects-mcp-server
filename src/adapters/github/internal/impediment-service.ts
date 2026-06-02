@@ -18,7 +18,9 @@ import type * as GH from "../generated/github-types.ts";
 import type { ImpedimentStatus } from "../../../domain/types.ts";
 import { resolveSprint, resolveStory } from "./resolver.ts";
 import { LabelResolver } from "./label-resolver.ts";
+import { BoardScanCoordinator } from "./board-scan-coordinator.ts";
 import { StoryMutationService } from "./story-mutation-service.ts";
+import type { GitHubBootState } from "../bootstrap.ts";
 import type { GitHubInfraContext } from "./infra-context.ts";
 import {
   ADD_COMMENT_MUTATION,
@@ -27,11 +29,65 @@ import {
   GET_ISSUE_BY_ID_QUERY,
   REPLACE_ISSUE_LABELS_MUTATION,
 } from "../queries.ts";
-import { ProjectItemsQueryBuilder } from "./project-items-query-builder.ts";
-import { PaginatedProjectItemFetcher } from "./pagination.ts";
-import type { ProjectItemIssueContent, UserLogin } from "../types.ts";
+import type { ProjectItem, ProjectItemIssueContent, UserLogin } from "../types.ts";
 import type { CreateStoryInput, ImpedimentListing } from "../../../scrum/ports.ts";
 import type { ImpedimentRef, SprintRef, StoryRef } from "../../../domain/types.ts";
+
+/** Filter sprint impediments from an in-memory project item list (no board scan). */
+export const listSprintImpedimentsFromItems = (
+  allItems: readonly ProjectItem[],
+  config: GitHubBootState,
+  sprint: SprintRef,
+): ImpedimentListing[] => {
+  const iterationId = resolveSprint(sprint, config);
+  if (!iterationId) return [];
+
+  const sprintItems = allItems.filter((item) => {
+    const fv = item.fieldValues.nodes.find(
+      (v) => v.field?.id === config.live.fields.sprintFieldId,
+    );
+    return fv?.iterationId === iterationId;
+  });
+
+  const impedimentOptionId = config.live.typeOptions["impediment"];
+  if (!impedimentOptionId) {
+    throw new GitHubApiError(
+      `"impediment" type option not found in config.typeOptions. ` +
+        `Valid type keys: ${Object.keys(config.live.typeOptions).join(", ")}. ` +
+        `Add "impediment" to type_mapping in your config file.`,
+      {
+        code: "OPTION_NOT_FOUND",
+        recovery: "Check your config type_mapping for an 'impediment' entry.",
+        context: { valid: Object.keys(config.live.typeOptions) },
+      },
+    );
+  }
+
+  return sprintItems
+    .filter((item) =>
+      item.content?.__typename === "Issue" &&
+      (config.live.typeResolution.source === "board_field"
+        ? item.fieldValues.nodes.some((v) =>
+          v.field?.id === config.live.typeResolution.fieldId &&
+          "optionId" in v && v.optionId === impedimentOptionId
+        )
+        : item.content.issueType?.id === impedimentOptionId)
+    )
+    .map((item) => {
+      const issue = item.content as ProjectItemIssueContent;
+      return {
+        ref: { id: item.id },
+        description: issue.body ?? "",
+        status: (issue.state === "OPEN" ? "open" : "resolved") as
+          | "open"
+          | "in_progress"
+          | "resolved",
+        raised_by: null,
+        raised_at: item.createdAt,
+        resolved_at: null,
+      };
+    });
+};
 
 // ── Shared issue node shape ────────────────────────────────────────────────────
 
@@ -70,6 +126,7 @@ export class ImpedimentService {
     private readonly ctx: GitHubInfraContext,
     private readonly labelResolver: LabelResolver,
     private readonly storyMutationService: StoryMutationService,
+    private readonly boardScan: BoardScanCoordinator,
   ) {}
 
   /**
@@ -129,58 +186,8 @@ export class ImpedimentService {
   }
 
   async getSprintImpediments(sprint: SprintRef): Promise<ImpedimentListing[]> {
-    const iterationId = resolveSprint(sprint, this.ctx.config);
-    if (!iterationId) return [];
-
-    const query = new ProjectItemsQueryBuilder(this.ctx.ghConfig.owner_type).buildQuery();
-    const fetcher = new PaginatedProjectItemFetcher(this.ctx, query);
-
-    // Fetch all items, filter by sprint iteration
-    const sprintItems = await fetcher.collect((item) => {
-      const fv = item.fieldValues.nodes.find(
-        (v) => v.field?.id === this.ctx.config.live.fields.sprintFieldId,
-      );
-      return fv?.iterationId === iterationId;
-    });
-
-    // Filter to Issues with the Type board field set to "impediment"
-    const impedimentOptionId = this.ctx.config.live.typeOptions["impediment"];
-    if (!impedimentOptionId) {
-      throw new GitHubApiError(
-        `"impediment" type option not found in config.typeOptions. ` +
-          `Valid type keys: ${Object.keys(this.ctx.config.live.typeOptions).join(", ")}. ` +
-          `Add "impediment" to type_mapping in your config file.`,
-        {
-          code: "OPTION_NOT_FOUND",
-          recovery: "Check your config type_mapping for an 'impediment' entry.",
-          context: { valid: Object.keys(this.ctx.config.live.typeOptions) },
-        },
-      );
-    }
-    return sprintItems
-      .filter((item) =>
-        item.content?.__typename === "Issue" &&
-        (this.ctx.config.live.typeResolution.source === "board_field"
-          ? item.fieldValues.nodes.some((v) =>
-            v.field?.id === this.ctx.config.live.typeResolution.fieldId &&
-            "optionId" in v && v.optionId === impedimentOptionId
-          )
-          : item.content.issueType?.id === impedimentOptionId)
-      )
-      .map((item) => {
-        const issue = item.content as ProjectItemIssueContent;
-        return {
-          ref: { id: item.id },
-          description: issue.body ?? "",
-          status: (issue.state === "OPEN" ? "open" : "resolved") as
-            | "open"
-            | "in_progress"
-            | "resolved",
-          raised_by: null,
-          raised_at: item.createdAt,
-          resolved_at: null,
-        };
-      });
+    const allItems = await this.boardScan.fetchAggregateBoard();
+    return listSprintImpedimentsFromItems(allItems, this.ctx.config, sprint);
   }
 
   async updateImpediment(

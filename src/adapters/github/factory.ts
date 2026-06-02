@@ -32,6 +32,7 @@ import type { GitHubBackendDependencies } from "./backend.ts";
 import { graphql, rest } from "./internal/http-client.ts";
 import type { GitHubInfraContext } from "./internal/infra-context.ts";
 import type { GitHubLiveMetadata } from "./bootstrap.ts";
+import { BoardScanCoordinator } from "./internal/board-scan-coordinator.ts";
 import { BurndownCalculator } from "./internal/burndown-calculator.ts";
 import { ConfigReloader } from "./internal/config-reloader.ts";
 import { FieldValueMutator } from "./internal/field-value-mutator.ts";
@@ -172,13 +173,15 @@ export class GitHubAdapterFactory implements AdapterFactory {
 
     const fieldValueMutator = new FieldValueMutator(ctx, userMilestoneResolver);
 
-    const burndownCalculator = new BurndownCalculator(ctx);
+    const boardScan = new BoardScanCoordinator(ctx);
 
-    const sprintHistoryService = new SprintHistoryService(ctx);
+    const burndownCalculator = new BurndownCalculator(ctx, boardScan);
+
+    const sprintHistoryService = new SprintHistoryService(ctx, boardScan);
 
     const vocabularyManager = new VocabularyManager(ctx, labelResolver);
 
-    const storyQueryService = new StoryQueryService(ctx);
+    const storyQueryService = new StoryQueryService(ctx, boardScan);
 
     const storyMutationService = new StoryMutationService(
       ctx,
@@ -187,7 +190,12 @@ export class GitHubAdapterFactory implements AdapterFactory {
       fieldValueMutator,
     );
 
-    const impedimentService = new ImpedimentService(ctx, labelResolver, storyMutationService);
+    const impedimentService = new ImpedimentService(
+      ctx,
+      labelResolver,
+      storyMutationService,
+      boardScan,
+    );
 
     // ── Assembler pipeline ────────────────────────────────────────────────
     const executionEngine = new ExecutionEngine(ghClient);
@@ -233,6 +241,7 @@ export class GitHubAdapterFactory implements AdapterFactory {
 
     const analyticsService = new AnalyticsService(
       bootState,
+      boardScan,
       sprintHistoryService,
       burndownCalculator,
     );
@@ -251,6 +260,8 @@ export class GitHubAdapterFactory implements AdapterFactory {
     // ── Facade assembly - single parameter object, no positional args ────
 
     const deps: GitHubBackendDependencies = {
+      gh: ghClient,
+      boardScan,
       labelResolver,
       fieldValueMutator,
       vocabularyManager,

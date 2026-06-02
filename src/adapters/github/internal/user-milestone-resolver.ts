@@ -37,11 +37,7 @@ export class UserMilestoneResolver {
     return nodeId;
   }
 
-  async resolveUserNodeIds(logins: readonly string[]): Promise<string[]> {
-    const ids: string[] = [];
-    for (const login of logins) {
-      ids.push(await this.resolveUserNodeId(login));
-    }
-    return ids;
+  resolveUserNodeIds(logins: readonly string[]): Promise<string[]> {
+    return Promise.all(logins.map((login) => this.resolveUserNodeId(login)));
   }
 }

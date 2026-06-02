@@ -22,7 +22,7 @@ import type { FileReaderPort } from "./ports.ts";
  * (see typeTemplatePathsPromise below) rather than calling this directly
  * in each test, to avoid redundant disk reads.
  */
-export async function buildTypeTemplatePaths(): Promise<Record<string, ContentLocation>> {
+export const buildTypeTemplatePaths = async (): Promise<Record<string, ContentLocation>> => {
   const configPath = ".github/scrum/config.yml";
   const rawYml = await Deno.readTextFile(configPath);
   const config = parse(rawYml) as Record<string, unknown>;
@@ -41,7 +41,7 @@ export async function buildTypeTemplatePaths(): Promise<Record<string, ContentLo
     }
   }
   return paths;
-}
+};
 
 /**
  * Module-level lazy promise — disk read and YAML parse happen once per test
@@ -87,10 +87,10 @@ export const stubFileReader: FileReaderPort = {
  *   },
  * );
  */
-export async function withTestServer(
+export const withTestServer = async (
   handler: (req: Request) => Response,
   fn: (baseUrl: URL) => Promise<void>,
-): Promise<void> {
+): Promise<void> => {
   const server = Deno.serve(
     { hostname: "127.0.0.1", port: 0, onListen: () => {} },
     handler,
@@ -101,4 +101,4 @@ export async function withTestServer(
   } finally {
     await server.shutdown();
   }
-}
+};

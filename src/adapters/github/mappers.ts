@@ -16,7 +16,16 @@ import type {
   StoryComment,
 } from "../../domain/types.ts";
 import { computeSprintEndDate } from "../../scrum/sprint-math.ts";
-import type { BurndownStoryInput, SprintInfo } from "../../scrum/ports.ts";
+import type {
+  BurndownStoryInput,
+  ItemAggregate,
+  SprintInfo,
+  StorySnapshotOverrides,
+} from "../../scrum/ports.ts";
+import type { Story } from "../../domain/types.ts";
+import type { CreateStoryInput, ScrumField, StoryUpdates } from "../../scrum/ports.ts";
+import type { SprintRef } from "../../domain/types.ts";
+import { resolveSprint } from "./internal/resolver.ts";
 import type {
   AssigneeNodes,
   BoardFields,
@@ -180,20 +189,18 @@ export const buildStoryFromRaw = (
 
   // ── DraftIssue branch ───────────────────────────────────────────────────────
   if (content.__typename === "DraftIssue") {
-    // assignees is absent when includeDraftIssueContent: false - skip this item
-    if (!content.assignees) return null;
     const draft: DraftStory = {
       kind: "draft",
       ref: { id: item.id },
       key: null,
       title: content.title,
-      body: content.body,
+      body: content.body ?? "",
       type: boardFields.type,
       status: boardFields.status,
       sprint: boardFields.sprint,
       story_points: boardFields.story_points,
       priority: boardFields.priority,
-      assignees: content.assignees.nodes.map((a) => a.login),
+      assignees: content.assignees?.nodes.map((a) => a.login) ?? [],
       labels: [],
       epic: null,
       created_at: item.createdAt,
@@ -205,37 +212,37 @@ export const buildStoryFromRaw = (
   }
 
   // ── Issue / PullRequest branch ──────────────────────────────────────────────
-  // Both have number, title, url, body, assignees, labels
-  // labels/assignees are absent when includePRContent: false - skip this item
-  if (!content.labels || !content.assignees) return null;
-  // Type comes from either the board field or org issue type, depending on bootstrap typeResolution.
-  // All repo labels are passed through unfiltered.
-  const labels: string[] = content.labels.nodes.map((l: { name: string }) => l.name);
+  // Aggregate query profiles omit labels/assignees; default to empty collections.
+  const labels: string[] = content.labels?.nodes.map((l: { name: string }) => l.name) ?? [];
+  const assignees: string[] = content.assignees?.nodes.map((a) => a.login) ?? [];
   const epic = content.__typename === "Issue" && content.milestone
     ? { ref: { id: content.milestone.id }, name: content.milestone.title }
     : null;
 
-  // Dependencies come from native Issue.blockedBy GraphQL field
-  const blockedBy = content.__typename === "Issue"
+  const blockedBy = content.__typename === "Issue" && content.blockedBy
     ? mapIssueDependencies(content)
     : [] as DependencyEntry[];
+
+  const body = "body" in content ? (content.body ?? "") : "";
+  const url = "url" in content && content.url ? content.url : "";
+
   const issue: IssueStory = {
     kind: "issue",
     ref: { id: item.id },
     key: content.number.toString(),
     title: content.title,
-    body: content.body,
+    body,
     type: boardFields.type,
     status: boardFields.status,
     sprint: boardFields.sprint,
     story_points: boardFields.story_points,
     priority: boardFields.priority,
-    assignees: content.assignees.nodes.map((a) => a.login),
+    assignees,
     labels,
     epic,
     created_at: item.createdAt,
     updated_at: item.updatedAt,
-    url: content.url,
+    url,
     blocked_by: blockedBy,
   };
   return issue;
@@ -391,6 +398,130 @@ export const resolveDependencyRefs = (
   }));
 };
 
+// ── Aggregate projection ───────────────────────────────────────────────────────
+
+const extractSprintField = (
+  nodes: FieldValueNode[],
+  sprintFieldId: string,
+): { sprintId: string | null; sprintTitle: string | null } => {
+  const fv = nodes.find((v) => v.field?.id === sprintFieldId);
+  if (!fv || !("iterationId" in fv)) return { sprintId: null, sprintTitle: null };
+  const iterationId = "iterationId" in fv && typeof fv.iterationId === "string"
+    ? fv.iterationId
+    : null;
+  return {
+    sprintId: iterationId,
+    sprintTitle: "title" in fv && typeof fv.title === "string" ? fv.title : null,
+  };
+};
+
+const contentHasAssignee = (item: ProjectItem): boolean => {
+  const content = item.content;
+  if (!content) return false;
+  if ("assignees" in content) {
+    return (content.assignees?.nodes.length ?? 0) > 0;
+  }
+  return false;
+};
+
+const contentHasBlockers = (item: ProjectItem): boolean => {
+  const content = item.content;
+  if (!content || content.__typename !== "Issue") return false;
+  return (content.blockedBy?.nodes.length ?? 0) > 0;
+};
+
+const contentTitleAndNumber = (
+  item: ProjectItem,
+): { title: string | null; issueNumber: number | null } => {
+  const content = item.content;
+  if (!content || content.__typename === "DraftIssue") {
+    return {
+      title: content && "title" in content ? content.title : null,
+      issueNumber: null,
+    };
+  }
+  if ("number" in content) {
+    return { title: content.title, issueNumber: content.number };
+  }
+  return { title: null, issueNumber: null };
+};
+
+/**
+ * Project a board item to {@link ItemAggregate}. Never returns null.
+ */
+export const buildAggregateFromRaw = (
+  item: ProjectItem,
+  config: GitHubBootState,
+): ItemAggregate => {
+  const { sprintFieldId } = config.live.fields;
+  const boardFields = extractBoardFields(
+    item.fieldValues.nodes,
+    config,
+    item.content?.__typename === "Issue" ? item.content.issueType?.name ?? null : null,
+  );
+  const { sprintId, sprintTitle } = extractSprintField(
+    item.fieldValues.nodes,
+    sprintFieldId,
+  );
+  const { title, issueNumber } = contentTitleAndNumber(item);
+
+  return {
+    id: item.id,
+    type: boardFields.type,
+    status: boardFields.status,
+    sprintId,
+    sprintTitle,
+    storyPoints: boardFields.story_points,
+    hasBlockers: contentHasBlockers(item),
+    hasAssignee: contentHasAssignee(item),
+    issueNumber,
+    isArchived: item.isArchived ?? false,
+    title,
+  };
+};
+
+export const aggregateToBurndownInput = (
+  agg: ItemAggregate,
+): BurndownStoryInput | null => {
+  if (agg.issueNumber === null || agg.title === null) return null;
+  return {
+    number: agg.issueNumber,
+    title: agg.title,
+    points: agg.storyPoints ?? 0,
+    status: agg.status,
+  };
+};
+
+/** Sum story points in terminal statuses for one sprint iteration. */
+export const sprintCompletionFromAggregates = (
+  aggregates: readonly ItemAggregate[],
+  iterationId: string,
+  config: GitHubBootState,
+): { completed: number; total: number } => {
+  const statusReverseMap = new Map<string, string>();
+  const statusDisplay = config.ghConfig.status_display ?? {};
+  for (const [canonical, display] of Object.entries(statusDisplay)) {
+    statusReverseMap.set(display, canonical);
+  }
+
+  let completed = 0;
+  let total = 0;
+
+  for (const agg of aggregates) {
+    if (agg.sprintId !== iterationId) continue;
+    const points = agg.storyPoints ?? 0;
+    total += points;
+    if (agg.status) {
+      const canonicalKey = statusReverseMap.get(agg.status);
+      if (canonicalKey && config.scrumConfig.scrum.status[canonicalKey]?.terminal) {
+        completed += points;
+      }
+    }
+  }
+
+  return { completed, total };
+};
+
 // ── Burndown projection ────────────────────────────────────────────────────────
 
 /**
@@ -400,19 +531,107 @@ export const resolveDependencyRefs = (
 export const buildBurndownStoryInput = (
   item: ProjectItem,
   config: GitHubBootState,
-): BurndownStoryInput | null => {
-  const content = item.content;
-  if (!content || content.__typename === "DraftIssue") return null;
+): BurndownStoryInput | null => aggregateToBurndownInput(buildAggregateFromRaw(item, config));
 
-  const { status, story_points } = extractBoardFields(
-    item.fieldValues.nodes,
-    config,
-  );
+// ── Post-mutation snapshot merge ───────────────────────────────────────────────
+
+const sprintDisplayTitle = (
+  sprintRef: SprintRef,
+  config: GitHubBootState,
+): string | null => {
+  const iterationId = resolveSprint(sprintRef, config);
+  if (!iterationId) return null;
+  const iter = config.live.iterations.all.find((i) => i.id === iterationId);
+  return iter?.title ?? null;
+};
+
+export const applyStorySnapshotOverrides = (
+  story: Story,
+  overrides?: StorySnapshotOverrides,
+): Story => {
+  if (!overrides) return story;
+
+  let epic = story.epic;
+  if (overrides.epic !== undefined) {
+    epic = overrides.epic === null
+      ? null
+      : "name" in overrides.epic
+      ? overrides.epic
+      : { ref: overrides.epic, name: story.epic?.name ?? "" };
+  }
+
+  let blocked_by = story.blocked_by;
+  if (overrides.blocked_by !== undefined) {
+    blocked_by = overrides.blocked_by === null ? [] : overrides.blocked_by.map((ref) => ({
+      ref: "id" in ref ? { id: ref.id } : { id: "" },
+      key: "number" in ref ? String(ref.number) : "",
+      title: null,
+    }));
+  }
 
   return {
-    number: content.number,
-    title: content.title,
-    points: story_points ?? 0,
-    status,
+    ...story,
+    ...(overrides.title !== undefined ? { title: overrides.title } : {}),
+    ...(overrides.body !== undefined ? { body: overrides.body } : {}),
+    ...(overrides.labels !== undefined ? { labels: overrides.labels } : {}),
+    ...(overrides.assignees !== undefined ? { assignees: overrides.assignees } : {}),
+    ...(overrides.type !== undefined ? { type: overrides.type as Story["type"] } : {}),
+    ...(overrides.status !== undefined ? { status: overrides.status } : {}),
+    ...(overrides.sprint !== undefined ? { sprint: overrides.sprint } : {}),
+    ...(overrides.story_points !== undefined ? { story_points: overrides.story_points } : {}),
+    ...(overrides.priority !== undefined ? { priority: overrides.priority } : {}),
+    epic,
+    blocked_by,
   };
 };
+
+export const storySnapshotOverridesFromSetField = (
+  field: ScrumField,
+  value: string | number | SprintRef | null,
+  config: GitHubBootState,
+): StorySnapshotOverrides => {
+  switch (field) {
+    case "status":
+      return { status: value as string | null };
+    case "sprint":
+      return {
+        sprint: value === null ? null : sprintDisplayTitle(value as SprintRef, config),
+      };
+    case "story_points":
+      return { story_points: value as number | null };
+    case "priority":
+      return { priority: value as string | null };
+    case "type":
+      return { type: value as string | null };
+    case "assignee":
+      return { assignees: value === null ? [] : [value as string] };
+    default:
+      return {};
+  }
+};
+
+export const storySnapshotOverridesFromStoryUpdates = (
+  updates: StoryUpdates,
+): StorySnapshotOverrides => ({
+  ...(updates.title !== undefined ? { title: updates.title } : {}),
+  ...(updates.body !== undefined ? { body: updates.body } : {}),
+  ...(updates.labels !== undefined ? { labels: updates.labels } : {}),
+  ...(updates.assignees !== undefined ? { assignees: updates.assignees } : {}),
+  ...(updates.epic !== undefined ? { epic: updates.epic } : {}),
+  ...(updates.blocked_by !== undefined ? { blocked_by: updates.blocked_by } : {}),
+});
+
+export const storySnapshotOverridesFromCreateStory = (
+  input: CreateStoryInput,
+  config: GitHubBootState,
+): StorySnapshotOverrides => ({
+  title: input.title,
+  body: input.body,
+  type: input.type,
+  ...(input.priority !== undefined ? { priority: input.priority } : {}),
+  ...(input.storyPoints !== undefined ? { story_points: input.storyPoints } : {}),
+  ...(input.labels !== undefined ? { labels: input.labels } : {}),
+  ...(input.assignees !== undefined ? { assignees: input.assignees } : {}),
+  ...(input.epic !== undefined ? { epic: input.epic } : {}),
+  ...(input.sprint !== undefined ? { sprint: sprintDisplayTitle(input.sprint, config) } : {}),
+});

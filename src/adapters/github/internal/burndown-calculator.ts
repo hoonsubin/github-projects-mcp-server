@@ -7,24 +7,30 @@
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
-import { PaginatedProjectItemFetcher } from "./pagination.ts";
-import { ProjectItemsQueryBuilder } from "./project-items-query-builder.ts";
+import { BoardScanCoordinator } from "./board-scan-coordinator.ts";
 import { buildBurndownStoryInput } from "../mappers.ts";
 import { resolveSprint } from "./resolver.ts"; // standalone function - not a class method
 import { computeSprintEndDate } from "../../../scrum/sprint-math.ts";
 import type { GitHubInfraContext } from "./infra-context.ts";
+import type { ProjectItem } from "../types.ts";
 import type { BurndownInput, BurndownStoryInput, CompletionMap } from "../../../scrum/ports.ts";
 import type { SprintRef } from "../../../domain/types.ts";
 import { log } from "../../../services/logger.ts";
 
 export class BurndownCalculator {
-  constructor(private readonly ctx: GitHubInfraContext) {}
+  constructor(
+    private readonly ctx: GitHubInfraContext,
+    private readonly boardScan: BoardScanCoordinator,
+  ) {}
 
   /**
    * Collects all stories belonging to the specified sprint and prepares
    * them for burndown computation.
    */
-  async getBurndownInput(sprint: SprintRef): Promise<BurndownInput> {
+  async getBurndownInput(
+    sprint: SprintRef,
+    preloadedItems?: readonly ProjectItem[],
+  ): Promise<BurndownInput> {
     const iterationId = resolveSprint(sprint, this.ctx.config);
 
     if (iterationId === null) {
@@ -52,19 +58,13 @@ export class BurndownCalculator {
       );
     }
 
-    // No sprintFieldIds - use the full field values query so extractBoardFields
-    // can resolve story_points, status, etc. Sprint filtering is done by the
-    // predicate below via iterationId, which the full query still returns.
-    const query = new ProjectItemsQueryBuilder(this.ctx.ghConfig.owner_type).buildQuery();
-    const fetcher = new PaginatedProjectItemFetcher(this.ctx, query);
-
-    const items = await fetcher.collect((item) => {
-      return item.fieldValues.nodes.some(
-        (node) =>
-          node.field?.id === this.ctx.config.live.fields.sprintFieldId &&
-          node.iterationId === iterationId,
-      );
-    });
+    const allItems = preloadedItems ?? await this.boardScan.fetchAggregateBoard();
+    const sprintFieldId = this.ctx.config.live.fields.sprintFieldId;
+    const items = allItems.filter((item) =>
+      item.fieldValues.nodes.some(
+        (node) => node.field?.id === sprintFieldId && node.iterationId === iterationId,
+      )
+    );
 
     const stories = items
       .map((item) => buildBurndownStoryInput(item, this.ctx.config))
