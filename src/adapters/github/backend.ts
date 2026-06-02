@@ -28,7 +28,12 @@ import { DirectLookupAssembler } from "./internal/assemblers/direct-lookup-assem
 import { ProjectItemsAssembler } from "./internal/assemblers/project-items-assembler.ts";
 import { SearchApiAssembler } from "./internal/assemblers/search-api-assembler.ts";
 import { MixedAssembler } from "./internal/assemblers/mixed-assembler.ts";
-import { ProjectItemsCache } from "./internal/project-items-cache.ts";
+import { BoardScanCoordinator } from "./internal/board-scan-coordinator.ts";
+import {
+  storySnapshotOverridesFromCreateStory,
+  storySnapshotOverridesFromSetField,
+  storySnapshotOverridesFromStoryUpdates,
+} from "./mappers.ts";
 import { resolveProjectItemIdByIssueNumber } from "./internal/resolve-issue-number.ts";
 import type { GitHubClient } from "./internal/http-client.ts";
 import type { GitHubBackendConfig } from "./types.ts";
@@ -42,6 +47,7 @@ import type {
   ScrumField,
   SprintInfo,
   StoryDetail,
+  StorySnapshotOverrides,
   StoryUpdates,
   VocabularyKind,
 } from "../../scrum/ports.ts";
@@ -54,7 +60,9 @@ import type {
   ImpedimentStatus,
   ItemSearchResult,
   IterationEntry,
+  EntityRef,
   SprintRef,
+  Story,
   StoryRef,
 } from "../../domain/types.ts";
 
@@ -68,7 +76,7 @@ import type {
  */
 export interface GitHubBackendDependencies {
   readonly gh: GitHubClient;
-  readonly projectItemsCache: ProjectItemsCache;
+  readonly boardScan: BoardScanCoordinator;
   readonly labelResolver: LabelResolver;
   readonly fieldValueMutator: FieldValueMutator;
   readonly vocabularyManager: VocabularyManager;
@@ -221,7 +229,7 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
 
   async reload(): Promise<void> {
     await this.deps.configReloader.reload();
-    this.deps.projectItemsCache.invalidate();
+    this.deps.boardScan.invalidate();
     this.deps.labelResolver.invalidateLabelCache();
   }
 
@@ -271,6 +279,42 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
   async getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>> {
     const resolved = await this.resolveRef(ref);
     return this.deps.storyQueryService.getStoryDetail(resolved);
+  }
+
+  async composeStorySnapshot(
+    ref: StoryRef,
+    overrides?: StorySnapshotOverrides,
+  ): Promise<BackendCallResult<Story>> {
+    const resolved = await this.resolveRef(ref) as EntityRef;
+    return this.deps.storyQueryService.composeStorySnapshot(resolved, overrides);
+  }
+
+  composeStoryAfterSetField(
+    ref: StoryRef,
+    field: ScrumField,
+    value: string | number | SprintRef | null,
+  ): Promise<BackendCallResult<Story>> {
+    return this.composeStorySnapshot(
+      ref,
+      storySnapshotOverridesFromSetField(field, value, this.deps.config),
+    );
+  }
+
+  composeStoryAfterStoryUpdate(
+    ref: StoryRef,
+    updates: StoryUpdates,
+  ): Promise<BackendCallResult<Story>> {
+    return this.composeStorySnapshot(ref, storySnapshotOverridesFromStoryUpdates(updates));
+  }
+
+  composeStoryAfterCreateStory(
+    ref: StoryRef,
+    input: CreateStoryInput,
+  ): Promise<BackendCallResult<Story>> {
+    return this.composeStorySnapshot(
+      ref,
+      storySnapshotOverridesFromCreateStory(input, this.deps.config),
+    );
   }
 
   getEpics(sprintIterationId?: string | null): Promise<EpicListing[]> {

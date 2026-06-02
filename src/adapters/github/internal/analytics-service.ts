@@ -8,7 +8,7 @@
 import { GitHubApiError } from "../errors.ts";
 import { SprintHistoryService } from "./sprint-history-service.ts";
 import { BurndownCalculator } from "./burndown-calculator.ts";
-import { ProjectItemsCache } from "./project-items-cache.ts";
+import { BoardScanCoordinator } from "./board-scan-coordinator.ts";
 import type { ProjectItem } from "../types.ts";
 import { resolveSprint } from "./resolver.ts";
 import { buildDaySeries, buildIdealLine, buildSprintWindow } from "../../../scrum/sprint-math.ts";
@@ -37,7 +37,7 @@ import type {
 export class AnalyticsService {
   constructor(
     private readonly config: GitHubBootState,
-    private readonly projectItemsCache: ProjectItemsCache,
+    private readonly boardScan: BoardScanCoordinator,
     private readonly sprintHistoryService: SprintHistoryService,
     private readonly burndownCalculator: BurndownCalculator,
   ) {}
@@ -64,7 +64,7 @@ export class AnalyticsService {
     }
 
     // both: one board fetch shared by burndown + history builders.
-    const allItems = await this.projectItemsCache.getOrFetchAggregateItems();
+    const allItems = await this.boardScan.fetchAggregateBoard();
     let burndown: BurndownResponse | null = null;
     let history: SprintSnapshot[] | null = null;
     try {

@@ -108,8 +108,13 @@ export const registerScrumWriteTools = (
       const { warnings } = await catchBackend(
         () => backend.setField(params.ref, params.field, params.value),
       );
-      const { value: detail } = await backend.getStoryDetail(params.ref);
-      const response = warnings.length > 0 ? { ...detail?.story, warnings } : detail?.story;
+      const { value: story, warnings: readWarnings } = await backend.composeStoryAfterSetField(
+        params.ref,
+        params.field,
+        params.value,
+      );
+      const allWarnings = [...warnings, ...readWarnings];
+      const response = allWarnings.length > 0 ? { ...story, warnings: allWarnings } : story;
       return { content: [{ type: "text", text: JSON.stringify(response, null, 2) }] };
     },
   );
@@ -158,8 +163,11 @@ export const registerScrumWriteTools = (
         await backend.addComment(params.ref, params.comment);
       }
 
-      const { value: detail } = await backend.getStoryDetail(params.ref);
-      return { content: [{ type: "text", text: JSON.stringify(detail?.story, null, 2) }] };
+      const { value: story } = await backend.composeStoryAfterStoryUpdate(
+        params.ref,
+        updates as StoryUpdates,
+      );
+      return { content: [{ type: "text", text: JSON.stringify(story, null, 2) }] };
     },
   );
 
@@ -230,17 +238,11 @@ export const registerScrumWriteTools = (
         for (const reason of w) failedFields.push({ field: "priority", reason });
       }
 
-      // Step 3: Fetch updated story - getStoryDetail already returns BackendCallResult
-      let storyDetail: Story | Partial<StoryRef>;
-      const { value: fetchedDetail, warnings: readWarnings } = await backend.getStoryDetail(
+      // Step 3: Lean snapshot after optional setField calls (board state is source of truth)
+      const { value: storyDetail, warnings: readWarnings } = await backend.composeStorySnapshot(
         storyRef,
       );
       for (const reason of readWarnings) failedFields.push({ field: "read", reason });
-      if (fetchedDetail) {
-        storyDetail = fetchedDetail.story;
-      } else {
-        storyDetail = { id: "id" in storyRef ? storyRef.id : String(storyRef.number) };
-      }
 
       // Step 4: Return with partial failure indicator if needed
       if (failedFields.length > 0) {

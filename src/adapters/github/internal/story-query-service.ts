@@ -8,13 +8,16 @@
 import { GitHubApiError } from "../errors.ts";
 import { type BackendCallResult, catchBackend } from "../../../services/error-enrichment.ts";
 import type * as GH from "../generated/github-types.ts";
-import { ProjectItemsCache } from "./project-items-cache.ts";
+import { BoardScanCoordinator } from "./board-scan-coordinator.ts";
 import { resolveStory } from "./resolver.ts";
 import {
+  applyStorySnapshotOverrides,
+  buildAggregateFromRaw,
   buildCommentList,
   buildEnrichedStory,
   buildLinkedPrList,
   buildStoryFromRaw,
+  sprintCompletionFromAggregates,
   type IssueDetailsInput,
 } from "../mappers.ts";
 import {
@@ -23,11 +26,12 @@ import {
   GET_ITEM_FIELDS_QUERY,
 } from "../queries.ts";
 import type { GitHubInfraContext } from "./infra-context.ts";
-import type { StoryDetail } from "../../../scrum/ports.ts";
+import type { StoryDetail, StorySnapshotOverrides } from "../../../scrum/ports.ts";
 import type { ItemFieldValue, ProjectItem, ProjectV2ItemRef } from "../types.ts";
 import type {
   DependencyMap,
   DependencyNode,
+  EntityRef,
   IssueKey,
   Story,
   StoryRef,
@@ -149,8 +153,71 @@ export const buildDependencyMap = (
 export class StoryQueryService {
   constructor(
     private readonly ctx: GitHubInfraContext,
-    private readonly projectItemsCache: ProjectItemsCache,
+    private readonly boardScan: BoardScanCoordinator,
   ) {}
+
+  /**
+   * Lean post-mutation story for MCP write tools (no comments / linked PRs).
+   * One project-item fetch; optional overrides merge known mutation fields.
+   */
+  async composeStorySnapshot(
+    ref: EntityRef,
+    overrides?: StorySnapshotOverrides,
+  ): Promise<BackendCallResult<Story>> {
+    interface GetDraftIssueDetailsQueryNode extends ProjectV2ItemRef {
+      content?: unknown;
+      fieldValues?: { nodes: ItemFieldValue[] };
+    }
+    interface GetDraftIssueDetailsResponse {
+      node?: GetDraftIssueDetailsQueryNode | null;
+    }
+
+    const { value: data, warnings } = await catchBackend(() =>
+      this.ctx.gh.graphql<GetDraftIssueDetailsResponse>(
+        GET_DRAFT_ISSUE_DETAILS_QUERY,
+        { itemId: ref.id },
+      )
+    );
+
+    const node = data?.node;
+    if (!node) {
+      throw new GitHubApiError(`Project item ${ref.id} could not be fetched.`, {
+        code: "NOT_FOUND",
+        statusCode: 404,
+        recovery: "The item may have been deleted from the project. " +
+          "Refresh your story list with scrum_orient or scrum_find_items.",
+        context: { itemId: ref.id },
+      });
+    }
+
+    const item: ProjectItem = {
+      id: ref.id,
+      type: (node.type ?? "DRAFT_ISSUE") as ProjectItem["type"],
+      createdAt: node.createdAt ?? "",
+      updatedAt: node.updatedAt ?? "",
+      isArchived: node.isArchived ?? false,
+      content: node.content as ProjectItem["content"],
+      fieldValues: { nodes: node.fieldValues?.nodes ?? [] },
+    };
+
+    const base = buildStoryFromRaw(item, this.ctx.config);
+    if (!base) {
+      throw new GitHubApiError(
+        `Project item ${ref.id} is missing required content fields.`,
+        {
+          code: "NOT_FOUND",
+          statusCode: 404,
+          recovery: "The item may have been deleted or corrupted in the project.",
+          context: { itemId: ref.id },
+        },
+      );
+    }
+
+    return {
+      value: applyStorySnapshotOverrides(base, overrides),
+      warnings,
+    };
+  }
 
   async getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>> {
     const resolved = await resolveStory(ref, this.ctx.gh);
@@ -254,51 +321,19 @@ export class StoryQueryService {
 
   /** Lean aggregate board scan (shared cache). */
   fetchAllItems(): Promise<ProjectItem[]> {
-    return this.projectItemsCache.getOrFetchAggregateItems();
+    return this.boardScan.fetchAggregateBoard();
   }
 
   /** Full ItemContent board scan for Story-shaped consumers (e.g. board health). */
   fetchFullItems(): Promise<ProjectItem[]> {
-    return this.projectItemsCache.getOrFetchAllItems();
+    return this.boardScan.fetchFullBoard();
   }
 
   async computeSprintCompletion(
     iterationId: string,
   ): Promise<{ completed: number; total: number }> {
-    const allItems = await this.projectItemsCache.getOrFetchAggregateItems();
-    const { sprintFieldId, statusFieldId, storyPointsFieldId } = this.ctx.config.live.fields;
-
-    const sprintItems = allItems.filter((item) => {
-      const fv = item.fieldValues.nodes.find((v) => v.field?.id === sprintFieldId);
-      return fv?.iterationId === iterationId;
-    });
-
-    const statusReverseMap = new Map<string, string>();
-    const statusDisplay = this.ctx.config.ghConfig.status_display ?? {};
-    for (const [canonical, display] of Object.entries(statusDisplay)) {
-      statusReverseMap.set(display, canonical);
-    }
-
-    let completed = 0;
-    let total = 0;
-
-    for (const item of sprintItems) {
-      const ptsFv = storyPointsFieldId
-        ? item.fieldValues.nodes.find((v) => v.field?.id === storyPointsFieldId)
-        : null;
-      const points = ptsFv?.number ?? 0;
-      total += points;
-
-      const statusFv = item.fieldValues.nodes.find((v) => v.field?.id === statusFieldId);
-      const statusName = statusFv && "name" in statusFv ? statusFv.name : null;
-      if (statusName) {
-        const canonicalKey = statusReverseMap.get(statusName);
-        if (canonicalKey && this.ctx.config.scrumConfig.scrum.status[canonicalKey]?.terminal) {
-          completed += points;
-        }
-      }
-    }
-
-    return { completed, total };
+    const allItems = await this.boardScan.fetchAggregateBoard();
+    const aggregates = allItems.map((item) => buildAggregateFromRaw(item, this.ctx.config));
+    return sprintCompletionFromAggregates(aggregates, iterationId, this.ctx.config);
   }
 }

@@ -5,11 +5,11 @@
 // Injected into GitHubProjectBackend via constructor (DIP).
 // =============================================================================
 
-import { GitHubApiError } from "../errors.ts";
-import { ProjectItemsCache } from "./project-items-cache.ts";
+import { BoardScanCoordinator } from "./board-scan-coordinator.ts";
+import { aggregateToBurndownInput, buildAggregateFromRaw } from "../mappers.ts";
 import type { GitHubInfraContext } from "./infra-context.ts";
 import type { SprintHistoryEntry } from "../../../scrum/ports.ts";
-import type { ProjectItem, ProjectItemIssueContent, ProjectItemPRContent } from "../types.ts";
+import type { ProjectItem } from "../types.ts";
 
 // ── SprintHistoryService class ───────────────────────────────────────────────
 
@@ -20,7 +20,7 @@ import type { ProjectItem, ProjectItemIssueContent, ProjectItemPRContent } from 
 export class SprintHistoryService {
   constructor(
     private readonly ctx: GitHubInfraContext,
-    private readonly projectItemsCache: ProjectItemsCache,
+    private readonly boardScan: BoardScanCoordinator,
   ) {}
 
   async getCompletedSprintHistory(
@@ -33,40 +33,14 @@ export class SprintHistoryService {
     const windowSlice = completedSorted.slice(0, window);
     if (windowSlice.length === 0) return [];
 
-    const allItems = preloadedItems ?? await this.projectItemsCache.getOrFetchAggregateItems();
-    const { sprintFieldId, statusFieldId, storyPointsFieldId } = this.ctx.config.live.fields;
+    const allItems = preloadedItems ?? await this.boardScan.fetchAggregateBoard();
 
     return windowSlice.map((iter) => {
-      const iterItems = allItems.filter((item) => {
-        const fv = item.fieldValues.nodes.find((v) => v.field?.id === sprintFieldId);
-        return fv?.iterationId === iter.id;
-      });
-
-      const stories = iterItems
-        .filter((item) => item.content !== null && item.content.__typename !== "DraftIssue")
-        .map((item) => {
-          const content = item.content;
-          if (!content || !("number" in content)) {
-            throw new GitHubApiError(
-              `Sprint history item has no issue number - unexpected content type.`,
-              {
-                code: "NOT_FOUND",
-                recovery: "The item may have been deleted. Re-run scrum_orient to refresh.",
-                context: { itemId: item.id, contentType: content?.__typename },
-              },
-            );
-          }
-          const ptsFv = storyPointsFieldId
-            ? item.fieldValues.nodes.find((v) => v.field?.id === storyPointsFieldId)
-            : null;
-          const statusFv = item.fieldValues.nodes.find((v) => v.field?.id === statusFieldId);
-          return {
-            number: (content as ProjectItemIssueContent | ProjectItemPRContent).number,
-            title: (content as ProjectItemIssueContent | ProjectItemPRContent).title,
-            points: ptsFv?.number ?? 0,
-            status: statusFv?.name ?? null,
-          };
-        });
+      const stories = allItems
+        .map((item) => buildAggregateFromRaw(item, this.ctx.config))
+        .filter((agg) => agg.sprintId === iter.id)
+        .map((agg) => aggregateToBurndownInput(agg))
+        .filter((row): row is NonNullable<typeof row> => row !== null);
 
       const endDate = new Date(iter.startDate);
       endDate.setDate(endDate.getDate() + iter.duration);

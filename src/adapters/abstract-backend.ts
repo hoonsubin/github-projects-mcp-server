@@ -17,6 +17,7 @@ import type {
   ResolvedItemFilter,
   ScrumField,
   StoryDetail,
+  StorySnapshotOverrides,
   StoryUpdates,
   VocabularyKind,
 } from "../scrum/ports.ts";
@@ -29,6 +30,7 @@ import type {
   ImpedimentStatus,
   ItemSearchResult,
   SprintRef,
+  Story,
   StoryRef,
   SupportedBackend,
 } from "../domain/types.ts";
@@ -104,6 +106,27 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
   // ── ProjectReader - story read ───────────────────────────────────────────
 
   abstract getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>>;
+
+  abstract composeStorySnapshot(
+    ref: StoryRef,
+    overrides?: StorySnapshotOverrides,
+  ): Promise<BackendCallResult<Story>>;
+
+  abstract composeStoryAfterSetField(
+    ref: StoryRef,
+    field: ScrumField,
+    value: string | number | SprintRef | null,
+  ): Promise<BackendCallResult<Story>>;
+
+  abstract composeStoryAfterStoryUpdate(
+    ref: StoryRef,
+    updates: StoryUpdates,
+  ): Promise<BackendCallResult<Story>>;
+
+  abstract composeStoryAfterCreateStory(
+    ref: StoryRef,
+    input: CreateStoryInput,
+  ): Promise<BackendCallResult<Story>>;
 
   abstract getEpics(sprintIterationId?: string | null): Promise<EpicListing[]>;
 

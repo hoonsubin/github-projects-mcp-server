@@ -17,6 +17,7 @@ import type {
   EntityRef,
   EpicListing,
   EpicRef,
+  EpicRefWithName,
   EpicSummary,
   ImpedimentRef,
   ImpedimentStatus,
@@ -168,6 +169,39 @@ export interface StoryDetail {
 }
 
 /**
+ * Lean per-item projection from an aggregate board scan.
+ * Prep for BoardAggregates / getAggregates — not yet on the port interface.
+ */
+export interface ItemAggregate {
+  readonly id: string;
+  readonly type: string | null;
+  readonly status: string | null;
+  readonly sprintId: string | null;
+  readonly storyPoints: number | null;
+  readonly hasBlockers: boolean;
+  readonly hasAssignee: boolean;
+  readonly issueNumber: number | null;
+  readonly isArchived: boolean;
+  readonly sprintTitle: string | null;
+  readonly title: string | null;
+}
+
+/** Fields known from a just-completed mutation (merged over a snapshot fetch). */
+export interface StorySnapshotOverrides {
+  readonly title?: string;
+  readonly body?: string;
+  readonly labels?: readonly string[];
+  readonly assignees?: readonly string[];
+  readonly type?: string | null;
+  readonly status?: string | null;
+  readonly sprint?: string | null;
+  readonly story_points?: number | null;
+  readonly priority?: string | null;
+  readonly epic?: EpicRef | EpicRefWithName | null;
+  readonly blocked_by?: readonly StoryRef[] | null;
+}
+
+/**
  * Lightweight per-story projection shared by history and burndown.
  * Defined here (at the port boundary) so both the use-case layer (sprint-math)
  * and the adapter layer (mappers) can reference a single canonical type.
@@ -279,6 +313,27 @@ export interface EpicPort {
  */
 export interface StoryPort {
   getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>>;
+  /**
+   * Build a tool-response Story after a mutation without comments/linked PRs.
+   * Merges optional {@link StorySnapshotOverrides} over a single lean item fetch.
+   */
+  composeStorySnapshot(
+    ref: StoryRef,
+    overrides?: StorySnapshotOverrides,
+  ): Promise<BackendCallResult<Story>>;
+  composeStoryAfterSetField(
+    ref: StoryRef,
+    field: ScrumField,
+    value: string | number | SprintRef | null,
+  ): Promise<BackendCallResult<Story>>;
+  composeStoryAfterStoryUpdate(
+    ref: StoryRef,
+    updates: StoryUpdates,
+  ): Promise<BackendCallResult<Story>>;
+  composeStoryAfterCreateStory(
+    ref: StoryRef,
+    input: CreateStoryInput,
+  ): Promise<BackendCallResult<Story>>;
 }
 
 /**

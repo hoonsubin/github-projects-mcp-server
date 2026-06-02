@@ -32,7 +32,7 @@ import type { GitHubBackendDependencies } from "./backend.ts";
 import { graphql, rest } from "./internal/http-client.ts";
 import type { GitHubInfraContext } from "./internal/infra-context.ts";
 import type { GitHubLiveMetadata } from "./bootstrap.ts";
-import { ProjectItemsCache } from "./internal/project-items-cache.ts";
+import { BoardScanCoordinator } from "./internal/board-scan-coordinator.ts";
 import { BurndownCalculator } from "./internal/burndown-calculator.ts";
 import { ConfigReloader } from "./internal/config-reloader.ts";
 import { FieldValueMutator } from "./internal/field-value-mutator.ts";
@@ -173,15 +173,15 @@ export class GitHubAdapterFactory implements AdapterFactory {
 
     const fieldValueMutator = new FieldValueMutator(ctx, userMilestoneResolver);
 
-    const projectItemsCache = new ProjectItemsCache(ctx);
+    const boardScan = new BoardScanCoordinator(ctx);
 
-    const burndownCalculator = new BurndownCalculator(ctx, projectItemsCache);
+    const burndownCalculator = new BurndownCalculator(ctx, boardScan);
 
-    const sprintHistoryService = new SprintHistoryService(ctx, projectItemsCache);
+    const sprintHistoryService = new SprintHistoryService(ctx, boardScan);
 
     const vocabularyManager = new VocabularyManager(ctx, labelResolver);
 
-    const storyQueryService = new StoryQueryService(ctx, projectItemsCache);
+    const storyQueryService = new StoryQueryService(ctx, boardScan);
 
     const storyMutationService = new StoryMutationService(
       ctx,
@@ -194,7 +194,7 @@ export class GitHubAdapterFactory implements AdapterFactory {
       ctx,
       labelResolver,
       storyMutationService,
-      projectItemsCache,
+      boardScan,
     );
 
     // ── Assembler pipeline ────────────────────────────────────────────────
@@ -241,7 +241,7 @@ export class GitHubAdapterFactory implements AdapterFactory {
 
     const analyticsService = new AnalyticsService(
       bootState,
-      projectItemsCache,
+      boardScan,
       sprintHistoryService,
       burndownCalculator,
     );
@@ -261,7 +261,7 @@ export class GitHubAdapterFactory implements AdapterFactory {
 
     const deps: GitHubBackendDependencies = {
       gh: ghClient,
-      projectItemsCache,
+      boardScan,
       labelResolver,
       fieldValueMutator,
       vocabularyManager,

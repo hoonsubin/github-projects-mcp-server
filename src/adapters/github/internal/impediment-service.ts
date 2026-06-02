@@ -18,7 +18,7 @@ import type * as GH from "../generated/github-types.ts";
 import type { ImpedimentStatus } from "../../../domain/types.ts";
 import { resolveSprint, resolveStory } from "./resolver.ts";
 import { LabelResolver } from "./label-resolver.ts";
-import { ProjectItemsCache } from "./project-items-cache.ts";
+import { BoardScanCoordinator } from "./board-scan-coordinator.ts";
 import { StoryMutationService } from "./story-mutation-service.ts";
 import type { GitHubBootState } from "../bootstrap.ts";
 import type { GitHubInfraContext } from "./infra-context.ts";
@@ -126,7 +126,7 @@ export class ImpedimentService {
     private readonly ctx: GitHubInfraContext,
     private readonly labelResolver: LabelResolver,
     private readonly storyMutationService: StoryMutationService,
-    private readonly projectItemsCache: ProjectItemsCache,
+    private readonly boardScan: BoardScanCoordinator,
   ) {}
 
   /**
@@ -186,7 +186,7 @@ export class ImpedimentService {
   }
 
   async getSprintImpediments(sprint: SprintRef): Promise<ImpedimentListing[]> {
-    const allItems = await this.projectItemsCache.getOrFetchAggregateItems();
+    const allItems = await this.boardScan.fetchAggregateBoard();
     return listSprintImpedimentsFromItems(allItems, this.ctx.config, sprint);
   }
 

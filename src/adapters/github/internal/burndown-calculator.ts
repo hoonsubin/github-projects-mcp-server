@@ -7,7 +7,7 @@
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
-import { ProjectItemsCache } from "./project-items-cache.ts";
+import { BoardScanCoordinator } from "./board-scan-coordinator.ts";
 import { buildBurndownStoryInput } from "../mappers.ts";
 import { resolveSprint } from "./resolver.ts"; // standalone function - not a class method
 import { computeSprintEndDate } from "../../../scrum/sprint-math.ts";
@@ -20,7 +20,7 @@ import { log } from "../../../services/logger.ts";
 export class BurndownCalculator {
   constructor(
     private readonly ctx: GitHubInfraContext,
-    private readonly projectItemsCache: ProjectItemsCache,
+    private readonly boardScan: BoardScanCoordinator,
   ) {}
 
   /**
@@ -58,7 +58,7 @@ export class BurndownCalculator {
       );
     }
 
-    const allItems = preloadedItems ?? await this.projectItemsCache.getOrFetchAggregateItems();
+    const allItems = preloadedItems ?? await this.boardScan.fetchAggregateBoard();
     const sprintFieldId = this.ctx.config.live.fields.sprintFieldId;
     const items = allItems.filter((item) =>
       item.fieldValues.nodes.some(
