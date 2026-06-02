@@ -1,23 +1,23 @@
 // =============================================================================
-// src/scrum/fixture-backend.ts
+// src/test/support/fixture-backend.ts
 // Build ProjectBackend from captured wire fixtures (offline replay).
 // =============================================================================
 
-import { createGitHubBackend } from "../adapters/github/create-backend.ts";
-import type { GitHubBackendConfig, ResolvedToken } from "../adapters/github/types.ts";
-import { FixtureReplayClient } from "../adapters/github/internal/fixture-replay/fixture-replay-client.ts";
+import { createGitHubBackend } from "../../adapters/github/create-backend.ts";
+import type { GitHubBackendConfig, ResolvedToken } from "../../adapters/github/types.ts";
+import { FixtureReplayClient } from "../../adapters/github/internal/fixture-replay/fixture-replay-client.ts";
 import {
   DEFAULT_FIXTURES_DIR,
   loadFixtureManifest,
-} from "../adapters/github/internal/fixture-replay/load-manifest.ts";
-import type { ProjectBackend } from "./ports.ts";
-import type { BootConfig } from "./config-boot.ts";
-import { deriveConfigProfile } from "./_config_profile.ts";
-import { assertFindItemsMatchesConfig, assertOrientMatchesConfig } from "./_contract_assertions.ts";
-import { handleFindItems, handleOrient } from "../tools/scrum-read.ts";
-import { formatZodError, parseToolText } from "../tools/_mcp_result.ts";
-import { ItemSearchResultSchema, OrientResultSchema } from "../schemas/scrum-outputs.ts";
-import type { ItemSearchResult, OrientResult } from "../domain/types.ts";
+} from "../../adapters/github/internal/fixture-replay/load-manifest.ts";
+import type { ProjectBackend } from "../../scrum/ports.ts";
+import type { BootConfig } from "../../scrum/config-boot.ts";
+import { deriveConfigProfile } from "./config-profile.ts";
+import { assertFindItemsMatchesConfig, assertOrientMatchesConfig } from "./contract-assertions.ts";
+import { handleFindItems, handleOrient } from "../../tools/scrum-read.ts";
+import { formatZodError, parseToolText } from "../../tools/_mcp_result.ts";
+import { ItemSearchResultSchema, OrientResultSchema } from "../../schemas/scrum-outputs.ts";
+import type { ItemSearchResult, OrientResult } from "../../domain/types.ts";
 
 const FIXTURE_TOKEN = "ghp_fixture_offline_replay" as ResolvedToken;
 

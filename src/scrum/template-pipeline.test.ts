@@ -9,7 +9,7 @@
 import { assertSnapshot } from "@std/testing/snapshot";
 import { assertEquals } from "@std/assert";
 import { templateResourceUseCase } from "./template-resource.ts";
-import { realFileReader, typeTemplatePathsPromise } from "./_test_utils.ts";
+import { realFileReader, typeTemplatePathsPromise } from "../test/support/scrum-test-utils.ts";
 import type { SupportedMimeType } from "../domain/content-location.ts";
 
 // ── Per-type pipeline tests ───────────────────────────────────────────────────

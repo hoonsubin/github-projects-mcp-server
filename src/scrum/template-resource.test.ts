@@ -8,7 +8,7 @@
 
 import { assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { templateResourceUseCase } from "./template-resource.ts";
-import { realFileReader, stubFileReader } from "./_test_utils.ts";
+import { realFileReader, stubFileReader } from "../test/support/scrum-test-utils.ts";
 import type { ContentLocation, SupportedMimeType } from "../domain/content-location.ts";
 
 // ── Inline template (no file I/O) ─────────────────────────────────────────────

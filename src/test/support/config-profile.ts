@@ -1,15 +1,15 @@
 // =============================================================================
-// src/scrum/_config_profile.ts
+// src/test/support/config-profile.ts
 // Derives agent-facing expectations from the committed scrum config YAML.
 // Used by ConfigShapedFakeBackend and contract invariant assertions.
 // =============================================================================
 
-import { computeTypeTemplatePaths } from "../adapters/github/bootstrap.ts";
-import type { GitHubBackendConfig } from "../adapters/github/types.ts";
-import type { ScrumConfig } from "../domain/config.ts";
-import { ITEM_TYPES, type TemplateUriMap } from "../domain/types.ts";
-import type { ContentLocation } from "../domain/content-location.ts";
-import type { BootConfig } from "./config-boot.ts";
+import { computeTypeTemplatePaths } from "../../adapters/github/bootstrap.ts";
+import type { GitHubBackendConfig } from "../../adapters/github/types.ts";
+import type { ScrumConfig } from "../../domain/config.ts";
+import { ITEM_TYPES, type TemplateUriMap } from "../../domain/types.ts";
+import type { ContentLocation } from "../../domain/content-location.ts";
+import type { BootConfig } from "../../scrum/config-boot.ts";
 
 export interface ConfigProfile {
   readonly scrumConfig: ScrumConfig;

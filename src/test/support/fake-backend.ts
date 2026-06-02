@@ -1,14 +1,14 @@
 // =============================================================================
-// src/scrum/_fake_backend.ts
+// src/test/support/fake-backend.ts
 // In-memory ProjectBackend whose platform vocabulary is derived from scrum config.
 // =============================================================================
 
 import {
   AbstractProjectBackend,
   UnsupportedCapabilityError,
-} from "../adapters/abstract-backend.ts";
-import { AdapterError } from "../domain/errors.ts";
-import type { PlatformCapabilities } from "../adapters/capabilities.ts";
+} from "../../adapters/abstract-backend.ts";
+import { AdapterError } from "../../domain/errors.ts";
+import type { PlatformCapabilities } from "../../adapters/capabilities.ts";
 import type {
   AnalyticsResult,
   BacklogHealth,
@@ -22,7 +22,7 @@ import type {
   Story,
   StoryRef,
   SupportedBackend,
-} from "../domain/types.ts";
+} from "../../domain/types.ts";
 import type {
   AnalyticsQuery,
   CreateResult,
@@ -36,11 +36,11 @@ import type {
   StorySnapshotOverrides,
   StoryUpdates,
   VocabularyKind,
-} from "./ports.ts";
-import type { BackendCallResult } from "../services/error-enrichment.ts";
-import type { BootConfig } from "./config-boot.ts";
-import { type ConfigProfile, deriveConfigProfile } from "./_config_profile.ts";
-import { computeSprintEndDate } from "./sprint-math.ts";
+} from "../../scrum/ports.ts";
+import type { BackendCallResult } from "../../services/error-enrichment.ts";
+import type { BootConfig } from "../../scrum/config-boot.ts";
+import { type ConfigProfile, deriveConfigProfile } from "./config-profile.ts";
+import { computeSprintEndDate } from "../../scrum/sprint-math.ts";
 
 const FAKE_CAPABILITIES: PlatformCapabilities = {
   platform: "fake",

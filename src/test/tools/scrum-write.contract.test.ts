@@ -7,8 +7,8 @@ import {
   committedConfigProfilePromise,
   committedFakeBackendPromise,
   committedScrumConfigPromise,
-} from "../scrum/_test_utils.ts";
-import { ConfigShapedFakeBackend } from "../scrum/_fake_backend.ts";
+} from "../support/scrum-test-utils.ts";
+import { ConfigShapedFakeBackend } from "../support/fake-backend.ts";
 import {
   AddVocabularyResultSchema,
   CreateStoryPartialFailureSchema,
@@ -18,8 +18,8 @@ import {
   SetFieldResponseSchema,
   UpdateImpedimentResponseSchema,
   UpdateStoryResponseSchema,
-} from "../schemas/scrum-outputs.ts";
-import { assertHandlerSchema } from "./_contract_test_utils.ts";
+} from "../../schemas/scrum-outputs.ts";
+import { assertHandlerSchema } from "./contract-test-utils.ts";
 import {
   handleAddVocabulary,
   handleCreateStory,
@@ -29,7 +29,7 @@ import {
   handleUpdateImpediment,
   handleUpdateStory,
   resolveP0PriorityDisplay,
-} from "./scrum-write.ts";
+} from "../../tools/scrum-write.ts";
 
 Deno.test("scrum_add_vocabulary — happy path schema", async () => {
   const backend = await committedFakeBackendPromise;

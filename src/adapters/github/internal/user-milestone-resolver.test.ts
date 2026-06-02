@@ -11,7 +11,7 @@ import { assert, assertEquals, assertRejects, assertStringIncludes } from "@std/
 import { UserMilestoneResolver } from "./user-milestone-resolver.ts";
 import { createGhSpy, type GitHubClientSpy, makeCtx } from "./_test_utils.ts";
 import { GitHubApiError } from "../errors.ts";
-import userNodeIds from "./__fixtures__/user-node-ids.json" with { type: "json" };
+import userNodeIds from "../generated/__fixtures__/user-node-ids.json" with { type: "json" };
 
 // =============================================================================
 // Fixture-derived constants

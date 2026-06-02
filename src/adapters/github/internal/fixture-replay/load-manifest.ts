@@ -1,5 +1,5 @@
 // =============================================================================
-// Load fixture manifest v2 from adapter __fixtures__ directory.
+// Load fixture manifest v2 from adapter generated/__fixtures__ directory.
 // =============================================================================
 
 import { dirname, fromFileUrl, resolve } from "@std/path";
@@ -7,7 +7,7 @@ import type { FixtureManifestV2 } from "./types.ts";
 
 export const DEFAULT_FIXTURES_DIR = resolve(
   dirname(fromFileUrl(import.meta.url)),
-  "../__fixtures__",
+  "../../generated/__fixtures__",
 );
 
 export const loadFixtureManifest = async (

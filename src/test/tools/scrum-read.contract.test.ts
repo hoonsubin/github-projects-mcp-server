@@ -7,27 +7,27 @@ import {
   committedConfigProfilePromise,
   committedFakeBackendPromise,
   committedScrumConfigPromise,
-} from "../scrum/_test_utils.ts";
+} from "../support/scrum-test-utils.ts";
 import {
   assertFindItemsMatchesConfig,
   assertOrientMatchesConfig,
-} from "../scrum/_contract_assertions.ts";
-import type { ItemSearchResult, OrientResult } from "../domain/types.ts";
+} from "../support/contract-assertions.ts";
+import type { ItemSearchResult, OrientResult } from "../../domain/types.ts";
 import {
   AnalyticsResultSchema,
   BacklogHealthSchema,
   ItemDetailResultSchema,
   ItemSearchResultSchema,
   OrientResultSchema,
-} from "../schemas/scrum-outputs.ts";
-import { assertHandlerSchema } from "./_contract_test_utils.ts";
+} from "../../schemas/scrum-outputs.ts";
+import { assertHandlerSchema } from "./contract-test-utils.ts";
 import {
   handleFindItems,
   handleGetAnalytics,
   handleGetBoardHealth,
   handleGetItemDetail,
   handleOrient,
-} from "./scrum-read.ts";
+} from "../../tools/scrum-read.ts";
 
 Deno.test("scrum_orient — happy path schema + config contract", async () => {
   const boot = await committedScrumConfigPromise;

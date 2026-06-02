@@ -12,7 +12,7 @@ import { buildStoryFromRaw } from "../mappers.ts";
 import type { ItemFieldValue, ProjectItem } from "../types.ts";
 import type { ResolvedItemFilter } from "../../../scrum/ports.ts";
 import type { Story } from "../../../domain/types.ts";
-import projectItemsP1 from "./__fixtures__/project-items-p1.json" with { type: "json" };
+import projectItemsP1 from "../generated/__fixtures__/project-items-p1.json" with { type: "json" };
 
 const allItems: ProjectItem[] =
   (projectItemsP1 as { user: { projectV2: { items: { nodes: unknown[] } } } })

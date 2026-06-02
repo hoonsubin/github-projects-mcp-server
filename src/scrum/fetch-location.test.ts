@@ -9,7 +9,7 @@
 import { resolve } from "@std/path";
 import { assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { fetchContent } from "./fetch-location.ts";
-import { withTestServer } from "./_test_utils.ts";
+import { withTestServer } from "../test/support/scrum-test-utils.ts";
 import type { ContentLocation } from "../domain/content-location.ts";
 
 // ── file branch ───────────────────────────────────────────────────────────────

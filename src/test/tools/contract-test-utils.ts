@@ -3,7 +3,7 @@
 // =============================================================================
 
 import type { z } from "zod";
-import { formatZodError, type McpTextResult, parseToolText } from "./_mcp_result.ts";
+import { formatZodError, type McpTextResult, parseToolText } from "../../tools/_mcp_result.ts";
 
 export const parseHandlerPayload = <T>(result: McpTextResult): T => parseToolText<T>(result);
 

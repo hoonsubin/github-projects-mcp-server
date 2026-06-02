@@ -13,6 +13,8 @@ Guidance for coding agents working in this repository.
 
 Handler → Use-case → Adapter. A handler that imports GraphQL queries, `loadConfig`, or raw GitHub types is a layer breach — fix before shipping.
 
+Production code under `src/scrum/` and `src/tools/` must not import adapters. Cross-layer test code lives under [`src/test/`](src/test/). Validate with `deno task depcruise`.
+
 ## Deno Module Conventions
 
 - MCP SDK imports end in `.js` (CJS interop — do **not** change to `.ts`): `@modelcontextprotocol/sdk/server/mcp.js`
@@ -36,69 +38,79 @@ Validation happens at the handler boundary — use-cases receive typed values, n
 
 ## Testing
 
-Test files are co-located `*.test.ts` under `src/`. Run the full suite with `deno task test` (~260 tests, no network required for CI).
+Run the full suite with `deno task test` (~257 tests, no network required for CI).
 
-### Layer overview
+### Where tests live (two-bucket rule)
 
-| Layer                   | What it tests                                      | Backend                                 |
-| ----------------------- | -------------------------------------------------- | --------------------------------------- |
-| Use-case / adapter unit | Pure logic, mappers, filters, mutations            | Stub `ProjectBackend` or fixture JSON   |
-| Tool-surface contract   | All 12 `scrum_*` handlers return schema-valid JSON | `ConfigShapedFakeBackend`               |
-| Tool-surface golden     | Stable agent-visible JSON for read tools           | Same fake backend + committed snapshots |
-| Fixture bridge          | Handlers against captured GitHub wire replay       | `FixtureReplayClient` + manifest v2     |
+| Bucket                  | Location                                                                                      | Rule                                                                                                           |
+| ----------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **Unit / single-layer** | Co-located `*.test.ts` next to the module                                                     | May only import inward (same layer, domain, services). Example: `item-filter.test.ts` beside `item-filter.ts`. |
+| **Cross-layer**         | [`src/test/support/`](src/test/support/) helpers + [`src/test/tools/`](src/test/tools/) tests | May import across layers (adapters, tools, schemas). Never add these imports to production modules.            |
+
+Adapter-local spies stay beside adapter tests: [`src/adapters/github/internal/_test_utils.ts`](src/adapters/github/internal/_test_utils.ts).
+
+`src/tools/` contains handlers only — no `*.test.ts` files.
+
+### Test layers
+
+| Layer                   | What it tests                                      | Backend                               |
+| ----------------------- | -------------------------------------------------- | ------------------------------------- |
+| Use-case / adapter unit | Pure logic, mappers, filters, mutations            | Stub `ProjectBackend` or fixture JSON |
+| Tool-surface contract   | All 12 `scrum_*` handlers return schema-valid JSON | `ConfigShapedFakeBackend`             |
+| Tool-surface golden     | Stable agent-visible JSON for read tools           | Fake backend + committed snapshots    |
+| Fixture bridge          | Handlers against captured GitHub wire replay       | `FixtureReplayClient` + manifest v2   |
 
 Do **not** mock the GitHub adapter with hand-rolled stubs in integration paths. Use either:
 
-- **`ConfigShapedFakeBackend`** ([`src/scrum/_fake_backend.ts`](src/scrum/_fake_backend.ts)) — in-memory backend seeded from `.github/scrum/config.yml` for fast handler tests.
-- **Fixture replay** ([`src/scrum/fixture-backend.ts`](src/scrum/fixture-backend.ts)) — offline replay of captured GraphQL responses under [`src/adapters/github/internal/__fixtures__/`](src/adapters/github/internal/__fixtures__/).
+- **`ConfigShapedFakeBackend`** ([`src/test/support/fake-backend.ts`](src/test/support/fake-backend.ts)) — in-memory backend seeded from `.github/scrum/config.yml`.
+- **Fixture replay** ([`src/test/support/fixture-backend.ts`](src/test/support/fixture-backend.ts)) — offline replay under [`src/adapters/github/generated/__fixtures__/`](src/adapters/github/generated/__fixtures__/).
 
-### Tool-surface test files
+### `src/test/support/` — cross-layer helpers (not tests)
 
-| File                                                                               | Purpose                                                 |
-| ---------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| [`src/tools/scrum-read.contract.test.ts`](src/tools/scrum-read.contract.test.ts)   | 5 read tools — Zod schema + config contract             |
-| [`src/tools/scrum-write.contract.test.ts`](src/tools/scrum-write.contract.test.ts) | 7 write tools — Zod schema                              |
-| [`src/tools/scrum-read.golden.test.ts`](src/tools/scrum-read.golden.test.ts)       | Golden snapshots for `scrum_orient`, `scrum_find_items` |
-| [`src/tools/scrum-bridge.test.ts`](src/tools/scrum-bridge.test.ts)                 | Fixture replay through orient/find_items handlers       |
-| [`src/scrum/_config_profile.test.ts`](src/scrum/_config_profile.test.ts)           | Config boot + fake-backend smoke (infrastructure)       |
+| Module                                                              | Role                                                                                                             |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| [`scrum-test-utils.ts`](src/test/support/scrum-test-utils.ts)       | `committedScrumConfigPromise`, `committedFakeBackendPromise`, `committedFixtureBackendPromise`, `withTestServer` |
+| [`config-profile.ts`](src/test/support/config-profile.ts)           | Derives vocabulary/status expectations from committed config                                                     |
+| [`contract-assertions.ts`](src/test/support/contract-assertions.ts) | `assertOrientMatchesConfig`, `assertFindItemsMatchesConfig`                                                      |
+| [`fake-backend.ts`](src/test/support/fake-backend.ts)               | In-memory `ProjectBackend` for handler tests                                                                     |
+| [`fixture-backend.ts`](src/test/support/fixture-backend.ts)         | Wire replay backend + `validateFixtureReplay()`                                                                  |
 
-### Shared test infrastructure
+### `src/test/tools/` — tool-surface tests
 
-| Module                                                                   | Role                                                                                           |
-| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| [`src/scrum/_test_utils.ts`](src/scrum/_test_utils.ts)                   | `committedScrumConfigPromise`, `committedFakeBackendPromise`, `committedFixtureBackendPromise` |
-| [`src/scrum/_config_profile.ts`](src/scrum/_config_profile.ts)           | Derives vocabulary/status expectations from committed config                                   |
-| [`src/scrum/_contract_assertions.ts`](src/scrum/_contract_assertions.ts) | `assertOrientMatchesConfig`, `assertFindItemsMatchesConfig`                                    |
-| [`src/tools/_contract_test_utils.ts`](src/tools/_contract_test_utils.ts) | `assertHandlerSchema`, `parseHandlerPayload`                                                   |
-| [`src/tools/_mcp_result.ts`](src/tools/_mcp_result.ts)                   | `parseToolText`, `formatZodError` — unwrap MCP text results in tests                           |
-| [`src/tools/_snapshot_normalize.ts`](src/tools/_snapshot_normalize.ts)   | Strips volatile fields before golden/bridge comparison                                         |
+| File                                                                          | Purpose                                                 |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------- |
+| [`scrum-read.contract.test.ts`](src/test/tools/scrum-read.contract.test.ts)   | 5 read tools — Zod schema + config contract             |
+| [`scrum-write.contract.test.ts`](src/test/tools/scrum-write.contract.test.ts) | 7 write tools — Zod schema                              |
+| [`scrum-read.golden.test.ts`](src/test/tools/scrum-read.golden.test.ts)       | Golden snapshots for `scrum_orient`, `scrum_find_items` |
+| [`scrum-bridge.test.ts`](src/test/tools/scrum-bridge.test.ts)                 | Fixture replay through orient/find_items handlers       |
+| [`contract-test-utils.ts`](src/test/tools/contract-test-utils.ts)             | `assertHandlerSchema`, `parseHandlerPayload`            |
 
-Handlers are exported from [`src/tools/scrum-read.ts`](src/tools/scrum-read.ts) and [`src/tools/scrum-write.ts`](src/tools/scrum-write.ts) for contract tests. Prefer calling handlers directly — not the MCP registration layer.
+Handlers are exported from [`src/tools/scrum-read.ts`](src/tools/scrum-read.ts) and [`src/tools/scrum-write.ts`](src/tools/scrum-write.ts). Call handlers directly in tests — not the MCP registration layer.
 
 ### Adding or changing a tool
 
 1. Add or update the output schema in [`src/schemas/scrum-outputs.ts`](src/schemas/scrum-outputs.ts) (always `.strict()`).
-2. Register `outputSchema` on the tool definition.
-3. Add a contract test in the appropriate `*.contract.test.ts` file using `assertHandlerSchema`.
-4. For read tools with config-coupled vocabulary, also call `assertOrientMatchesConfig` / `assertFindItemsMatchesConfig` where applicable.
-5. Run `deno task test` and `deno lint`.
+2. Register `outputSchema` on the tool definition in `src/tools/`.
+3. Add a contract test in `src/test/tools/*.contract.test.ts` using `assertHandlerSchema`.
+4. For read tools with config-coupled vocabulary, also call `assertOrientMatchesConfig` / `assertFindItemsMatchesConfig`.
+5. Run `deno task test`, `deno lint`, and `deno task depcruise`.
 
 ### Golden snapshots
 
-Snapshots live in [`src/tools/__snapshots__/`](src/tools/__snapshots__/). They are committed — normal `deno task test` does not need `--allow-write`.
+Snapshots live in [`src/test/tools/__snapshots__/`](src/test/tools/__snapshots__/). They are committed — normal `deno task test` does not need `--allow-write`.
 
 To regenerate after intentional output changes:
 
 ```bash
 deno test --allow-env=DEBUG,GITHUB_TOKEN,NODE_ENV --allow-net --allow-read --allow-write \
-  src/tools/scrum-read.golden.test.ts -- --update
+  src/test/tools/scrum-read.golden.test.ts -- --update
 ```
 
 Pass `-- --update` (after `--`) — not a top-level `deno test` flag.
 
 ### Fixture capture and validation
 
-Captured fixtures are under `src/adapters/github/internal/__fixtures__/`. Refresh from live GitHub (requires `GITHUB_TOKEN`):
+Captured fixtures are under `src/adapters/github/generated/__fixtures__/`. Refresh from live GitHub (requires `GITHUB_TOKEN`):
 
 ```bash
 deno task capture-fixtures --config .github/scrum/config.yml              # wire + scenarios
@@ -106,7 +118,7 @@ deno task capture-fixtures --config .github/scrum/config.yml --mode wire  # wire
 deno task capture-fixtures --config .github/scrum/config.yml --mode validate  # offline replay check
 ```
 
-After changing fixtures or adding wire hashes, run `--mode validate` and `src/tools/scrum-bridge.test.ts`. If runtime GraphQL variables differ from capture defaults (e.g. optional `first`), add a manifest alias entry pointing to the same wire JSON file.
+After changing fixtures or adding wire hashes, run `--mode validate` and `src/test/tools/scrum-bridge.test.ts`. If runtime GraphQL variables differ from capture defaults (e.g. optional `first`), add a manifest alias entry pointing to the same wire JSON file.
 
 ## Commands
 
@@ -115,11 +127,11 @@ deno lint                          # must pass before marking any task complete
 deno fmt --check                   # format check (run `deno fmt` to fix)
 deno check src/                    # type-check
 deno task test                     # full test suite
-deno test src/tools/               # tool-surface tests only (23 tests)
+deno test src/test/tools/          # tool-surface tests only (22 tests)
 deno task capture-fixtures --config .github/scrum/config.yml --mode validate
 deno task compile                  # compile binary for current platform
 deno task build:all                # all platform binaries + Node/MCPB bundles
-deno task depcruise                # module dependency graph (optional)
+deno task depcruise                # architecture boundary check (must pass)
 ```
 
 ## Code Style

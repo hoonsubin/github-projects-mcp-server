@@ -8,7 +8,7 @@ import { assertEquals, assertExists } from "@std/assert";
 import { DirectLookupAssembler } from "./direct-lookup-assembler.ts";
 import { ResultNormalizer } from "../result-normalizer.ts";
 import { createGhSpy, makeConfig } from "../_test_utils.ts";
-import p1Fixture from "../__fixtures__/project-items-p1.json" with { type: "json" };
+import p1Fixture from "../../generated/__fixtures__/project-items-p1.json" with { type: "json" };
 
 const sampleItem = (p1Fixture as {
   user: {

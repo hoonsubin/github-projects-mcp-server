@@ -12,8 +12,8 @@ import { makeConfig } from "./_test_utils.ts";
 import { toIssueKey } from "../../../domain/types.ts";
 import type { DependencyEntry, EntityRef, ItemType, Story } from "../../../domain/types.ts";
 import type { IssueStory, ProjectItem } from "../types.ts";
-import projectItemsP1 from "./__fixtures__/project-items-p1.json" with { type: "json" };
-import projectItemsP2 from "./__fixtures__/project-items-p2.json" with { type: "json" };
+import projectItemsP1 from "../generated/__fixtures__/project-items-p1.json" with { type: "json" };
+import projectItemsP2 from "../generated/__fixtures__/project-items-p2.json" with { type: "json" };
 import { buildStoryFromRaw } from "../mappers.ts";
 
 // =============================================================================

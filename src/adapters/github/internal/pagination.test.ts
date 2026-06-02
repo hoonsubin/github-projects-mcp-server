@@ -24,8 +24,8 @@ import { GitHubApiError } from "../errors.ts";
 // JSON captured from the live API via `deno task capture-fixtures`.
 // Re-run that task after schema changes or when the project board changes significantly.
 
-import p1Fixture from "./__fixtures__/project-items-p1.json" with { type: "json" };
-import p2Fixture from "./__fixtures__/project-items-p2.json" with { type: "json" };
+import p1Fixture from "../generated/__fixtures__/project-items-p1.json" with { type: "json" };
+import p2Fixture from "../generated/__fixtures__/project-items-p2.json" with { type: "json" };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

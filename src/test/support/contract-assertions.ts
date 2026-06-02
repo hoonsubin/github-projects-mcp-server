@@ -1,11 +1,11 @@
 // =============================================================================
-// src/scrum/_contract_assertions.ts
+// src/test/support/contract-assertions.ts
 // Config-derived invariant checks for tool-surface contract tests.
 // =============================================================================
 
 import { assertEquals } from "@std/assert";
-import type { ItemSearchResult, OrientResult } from "../domain/types.ts";
-import type { ConfigProfile } from "./_config_profile.ts";
+import type { ItemSearchResult, OrientResult } from "../../domain/types.ts";
+import type { ConfigProfile } from "./config-profile.ts";
 
 export const assertOrientMatchesConfig = (
   payload: OrientResult,
