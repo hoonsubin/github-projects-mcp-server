@@ -89,6 +89,7 @@ fragment ProjectCore on ProjectV2 {
 fragment ItemContent on ProjectV2Item {
   content {
     __typename
+    # todo: the item content also contains the body, which should not be fetched for scrum_orient
     ... on Issue {
       id number title url state body
       issueType { id name }

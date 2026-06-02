@@ -8,6 +8,10 @@
 // in the factory (Phase 0).
 //
 // Called at startup and on each ConfigReloader.reload().
+//
+// computeTypeTemplatePaths() is also exported for use by the factory at
+// construction time — it is a pure computation (no API call) that resolves
+// configured template paths into ContentLocation values.
 // =============================================================================
 
 import type { GitHubBackendConfig } from "./types.ts";
@@ -22,6 +26,40 @@ import {
   GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY,
 } from "./queries.ts";
 import type { SelectFieldNode } from "./types.ts";
+
+// ── Template path resolver (pure, no API call) ────────────────────────────────
+
+/**
+ * Resolve canonical type key → ContentLocation map from ghConfig.type_mapping.
+ *
+ * Pure computation — no network or filesystem I/O. Reads only the configured
+ * type_mapping entries and resolves template paths/URLs relative to projectRoot.
+ *
+ * Exported for use by the factory at construction time (before bootstrap) AND
+ * called within bootstrapGitHub() to keep the map fresh on each reload.
+ *
+ * Handles both:
+ *   - Local file paths (relative to projectRoot)
+ *   - Remote URLs (e.g. https://raw.githubusercontent.com/...)
+ */
+export const computeTypeTemplatePaths = (
+  typeMapping: GitHubBackendConfig["type_mapping"],
+  projectRoot: string,
+): Record<string, ContentLocation> => {
+  const typeTemplatePaths: Record<string, ContentLocation> = {};
+  if (typeMapping) {
+    for (const [key, entry] of Object.entries(typeMapping)) {
+      if (entry.template) {
+        typeTemplatePaths[key] = resolveLocation(
+          entry.template,
+          projectRoot,
+          SUPPORTED_TEMPLATE_EXTENSIONS,
+        );
+      }
+    }
+  }
+  return typeTemplatePaths;
+};
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -471,19 +509,8 @@ export const bootstrapGitHub = async (params: BootstrapParams): Promise<GitHubLi
     );
   }
 
-  // Resolve template paths into ContentLocation values anchored to projectRoot.
-  const typeTemplatePaths: Record<string, ContentLocation> = {};
-  if (ghConfig.type_mapping) {
-    for (const [key, entry] of Object.entries(ghConfig.type_mapping)) {
-      if (entry.template) {
-        typeTemplatePaths[key] = resolveLocation(
-          entry.template,
-          projectRoot,
-          SUPPORTED_TEMPLATE_EXTENSIONS,
-        );
-      }
-    }
-  }
+  // Resolve template paths — pure computation from config, no API call.
+  const typeTemplatePaths = computeTypeTemplatePaths(ghConfig.type_mapping, projectRoot);
 
   let activeIterations: IterationEntry[] = [];
   let completedIterations: IterationEntry[] = [];
