@@ -1,0 +1,2187 @@
+{
+  "items": [
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgt_T0w",
+        "key": "209"
+      },
+      "title": "Impediment: Epic CRUD operations are incomplete",
+      "type": "impediment",
+      "status": "In Progress",
+      "story_points": 5,
+      "priority": "Must",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": null,
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Assignees": "{\"__typename\":\"ProjectV2ItemFieldUserValue\",\"users\":[\"hoonsubin\"]}",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"Impediment: Epic CRUD operations are incomplete\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Impediment\",\"color\":\"RED\",\"optionId\":\"64b7eea3\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Must\",\"color\":\"RED\",\"optionId\":\"457ca5cd\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"In Progress\",\"color\":\"BLUE\",\"optionId\":\"98236657\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":5}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"07155ad6\",\"title\":\"Sprint 4\",\"startDate\":\"2026-06-02\",\"duration\":11}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgs12Yo",
+        "key": "55"
+      },
+      "title": "[Story]: SprintSnapshot.impediments — sprint-level enrichment",
+      "type": "user_story",
+      "status": "Ready",
+      "story_points": 3,
+      "priority": "Could",
+      "assignees": [],
+      "labels": [
+        "feature"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBe"
+        },
+        "name": "Scrum Process & Agent Rule Hardening"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"feature\",\"color\":\"a29bfe\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Scrum Process & Agent Rule Hardening\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Story]: SprintSnapshot.impediments — sprint-level enrichment\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Ready\",\"color\":\"YELLOW\",\"optionId\":\"47fc9ee4\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Could\",\"color\":\"YELLOW\",\"optionId\":\"a69f4b15\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":3}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"User Story\",\"color\":\"YELLOW\",\"optionId\":\"bf0dd60d\"}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"07155ad6\",\"title\":\"Sprint 4\",\"startDate\":\"2026-06-02\",\"duration\":11}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSuho",
+        "key": "219"
+      },
+      "title": "[Story]: Agent can request a minimal listing projection from scrum_find_items for bulk-scan use cases",
+      "type": "user_story",
+      "status": "Ready",
+      "story_points": 3,
+      "priority": "Must",
+      "assignees": [],
+      "labels": [
+        "feature",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgt_ODQ",
+          "key": "184"
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"feature\",\"color\":\"a29bfe\"},{\"name\":\"adapter layer\",\"color\":\"e69dd2\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"MCP Tool Surface Modernization for Scrum Theory Alignment\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Story]: Agent can request a minimal listing projection from scrum_find_items for bulk-scan use cases\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"User Story\",\"color\":\"YELLOW\",\"optionId\":\"bf0dd60d\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Must\",\"color\":\"RED\",\"optionId\":\"457ca5cd\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Ready\",\"color\":\"YELLOW\",\"optionId\":\"47fc9ee4\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":3}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"07155ad6\",\"title\":\"Sprint 4\",\"startDate\":\"2026-06-02\",\"duration\":11}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSuiQ",
+        "key": "220"
+      },
+      "title": "[Spike]: Audit adapter-layer query formation pipeline — trace use case requests to GraphQL payloads and identify urgent query-level optimization opportunities",
+      "type": "spike",
+      "status": "Done",
+      "story_points": 8,
+      "priority": "Should",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9dd1"
+        },
+        "name": "Adapter Layer Assembly Pattern"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Assignees": "{\"__typename\":\"ProjectV2ItemFieldUserValue\",\"users\":[\"hoonsubin\"]}",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"adapter layer\",\"color\":\"e69dd2\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Adapter Layer Assembly Pattern\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Spike]: Audit adapter-layer query formation pipeline — trace use case requests to GraphQL payloads and identify urgent query-level optimization opportunities\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Spike\",\"color\":\"PINK\",\"optionId\":\"2a3adc49\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Should\",\"color\":\"ORANGE\",\"optionId\":\"15203b56\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":8}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"07155ad6\",\"title\":\"Sprint 4\",\"startDate\":\"2026-06-02\",\"duration\":11}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgt_Pc4",
+        "key": "190"
+      },
+      "title": "[Spike]: Audit tool surface → GitHub API call graph — map every MCP tool invocation to its full wire-level call sequence",
+      "type": "spike",
+      "status": "Done",
+      "story_points": 8,
+      "priority": "Must",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "feature",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9dd1"
+        },
+        "name": "Adapter Layer Assembly Pattern"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Assignees": "{\"__typename\":\"ProjectV2ItemFieldUserValue\",\"users\":[\"hoonsubin\"]}",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"feature\",\"color\":\"a29bfe\"},{\"name\":\"adapter layer\",\"color\":\"e69dd2\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Adapter Layer Assembly Pattern\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Spike]: Audit tool surface → GitHub API call graph — map every MCP tool invocation to its full wire-level call sequence\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Spike\",\"color\":\"PINK\",\"optionId\":\"2a3adc49\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Must\",\"color\":\"RED\",\"optionId\":\"457ca5cd\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":8}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"07155ad6\",\"title\":\"Sprint 4\",\"startDate\":\"2026-06-02\",\"duration\":11}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgt-tUY",
+        "key": "182"
+      },
+      "title": "Have `ItemDetailResult` extend `PartialResult` for per-field warning metadata",
+      "type": "tech_debt",
+      "status": "Ready",
+      "story_points": 2,
+      "priority": "Should",
+      "assignees": [],
+      "labels": [
+        "refactor"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": null,
+      "blocked_by": [
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgt_ODQ",
+          "key": "184"
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"refactor\",\"color\":\"517924\"}]}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"Have `ItemDetailResult` extend `PartialResult` for per-field warning metadata\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Should\",\"color\":\"ORANGE\",\"optionId\":\"15203b56\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Ready\",\"color\":\"YELLOW\",\"optionId\":\"47fc9ee4\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"07155ad6\",\"title\":\"Sprint 4\",\"startDate\":\"2026-06-02\",\"duration\":11}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgs12Q8",
+        "key": "54"
+      },
+      "title": "[Story]: getOrphanImpediments() — implement in backend",
+      "type": "user_story",
+      "status": "Ready",
+      "story_points": 2,
+      "priority": "Should",
+      "assignees": [],
+      "labels": [
+        "feature"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBe"
+        },
+        "name": "Scrum Process & Agent Rule Hardening"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"feature\",\"color\":\"a29bfe\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Scrum Process & Agent Rule Hardening\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Story]: getOrphanImpediments() — implement in backend\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Should\",\"color\":\"ORANGE\",\"optionId\":\"15203b56\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Ready\",\"color\":\"YELLOW\",\"optionId\":\"47fc9ee4\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"User Story\",\"color\":\"YELLOW\",\"optionId\":\"bf0dd60d\"}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"07155ad6\",\"title\":\"Sprint 4\",\"startDate\":\"2026-06-02\",\"duration\":11}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgt_OHU",
+        "key": "185"
+      },
+      "title": "[Tech Debt]: Extract fragment library — catalog recurring field selections into named, composable fragments",
+      "type": "tech_debt",
+      "status": "In Progress",
+      "story_points": 2,
+      "priority": "Should",
+      "assignees": [],
+      "labels": [
+        "refactor",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9dd1"
+        },
+        "name": "Adapter Layer Assembly Pattern"
+      },
+      "blocked_by": [
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgt_ODQ",
+          "key": "184"
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"refactor\",\"color\":\"517924\"},{\"name\":\"adapter layer\",\"color\":\"e69dd2\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Adapter Layer Assembly Pattern\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Extract fragment library — catalog recurring field selections into named, composable fragments\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Should\",\"color\":\"ORANGE\",\"optionId\":\"15203b56\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"In Progress\",\"color\":\"BLUE\",\"optionId\":\"98236657\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"07155ad6\",\"title\":\"Sprint 4\",\"startDate\":\"2026-06-02\",\"duration\":11}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgt_ODQ",
+        "key": "184"
+      },
+      "title": "[Tech Debt]: Separate query building from pagination infrastructure — extract `buildItemsQuery()` from `PaginatedProjectItemFetcher`",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Must",
+      "assignees": [],
+      "labels": [
+        "refactor",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9dd1"
+        },
+        "name": "Adapter Layer Assembly Pattern"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"refactor\",\"color\":\"517924\"},{\"name\":\"adapter layer\",\"color\":\"e69dd2\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Adapter Layer Assembly Pattern\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Separate query building from pagination infrastructure — extract `buildItemsQuery()` from `PaginatedProjectItemFetcher`\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Must\",\"color\":\"RED\",\"optionId\":\"457ca5cd\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"07155ad6\",\"title\":\"Sprint 4\",\"startDate\":\"2026-06-02\",\"duration\":11}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSug0",
+        "key": "218"
+      },
+      "title": "[Tech Debt]: Remove null-value response fields — omit dependency_map when null, backfill sprint.ref",
+      "type": "tech_debt",
+      "status": "Ready",
+      "story_points": 2,
+      "priority": "Could",
+      "assignees": [],
+      "labels": [
+        "refactor",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"refactor\",\"color\":\"517924\"},{\"name\":\"adapter layer\",\"color\":\"e69dd2\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"MCP Tool Surface Modernization for Scrum Theory Alignment\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Remove null-value response fields — omit dependency_map when null, backfill sprint.ref\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Could\",\"color\":\"YELLOW\",\"optionId\":\"a69f4b15\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Ready\",\"color\":\"YELLOW\",\"optionId\":\"47fc9ee4\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"07155ad6\",\"title\":\"Sprint 4\",\"startDate\":\"2026-06-02\",\"duration\":11}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgt_QOc",
+        "key": "195"
+      },
+      "title": "[User Story]: Agent receives factual capability statements — NATIVE/EMULATED/UNAVAILABLE for every operation",
+      "type": "user_story",
+      "status": "Ready",
+      "story_points": 2,
+      "priority": "Should",
+      "assignees": [],
+      "labels": [
+        "feature",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9dd1"
+        },
+        "name": "Adapter Layer Assembly Pattern"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"feature\",\"color\":\"a29bfe\"},{\"name\":\"adapter layer\",\"color\":\"e69dd2\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Adapter Layer Assembly Pattern\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[User Story]: Agent receives factual capability statements — NATIVE/EMULATED/UNAVAILABLE for every operation\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"User Story\",\"color\":\"YELLOW\",\"optionId\":\"bf0dd60d\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Should\",\"color\":\"ORANGE\",\"optionId\":\"15203b56\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Ready\",\"color\":\"YELLOW\",\"optionId\":\"47fc9ee4\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"07155ad6\",\"title\":\"Sprint 4\",\"startDate\":\"2026-06-02\",\"duration\":11}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgs10ts",
+        "key": "50"
+      },
+      "title": "[Bug]: scrum_orient — response shape correctness",
+      "type": "bug",
+      "status": "Done",
+      "story_points": 1,
+      "priority": "Should",
+      "assignees": [],
+      "labels": [
+        "tool bug"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"tool bug\",\"color\":\"e1012b\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Bug Fixes & Diagnostics\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Bug]: scrum_orient — response shape correctness\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Should\",\"color\":\"ORANGE\",\"optionId\":\"15203b56\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":1}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Bug\",\"color\":\"ORANGE\",\"optionId\":\"2be032b4\"}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"07155ad6\",\"title\":\"Sprint 4\",\"startDate\":\"2026-06-02\",\"duration\":11}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSucQ",
+        "key": "213"
+      },
+      "title": "[Bug]: scope:\"sprint\" returns items from past sprints — checks sprint existence, not current sprint identity",
+      "type": "bug",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Must",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "tool bug",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Assignees": "{\"__typename\":\"ProjectV2ItemFieldUserValue\",\"users\":[\"hoonsubin\"]}",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"tool bug\",\"color\":\"e1012b\"},{\"name\":\"adapter layer\",\"color\":\"e69dd2\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Bug Fixes & Diagnostics\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Bug]: scope:\\\"sprint\\\" returns items from past sprints — checks sprint existence, not current sprint identity\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Bug\",\"color\":\"ORANGE\",\"optionId\":\"2be032b4\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Must\",\"color\":\"RED\",\"optionId\":\"457ca5cd\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSubM",
+        "key": "212"
+      },
+      "title": "[Bug]: keys-based direct lookup crashes — $projectNumber declared but unused in GetIssueProjectItem query",
+      "type": "bug",
+      "status": "Done",
+      "story_points": 1,
+      "priority": "Must",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "tool bug",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Assignees": "{\"__typename\":\"ProjectV2ItemFieldUserValue\",\"users\":[\"hoonsubin\"]}",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"tool bug\",\"color\":\"e1012b\"},{\"name\":\"adapter layer\",\"color\":\"e69dd2\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Bug Fixes & Diagnostics\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Bug]: keys-based direct lookup crashes — $projectNumber declared but unused in GetIssueProjectItem query\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Bug\",\"color\":\"ORANGE\",\"optionId\":\"2be032b4\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Must\",\"color\":\"RED\",\"optionId\":\"457ca5cd\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":1}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSv4s",
+        "key": "223"
+      },
+      "title": "[Bug]: scrum_update_story rejects epic field — EpicRefSchema.or(z.null()) union causes object-to-string serialization failure",
+      "type": "bug",
+      "status": "Done",
+      "story_points": 1,
+      "priority": "Should",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "framework layer",
+        "tool bug"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Assignees": "{\"__typename\":\"ProjectV2ItemFieldUserValue\",\"users\":[\"hoonsubin\"]}",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"framework layer\",\"color\":\"74b9ff\"},{\"name\":\"tool bug\",\"color\":\"e1012b\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Bug Fixes & Diagnostics\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Bug]: scrum_update_story rejects epic field — EpicRefSchema.or(z.null()) union causes object-to-string serialization failure\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Bug\",\"color\":\"ORANGE\",\"optionId\":\"2be032b4\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Should\",\"color\":\"ORANGE\",\"optionId\":\"15203b56\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":1}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSud8",
+        "key": "215"
+      },
+      "title": "[Bug]: scope:\"backlog\" returns Done items — backlog scope should exclude terminal-status items by default",
+      "type": "bug",
+      "status": "Done",
+      "story_points": 1,
+      "priority": "Should",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "tool bug",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Assignees": "{\"__typename\":\"ProjectV2ItemFieldUserValue\",\"users\":[\"hoonsubin\"]}",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"tool bug\",\"color\":\"e1012b\"},{\"name\":\"adapter layer\",\"color\":\"e69dd2\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Bug Fixes & Diagnostics\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Bug]: scope:\\\"backlog\\\" returns Done items — backlog scope should exclude terminal-status items by default\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Bug\",\"color\":\"ORANGE\",\"optionId\":\"2be032b4\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Should\",\"color\":\"ORANGE\",\"optionId\":\"15203b56\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":1}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSvqE",
+        "key": "221"
+      },
+      "title": "[Bug]: scrum_orient omits open epics with no sprint-assigned items — total_count mismatches returned list",
+      "type": "bug",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Should",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "tool bug",
+        "use case layer"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Assignees": "{\"__typename\":\"ProjectV2ItemFieldUserValue\",\"users\":[\"hoonsubin\"]}",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"tool bug\",\"color\":\"e1012b\"},{\"name\":\"use case layer\",\"color\":\"6958b7\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Bug Fixes & Diagnostics\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Bug]: scrum_orient omits open epics with no sprint-assigned items — total_count mismatches returned list\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Bug\",\"color\":\"ORANGE\",\"optionId\":\"2be032b4\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Should\",\"color\":\"ORANGE\",\"optionId\":\"15203b56\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguPKyI",
+        "key": "201"
+      },
+      "title": "[Tech Debt]: Remove silent config fallback — make --config mandatory",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Should",
+      "assignees": [],
+      "labels": [],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": null,
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Remove silent config fallback — make --config mandatory\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Should\",\"color\":\"ORANGE\",\"optionId\":\"15203b56\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSlUs",
+        "key": "210"
+      },
+      "title": "[Bug]: Server crashes when --config is a remote GitHub blob URL",
+      "type": "bug",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Must",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "tool bug"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Assignees": "{\"__typename\":\"ProjectV2ItemFieldUserValue\",\"users\":[\"hoonsubin\"]}",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"tool bug\",\"color\":\"e1012b\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Bug Fixes & Diagnostics\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Bug]: Server crashes when --config is a remote GitHub blob URL\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Bug\",\"color\":\"ORANGE\",\"optionId\":\"2be032b4\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Must\",\"color\":\"RED\",\"optionId\":\"457ca5cd\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguPKzM",
+        "key": "202"
+      },
+      "title": "[Tech Debt]: Remove silent config fallback — make --config mandatory",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 3,
+      "priority": "Should",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "refactor",
+        "config"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A88i4"
+        },
+        "name": "Streamable HTTP Transport Mode with Per-Connection Config Override"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Assignees": "{\"__typename\":\"ProjectV2ItemFieldUserValue\",\"users\":[\"hoonsubin\"]}",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"refactor\",\"color\":\"517924\"},{\"name\":\"config\",\"color\":\"d8f3dc\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Streamable HTTP Transport Mode with Per-Connection Config Override\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Remove silent config fallback — make --config mandatory\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Should\",\"color\":\"ORANGE\",\"optionId\":\"15203b56\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":3}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtTiVk",
+        "key": "114"
+      },
+      "title": "[Tech Debt]: Consolidate sprint date math and remove dead functions in `sprint-math.ts`",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 3,
+      "priority": "Should",
+      "assignees": [],
+      "labels": [],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBd"
+        },
+        "name": "Clean Architecture Remediation"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Clean Architecture Remediation\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Consolidate sprint date math and remove dead functions in `sprint-math.ts`\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Should\",\"color\":\"ORANGE\",\"optionId\":\"15203b56\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":3}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtL7Y4",
+        "key": "94"
+      },
+      "title": "Per-connection config override in Streamable HTTP mode",
+      "type": "user_story",
+      "status": "Backlog",
+      "story_points": 3,
+      "priority": "Could",
+      "assignees": [],
+      "labels": [
+        "feature"
+      ],
+      "sprint": {
+        "name": null,
+        "ref": {
+          "id": ""
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A88i4"
+        },
+        "name": "Streamable HTTP Transport Mode with Per-Connection Config Override"
+      },
+      "blocked_by": [
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgtL7OI",
+          "key": "93"
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"feature\",\"color\":\"a29bfe\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Streamable HTTP Transport Mode with Per-Connection Config Override\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"Per-connection config override in Streamable HTTP mode\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Could\",\"color\":\"YELLOW\",\"optionId\":\"a69f4b15\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Backlog\",\"color\":\"PURPLE\",\"optionId\":\"f75ad846\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":3}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"User Story\",\"color\":\"YELLOW\",\"optionId\":\"bf0dd60d\"}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgt8NQI",
+        "key": "176"
+      },
+      "title": "[Tech Debt]: Remove dead code and stale comments in GitHub adapter layer after EpicRef migration",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 1,
+      "priority": "Should",
+      "assignees": [],
+      "labels": [
+        "refactor",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBd"
+        },
+        "name": "Clean Architecture Remediation"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"refactor\",\"color\":\"517924\"},{\"name\":\"adapter layer\",\"color\":\"e69dd2\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Clean Architecture Remediation\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Remove dead code and stale comments in GitHub adapter layer after EpicRef migration\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Should\",\"color\":\"ORANGE\",\"optionId\":\"15203b56\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":1}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtd_tE",
+        "key": "151"
+      },
+      "title": "[Tech Debt]: Update agent behavioral rules for the redesigned tool surface",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 5,
+      "priority": "Must",
+      "assignees": [],
+      "labels": [
+        "documentation"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgteMfI",
+          "key": "156"
+        },
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgteMMQ",
+          "key": "155"
+        },
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgteMJ8",
+          "key": "154"
+        },
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgtd_jY",
+          "key": "150"
+        },
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgtd-1c",
+          "key": "148"
+        },
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgtd-jg",
+          "key": "147"
+        },
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgtd8UE",
+          "key": "144"
+        },
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgtd72A",
+          "key": "143"
+        },
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgtd7Ec",
+          "key": "142"
+        },
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgtd65I",
+          "key": "141"
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"documentation\",\"color\":\"0075ca\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"MCP Tool Surface Modernization for Scrum Theory Alignment\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Update agent behavioral rules for the redesigned tool surface\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Must\",\"color\":\"RED\",\"optionId\":\"457ca5cd\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":5}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtd-1c",
+        "key": "148"
+      },
+      "title": "[Story]: Ask a single question about sprint performance and get burndown and velocity together",
+      "type": "user_story",
+      "status": "Done",
+      "story_points": 3,
+      "priority": "Could",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "framework layer",
+        "feature",
+        "use case layer"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgtd6oc",
+          "key": "140"
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Assignees": "{\"__typename\":\"ProjectV2ItemFieldUserValue\",\"users\":[\"hoonsubin\"]}",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"framework layer\",\"color\":\"74b9ff\"},{\"name\":\"feature\",\"color\":\"a29bfe\"},{\"name\":\"use case layer\",\"color\":\"6958b7\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"MCP Tool Surface Modernization for Scrum Theory Alignment\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Story]: Ask a single question about sprint performance and get burndown and velocity together\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"User Story\",\"color\":\"YELLOW\",\"optionId\":\"bf0dd60d\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Could\",\"color\":\"YELLOW\",\"optionId\":\"a69f4b15\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":3}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtd_jY",
+        "key": "150"
+      },
+      "title": "[Tech Debt]: Remove scrum_get_sprint from the tool surface",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 1,
+      "priority": "Could",
+      "assignees": [],
+      "labels": [
+        "framework layer",
+        "refactor"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgtd8UE",
+          "key": "144"
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"framework layer\",\"color\":\"74b9ff\"},{\"name\":\"refactor\",\"color\":\"517924\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"MCP Tool Surface Modernization for Scrum Theory Alignment\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Remove scrum_get_sprint from the tool surface\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Could\",\"color\":\"YELLOW\",\"optionId\":\"a69f4b15\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":1}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgteMMQ",
+        "key": "155"
+      },
+      "title": "[Tech Debt]: Remove old scrum_get_story tool registration",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 1,
+      "priority": "Should",
+      "assignees": [],
+      "labels": [
+        "framework layer",
+        "refactor"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgteMJ8",
+          "key": "154"
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"framework layer\",\"color\":\"74b9ff\"},{\"name\":\"refactor\",\"color\":\"517924\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"MCP Tool Surface Modernization for Scrum Theory Alignment\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Remove old scrum_get_story tool registration\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Should\",\"color\":\"ORANGE\",\"optionId\":\"15203b56\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":1}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtE0xo",
+        "key": "73"
+      },
+      "title": "[Story]: Package MCP server as a standalone executable binary",
+      "type": "user_story",
+      "status": "Done",
+      "story_points": 3,
+      "priority": "Must",
+      "assignees": [],
+      "labels": [
+        "feature"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A88iW"
+        },
+        "name": "Portable Server Bootstrap"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"feature\",\"color\":\"a29bfe\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Portable Server Bootstrap\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Story]: Package MCP server as a standalone executable binary\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Must\",\"color\":\"RED\",\"optionId\":\"457ca5cd\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":3}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"User Story\",\"color\":\"YELLOW\",\"optionId\":\"bf0dd60d\"}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtE1FI",
+        "key": "74"
+      },
+      "title": "Accept --config as a CLI argument",
+      "type": "user_story",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Must",
+      "assignees": [],
+      "labels": [
+        "feature"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A88iW"
+        },
+        "name": "Portable Server Bootstrap"
+      },
+      "blocked_by": [
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgtGA-s",
+          "key": "83"
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"feature\",\"color\":\"a29bfe\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Portable Server Bootstrap\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"Accept --config as a CLI argument\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Must\",\"color\":\"RED\",\"optionId\":\"457ca5cd\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"User Story\",\"color\":\"YELLOW\",\"optionId\":\"bf0dd60d\"}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtd-jg",
+        "key": "147"
+      },
+      "title": "[Story]: Replace scrum_get_backlog with a dedicated board health view",
+      "type": "user_story",
+      "status": "Done",
+      "story_points": 5,
+      "priority": "Must",
+      "assignees": [],
+      "labels": [
+        "framework layer",
+        "feature",
+        "refactor",
+        "use case layer"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgtd8UE",
+          "key": "144"
+        },
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgtd6oc",
+          "key": "140"
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"framework layer\",\"color\":\"74b9ff\"},{\"name\":\"feature\",\"color\":\"a29bfe\"},{\"name\":\"refactor\",\"color\":\"517924\"},{\"name\":\"use case layer\",\"color\":\"6958b7\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"MCP Tool Surface Modernization for Scrum Theory Alignment\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Story]: Replace scrum_get_backlog with a dedicated board health view\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"User Story\",\"color\":\"YELLOW\",\"optionId\":\"bf0dd60d\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Must\",\"color\":\"RED\",\"optionId\":\"457ca5cd\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":5}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtd7Ec",
+        "key": "142"
+      },
+      "title": "[Story]: Add active epic summary to scrum_orient",
+      "type": "user_story",
+      "status": "Done",
+      "story_points": 3,
+      "priority": "Must",
+      "assignees": [],
+      "labels": [
+        "feature",
+        "use case layer"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgtd6oc",
+          "key": "140"
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"feature\",\"color\":\"a29bfe\"},{\"name\":\"use case layer\",\"color\":\"6958b7\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"MCP Tool Surface Modernization for Scrum Theory Alignment\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Story]: Add active epic summary to scrum_orient\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"User Story\",\"color\":\"YELLOW\",\"optionId\":\"bf0dd60d\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Must\",\"color\":\"RED\",\"optionId\":\"457ca5cd\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":3}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtd72A",
+        "key": "143"
+      },
+      "title": "[Story]: Add template URI map to scrum_orient vocabulary",
+      "type": "user_story",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Must",
+      "assignees": [],
+      "labels": [
+        "feature",
+        "use case layer",
+        "template"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgtGCF0",
+          "key": "86"
+        },
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgtd6oc",
+          "key": "140"
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"feature\",\"color\":\"a29bfe\"},{\"name\":\"use case layer\",\"color\":\"6958b7\"},{\"name\":\"template\",\"color\":\"ff7675\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"MCP Tool Surface Modernization for Scrum Theory Alignment\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Story]: Add template URI map to scrum_orient vocabulary\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"User Story\",\"color\":\"YELLOW\",\"optionId\":\"bf0dd60d\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Must\",\"color\":\"RED\",\"optionId\":\"457ca5cd\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtw-go",
+        "key": "165"
+      },
+      "title": "[Story]: Replace type_display with type_mapping and add local-first template file resolution",
+      "type": "user_story",
+      "status": "Done",
+      "story_points": 5,
+      "priority": "Should",
+      "assignees": [],
+      "labels": [
+        "adapter layer",
+        "use case layer",
+        "template",
+        "config"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A88if"
+        },
+        "name": "Flexible Item Template System"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"adapter layer\",\"color\":\"e69dd2\"},{\"name\":\"use case layer\",\"color\":\"6958b7\"},{\"name\":\"template\",\"color\":\"ff7675\"},{\"name\":\"config\",\"color\":\"d8f3dc\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Flexible Item Template System\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Story]: Replace type_display with type_mapping and add local-first template file resolution\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"User Story\",\"color\":\"YELLOW\",\"optionId\":\"bf0dd60d\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Should\",\"color\":\"ORANGE\",\"optionId\":\"15203b56\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":5}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtGCF0",
+        "key": "86"
+      },
+      "title": "Add templates.items to ScrumConfig and config.yml",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 1,
+      "priority": "Could",
+      "assignees": [],
+      "labels": [
+        "template",
+        "config"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A88if"
+        },
+        "name": "Flexible Item Template System"
+      },
+      "blocked_by": [
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgtd6oc",
+          "key": "140"
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"template\",\"color\":\"ff7675\"},{\"name\":\"config\",\"color\":\"d8f3dc\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Flexible Item Template System\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"Add templates.items to ScrumConfig and config.yml\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Could\",\"color\":\"YELLOW\",\"optionId\":\"a69f4b15\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":1}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtGA-s",
+        "key": "83"
+      },
+      "title": "[Tech Debt]: Introduce FileReader Port and Service",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Could",
+      "assignees": [],
+      "labels": [
+        "refactor",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A88if"
+        },
+        "name": "Flexible Item Template System"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"refactor\",\"color\":\"517924\"},{\"name\":\"adapter layer\",\"color\":\"e69dd2\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Flexible Item Template System\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Introduce FileReader Port and Service\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Could\",\"color\":\"YELLOW\",\"optionId\":\"a69f4b15\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgteMJ8",
+        "key": "154"
+      },
+      "title": "[Story]: Add human-readable item lookup to scrum_get_item_detail",
+      "type": "user_story",
+      "status": "Done",
+      "story_points": 3,
+      "priority": "Should",
+      "assignees": [],
+      "labels": [
+        "framework layer",
+        "feature",
+        "use case layer"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgtd6oc",
+          "key": "140"
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"framework layer\",\"color\":\"74b9ff\"},{\"name\":\"feature\",\"color\":\"a29bfe\"},{\"name\":\"use case layer\",\"color\":\"6958b7\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"MCP Tool Surface Modernization for Scrum Theory Alignment\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Story]: Add human-readable item lookup to scrum_get_item_detail\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"User Story\",\"color\":\"YELLOW\",\"optionId\":\"bf0dd60d\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Should\",\"color\":\"ORANGE\",\"optionId\":\"15203b56\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":3}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtd8UE",
+        "key": "144"
+      },
+      "title": "[Story]: Implement scrum_find_items — unified backlog item search",
+      "type": "user_story",
+      "status": "Done",
+      "story_points": 8,
+      "priority": "Must",
+      "assignees": [],
+      "labels": [
+        "framework layer",
+        "feature",
+        "use case layer"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgtd6oc",
+          "key": "140"
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"framework layer\",\"color\":\"74b9ff\"},{\"name\":\"feature\",\"color\":\"a29bfe\"},{\"name\":\"use case layer\",\"color\":\"6958b7\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"MCP Tool Surface Modernization for Scrum Theory Alignment\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Story]: Implement scrum_find_items — unified backlog item search\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"User Story\",\"color\":\"YELLOW\",\"optionId\":\"bf0dd60d\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Must\",\"color\":\"RED\",\"optionId\":\"457ca5cd\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":8}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtd65I",
+        "key": "141"
+      },
+      "title": "[Story]: Enhance scrum_orient with sprint time-progress fields",
+      "type": "user_story",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Must",
+      "assignees": [],
+      "labels": [
+        "feature",
+        "use case layer"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [
+        {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgtd6oc",
+          "key": "140"
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"feature\",\"color\":\"a29bfe\"},{\"name\":\"use case layer\",\"color\":\"6958b7\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"MCP Tool Surface Modernization for Scrum Theory Alignment\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Story]: Enhance scrum_orient with sprint time-progress fields\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"User Story\",\"color\":\"YELLOW\",\"optionId\":\"bf0dd60d\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Must\",\"color\":\"RED\",\"optionId\":\"457ca5cd\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtd6oc",
+        "key": "140"
+      },
+      "title": "[Tech Debt]: Add new domain types for tool surface redesign",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Must",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "refactor"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Assignees": "{\"__typename\":\"ProjectV2ItemFieldUserValue\",\"users\":[\"hoonsubin\"]}",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"refactor\",\"color\":\"517924\"}]}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"MCP Tool Surface Modernization for Scrum Theory Alignment\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Add new domain types for tool surface redesign\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Must\",\"color\":\"RED\",\"optionId\":\"457ca5cd\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtTgng",
+        "key": "111"
+      },
+      "title": "[Tech Debt]: Remove layer breach — delete `graphql` import from `scrum-write.ts`",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 3,
+      "priority": "Must",
+      "assignees": [],
+      "labels": [],
+      "sprint": {
+        "name": "Sprint 2",
+        "ref": {
+          "id": "9085132c"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBd"
+        },
+        "name": "Clean Architecture Remediation"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Clean Architecture Remediation\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Remove layer breach — delete `graphql` import from `scrum-write.ts`\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Must\",\"color\":\"RED\",\"optionId\":\"457ca5cd\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":3}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"9085132c\",\"title\":\"Sprint 2\",\"startDate\":\"2026-05-17\",\"duration\":6}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtTl3c",
+        "key": "119"
+      },
+      "title": "[Tech Debt]: Refactor impediment sprint matching to use PVTI_ resolution",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Could",
+      "assignees": [],
+      "labels": [],
+      "sprint": {
+        "name": "Sprint 2",
+        "ref": {
+          "id": "9085132c"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBd"
+        },
+        "name": "Clean Architecture Remediation"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Clean Architecture Remediation\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Refactor impediment sprint matching to use PVTI_ resolution\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Could\",\"color\":\"YELLOW\",\"optionId\":\"a69f4b15\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"9085132c\",\"title\":\"Sprint 2\",\"startDate\":\"2026-05-17\",\"duration\":6}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtToL0",
+        "key": "126"
+      },
+      "title": "[Tech Debt]: Encapsulate repetitive `undefined` checks with helper function",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Could",
+      "assignees": [],
+      "labels": [],
+      "sprint": {
+        "name": "Sprint 2",
+        "ref": {
+          "id": "9085132c"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBd"
+        },
+        "name": "Clean Architecture Remediation"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Clean Architecture Remediation\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Encapsulate repetitive `undefined` checks with helper function\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Could\",\"color\":\"YELLOW\",\"optionId\":\"a69f4b15\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"9085132c\",\"title\":\"Sprint 2\",\"startDate\":\"2026-05-17\",\"duration\":6}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtThzo",
+        "key": "112"
+      },
+      "title": "[Tech Debt]: Consolidate duplicate `storyToListing` functions into shared module",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 0,
+      "priority": "Won't",
+      "assignees": [],
+      "labels": [],
+      "sprint": {
+        "name": "Sprint 2",
+        "ref": {
+          "id": "9085132c"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBd"
+        },
+        "name": "Clean Architecture Remediation"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Clean Architecture Remediation\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Consolidate duplicate `storyToListing` functions into shared module\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Won't\",\"color\":\"PINK\",\"optionId\":\"c84aabd3\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":0}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"9085132c\",\"title\":\"Sprint 2\",\"startDate\":\"2026-05-17\",\"duration\":6}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtTlzc",
+        "key": "118"
+      },
+      "title": "[Tech Debt]: Define `GitHubBackendConfig` interface — replace `as Record<string, unknown>` casts",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 3,
+      "priority": "Should",
+      "assignees": [],
+      "labels": [],
+      "sprint": {
+        "name": "Sprint 2",
+        "ref": {
+          "id": "9085132c"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBd"
+        },
+        "name": "Clean Architecture Remediation"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Clean Architecture Remediation\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Define `GitHubBackendConfig` interface — replace `as Record<string, unknown>` casts\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Should\",\"color\":\"ORANGE\",\"optionId\":\"15203b56\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":3}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"9085132c\",\"title\":\"Sprint 2\",\"startDate\":\"2026-05-17\",\"duration\":6}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtd--A",
+        "key": "139"
+      },
+      "title": "Fix/refactor config read",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 3,
+      "priority": "Should",
+      "assignees": [],
+      "labels": [],
+      "sprint": {
+        "name": "Sprint 2",
+        "ref": {
+          "id": "9085132c"
+        }
+      },
+      "epic": null,
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "PullRequest",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Clean Architecture Remediation\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"Fix/refactor config read\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Should\",\"color\":\"ORANGE\",\"optionId\":\"15203b56\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":3}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"9085132c\",\"title\":\"Sprint 2\",\"startDate\":\"2026-05-17\",\"duration\":6}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtTlwI",
+        "key": "117"
+      },
+      "title": "[Tech Debt]: Refactor `isTerminalStatus` — pass resolved `status_display` as parameter",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Should",
+      "assignees": [],
+      "labels": [],
+      "sprint": {
+        "name": "Sprint 2",
+        "ref": {
+          "id": "9085132c"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBd"
+        },
+        "name": "Clean Architecture Remediation"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Clean Architecture Remediation\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Refactor `isTerminalStatus` — pass resolved `status_display` as parameter\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Should\",\"color\":\"ORANGE\",\"optionId\":\"15203b56\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"9085132c\",\"title\":\"Sprint 2\",\"startDate\":\"2026-05-17\",\"duration\":6}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtToi4",
+        "key": "127"
+      },
+      "title": "[Tech Debt]: Remove or document unused `_scrumConfig` parameter in `get-burndown.ts`",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 0,
+      "priority": "Won't",
+      "assignees": [],
+      "labels": [],
+      "sprint": {
+        "name": "Sprint 2",
+        "ref": {
+          "id": "9085132c"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBd"
+        },
+        "name": "Clean Architecture Remediation"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Clean Architecture Remediation\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Remove or document unused `_scrumConfig` parameter in `get-burndown.ts`\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Won't\",\"color\":\"PINK\",\"optionId\":\"c84aabd3\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":0}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"9085132c\",\"title\":\"Sprint 2\",\"startDate\":\"2026-05-17\",\"duration\":6}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtToIY",
+        "key": "125"
+      },
+      "title": "[Tech Debt]: Move `PartialFailureResult` closer to its usage site",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 1,
+      "priority": "Could",
+      "assignees": [],
+      "labels": [],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBd"
+        },
+        "name": "Clean Architecture Remediation"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Clean Architecture Remediation\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Move `PartialFailureResult` closer to its usage site\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Could\",\"color\":\"YELLOW\",\"optionId\":\"a69f4b15\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":1}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"ecba33e9\",\"title\":\"Sprint 3\",\"startDate\":\"2026-05-24\",\"duration\":8}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtTn2c",
+        "key": "124"
+      },
+      "title": "[Tech Debt]: Normalize error handling pattern in `get-burndown.ts`",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Won't",
+      "assignees": [],
+      "labels": [],
+      "sprint": {
+        "name": "Sprint 2",
+        "ref": {
+          "id": "9085132c"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBd"
+        },
+        "name": "Clean Architecture Remediation"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Clean Architecture Remediation\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Normalize error handling pattern in `get-burndown.ts`\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Won't\",\"color\":\"PINK\",\"optionId\":\"c84aabd3\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"9085132c\",\"title\":\"Sprint 2\",\"startDate\":\"2026-05-17\",\"duration\":6}"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtTnzQ",
+        "key": "123"
+      },
+      "title": "[Tech Debt]: Add proper types for `team`, `dor`, `dod` in `orient.ts`",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Won't",
+      "assignees": [],
+      "labels": [],
+      "sprint": {
+        "name": "Sprint 2",
+        "ref": {
+          "id": "9085132c"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBd"
+        },
+        "name": "Clean Architecture Remediation"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue",
+        "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
+        "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Clean Architecture Remediation\"}}",
+        "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Add proper types for `team`, `dor`, `dod` in `orient.ts`\"}",
+        "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Won't\",\"color\":\"PINK\",\"optionId\":\"c84aabd3\"}",
+        "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
+        "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
+        "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
+        "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"9085132c\",\"title\":\"Sprint 2\",\"startDate\":\"2026-05-17\",\"duration\":6}"
+      }
+    }
+  ],
+  "total_count": 163,
+  "scope_summary": {
+    "sprint_count": 117,
+    "backlog_count": 46
+  },
+  "dependency_map": null
+}

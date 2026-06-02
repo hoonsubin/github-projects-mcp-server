@@ -1,0 +1,28 @@
+{
+  "story": {
+    "kind": "issue",
+    "ref": {
+      "id": "PVTI_lAHOAmfLjc4BWiTtzgt_T0w"
+    },
+    "key": "209",
+    "title": "Impediment: Epic CRUD operations are incomplete",
+    "body": "## Impediment: Epic CRUD operations are incomplete — no create, no close\n\n### What's Missing\n\nThe MCP tool surface offers **no ability to create or close epics (milestones)**. Only read (list/search) and assign-to-story operations exist.\n\n### Layer-by-Layer Gap Analysis\n\n**GraphQL (`operations.graphql`):**\n- `ListMilestones` query exists (line 492)\n- `SetMilestone` mutation exists (line 832) — assigns an existing milestone to an issue\n- No `CreateMilestone` mutation\n- No `CloseMilestone` mutation\n- No `UpdateMilestone` mutation\n\n**Port interface (`src/scrum/ports.ts`):**\n- `EpicPort` (line 292) has only `getEpics()` — single read method\n- `ProjectWriter` (line 381) has no epic create/close/update methods\n- No `CreateStoryInput`-equivalent for epics (`CreateEpicInput`)\n\n**Adapter (`src/adapters/github/backend.ts`):**\n- `getEpics()` delegates to `EpicService` — works for reads\n- No `createEpic()` override — `AbstractProjectBackend` doesn't even declare it\n- No `closeEpic()` override — same\n\n**Capabilities (`src/adapters/capabilities.ts`):**\n- `PlatformCapabilities` has no flag for epic CRUD support (only `auditLogBurndown`, `nativeSprints`, `dependencies`, `fileReader`, `stableItemKeys`)\n\n### Impact\n\n1. Agent must instruct users to create milestones manually in the GitHub UI, then wait for the user to paste the milestone ID back\n2. Agent cannot create epics as part of sprint planning\n3. Closing a completed epic requires manual GitHub action\n4. The just-created \"Adapter Layer Assembly Pattern\" epic for this project had to be created by the user outside the tool\n\n### Recommended Fix\n\n1. Add `CreateMilestone` and `CloseMilestone` mutations to `operations.graphql`\n2. Add `createEpic(input)` and `closeEpic(ref)` to `ProjectWriter` and `EpicPort` ports\n3. Implement in `GitHubProjectBackend` via a new method or `EpicService` extension\n4. Add MCP tools: `scrum_create_epic(title, description?)` and `scrum_close_epic(ref)`\n\n### Escalation\n\nDay 1 of this impediment. Escalation threshold: Day 2 if no action is taken.\n\n---\n\n## Sub-Impediment: New epics don't appear in `scrum_orient` until they have items in the active sprint\n\n### Root Cause\n\nIn `EpicService.getEpics()` (line 50-81), when `sprintIterationId` is `\"current\"`, the function:\n1. Fetches all milestones\n2. Fetches items in the active sprint\n3. Collects epic IDs that have ≥1 item in the sprint\n4. **Filters out milestones NOT in that set**\n\nA newly created milestone with zero items is invisible in `scrum_orient`.\n\n### Impact\n\n- The \"Adapter Layer Assembly Pattern\" epic doesn't show up in `scrum_orient`'s `epics.active[]` list\n- The agent can't verify the epic exists after creation\n- Affects any workflow where an epic is created then needs immediate interaction\n\n### Recommended Fix\n\nIn `EpicService.getEpics()`: when `sprintIterationId` is `\"current\"`, return **all open milestones** regardless of sprint item count. The sprint-based filtering should only apply when a specific sprint is requested (not `\"current\"`). Alternatively, `orientUseCase` in `orient.ts` should call `getEpics(null)` (all milestones) and apply its own `status !== \"done\"` filter, instead of passing `\"current\"`.",
+    "type": "impediment",
+    "status": "In Progress",
+    "sprint": "Sprint 4",
+    "story_points": 5,
+    "priority": "Must",
+    "assignees": [
+      "hoonsubin"
+    ],
+    "labels": [],
+    "epic": null,
+    "created_at": "2026-05-31T10:47:49Z",
+    "updated_at": "2026-06-02T20:57:57Z",
+    "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/209",
+    "blocked_by": []
+  },
+  "comments": [],
+  "linked_artifacts": [],
+  "acceptance_criteria": []
+}

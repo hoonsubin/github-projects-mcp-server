@@ -1,0 +1,47 @@
+{
+  "readiness": {
+    "by_type": {
+      "bug": {
+        "ready": 0,
+        "not_ready": 2,
+        "total": 2
+      },
+      "feature": {
+        "ready": 0,
+        "not_ready": 0,
+        "total": 0
+      },
+      "tech_debt": {
+        "ready": 0,
+        "not_ready": 4,
+        "total": 4
+      },
+      "spike": {
+        "ready": 0,
+        "not_ready": 1,
+        "total": 1
+      },
+      "user_story": {
+        "ready": 4,
+        "not_ready": 6,
+        "total": 10
+      },
+      "impediment": {
+        "ready": 0,
+        "not_ready": 1,
+        "total": 1
+      }
+    },
+    "overall_pct": 22
+  },
+  "sprint_risk": {
+    "unestimated_count": 0,
+    "blocked_count": 0,
+    "no_assignee_count": 17
+  },
+  "impediments": {
+    "orphan_count": 0,
+    "open_count": 1
+  },
+  "ungroomed_count": 1
+}

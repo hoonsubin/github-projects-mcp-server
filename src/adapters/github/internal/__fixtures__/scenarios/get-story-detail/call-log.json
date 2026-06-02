@@ -1,0 +1,35 @@
+[
+  {
+    "hash": "GetUserProjectFieldsBootstrap:{\"login\":\"hoonsubin\",\"number\":5}",
+    "operation": "GetUserProjectFieldsBootstrap",
+    "variables": {
+      "login": "hoonsubin",
+      "number": 5
+    },
+    "file": "wire/GetUserProjectFieldsBootstrap_login_hoonsubin_number_5_.json"
+  },
+  {
+    "hash": "GetProjectItemById:{\"itemId\":\"PVTI_lAHOAmfLjc4BWiTtzgt_T0w\"}",
+    "operation": "GetProjectItemById",
+    "variables": {
+      "itemId": "PVTI_lAHOAmfLjc4BWiTtzgt_T0w"
+    },
+    "file": "wire/GetProjectItemById_itemId_PVTI_lAHOAmfLjc4BWiTtzgt_T0w_.json"
+  },
+  {
+    "hash": "GetIssueDetails:{\"issueId\":\"I_kwDOSJo3Ms8AAAABD6LqEw\"}",
+    "operation": "GetIssueDetails",
+    "variables": {
+      "issueId": "I_kwDOSJo3Ms8AAAABD6LqEw"
+    },
+    "file": "wire/GetIssueDetails_issueId_I_kwDOSJo3Ms8AAAABD6LqEw_.json"
+  },
+  {
+    "hash": "GetItemFields:{\"itemId\":\"PVTI_lAHOAmfLjc4BWiTtzgt_T0w\"}",
+    "operation": "GetItemFields",
+    "variables": {
+      "itemId": "PVTI_lAHOAmfLjc4BWiTtzgt_T0w"
+    },
+    "file": "wire/GetItemFields_itemId_PVTI_lAHOAmfLjc4BWiTtzgt_T0w_.json"
+  }
+]

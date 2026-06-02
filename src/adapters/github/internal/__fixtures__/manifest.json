@@ -1,12 +1,142 @@
 {
-  "capturedAt": "2026-05-30T13:41:16.518Z",
+  "version": 2,
+  "capturedAt": "2026-06-02T21:32:26.976Z",
   "platform": "github",
   "owner": "hoonsubin",
   "projectNumber": 5,
+  "wire": {
+    "responses": [
+      {
+        "hash": "GetUserProjectFieldsBootstrap:{\"login\":\"hoonsubin\",\"number\":5}",
+        "operation": "GetUserProjectFieldsBootstrap",
+        "variables": {
+          "login": "hoonsubin",
+          "number": 5
+        },
+        "file": "wire/GetUserProjectFieldsBootstrap_login_hoonsubin_number_5_.json"
+      },
+      {
+        "hash": "query($login: String!, $number: Int!, $cursor: String) { user(login: $login) { p:{\"login\":\"hoonsubin\",\"number\":5}",
+        "operation": "query($login: String!, $number: Int!, $cursor: String) { user(login: $login) { p",
+        "variables": {
+          "login": "hoonsubin",
+          "number": 5
+        },
+        "file": "wire/query_login_String_number_Int_cursor_String_user_login_login_p_login_hoonsubin_number_5_.json"
+      },
+      {
+        "hash": "query($login: String!, $number: Int!, $cursor: String) { user(login: $login) { p:{\"cursor\":\"Y3Vyc29yOnYyOpK5MDAwMDAwMDAuMDA5NjQ2MzAyMjUwODAzOM4LBrUp\",\"login\":\"hoonsubin\",\"number\":5}",
+        "operation": "query($login: String!, $number: Int!, $cursor: String) { user(login: $login) { p",
+        "variables": {
+          "login": "hoonsubin",
+          "number": 5,
+          "cursor": "Y3Vyc29yOnYyOpK5MDAwMDAwMDAuMDA5NjQ2MzAyMjUwODAzOM4LBrUp"
+        },
+        "file": "wire/query_login_String_number_Int_cursor_String_user_login_login_p_cursor_Y3Vyc29yOnYyOpK5MDAwMDAwMDAuMDA5NjQ2MzAyMjUwODAzOM4LBrUp_login_hoonsubin_number_5_.json"
+      },
+      {
+        "hash": "ListMilestones:{\"first\":50,\"owner\":\"hoonsubin\",\"repo\":\"github-projects-mcp-server\"}",
+        "operation": "ListMilestones",
+        "variables": {
+          "owner": "hoonsubin",
+          "repo": "github-projects-mcp-server",
+          "first": 50
+        },
+        "file": "wire/ListMilestones_first_50_owner_hoonsubin_repo_github-projects-mcp-server_.json"
+      },
+      {
+        "hash": "GetRepoLabels:{\"first\":100,\"owner\":\"hoonsubin\",\"repo\":\"github-projects-mcp-server\"}",
+        "operation": "GetRepoLabels",
+        "variables": {
+          "owner": "hoonsubin",
+          "repo": "github-projects-mcp-server",
+          "first": 100
+        },
+        "file": "wire/GetRepoLabels_first_100_owner_hoonsubin_repo_github-projects-mcp-server_.json"
+      },
+      {
+        "hash": "GetUserNodeId:{\"login\":\"hoonsubin\"}",
+        "operation": "GetUserNodeId",
+        "variables": {
+          "login": "hoonsubin"
+        },
+        "file": "wire/GetUserNodeId_login_hoonsubin_.json"
+      }
+    ]
+  },
+  "scenarios": {
+    "orient": {
+      "callLog": "scenarios/orient/call-log.json",
+      "portOutput": "scenarios/orient/port-output.json",
+      "handlerOutput": "scenarios/orient/handler-output.json"
+    },
+    "find-items-all": {
+      "callLog": "scenarios/find-items-all/call-log.json",
+      "portOutput": "scenarios/find-items-all/port-output.json",
+      "handlerOutput": "scenarios/find-items-all/handler-output.json"
+    },
+    "find-items-deps": {
+      "callLog": "scenarios/find-items-deps/call-log.json",
+      "portOutput": "scenarios/find-items-deps/port-output.json"
+    },
+    "board-health": {
+      "callLog": "scenarios/board-health/call-log.json",
+      "portOutput": "scenarios/board-health/port-output.json",
+      "handlerOutput": "scenarios/board-health/handler-output.json"
+    },
+    "analytics-both": {
+      "callLog": "scenarios/analytics-both/call-log.json",
+      "portOutput": "scenarios/analytics-both/port-output.json",
+      "handlerOutput": "scenarios/analytics-both/handler-output.json"
+    },
+    "get-story-detail": {
+      "callLog": "scenarios/get-story-detail/call-log.json",
+      "portOutput": "scenarios/get-story-detail/port-output.json",
+      "handlerOutput": "scenarios/get-story-detail/handler-output.json"
+    }
+  },
+  "catalog": {
+    "sampleItemRef": {
+      "id": "PVTI_lAHOAmfLjc4BWiTtzgt_T0w",
+      "key": "209"
+    },
+    "sampleDraftRef": null,
+    "activeSprintId": "07155ad6",
+    "owner": "hoonsubin",
+    "projectNumber": 5,
+    "primaryRepo": "github-projects-mcp-server"
+  },
   "files": [
     "bootstrap-fields.json",
     "project-items-p1.json",
     "project-items-p2.json",
-    "user-node-ids.json"
+    "project-items-aggregate-p1.json",
+    "project-items-aggregate-p2.json",
+    "user-node-ids.json",
+    "wire/GetUserProjectFieldsBootstrap_login_hoonsubin_number_5_.json",
+    "wire/query_login_String_number_Int_cursor_String_user_login_login_p_login_hoonsubin_number_5_.json",
+    "wire/query_login_String_number_Int_cursor_String_user_login_login_p_cursor_Y3Vyc29yOnYyOpK5MDAwMDAwMDAuMDA5NjQ2MzAyMjUwODAzOM4LBrUp_login_hoonsubin_number_5_.json",
+    "wire/ListMilestones_first_50_owner_hoonsubin_repo_github-projects-mcp-server_.json",
+    "wire/GetRepoLabels_first_100_owner_hoonsubin_repo_github-projects-mcp-server_.json",
+    "wire/GetUserNodeId_login_hoonsubin_.json",
+    "scenarios/orient/port-output.json",
+    "scenarios/orient/call-log.json",
+    "scenarios/orient/handler-output.json",
+    "scenarios/find-items-all/port-output.json",
+    "scenarios/find-items-all/call-log.json",
+    "scenarios/find-items-all/handler-output.json",
+    "scenarios/find-items-deps/port-output.json",
+    "scenarios/find-items-deps/call-log.json",
+    "scenarios/board-health/port-output.json",
+    "scenarios/board-health/call-log.json",
+    "scenarios/board-health/handler-output.json",
+    "scenarios/analytics-both/port-output.json",
+    "scenarios/analytics-both/call-log.json",
+    "scenarios/analytics-both/handler-output.json",
+    "scenarios/get-story-detail/port-output.json",
+    "scenarios/get-story-detail/call-log.json",
+    "scenarios/get-story-detail/handler-output.json",
+    "catalog.json",
+    "manifest.json"
   ]
 }

@@ -1,0 +1,140 @@
+{
+  "repository": {
+    "milestones": {
+      "nodes": [
+        {
+          "id": "MI_kwDOSJo3Ms4A8aEK",
+          "title": "Phase 2 — Read Tools",
+          "description": "New file: `src/tools/scrum-read.ts`. Exports a single `registerScrumReadTools(server, github)` function. Implement tools in the order below — each is independently testable.\n\n### `scrum_get_config`\n\n- Call `loadConfig(github, ...)`\n- Map `RuntimeConfig` to the return shape described in the README: `definition_of_ready`, `definition_of_done`, `status_vocabulary`, `priority_vocabulary`, `story_point_values`, `sprint` (`{ length_weeks, start_day }`), `team` (array of `{ login, name, role }`), `ceremony_records_backend`\n- No additional GitHub calls beyond what `loadConfig` already makes\n\n### `scrum_get_velocity`\n\n- Call `loadConfig` to get the completed iteration list\n- For each completed iteration in the requested `window`: fetch all project items assigned to that iteration, sum `story_points` field values, split by whether status is the \"Done\" option\n- Return the array described in the README plus `average_completed`\n\nBuilds on the existing `IterationVelocity` type logic already sketched in the codebase.\n\n### `scrum_get_backlog`\n\n- Call `loadConfig` to get the sprint field ID\n- Fetch all project items where the sprint field is unset (no iteration value)\n- Apply optional client-side filters: `search` (title+body substring), `labels`, `priority`, `epic`, `limit` cap\n- Compute the `readiness` summary: count items that have story points set, have an AC checklist in body, and have a priority value\n- Map each item to the `Story` shape\n\nNote: GitHub Projects v2 does not support server-side filtering on field absence. Retrieve all items and filter client-side. Use pagination; respect the `limit` cap.\n\n### `scrum_get_board`\n\n- Accept optional `sprint: SprintRef` (default `\"current\"`)\n- Call `loadConfig`, then `resolveSprint` to get the iteration ID\n- Fetch all project items assigned to that iteration\n- Group by status in `status_vocabulary` order; sum story points per group and overall\n- Return: `sprint` metadata object, `groups` array, `totals` object\n\nThe existing `SprintStatusResult` logic is the reference — port and adapt.\n\n### `scrum_get_story`\n\n- Accept `ref: StoryRef`\n- Call `resolveStory` to get the issue node ID\n- Fetch the issue with: body, comments (author/body/created_at/url), linked PRs (via the issue's timeline or a `closingIssuesReferences` query), and current project field values\n- Parse AC from the body by scanning for `- [ ]` / `- [x]` markdown checkboxes\n- Map to `Story` plus the extended fields: `comments`, `linked_prs`, `sub_tasks`, `acceptance_criteria`",
+          "state": "CLOSED",
+          "openIssues": {
+            "totalCount": 0
+          },
+          "closedIssues": {
+            "totalCount": 0
+          }
+        },
+        {
+          "id": "MI_kwDOSJo3Ms4A8aEO",
+          "title": "Phase 3 — Write Tools",
+          "description": "New file: `src/tools/scrum-write.ts`. Exports `registerScrumWriteTools(server, github)`. Also registers the deprecated `github_graphql` tool here (or in a separate `registerDeprecatedTools`).\n\n### `scrum_post_note` (implement first — simplest)\n\n- Accept `ref: StoryRef`, `body: string`, `kind`\n- Call `resolveStory` to get the issue node ID\n- Prefix the body with a kind tag when `kind !== \"comment\"` (e.g., `**[Standup]**\\n\\n{body}`)\n- Call the `addComment` mutation via the existing GitHub service\n- Return `{ url: string }`\n\n### `scrum_set_field` (implement second — used by most other write tools)\n\nThe translation engine from Scrum vocabulary to GitHub field mutations.\n\n| `field`        | `value` type                              | Backend operation                                                                                              |\n| -------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------- |\n| `status`       | string from `status_vocabulary`           | Resolve name → option ID via `statusOptions`; call `updateProjectV2ItemFieldValue` with `singleSelectOptionId` |\n| `sprint`       | `SprintRef`                               | Call `resolveSprint` → iteration ID or null; set or clear the iteration field                                  |\n| `story_points` | number or null                            | Set or clear the number field                                                                                  |\n| `priority`     | string from `priority_vocabulary` or null | Resolve name → option ID via `priorityOptions`; set or clear                                                   |\n| `assignee`     | login string or null                      | Resolve login → user node ID; set or clear the assignee field                                                  |\n\nReturns the updated `Story`.\n\n### `scrum_update_story`\n\n- Accept `ref`, optional `title`, `body`, `labels`, `assignees`, `epic`\n- Call `resolveStory` to get the issue and item node IDs\n- Call `updateIssue` mutation for title/body/assignees/labels\n- Epic: update the epic custom field on the project item (see open question below)\n- Return the updated `Story`\n\n### `scrum_create_story`\n\n- Create the issue via the `createIssue` mutation (repo from config)\n- Add the created issue to the project via `addProjectV2ItemById`\n- For each optional field provided (`priority`, `story_points`, `sprint`, `assignees`): call the `scrum_set_field` logic inline\n- If issue creation succeeds but a field-set fails, return a structured error that includes the partial `StoryRef` so the agent can retry field-sets rather than duplicating the story\n- Return the new `Story`\n\n### `scrum_plan_sprint`\n\n- Accept `sprint: SprintRef`, `stories: StoryRef[]`, `replace: boolean`\n- If `replace: true`: fetch existing sprint items and clear the sprint field on each first\n- For each story in `stories`: call `resolveStory`, then apply the sprint field-set logic\n- Collect `assigned` refs and `skipped` entries (`{ ref, reason }`)\n- Return the partial-success report described in the README\n\n### `scrum_log_impediment`\n\nComposes existing primitives:\n\n1. `scrum_create_story` with `type = \"spike\"` (or the team's impediment label if distinct — check config) and initial status set to `\"Blocked\"`\n2. `scrum_post_note` on the affected story with a cross-link: \"Impediment #N opened against this story.\"\n3. `scrum_post_note` on the new impediment story back-linking to the affected story\n\nReturns the impediment as a `Story` plus `linked_to: StoryRef`.",
+          "state": "CLOSED",
+          "openIssues": {
+            "totalCount": 0
+          },
+          "closedIssues": {
+            "totalCount": 0
+          }
+        },
+        {
+          "id": "MI_kwDOSJo3Ms4A88iW",
+          "title": "Portable Server Bootstrap",
+          "description": "**Goal:** The MCP server should be launchable from any directory via `npx` or `deno run`, accepting its config via a CLI argument rather than assuming a hardcoded path inside the project repo.",
+          "state": "CLOSED",
+          "openIssues": {
+            "totalCount": 0
+          },
+          "closedIssues": {
+            "totalCount": 3
+          }
+        },
+        {
+          "id": "MI_kwDOSJo3Ms4A88if",
+          "title": "Flexible Item Template System",
+          "description": "**Goal:** The agent should be able to retrieve a team-declared template for any backlog item type — from a local markdown file or a GitHub Issue Form YML — and use it to compose consistent issue bodies without being told explicitly which template to apply.",
+          "state": "CLOSED",
+          "openIssues": {
+            "totalCount": 0
+          },
+          "closedIssues": {
+            "totalCount": 8
+          }
+        },
+        {
+          "id": "MI_kwDOSJo3Ms4A88i4",
+          "title": "Streamable HTTP Transport Mode with Per-Connection Config Override",
+          "description": "**Goal:** The MCP server should support HTTP mode for multi-client deployments. Each connecting client can optionally supply its own config path, which fully overrides the server's default config for that session.",
+          "state": "OPEN",
+          "openIssues": {
+            "totalCount": 3
+          },
+          "closedIssues": {
+            "totalCount": 1
+          }
+        },
+        {
+          "id": "MI_kwDOSJo3Ms4A9EBS",
+          "title": "Epic & Dependency System Completion",
+          "description": "Ship full epic-association and dependency-tracking feature set",
+          "state": "CLOSED",
+          "openIssues": {
+            "totalCount": 0
+          },
+          "closedIssues": {
+            "totalCount": 8
+          }
+        },
+        {
+          "id": "MI_kwDOSJo3Ms4A9EBd",
+          "title": "Clean Architecture Remediation",
+          "description": "Complete adapter-layer refactoring — extract services, focused ports, pure domain layer",
+          "state": "OPEN",
+          "openIssues": {
+            "totalCount": 0
+          },
+          "closedIssues": {
+            "totalCount": 28
+          }
+        },
+        {
+          "id": "MI_kwDOSJo3Ms4A9EBe",
+          "title": "Scrum Process & Agent Rule Hardening",
+          "description": "Impediment management, sprint planning, ceremony playbook improvements",
+          "state": "OPEN",
+          "openIssues": {
+            "totalCount": 5
+          },
+          "closedIssues": {
+            "totalCount": 3
+          }
+        },
+        {
+          "id": "MI_kwDOSJo3Ms4A9EBk",
+          "title": "Bug Fixes & Diagnostics",
+          "description": "Security and correctness bug fixes",
+          "state": "OPEN",
+          "openIssues": {
+            "totalCount": 3
+          },
+          "closedIssues": {
+            "totalCount": 10
+          }
+        },
+        {
+          "id": "MI_kwDOSJo3Ms4A9J0x",
+          "title": "MCP Tool Surface Modernization for Scrum Theory Alignment",
+          "description": "Redesign the agent-tool contract to align with core Scrum principles (single Product Backlog as the source of truth; sprints as the time dimension; epics as the space/thematic dimension) across four categories:\n(1) Enhanced tools — scrum_orient gains sprint time-progress, active epic context, and template URI discovery;\n(2) New tools — scrum_find_items unifies search across sprint and backlog with keys-based direct lookup and opt-in dependency graph, scrum_get_item_detail adds human-readable { number } input;\n(3) Merged/renamed tools — scrum_get_board_health replaces scrum_get_backlog as a health-only aggregate view, scrum_get_analytics merges burndown and velocity history;\n(4) Removed/converted — scrum_get_sprint, scrum_get_story, scrum_get_burndown, scrum_get_history, and scrum_get_template are retired from the tool surface;\n\ntemplates are served as scrum://template/{type} MCP resources. The agent session start protocol is updated to task-driven health loading, direct-lookup patterns, and sprint-risk stance tables.",
+          "state": "OPEN",
+          "openIssues": {
+            "totalCount": 5
+          },
+          "closedIssues": {
+            "totalCount": 15
+          }
+        },
+        {
+          "id": "MI_kwDOSJo3Ms4A9dd1",
+          "title": "Adapter Layer Assembly Pattern",
+          "description": "Make the adapter a pure assembly layer whose only responsibility is composing the right API fragments to satisfy a port contract, so future use-case or framework changes never require internal re-architecture — only re-assembly.",
+          "state": "OPEN",
+          "openIssues": {
+            "totalCount": 10
+          },
+          "closedIssues": {
+            "totalCount": 3
+          }
+        }
+      ]
+    }
+  }
+}

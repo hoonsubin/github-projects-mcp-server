@@ -1,0 +1,2477 @@
+{
+  "burndown": {
+    "sprint": {
+      "name": "Sprint 4",
+      "start_date": "2026-06-02",
+      "end_date": "2026-06-13",
+      "duration_days": 11,
+      "days_remaining": "[COMPUTED]"
+    },
+    "data_source": "issue_close_proxy",
+    "warning": "Completion timestamps are inferred from GitHub issue close events.",
+    "series": [
+      {
+        "date": "2026-06-02",
+        "remaining_points": 66,
+        "completed_points": 0
+      }
+    ],
+    "ideal": [
+      {
+        "date": "2026-06-02",
+        "remaining_points": 66
+      },
+      {
+        "date": "2026-06-03",
+        "remaining_points": 60
+      },
+      {
+        "date": "2026-06-04",
+        "remaining_points": 54
+      },
+      {
+        "date": "2026-06-05",
+        "remaining_points": 48
+      },
+      {
+        "date": "2026-06-06",
+        "remaining_points": 42
+      },
+      {
+        "date": "2026-06-07",
+        "remaining_points": 36
+      },
+      {
+        "date": "2026-06-08",
+        "remaining_points": 30
+      },
+      {
+        "date": "2026-06-09",
+        "remaining_points": 24
+      },
+      {
+        "date": "2026-06-10",
+        "remaining_points": 18
+      },
+      {
+        "date": "2026-06-11",
+        "remaining_points": 12
+      },
+      {
+        "date": "2026-06-12",
+        "remaining_points": 6
+      },
+      {
+        "date": "2026-06-13",
+        "remaining_points": 0
+      }
+    ],
+    "stories": [
+      {
+        "number": 209,
+        "title": "Impediment: Epic CRUD operations are incomplete",
+        "points": 5,
+        "status": "In Progress",
+        "completed_at": null
+      },
+      {
+        "number": 55,
+        "title": "[Story]: SprintSnapshot.impediments — sprint-level enrichment",
+        "points": 3,
+        "status": "Ready",
+        "completed_at": null
+      },
+      {
+        "number": 219,
+        "title": "[Story]: Agent can request a minimal listing projection from scrum_find_items for bulk-scan use cases",
+        "points": 3,
+        "status": "Ready",
+        "completed_at": null
+      },
+      {
+        "number": 220,
+        "title": "[Spike]: Audit adapter-layer query formation pipeline — trace use case requests to GraphQL payloads and identify urgent query-level optimization opportunities",
+        "points": 8,
+        "status": "Done",
+        "completed_at": null
+      },
+      {
+        "number": 190,
+        "title": "[Spike]: Audit tool surface → GitHub API call graph — map every MCP tool invocation to its full wire-level call sequence",
+        "points": 8,
+        "status": "Done",
+        "completed_at": null
+      },
+      {
+        "number": 182,
+        "title": "Have `ItemDetailResult` extend `PartialResult` for per-field warning metadata",
+        "points": 2,
+        "status": "Ready",
+        "completed_at": null
+      },
+      {
+        "number": 54,
+        "title": "[Story]: getOrphanImpediments() — implement in backend",
+        "points": 2,
+        "status": "Ready",
+        "completed_at": null
+      },
+      {
+        "number": 185,
+        "title": "[Tech Debt]: Extract fragment library — catalog recurring field selections into named, composable fragments",
+        "points": 2,
+        "status": "In Progress",
+        "completed_at": null
+      },
+      {
+        "number": 184,
+        "title": "[Tech Debt]: Separate query building from pagination infrastructure — extract `buildItemsQuery()` from `PaginatedProjectItemFetcher`",
+        "points": 2,
+        "status": "Done",
+        "completed_at": null
+      },
+      {
+        "number": 218,
+        "title": "[Tech Debt]: Remove null-value response fields — omit dependency_map when null, backfill sprint.ref",
+        "points": 2,
+        "status": "Ready",
+        "completed_at": null
+      },
+      {
+        "number": 195,
+        "title": "[User Story]: Agent receives factual capability statements — NATIVE/EMULATED/UNAVAILABLE for every operation",
+        "points": 2,
+        "status": "Ready",
+        "completed_at": null
+      },
+      {
+        "number": 50,
+        "title": "[Bug]: scrum_orient — response shape correctness",
+        "points": 1,
+        "status": "Done",
+        "completed_at": null
+      },
+      {
+        "number": 186,
+        "title": "[Tech Debt]: Introduce query assembler + strategy router — replace monolithic `StoryQueryService` delegation with composable assembly",
+        "points": 5,
+        "status": "Backlog",
+        "completed_at": null
+      },
+      {
+        "number": 187,
+        "title": "[User Story]: Agent can see non-canonical project fields in search results — normalizer passes through all field values",
+        "points": 3,
+        "status": "Backlog",
+        "completed_at": null
+      },
+      {
+        "number": 188,
+        "title": "[Spike]: Design search API query assembler — validate GraphQL shape, routing rules, and fallback behavior",
+        "points": 1,
+        "status": "Backlog",
+        "completed_at": null
+      },
+      {
+        "number": 189,
+        "title": "[User Story]: Agent can search backlog by text, labels, and assignee using GitHub Search API",
+        "points": 2,
+        "status": "Backlog",
+        "completed_at": null
+      },
+      {
+        "number": 191,
+        "title": "[User Story]: Developer adding a new backend has AbstractAssembler with port method defaults — only implements assembly and normalization",
+        "points": 3,
+        "status": "Backlog",
+        "completed_at": null
+      },
+      {
+        "number": 192,
+        "title": "[User Story]: Developer has PlatformVocabularyMap interface + GitHub implementation — all Scrum concepts mapped to/from GitHub primitives",
+        "points": 2,
+        "status": "Backlog",
+        "completed_at": null
+      },
+      {
+        "number": 196,
+        "title": "[User Story]: Agent receives actionable error guidance — BackendError subclasses with recoverySuggestion",
+        "points": 1,
+        "status": "Backlog",
+        "completed_at": null
+      },
+      {
+        "number": 214,
+        "title": "[Bug]: estimated:false filter returns Pull Requests and Done items as unestimated backlog",
+        "points": 1,
+        "status": "Backlog",
+        "completed_at": null
+      },
+      {
+        "number": 222,
+        "title": "[Story]: Agent can mark two items as \"related\" without implying a hard blocking dependency",
+        "points": 3,
+        "status": "Backlog",
+        "completed_at": null
+      },
+      {
+        "number": 231,
+        "title": "[Bug]: Org-level GitHub Issue Fields silently dropped from all read paths",
+        "points": 5,
+        "status": "Backlog",
+        "completed_at": null
+      }
+    ]
+  },
+  "history": [
+    {
+      "sprint": {
+        "name": "Sprint 3",
+        "start_date": "2026-05-24",
+        "end_date": "2026-06-01",
+        "duration_days": 8,
+        "days_remaining": "[COMPUTED]"
+      },
+      "items": [
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "213"
+          },
+          "title": "[Bug]: scope:\"sprint\" returns items from past sprints — checks sprint existence, not current sprint identity",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "212"
+          },
+          "title": "[Bug]: keys-based direct lookup crashes — $projectNumber declared but unused in GetIssueProjectItem query",
+          "type": null,
+          "status": "Done",
+          "story_points": 1,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "223"
+          },
+          "title": "[Bug]: scrum_update_story rejects epic field — EpicRefSchema.or(z.null()) union causes object-to-string serialization failure",
+          "type": null,
+          "status": "Done",
+          "story_points": 1,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "215"
+          },
+          "title": "[Bug]: scope:\"backlog\" returns Done items — backlog scope should exclude terminal-status items by default",
+          "type": null,
+          "status": "Done",
+          "story_points": 1,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "221"
+          },
+          "title": "[Bug]: scrum_orient omits open epics with no sprint-assigned items — total_count mismatches returned list",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "201"
+          },
+          "title": "[Tech Debt]: Remove silent config fallback — make --config mandatory",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "210"
+          },
+          "title": "[Bug]: Server crashes when --config is a remote GitHub blob URL",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "202"
+          },
+          "title": "[Tech Debt]: Remove silent config fallback — make --config mandatory",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "114"
+          },
+          "title": "[Tech Debt]: Consolidate sprint date math and remove dead functions in `sprint-math.ts`",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "176"
+          },
+          "title": "[Tech Debt]: Remove dead code and stale comments in GitHub adapter layer after EpicRef migration",
+          "type": null,
+          "status": "Done",
+          "story_points": 1,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "151"
+          },
+          "title": "[Tech Debt]: Update agent behavioral rules for the redesigned tool surface",
+          "type": null,
+          "status": "Done",
+          "story_points": 5,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "148"
+          },
+          "title": "[Story]: Ask a single question about sprint performance and get burndown and velocity together",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "150"
+          },
+          "title": "[Tech Debt]: Remove scrum_get_sprint from the tool surface",
+          "type": null,
+          "status": "Done",
+          "story_points": 1,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "155"
+          },
+          "title": "[Tech Debt]: Remove old scrum_get_story tool registration",
+          "type": null,
+          "status": "Done",
+          "story_points": 1,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "73"
+          },
+          "title": "[Story]: Package MCP server as a standalone executable binary",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "74"
+          },
+          "title": "Accept --config as a CLI argument",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "147"
+          },
+          "title": "[Story]: Replace scrum_get_backlog with a dedicated board health view",
+          "type": null,
+          "status": "Done",
+          "story_points": 5,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "142"
+          },
+          "title": "[Story]: Add active epic summary to scrum_orient",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "143"
+          },
+          "title": "[Story]: Add template URI map to scrum_orient vocabulary",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "165"
+          },
+          "title": "[Story]: Replace type_display with type_mapping and add local-first template file resolution",
+          "type": null,
+          "status": "Done",
+          "story_points": 5,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "86"
+          },
+          "title": "Add templates.items to ScrumConfig and config.yml",
+          "type": null,
+          "status": "Done",
+          "story_points": 1,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "83"
+          },
+          "title": "[Tech Debt]: Introduce FileReader Port and Service",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "154"
+          },
+          "title": "[Story]: Add human-readable item lookup to scrum_get_item_detail",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "144"
+          },
+          "title": "[Story]: Implement scrum_find_items — unified backlog item search",
+          "type": null,
+          "status": "Done",
+          "story_points": 8,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "141"
+          },
+          "title": "[Story]: Enhance scrum_orient with sprint time-progress fields",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "140"
+          },
+          "title": "[Tech Debt]: Add new domain types for tool surface redesign",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "125"
+          },
+          "title": "[Tech Debt]: Move `PartialFailureResult` closer to its usage site",
+          "type": null,
+          "status": "Done",
+          "story_points": 1,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "122"
+          },
+          "title": "[Tech Debt]: Rename `resolveP0PriorityDisplay` to `resolveHighestPriorityDisplay`",
+          "type": null,
+          "status": "Done",
+          "story_points": 1,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "121"
+          },
+          "title": "[Tech Debt]: Extract inline GraphQL mutations to `operations.graphql`",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "113"
+          },
+          "title": "[Tech Debt]: Consolidate `assertNever` — use domain version everywhere, fix exhaustiveness in story-mutation-service",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "116"
+          },
+          "title": "[Tech Debt]: Wire `scrum_update_impediment` through use-case layer or delete dead use-case",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "156"
+          },
+          "title": "[Tech Debt]: Remove old scrum_get_burndown and scrum_get_history tool registrations",
+          "type": null,
+          "status": "Done",
+          "story_points": 1,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "166"
+          },
+          "title": "add local template fetch",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "177"
+          },
+          "title": "Impediment: **Bug: `scrum_orient` reports 0 active epics despite stories in current sprint b",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 3",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        }
+      ],
+      "total_count": 34,
+      "totals": {
+        "kind": "completed",
+        "by_status": {
+          "Done": 34
+        },
+        "story_points": 80,
+        "committed_points": 80,
+        "completed_points": 80
+      }
+    },
+    {
+      "sprint": {
+        "name": "Sprint 2",
+        "start_date": "2026-05-17",
+        "end_date": "2026-05-23",
+        "duration_days": 6,
+        "days_remaining": "[COMPUTED]"
+      },
+      "items": [
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "111"
+          },
+          "title": "[Tech Debt]: Remove layer breach — delete `graphql` import from `scrum-write.ts`",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "119"
+          },
+          "title": "[Tech Debt]: Refactor impediment sprint matching to use PVTI_ resolution",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "126"
+          },
+          "title": "[Tech Debt]: Encapsulate repetitive `undefined` checks with helper function",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "112"
+          },
+          "title": "[Tech Debt]: Consolidate duplicate `storyToListing` functions into shared module",
+          "type": null,
+          "status": "Done",
+          "story_points": 0,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "118"
+          },
+          "title": "[Tech Debt]: Define `GitHubBackendConfig` interface — replace `as Record<string, unknown>` casts",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "139"
+          },
+          "title": "Fix/refactor config read",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "117"
+          },
+          "title": "[Tech Debt]: Refactor `isTerminalStatus` — pass resolved `status_display` as parameter",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "127"
+          },
+          "title": "[Tech Debt]: Remove or document unused `_scrumConfig` parameter in `get-burndown.ts`",
+          "type": null,
+          "status": "Done",
+          "story_points": 0,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "124"
+          },
+          "title": "[Tech Debt]: Normalize error handling pattern in `get-burndown.ts`",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "123"
+          },
+          "title": "[Tech Debt]: Add proper types for `team`, `dor`, `dod` in `orient.ts`",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "49"
+          },
+          "title": "[Tech Debt]: Extract remaining github.ts concerns",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "53"
+          },
+          "title": "[Story]: scrum_log_impediment — optional affects + priority fix",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "37"
+          },
+          "title": "[Story]: Add impediment de-duplication check to session health check",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "70"
+          },
+          "title": "[Story]: Extract pure domain rules to a dedicated domain layer",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "76"
+          },
+          "title": "Add CRUD methods for Epic management to ProjectBackend",
+          "type": null,
+          "status": "Done",
+          "story_points": 5,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "75"
+          },
+          "title": "Define platform-agnostic Epic entity",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "105"
+          },
+          "title": "Phase 6: Update README.md tool surface documentation for epics and dependencies",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "81"
+          },
+          "title": "Update scrum_create_story to accept EpicRef for story association",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "104"
+          },
+          "title": "Phase 4+5: Implement dependency parsing, has_dependencies flag, and mutation write-back",
+          "type": null,
+          "status": "Done",
+          "story_points": 5,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "80"
+          },
+          "title": "Add EpicRef filtering to scrum_get_backlog",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "101"
+          },
+          "title": "Phase 1: Add EpicPort, DependencyPort contracts and deprecation notices to ports.ts + types.ts",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "103"
+          },
+          "title": "Phase 3: Implement getEpics() in GitHubProjectBackend with ListMilestones GraphQL query",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "96"
+          },
+          "title": "[Tech Debt]: Add dependency domain types, rules, and DependencyPort interface",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "39"
+          },
+          "title": "[Story]: Add tool-grounded coaching rule to SKILL.md",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "36"
+          },
+          "title": "[Bug]: scrum_orient field paths in 1_workflow.xml",
+          "type": null,
+          "status": "Done",
+          "story_points": 1,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "43"
+          },
+          "title": "[Tech Debt]: Fix FieldValueMutator — GitHubClient adoption and parameterized mutations",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "89"
+          },
+          "title": "Remove `fetchRepoFile` from the backend port",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "48"
+          },
+          "title": "[Tech Debt]: Adopt focused ports in use cases",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "35"
+          },
+          "title": "[Bug]: Wrong tool references in ceremony rules",
+          "type": null,
+          "status": "Done",
+          "story_points": 1,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "82"
+          },
+          "title": "Update scrum_update_story to allow changing a story's associated epic",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "42"
+          },
+          "title": "[Tech Debt]: Fix UserMilestoneResolver — adopt RepoNodeIdProvider interface",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "44"
+          },
+          "title": "[Tech Debt]: Rewrite BurndownCalculator from scratch",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "40"
+          },
+          "title": "[Tech Debt]: Export GitHubClient interface from http-client.ts",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "33"
+          },
+          "title": "[Bug]: Backlog field data missing for all items; label mutations silently fail on Draft Issues",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "13"
+          },
+          "title": "Impediment: The `scrum_update_story` tool is currently failing with a GraphQL error",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "41"
+          },
+          "title": "[Tech Debt]: Fix LabelResolver — DRY violation and hashToColor visibility",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "38"
+          },
+          "title": "[Story]: Add ceremony document delivery step to all ceremony playbooks",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "45"
+          },
+          "title": "[Tech Debt]: Create SprintHistoryService",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "23"
+          },
+          "title": "[Bug]: Fix GraphQL injection vulnerability in resolveUserNodeId()",
+          "type": null,
+          "status": "Done",
+          "story_points": 1,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "51"
+          },
+          "title": "[Bug]: Add comment field to `scrum_update_story` tool",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "58"
+          },
+          "title": "[Story]: Impediment de-duplication guidance",
+          "type": null,
+          "status": "Done",
+          "story_points": 1,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "60"
+          },
+          "title": "[Story]: SKILL.md — tool-grounded coaching pattern",
+          "type": null,
+          "status": "Done",
+          "story_points": 1,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "71"
+          },
+          "title": "fix api bug and add factory pattern",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "77"
+          },
+          "title": "Implement scrum_get_epics tool to retrieve all epics",
+          "type": null,
+          "status": "Done",
+          "story_points": 5,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "78"
+          },
+          "title": "Implement scrum_create_epic tool to create a new epic",
+          "type": null,
+          "status": "Done",
+          "story_points": 5,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "79"
+          },
+          "title": "Implement scrum_update_epic tool to update an existing epic",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "95"
+          },
+          "title": "Fix/remove null returns",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "24"
+          },
+          "title": "[Bug]: Fix multi-line import false positives in diagram generator",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "98"
+          },
+          "title": "[Story]: Surface resolved dependencies in `scrum_get_story` response",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "108"
+          },
+          "title": "[Tech Debt]: Delete dead `src/domain/rules/dependencies.ts` module and fix dependency detection consistency",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "109"
+          },
+          "title": "[Tech Debt]: Delete dead `computeSprintTotals` and `groupStoriesByStatus` from `sprint-math.ts`",
+          "type": null,
+          "status": "Done",
+          "story_points": 1,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "110"
+          },
+          "title": "[Tech Debt]: Replace generic `Error` with `assertNever` in `story-mutation-service.ts` switch",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "115"
+          },
+          "title": "[Tech Debt]: Delete domain `parseDependencies` — adapter version is canonical",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "128"
+          },
+          "title": "[Tech Debt]: Fix `has_dependencies` comment and align `hasDependencies` regex in `readiness.ts`",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "129"
+          },
+          "title": "Improve/agent behavior",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "132"
+          },
+          "title": "refactor: adopt focused ports and remove fetchRepoFile from backend (Stories #43, #48, #89)",
+          "type": null,
+          "status": "Done",
+          "story_points": 2,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "135"
+          },
+          "title": "implement github native item dependency link",
+          "type": null,
+          "status": "Done",
+          "story_points": 3,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "137"
+          },
+          "title": "System Bug: Story Type Assignment Fails Silently & Unknown Labels Are Auto-Created",
+          "type": null,
+          "status": "Done",
+          "story_points": 1,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "152"
+          },
+          "title": "refactor casting undefined if checks",
+          "type": null,
+          "status": "Done",
+          "story_points": 1,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 2",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        }
+      ],
+      "total_count": 59,
+      "totals": {
+        "kind": "completed",
+        "by_status": {
+          "Done": 59
+        },
+        "story_points": 139,
+        "committed_points": 139,
+        "completed_points": 139
+      }
+    },
+    {
+      "sprint": {
+        "name": "Sprint 1",
+        "start_date": "2026-05-03",
+        "end_date": "2026-05-17",
+        "duration_days": 14,
+        "days_remaining": "[COMPUTED]"
+      },
+      "items": [
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "16"
+          },
+          "title": "[Story]: Cutover and Cleanup (Phase 4)",
+          "type": null,
+          "status": "Done",
+          "story_points": 8,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 1",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        },
+        {
+          "ref": {
+            "id": "<history>",
+            "key": "65"
+          },
+          "title": "[Story]: Rewrite BurndownCalculator",
+          "type": null,
+          "status": "Done",
+          "story_points": 5,
+          "priority": null,
+          "assignees": [],
+          "labels": [],
+          "sprint": {
+            "name": "Sprint 1",
+            "ref": {
+              "id": ""
+            }
+          },
+          "epic": null,
+          "blocked_by": [],
+          "blocks": [],
+          "custom_fields": {}
+        }
+      ],
+      "total_count": 2,
+      "totals": {
+        "kind": "completed",
+        "by_status": {
+          "Done": 2
+        },
+        "story_points": 13,
+        "committed_points": 13,
+        "completed_points": 13
+      }
+    }
+  ],
+  "window": 4
+}

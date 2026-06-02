@@ -14,12 +14,13 @@ import {
   GetStorySchema,
 } from "../schemas/scrum.ts";
 import { z } from "zod";
-
-import { orientUseCase } from "../scrum/orient.ts";
-import { getStoryUseCase } from "../scrum/get-story.ts";
-import { findItemsUseCase } from "../scrum/find-items.ts";
-import { getAnalyticsUseCase } from "../scrum/get-analytics.ts";
-import { getBoardHealthUseCase } from "../scrum/get-board-health.ts";
+import {
+  handleFindItems,
+  handleGetAnalytics,
+  handleGetBoardHealth,
+  handleGetItemDetail,
+  handleOrient,
+} from "./handlers/read.ts";
 
 // ── Tool name constants ────────────────────────────────────────────────────────
 // Single source of truth for every tool this module registers.
@@ -72,20 +73,10 @@ export const registerScrumReadTools = (
         openWorldHint: true,
       },
     },
-    async () => {
-      const { data, warnings } = await orientUseCase(backend, scrumConfig);
-      const response = warnings.length > 0 ? { ...data, warnings } : data;
-      return { content: [{ type: "text", text: JSON.stringify(response, null, 2) }] };
-    },
+    () => handleOrient(backend, scrumConfig),
   );
 
   // ── scrum_get_item_detail ─────────────────────────────────────────────────
-
-  const getItemDetailHandler = async (params: z.infer<typeof GetStorySchema>) => {
-    const { data, warnings } = await getStoryUseCase(backend, params.ref);
-    const response = warnings.length > 0 ? { ...data, warnings } : data;
-    return { content: [{ type: "text", text: JSON.stringify(response, null, 2) }] };
-  };
 
   server.registerTool(
     "scrum_get_item_detail",
@@ -110,7 +101,7 @@ export const registerScrumReadTools = (
         openWorldHint: true,
       },
     },
-    getItemDetailHandler,
+    (params: z.infer<typeof GetStorySchema>) => handleGetItemDetail(backend, params),
   );
 
   // ── scrum_find_items ───────────────────────────────────────────────────────
@@ -163,11 +154,7 @@ export const registerScrumReadTools = (
         openWorldHint: true,
       },
     },
-    async (params: z.infer<typeof FindItemsSchema>) => {
-      const { data, warnings } = await findItemsUseCase(backend, params);
-      const response = warnings.length > 0 ? { ...data, warnings } : data;
-      return { content: [{ type: "text", text: JSON.stringify(response, null, 2) }] };
-    },
+    (params: z.infer<typeof FindItemsSchema>) => handleFindItems(backend, params),
   );
 
   // ── scrum_get_analytics ────────────────────────────────────────────────────
@@ -208,15 +195,7 @@ export const registerScrumReadTools = (
         openWorldHint: true,
       },
     },
-    async (params: z.infer<typeof GetAnalyticsSchema>) => {
-      const { data, warnings } = await getAnalyticsUseCase(backend, {
-        view: params.view ?? "both",
-        sprint_ref: params.sprint_ref,
-        history_window: params.history_window,
-      });
-      const response = warnings.length > 0 ? { ...data, warnings } : data;
-      return { content: [{ type: "text", text: JSON.stringify(response, null, 2) }] };
-    },
+    (params: z.infer<typeof GetAnalyticsSchema>) => handleGetAnalytics(backend, params),
   );
 
   // ── scrum_get_board_health ─────────────────────────────────────────────────
@@ -250,10 +229,15 @@ export const registerScrumReadTools = (
         openWorldHint: true,
       },
     },
-    async (params: z.infer<typeof GetBoardHealthSchema>) => {
-      const { data, warnings } = await getBoardHealthUseCase(backend, params.sprint_scope);
-      const response = warnings.length > 0 ? { ...data, warnings } : data;
-      return { content: [{ type: "text", text: JSON.stringify(response, null, 2) }] };
-    },
+    (params: z.infer<typeof GetBoardHealthSchema>) => handleGetBoardHealth(backend, params),
   );
 };
+
+// Re-export handlers for contract tests
+export {
+  handleFindItems,
+  handleGetAnalytics,
+  handleGetBoardHealth,
+  handleGetItemDetail,
+  handleOrient,
+} from "./handlers/read.ts";

@@ -1,0 +1,128 @@
+{
+  "repository": {
+    "labels": {
+      "nodes": [
+        {
+          "id": "LA_kwDOSJo3Ms8AAAACgWPGwA",
+          "name": "agent bug",
+          "color": "d73a4a",
+          "description": "Something isn't working for the agent"
+        },
+        {
+          "id": "LA_kwDOSJo3Ms8AAAACgWPG0g",
+          "name": "documentation",
+          "color": "0075ca",
+          "description": "Improvements or additions to documentation"
+        },
+        {
+          "id": "LA_kwDOSJo3Ms8AAAACgWPG5Q",
+          "name": "duplicate",
+          "color": "cfd3d7",
+          "description": "This issue or pull request already exists"
+        },
+        {
+          "id": "LA_kwDOSJo3Ms8AAAACgWPG9A",
+          "name": "enhancement",
+          "color": "a2eeef",
+          "description": "New feature or request"
+        },
+        {
+          "id": "LA_kwDOSJo3Ms8AAAACgWPG_g",
+          "name": "help wanted",
+          "color": "008672",
+          "description": "Extra attention is needed"
+        },
+        {
+          "id": "LA_kwDOSJo3Ms8AAAACgWPHGQ",
+          "name": "invalid",
+          "color": "e4e669",
+          "description": "This doesn't seem right"
+        },
+        {
+          "id": "LA_kwDOSJo3Ms8AAAACgWPHJA",
+          "name": "question",
+          "color": "d876e3",
+          "description": "Further information is requested"
+        },
+        {
+          "id": "LA_kwDOSJo3Ms8AAAACgWPHMg",
+          "name": "wontfix",
+          "color": "ffffff",
+          "description": "This will not be worked on"
+        },
+        {
+          "id": "LA_kwDOSJo3Ms8AAAACirGnhg",
+          "name": "security",
+          "color": "81ecec",
+          "description": null
+        },
+        {
+          "id": "LA_kwDOSJo3Ms8AAAACirGpnw",
+          "name": "framework layer",
+          "color": "74b9ff",
+          "description": ""
+        },
+        {
+          "id": "LA_kwDOSJo3Ms8AAAACiwnmkg",
+          "name": "feature",
+          "color": "a29bfe",
+          "description": null
+        },
+        {
+          "id": "LA_kwDOSJo3Ms8AAAACkM-Swg",
+          "name": "tool bug",
+          "color": "e1012b",
+          "description": "Something isn't working at the tool-level"
+        },
+        {
+          "id": "LA_kwDOSJo3Ms8AAAACkM_piw",
+          "name": "refactor",
+          "color": "517924",
+          "description": ""
+        },
+        {
+          "id": "LA_kwDOSJo3Ms8AAAACkM_yRg",
+          "name": "adapter layer",
+          "color": "e69dd2",
+          "description": ""
+        },
+        {
+          "id": "LA_kwDOSJo3Ms8AAAACkM_0Fw",
+          "name": "use case layer",
+          "color": "6958b7",
+          "description": ""
+        },
+        {
+          "id": "LA_kwDOSJo3Ms8AAAACkNDmlA",
+          "name": "template",
+          "color": "ff7675",
+          "description": null
+        },
+        {
+          "id": "LA_kwDOSJo3Ms8AAAACkNDsaQ",
+          "name": "config",
+          "color": "d8f3dc",
+          "description": null
+        },
+        {
+          "id": "LA_kwDOSJo3Ms8AAAACkNNqGg",
+          "name": "superseded",
+          "color": "d4e6f1",
+          "description": null
+        },
+        {
+          "id": "LA_kwDOSJo3Ms8AAAACkRTOCQ",
+          "name": "impediment",
+          "color": "ffeaa7",
+          "description": null
+        },
+        {
+          "id": "LA_kwDOSJo3Ms8AAAACkRTNqg",
+          "name": "type_impediment",
+          "color": "81ecec",
+          "description": null
+        }
+      ]
+    }
+  }
+}

@@ -7,9 +7,12 @@
 import { parse } from "@std/yaml";
 import { dirname, resolve } from "@std/path";
 import { fetchContent } from "./fetch-location.ts";
+import { type BootConfig, loadScrumConfig } from "./config-boot.ts";
 import { resolveLocation, SUPPORTED_TEMPLATE_EXTENSIONS } from "./resolve-location.ts";
 import type { ContentLocation } from "../domain/content-location.ts";
 import type { FileReaderPort } from "./ports.ts";
+import { type ConfigProfile, deriveConfigProfile } from "./_config_profile.ts";
+import { ConfigShapedFakeBackend } from "./_fake_backend.ts";
 
 // ── Type template paths ───────────────────────────────────────────────────────
 
@@ -50,6 +53,31 @@ export const buildTypeTemplatePaths = async (): Promise<Record<string, ContentLo
  */
 export const typeTemplatePathsPromise: Promise<Record<string, ContentLocation>> =
   buildTypeTemplatePaths();
+
+// ── Committed scrum config (tool-surface contract tests) ─────────────────────
+
+const COMMITTED_CONFIG_PATH = ".github/scrum/config.yml";
+
+/**
+ * Loads the committed `.github/scrum/config.yml` once per test module —
+ * the same file the server uses when started with default --config.
+ */
+export const committedScrumConfigPromise: Promise<BootConfig> = loadScrumConfig(
+  resolveLocation(COMMITTED_CONFIG_PATH, resolve(Deno.cwd())),
+);
+
+/**
+ * Derived vocabulary expectations from the committed config.
+ * Await inside tests after committedScrumConfigPromise resolves.
+ */
+export const committedConfigProfilePromise: Promise<ConfigProfile> = committedScrumConfigPromise
+  .then(deriveConfigProfile);
+
+/**
+ * Fake backend seeded from the committed scrum config vocabulary.
+ */
+export const committedFakeBackendPromise: Promise<ConfigShapedFakeBackend> =
+  committedScrumConfigPromise.then((boot) => ConfigShapedFakeBackend.fromBoot(boot));
 
 // ── FileReaderPort stubs ──────────────────────────────────────────────────────
 
