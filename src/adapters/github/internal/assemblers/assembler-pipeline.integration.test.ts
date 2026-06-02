@@ -15,8 +15,8 @@ import { ResultNormalizer } from "../result-normalizer.ts";
 import { ProjectItemsQueryBuilder } from "../project-items-query-builder.ts";
 import { createGhSpy, makeConfig } from "../_test_utils.ts";
 import type { ResolvedItemFilter } from "../../../../scrum/ports.ts";
-import p1Fixture from "../__fixtures__/project-items-p1.json" with { type: "json" };
-import p2Fixture from "../__fixtures__/project-items-p2.json" with { type: "json" };
+import p1Fixture from "../../generated/__fixtures__/project-items-p1.json" with { type: "json" };
+import p2Fixture from "../../generated/__fixtures__/project-items-p2.json" with { type: "json" };
 
 const config = makeConfig({
   ghConfig: { ...makeConfig().ghConfig, owner_type: "user" as const, project_number: 6 },

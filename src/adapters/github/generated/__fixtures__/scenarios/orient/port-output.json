@@ -1,0 +1,291 @@
+{
+  "platformState": {
+    "value": {
+      "fields": {
+        "status": {
+          "exists": true,
+          "options": [
+            "Backlog",
+            "Ready",
+            "In Progress",
+            "In Review",
+            "Blocked",
+            "Done"
+          ],
+          "missingOptions": []
+        },
+        "sprint": {
+          "exists": true
+        },
+        "story_points": {
+          "exists": true
+        },
+        "priority": {
+          "exists": true,
+          "options": [
+            "Must",
+            "Should",
+            "Could",
+            "Won't"
+          ],
+          "missingOptions": []
+        },
+        "type": {
+          "exists": true,
+          "configured": true
+        }
+      },
+      "labels": {
+        "existing": [
+          "agent bug",
+          "documentation",
+          "duplicate",
+          "enhancement",
+          "help wanted",
+          "invalid",
+          "question",
+          "wontfix",
+          "security",
+          "framework layer",
+          "feature",
+          "tool bug",
+          "refactor",
+          "adapter layer",
+          "use case layer",
+          "template",
+          "config",
+          "superseded",
+          "impediment",
+          "type_impediment"
+        ],
+        "expected": [],
+        "missing": []
+      },
+      "iterations": {
+        "active": {
+          "id": "07155ad6",
+          "name": "Sprint 4",
+          "goal": null,
+          "startDate": "2026-06-02",
+          "durationDays": 11,
+          "endDate": "2026-06-13"
+        },
+        "next": {
+          "id": "771466e5",
+          "name": "Sprint 5",
+          "goal": null,
+          "startDate": "2026-06-13",
+          "durationDays": 14,
+          "endDate": "2026-06-27"
+        },
+        "completed": [
+          {
+            "id": "ecba33e9",
+            "name": "Sprint 3",
+            "goal": null,
+            "startDate": "2026-05-24",
+            "durationDays": 8,
+            "endDate": "2026-06-01"
+          },
+          {
+            "id": "9085132c",
+            "name": "Sprint 2",
+            "goal": null,
+            "startDate": "2026-05-17",
+            "durationDays": 6,
+            "endDate": "2026-05-23"
+          },
+          {
+            "id": "b1710bb8",
+            "name": "Sprint 1",
+            "goal": null,
+            "startDate": "2026-05-03",
+            "durationDays": 14,
+            "endDate": "2026-05-17"
+          }
+        ],
+        "completedCount": 3
+      },
+      "vocabulary": {
+        "statusDisplay": {
+          "backlog": "Backlog",
+          "ready": "Ready",
+          "in_progress": "In Progress",
+          "in_review": "In Review",
+          "blocked": "Blocked",
+          "done": "Done"
+        },
+        "priorityDisplay": {
+          "p0": "Must",
+          "p1": "Should",
+          "p2": "Could",
+          "p3": "Won't"
+        },
+        "typeDisplay": {
+          "user_story": "User Story",
+          "bug": "Bug",
+          "tech_debt": "Tech Debt",
+          "spike": "Spike",
+          "impediment": "Impediment"
+        },
+        "typeTemplatePaths": {
+          "user_story": {
+            "kind": "file",
+            "path": "/Users/hoonkim/Projects/scrum-master-toolkit/.github/ISSUE_TEMPLATE/user_story.yml"
+          },
+          "bug": {
+            "kind": "file",
+            "path": "/Users/hoonkim/Projects/scrum-master-toolkit/.github/ISSUE_TEMPLATE/bug_report.yml"
+          },
+          "tech_debt": {
+            "kind": "file",
+            "path": "/Users/hoonkim/Projects/scrum-master-toolkit/.github/ISSUE_TEMPLATE/tech_debt.yml"
+          },
+          "spike": {
+            "kind": "file",
+            "path": "/Users/hoonkim/Projects/scrum-master-toolkit/.github/ISSUE_TEMPLATE/spike.yml"
+          },
+          "impediment": {
+            "kind": "file",
+            "path": "/Users/hoonkim/Projects/scrum-master-toolkit/.github/ISSUE_TEMPLATE/impediment.yml"
+          }
+        }
+      },
+      "epics": {
+        "active": [],
+        "totalCount": 0
+      },
+      "templateUris": null
+    },
+    "warnings": [
+      "[github] NOT_IMPLEMENTED: \"sprint goal\" is not supported by the GitHub adapter.\n  Details: {\"reason\":\"GitHub Projects API does not expose iteration goals\"}\n  → This feature is not yet available via the GitHub Projects API. No action is required - the field will be null in the response."
+    ]
+  },
+  "epics": [
+    {
+      "ref": {
+        "id": "MI_kwDOSJo3Ms4A8aEK"
+      },
+      "name": "Phase 2 — Read Tools",
+      "description": "New file: `src/tools/scrum-read.ts`. Exports a single `registerScrumReadTools(server, github)` function. Implement tools in the order below — each is independently testable.\n\n### `scrum_get_config`\n\n- Call `loadConfig(github, ...)`\n- Map `RuntimeConfig` to the return shape described in the README: `definition_of_ready`, `definition_of_done`, `status_vocabulary`, `priority_vocabulary`, `story_point_values`, `sprint` (`{ length_weeks, start_day }`), `team` (array of `{ login, name, role }`), `ceremony_records_backend`\n- No additional GitHub calls beyond what `loadConfig` already makes\n\n### `scrum_get_velocity`\n\n- Call `loadConfig` to get the completed iteration list\n- For each completed iteration in the requested `window`: fetch all project items assigned to that iteration, sum `story_points` field values, split by whether status is the \"Done\" option\n- Return the array described in the README plus `average_completed`\n\nBuilds on the existing `IterationVelocity` type logic already sketched in the codebase.\n\n### `scrum_get_backlog`\n\n- Call `loadConfig` to get the sprint field ID\n- Fetch all project items where the sprint field is unset (no iteration value)\n- Apply optional client-side filters: `search` (title+body substring), `labels`, `priority`, `epic`, `limit` cap\n- Compute the `readiness` summary: count items that have story points set, have an AC checklist in body, and have a priority value\n- Map each item to the `Story` shape\n\nNote: GitHub Projects v2 does not support server-side filtering on field absence. Retrieve all items and filter client-side. Use pagination; respect the `limit` cap.\n\n### `scrum_get_board`\n\n- Accept optional `sprint: SprintRef` (default `\"current\"`)\n- Call `loadConfig`, then `resolveSprint` to get the iteration ID\n- Fetch all project items assigned to that iteration\n- Group by status in `status_vocabulary` order; sum story points per group and overall\n- Return: `sprint` metadata object, `groups` array, `totals` object\n\nThe existing `SprintStatusResult` logic is the reference — port and adapt.\n\n### `scrum_get_story`\n\n- Accept `ref: StoryRef`\n- Call `resolveStory` to get the issue node ID\n- Fetch the issue with: body, comments (author/body/created_at/url), linked PRs (via the issue's timeline or a `closingIssuesReferences` query), and current project field values\n- Parse AC from the body by scanning for `- [ ]` / `- [x]` markdown checkboxes\n- Map to `Story` plus the extended fields: `comments`, `linked_prs`, `sub_tasks`, `acceptance_criteria`",
+      "priority": null,
+      "status": "done",
+      "story_count": 0,
+      "open_item_count": 0
+    },
+    {
+      "ref": {
+        "id": "MI_kwDOSJo3Ms4A8aEO"
+      },
+      "name": "Phase 3 — Write Tools",
+      "description": "New file: `src/tools/scrum-write.ts`. Exports `registerScrumWriteTools(server, github)`. Also registers the deprecated `github_graphql` tool here (or in a separate `registerDeprecatedTools`).\n\n### `scrum_post_note` (implement first — simplest)\n\n- Accept `ref: StoryRef`, `body: string`, `kind`\n- Call `resolveStory` to get the issue node ID\n- Prefix the body with a kind tag when `kind !== \"comment\"` (e.g., `**[Standup]**\\n\\n{body}`)\n- Call the `addComment` mutation via the existing GitHub service\n- Return `{ url: string }`\n\n### `scrum_set_field` (implement second — used by most other write tools)\n\nThe translation engine from Scrum vocabulary to GitHub field mutations.\n\n| `field`        | `value` type                              | Backend operation                                                                                              |\n| -------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------- |\n| `status`       | string from `status_vocabulary`           | Resolve name → option ID via `statusOptions`; call `updateProjectV2ItemFieldValue` with `singleSelectOptionId` |\n| `sprint`       | `SprintRef`                               | Call `resolveSprint` → iteration ID or null; set or clear the iteration field                                  |\n| `story_points` | number or null                            | Set or clear the number field                                                                                  |\n| `priority`     | string from `priority_vocabulary` or null | Resolve name → option ID via `priorityOptions`; set or clear                                                   |\n| `assignee`     | login string or null                      | Resolve login → user node ID; set or clear the assignee field                                                  |\n\nReturns the updated `Story`.\n\n### `scrum_update_story`\n\n- Accept `ref`, optional `title`, `body`, `labels`, `assignees`, `epic`\n- Call `resolveStory` to get the issue and item node IDs\n- Call `updateIssue` mutation for title/body/assignees/labels\n- Epic: update the epic custom field on the project item (see open question below)\n- Return the updated `Story`\n\n### `scrum_create_story`\n\n- Create the issue via the `createIssue` mutation (repo from config)\n- Add the created issue to the project via `addProjectV2ItemById`\n- For each optional field provided (`priority`, `story_points`, `sprint`, `assignees`): call the `scrum_set_field` logic inline\n- If issue creation succeeds but a field-set fails, return a structured error that includes the partial `StoryRef` so the agent can retry field-sets rather than duplicating the story\n- Return the new `Story`\n\n### `scrum_plan_sprint`\n\n- Accept `sprint: SprintRef`, `stories: StoryRef[]`, `replace: boolean`\n- If `replace: true`: fetch existing sprint items and clear the sprint field on each first\n- For each story in `stories`: call `resolveStory`, then apply the sprint field-set logic\n- Collect `assigned` refs and `skipped` entries (`{ ref, reason }`)\n- Return the partial-success report described in the README\n\n### `scrum_log_impediment`\n\nComposes existing primitives:\n\n1. `scrum_create_story` with `type = \"spike\"` (or the team's impediment label if distinct — check config) and initial status set to `\"Blocked\"`\n2. `scrum_post_note` on the affected story with a cross-link: \"Impediment #N opened against this story.\"\n3. `scrum_post_note` on the new impediment story back-linking to the affected story\n\nReturns the impediment as a `Story` plus `linked_to: StoryRef`.",
+      "priority": null,
+      "status": "done",
+      "story_count": 0,
+      "open_item_count": 0
+    },
+    {
+      "ref": {
+        "id": "MI_kwDOSJo3Ms4A88iW"
+      },
+      "name": "Portable Server Bootstrap",
+      "description": "**Goal:** The MCP server should be launchable from any directory via `npx` or `deno run`, accepting its config via a CLI argument rather than assuming a hardcoded path inside the project repo.",
+      "priority": null,
+      "status": "done",
+      "story_count": 3,
+      "open_item_count": 0
+    },
+    {
+      "ref": {
+        "id": "MI_kwDOSJo3Ms4A88if"
+      },
+      "name": "Flexible Item Template System",
+      "description": "**Goal:** The agent should be able to retrieve a team-declared template for any backlog item type — from a local markdown file or a GitHub Issue Form YML — and use it to compose consistent issue bodies without being told explicitly which template to apply.",
+      "priority": null,
+      "status": "done",
+      "story_count": 8,
+      "open_item_count": 0
+    },
+    {
+      "ref": {
+        "id": "MI_kwDOSJo3Ms4A88i4"
+      },
+      "name": "Streamable HTTP Transport Mode with Per-Connection Config Override",
+      "description": "**Goal:** The MCP server should support HTTP mode for multi-client deployments. Each connecting client can optionally supply its own config path, which fully overrides the server's default config for that session.",
+      "priority": null,
+      "status": "open",
+      "story_count": 4,
+      "open_item_count": 3
+    },
+    {
+      "ref": {
+        "id": "MI_kwDOSJo3Ms4A9EBS"
+      },
+      "name": "Epic & Dependency System Completion",
+      "description": "Ship full epic-association and dependency-tracking feature set",
+      "priority": null,
+      "status": "done",
+      "story_count": 8,
+      "open_item_count": 0
+    },
+    {
+      "ref": {
+        "id": "MI_kwDOSJo3Ms4A9EBd"
+      },
+      "name": "Clean Architecture Remediation",
+      "description": "Complete adapter-layer refactoring — extract services, focused ports, pure domain layer",
+      "priority": null,
+      "status": "open",
+      "story_count": 28,
+      "open_item_count": 0
+    },
+    {
+      "ref": {
+        "id": "MI_kwDOSJo3Ms4A9EBe"
+      },
+      "name": "Scrum Process & Agent Rule Hardening",
+      "description": "Impediment management, sprint planning, ceremony playbook improvements",
+      "priority": null,
+      "status": "open",
+      "story_count": 8,
+      "open_item_count": 5
+    },
+    {
+      "ref": {
+        "id": "MI_kwDOSJo3Ms4A9EBk"
+      },
+      "name": "Bug Fixes & Diagnostics",
+      "description": "Security and correctness bug fixes",
+      "priority": null,
+      "status": "open",
+      "story_count": 13,
+      "open_item_count": 3
+    },
+    {
+      "ref": {
+        "id": "MI_kwDOSJo3Ms4A9J0x"
+      },
+      "name": "MCP Tool Surface Modernization for Scrum Theory Alignment",
+      "description": "Redesign the agent-tool contract to align with core Scrum principles (single Product Backlog as the source of truth; sprints as the time dimension; epics as the space/thematic dimension) across four categories:\n(1) Enhanced tools — scrum_orient gains sprint time-progress, active epic context, and template URI discovery;\n(2) New tools — scrum_find_items unifies search across sprint and backlog with keys-based direct lookup and opt-in dependency graph, scrum_get_item_detail adds human-readable { number } input;\n(3) Merged/renamed tools — scrum_get_board_health replaces scrum_get_backlog as a health-only aggregate view, scrum_get_analytics merges burndown and velocity history;\n(4) Removed/converted — scrum_get_sprint, scrum_get_story, scrum_get_burndown, scrum_get_history, and scrum_get_template are retired from the tool surface;\n\ntemplates are served as scrum://template/{type} MCP resources. The agent session start protocol is updated to task-driven health loading, direct-lookup patterns, and sprint-risk stance tables.",
+      "priority": null,
+      "status": "open",
+      "story_count": 20,
+      "open_item_count": 5
+    },
+    {
+      "ref": {
+        "id": "MI_kwDOSJo3Ms4A9dd1"
+      },
+      "name": "Adapter Layer Assembly Pattern",
+      "description": "Make the adapter a pure assembly layer whose only responsibility is composing the right API fragments to satisfy a port contract, so future use-case or framework changes never require internal re-architecture — only re-assembly.",
+      "priority": null,
+      "status": "open",
+      "story_count": 13,
+      "open_item_count": 10
+    }
+  ],
+  "sprintCompletion": {
+    "completed": 19,
+    "total": 66
+  }
+}

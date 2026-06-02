@@ -1,15 +1,18 @@
 // =============================================================================
-// src/scrum/_test_utils.ts
+// src/test/support/scrum-test-utils.ts
 // Internal test utility — not part of the public module surface.
 // Underscore prefix signals: do not re-export from index files.
 // =============================================================================
 
 import { parse } from "@std/yaml";
 import { dirname, resolve } from "@std/path";
-import { fetchContent } from "./fetch-location.ts";
-import { resolveLocation, SUPPORTED_TEMPLATE_EXTENSIONS } from "./resolve-location.ts";
-import type { ContentLocation } from "../domain/content-location.ts";
-import type { FileReaderPort } from "./ports.ts";
+import { fetchContent } from "../../scrum/fetch-location.ts";
+import { type BootConfig, loadScrumConfig } from "../../scrum/config-boot.ts";
+import { resolveLocation, SUPPORTED_TEMPLATE_EXTENSIONS } from "../../scrum/resolve-location.ts";
+import type { ContentLocation } from "../../domain/content-location.ts";
+import type { FileReaderPort } from "../../scrum/ports.ts";
+import { type ConfigProfile, deriveConfigProfile } from "./config-profile.ts";
+import { ConfigShapedFakeBackend } from "./fake-backend.ts";
 
 // ── Type template paths ───────────────────────────────────────────────────────
 
@@ -50,6 +53,37 @@ export const buildTypeTemplatePaths = async (): Promise<Record<string, ContentLo
  */
 export const typeTemplatePathsPromise: Promise<Record<string, ContentLocation>> =
   buildTypeTemplatePaths();
+
+// ── Committed scrum config (tool-surface contract tests) ─────────────────────
+
+const COMMITTED_CONFIG_PATH = ".github/scrum/config.yml";
+
+/**
+ * Loads the committed `.github/scrum/config.yml` once per test module —
+ * the same file the server uses when started with default --config.
+ */
+export const committedScrumConfigPromise: Promise<BootConfig> = loadScrumConfig(
+  resolveLocation(COMMITTED_CONFIG_PATH, resolve(Deno.cwd())),
+);
+
+/**
+ * Derived vocabulary expectations from the committed config.
+ * Await inside tests after committedScrumConfigPromise resolves.
+ */
+export const committedConfigProfilePromise: Promise<ConfigProfile> = committedScrumConfigPromise
+  .then(deriveConfigProfile);
+
+/**
+ * Fake backend seeded from the committed scrum config vocabulary.
+ */
+export const committedFakeBackendPromise: Promise<ConfigShapedFakeBackend> =
+  committedScrumConfigPromise.then((boot) => ConfigShapedFakeBackend.fromBoot(boot));
+
+/** Fixture-replay backend (requires manifest v2 under generated/__fixtures__). */
+export const committedFixtureBackendPromise = committedScrumConfigPromise.then(async (boot) => {
+  const { buildFixtureBackend } = await import("./fixture-backend.ts");
+  return buildFixtureBackend({ boot, configDesc: "contract-test" });
+});
 
 // ── FileReaderPort stubs ──────────────────────────────────────────────────────
 

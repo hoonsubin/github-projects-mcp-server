@@ -17,7 +17,7 @@ module.exports = {
       comment: "src/scrum/ (use-cases) must not import adapters, tools, schemas, " +
         "or server. Only domain, std lib, and same-layer imports are allowed.",
       severity: "error",
-      from: { path: "^src/scrum/" },
+      from: { path: "^src/scrum/", pathNot: "\\.test\\.ts$" },
       to: { path: "^src/(adapters|tools|schemas|server\\.ts)" },
     },
 
@@ -45,9 +45,10 @@ module.exports = {
     {
       name: "tools-must-not-depend-on-adapters",
       comment: "src/tools/ (framework handlers) must not import adapters directly " +
-        "— they use use-cases which depend on the port interface.",
+        "— they use use-cases which depend on the port interface. Test files may " +
+        "import adapters for fixture replay bridge tests.",
       severity: "error",
-      from: { path: "^src/tools/" },
+      from: { path: "^src/tools/", pathNot: "\\.test\\.ts$" },
       to: { path: "^src/adapters/" },
     },
 
@@ -106,8 +107,7 @@ module.exports = {
       path: [
         "node_modules",
         "src/adapters/github/generated/",
-        "src/adapters/github/internal/__fixtures__/",
-        "src/scrum/__snapshots__/",
+        "src/test/tools/__snapshots__/",
         "dist/",
       ],
     },

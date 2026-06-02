@@ -15,7 +15,7 @@ import type { GitHubClientSpy } from "./_test_utils.ts";
 import type { GitHubBootState } from "../bootstrap.ts";
 import { GitHubApiError } from "../errors.ts";
 import type { SprintRef } from "../../../domain/types.ts";
-import userNodeIds from "./__fixtures__/user-node-ids.json" with { type: "json" };
+import userNodeIds from "../generated/__fixtures__/user-node-ids.json" with { type: "json" };
 
 // =============================================================================
 // Fixture-derived constants

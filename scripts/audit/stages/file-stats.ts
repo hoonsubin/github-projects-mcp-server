@@ -20,7 +20,7 @@ const EXCLUDED_PATTERNS = [
   "generated/",
   "graphql/",
   "__snapshots__/",
-  "__fixtures__/",
+  "generated/__fixtures__/",
 ];
 
 const isExcluded = (filePath: string): boolean => {

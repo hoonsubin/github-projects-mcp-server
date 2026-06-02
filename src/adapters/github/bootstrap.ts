@@ -101,6 +101,8 @@ export interface GitHubBootState {
   readonly scrumConfig: ScrumConfig;
   readonly ghConfig: GitHubBackendConfig;
   live: GitHubLiveMetadata;
+  /** Fixture replay: classify active/next sprint as of this ISO timestamp. */
+  iterationAsOf?: string;
 }
 
 // ── Bootstrap params ──────────────────────────────────────────────────────────
@@ -116,6 +118,8 @@ interface BootstrapParams {
   github: GitHubClient;
   projectRoot: string;
   configDesc: string;
+  /** Pin sprint active/next classification (fixture replay uses manifest.capturedAt). */
+  iterationAsOf?: string;
 }
 
 // ── Helper types ──────────────────────────────────────────────────────────────
@@ -284,55 +288,7 @@ const buildOptionMaps = (
   return { statusOptions, priorityOptions, typeOptions };
 };
 
-// ── Iteration classification ──────────────────────────────────────────────────
-
-const classifyIterations = (
-  activeIterations: IterationEntry[],
-  completedIterations: IterationEntry[],
-): GitHubLiveMetadata["iterations"] => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  let active: IterationEntry | null = null;
-  for (const iter of activeIterations) {
-    const start = new Date(iter.startDate);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
-    end.setDate(end.getDate() + iter.duration);
-    if (today >= start && today < end) {
-      active = iter;
-      break;
-    }
-  }
-
-  const cutoff: Date = (() => {
-    if (active) {
-      const d = new Date(active.startDate);
-      d.setDate(d.getDate() + active.duration);
-      return d;
-    }
-    return today;
-  })();
-  const allSorted = [...activeIterations].sort(
-    (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
-  );
-  const next = allSorted.find((iter) => {
-    const s = new Date(iter.startDate);
-    s.setHours(0, 0, 0, 0);
-    return s >= cutoff;
-  }) ?? null;
-
-  const allMap = new Map<string, IterationEntry>();
-  for (const iter of activeIterations) allMap.set(iter.id, iter);
-  for (const iter of completedIterations) allMap.set(iter.id, iter);
-  const all = [...allMap.values()].sort(
-    (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
-  );
-
-  return { active, next, completed: [...completedIterations], all };
-};
-
-// ── Main bootstrap function ───────────────────────────────────────────────────
+import { classifyIterations } from "./internal/iteration-classifier.ts";
 
 /**
  * Bootstrap live GitHub project field metadata.
@@ -521,7 +477,11 @@ export const bootstrapGitHub = async (params: BootstrapParams): Promise<GitHubLi
     }
   }
 
-  const iterations = classifyIterations(activeIterations, completedIterations);
+  const iterations = classifyIterations(
+    activeIterations,
+    completedIterations,
+    params.iterationAsOf ? new Date(params.iterationAsOf) : new Date(),
+  );
 
   return {
     typeResolution,

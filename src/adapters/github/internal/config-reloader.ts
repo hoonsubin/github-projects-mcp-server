@@ -28,6 +28,7 @@ export class ConfigReloader {
       github: this.github,
       projectRoot: this.projectRoot,
       configDesc: this.configDesc,
+      iterationAsOf: this.bootState.iterationAsOf,
     });
 
     // Patch everything in one atomic operation — replaces all live fields.

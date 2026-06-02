@@ -1,0 +1,61 @@
+{
+  "node": {
+    "fieldValues": {
+      "nodes": [
+        {
+          "__typename": "ProjectV2ItemFieldUserValue"
+        },
+        {
+          "__typename": "ProjectV2ItemFieldRepositoryValue"
+        },
+        {
+          "__typename": "ProjectV2ItemFieldTextValue"
+        },
+        {
+          "__typename": "ProjectV2ItemFieldSingleSelectValue",
+          "name": "Impediment",
+          "optionId": "64b7eea3",
+          "field": {
+            "id": "PVTSSF_lAHOAmfLjc4BWiTtzhS9YWs",
+            "name": "Type"
+          }
+        },
+        {
+          "__typename": "ProjectV2ItemFieldSingleSelectValue",
+          "name": "Must",
+          "optionId": "457ca5cd",
+          "field": {
+            "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1soA",
+            "name": "Priority"
+          }
+        },
+        {
+          "__typename": "ProjectV2ItemFieldSingleSelectValue",
+          "name": "In Progress",
+          "optionId": "98236657",
+          "field": {
+            "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1seY",
+            "name": "Status"
+          }
+        },
+        {
+          "__typename": "ProjectV2ItemFieldNumberValue",
+          "number": 5,
+          "field": {
+            "id": "PVTF_lAHOAmfLjc4BWiTtzhR1soI",
+            "name": "Story Points"
+          }
+        },
+        {
+          "__typename": "ProjectV2ItemFieldIterationValue",
+          "title": "Sprint 4",
+          "iterationId": "07155ad6",
+          "field": {
+            "id": "PVTIF_lAHOAmfLjc4BWiTtzhR1soM",
+            "name": "Sprint"
+          }
+        }
+      ]
+    }
+  }
+}

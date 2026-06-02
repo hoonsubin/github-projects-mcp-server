@@ -12,8 +12,8 @@ import { ExecutionEngine } from "../execution-engine.ts";
 import { ResultNormalizer } from "../result-normalizer.ts";
 import { createGhSpy, makeConfig } from "../_test_utils.ts";
 import type { ResolvedItemFilter } from "../../../../scrum/ports.ts";
-import p1Fixture from "../__fixtures__/project-items-p1.json" with { type: "json" };
-import p2Fixture from "../__fixtures__/project-items-p2.json" with { type: "json" };
+import p1Fixture from "../../generated/__fixtures__/project-items-p1.json" with { type: "json" };
+import p2Fixture from "../../generated/__fixtures__/project-items-p2.json" with { type: "json" };
 
 const P1_NODES = (p1Fixture as { user: { projectV2: { items: { nodes: unknown[] } } } })
   .user.projectV2.items.nodes;

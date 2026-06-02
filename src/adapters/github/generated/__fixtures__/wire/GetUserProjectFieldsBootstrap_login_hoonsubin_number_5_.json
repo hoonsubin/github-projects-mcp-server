@@ -1,0 +1,238 @@
+{
+  "user": {
+    "projectV2": {
+      "id": "PVT_kwHOAmfLjc4BWiTt",
+      "fields": {
+        "nodes": [
+          {
+            "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seQ",
+            "name": "Title",
+            "dataType": "TITLE"
+          },
+          {
+            "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seU",
+            "name": "Assignees",
+            "dataType": "ASSIGNEES"
+          },
+          {
+            "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1seY",
+            "name": "Status",
+            "dataType": "SINGLE_SELECT",
+            "options": [
+              {
+                "id": "f75ad846",
+                "name": "Backlog",
+                "color": "PURPLE",
+                "description": ""
+              },
+              {
+                "id": "47fc9ee4",
+                "name": "Ready",
+                "color": "YELLOW",
+                "description": ""
+              },
+              {
+                "id": "98236657",
+                "name": "In Progress",
+                "color": "BLUE",
+                "description": ""
+              },
+              {
+                "id": "259e60b9",
+                "name": "In Review",
+                "color": "ORANGE",
+                "description": ""
+              },
+              {
+                "id": "4ad38d58",
+                "name": "Done",
+                "color": "GREEN",
+                "description": ""
+              },
+              {
+                "id": "99d05126",
+                "name": "Blocked",
+                "color": "RED",
+                "description": ""
+              }
+            ]
+          },
+          {
+            "id": "PVTF_lAHOAmfLjc4BWiTtzhR1sec",
+            "name": "Labels",
+            "dataType": "LABELS"
+          },
+          {
+            "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seg",
+            "name": "Linked pull requests",
+            "dataType": "LINKED_PULL_REQUESTS"
+          },
+          {
+            "id": "PVTF_lAHOAmfLjc4BWiTtzhR1sek",
+            "name": "Milestone",
+            "dataType": "MILESTONE"
+          },
+          {
+            "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seo",
+            "name": "Repository",
+            "dataType": "REPOSITORY"
+          },
+          {
+            "id": "PVTF_lAHOAmfLjc4BWiTtzhR1ses",
+            "name": "Reviewers",
+            "dataType": "REVIEWERS"
+          },
+          {
+            "id": "PVTF_lAHOAmfLjc4BWiTtzhR1sew",
+            "name": "Parent issue",
+            "dataType": "PARENT_ISSUE"
+          },
+          {
+            "id": "PVTF_lAHOAmfLjc4BWiTtzhR1se4",
+            "name": "Created",
+            "dataType": "CREATED"
+          },
+          {
+            "id": "PVTF_lAHOAmfLjc4BWiTtzhR1se8",
+            "name": "Updated",
+            "dataType": "UPDATED"
+          },
+          {
+            "id": "PVTF_lAHOAmfLjc4BWiTtzhR1sfA",
+            "name": "Closed",
+            "dataType": "CLOSED"
+          },
+          {
+            "id": "PVTSSF_lAHOAmfLjc4BWiTtzhS9YWs",
+            "name": "Type",
+            "dataType": "SINGLE_SELECT",
+            "options": [
+              {
+                "id": "bf0dd60d",
+                "name": "User Story",
+                "color": "YELLOW",
+                "description": ""
+              },
+              {
+                "id": "64b7eea3",
+                "name": "Impediment",
+                "color": "RED",
+                "description": ""
+              },
+              {
+                "id": "2a3adc49",
+                "name": "Spike",
+                "color": "PINK",
+                "description": ""
+              },
+              {
+                "id": "2be032b4",
+                "name": "Bug",
+                "color": "ORANGE",
+                "description": ""
+              },
+              {
+                "id": "3c772012",
+                "name": "Tech Debt",
+                "color": "BLUE",
+                "description": ""
+              }
+            ]
+          },
+          {
+            "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1soA",
+            "name": "Priority",
+            "dataType": "SINGLE_SELECT",
+            "options": [
+              {
+                "id": "457ca5cd",
+                "name": "Must",
+                "color": "RED",
+                "description": ""
+              },
+              {
+                "id": "15203b56",
+                "name": "Should",
+                "color": "ORANGE",
+                "description": ""
+              },
+              {
+                "id": "a69f4b15",
+                "name": "Could",
+                "color": "YELLOW",
+                "description": ""
+              },
+              {
+                "id": "c84aabd3",
+                "name": "Won't",
+                "color": "PINK",
+                "description": ""
+              }
+            ]
+          },
+          {
+            "id": "PVTF_lAHOAmfLjc4BWiTtzhR1se0",
+            "name": "Sub-issues progress",
+            "dataType": "SUB_ISSUES_PROGRESS"
+          },
+          {
+            "id": "PVTF_lAHOAmfLjc4BWiTtzhR1soI",
+            "name": "Story Points",
+            "dataType": "NUMBER"
+          },
+          {
+            "id": "PVTIF_lAHOAmfLjc4BWiTtzhR1soM",
+            "name": "Sprint",
+            "dataType": "ITERATION",
+            "configuration": {
+              "iterations": [
+                {
+                  "id": "07155ad6",
+                  "title": "Sprint 4",
+                  "startDate": "2026-06-02",
+                  "duration": 11
+                },
+                {
+                  "id": "771466e5",
+                  "title": "Sprint 5",
+                  "startDate": "2026-06-13",
+                  "duration": 14
+                }
+              ],
+              "completedIterations": [
+                {
+                  "id": "ecba33e9",
+                  "title": "Sprint 3",
+                  "startDate": "2026-05-24",
+                  "duration": 8
+                },
+                {
+                  "id": "9085132c",
+                  "title": "Sprint 2",
+                  "startDate": "2026-05-17",
+                  "duration": 6
+                },
+                {
+                  "id": "b1710bb8",
+                  "title": "Sprint 1",
+                  "startDate": "2026-05-03",
+                  "duration": 14
+                }
+              ]
+            }
+          },
+          {
+            "id": "PVTF_lAHOAmfLjc4BWiTtzhR1soQ",
+            "name": "Start date",
+            "dataType": "DATE"
+          },
+          {
+            "id": "PVTF_lAHOAmfLjc4BWiTtzhR1soU",
+            "name": "Target date",
+            "dataType": "DATE"
+          }
+        ]
+      }
+    }
+  }
+}

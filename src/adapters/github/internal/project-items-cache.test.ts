@@ -3,8 +3,8 @@
 import { assertEquals } from "@std/assert";
 import { ProjectItemsCache } from "./project-items-cache.ts";
 import { createGhSpy, makeCtx } from "./_test_utils.ts";
-import p1Fixture from "./__fixtures__/project-items-p1.json" with { type: "json" };
-import p2Fixture from "./__fixtures__/project-items-p2.json" with { type: "json" };
+import p1Fixture from "../generated/__fixtures__/project-items-p1.json" with { type: "json" };
+import p2Fixture from "../generated/__fixtures__/project-items-p2.json" with { type: "json" };
 
 type ItemsPage = {
   user: {
