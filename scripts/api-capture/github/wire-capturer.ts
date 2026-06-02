@@ -12,11 +12,7 @@ import { PaginatedProjectItemFetcher } from "../../../src/adapters/github/intern
 import { ProjectItemsQueryBuilder } from "../../../src/adapters/github/internal/project-items-query-builder.ts";
 import type { GitHubInfraContext } from "../../../src/adapters/github/internal/infra-context.ts";
 import { createGitHubBackend } from "../../../src/adapters/github/create-backend.ts";
-import {
-  GET_REPO_LABELS_QUERY,
-  GET_USER_NODE_ID,
-  LIST_MILESTONES_QUERY,
-} from "../../../src/adapters/github/queries.ts";
+import { GET_USER_NODE_ID } from "../../../src/adapters/github/queries.ts";
 import type { GitHubBackendConfig, ResolvedToken } from "../../../src/adapters/github/types.ts";
 import type { ScrumConfig } from "../../../src/domain/config.ts";
 import type { ProjectItem } from "../../../src/adapters/github/types.ts";
@@ -146,27 +142,35 @@ export const captureWireFixtures = async (opts: {
   wireEntryGroups.push(...await recorder.persistWireResponses(fixturesDir));
   recorder.resetCallLog();
 
-  // ── Phase 4: milestones per tracked repo ──────────────────────────────────
-  for (const repo of resolvedGhConfig.tracked_repos) {
-    await recorder.graphql(LIST_MILESTONES_QUERY, {
-      owner: resolvedGhConfig.owner,
-      repo,
-      first: 50,
-    });
-  }
-  wireEntryGroups.push(...await recorder.persistWireResponses(fixturesDir));
-  recorder.resetCallLog();
-
-  // ── Phase 5: repo labels (LabelResolver path) ─────────────────────────────
-  await recorder.graphql(GET_REPO_LABELS_QUERY, {
-    owner: resolvedGhConfig.owner,
-    repo: resolvedGhConfig.tracked_repos[0],
-    first: 100,
+  // ── Phase 4: drive remaining queries through backend production code paths ─────
+  // Replacing hardcoded query calls with backend method invocations so the
+  // capturer auto-adapts when the adapter adds, changes, or removes queries.
+  const { backend } = createGitHubBackend({
+    scrumConfig,
+    projectRoot,
+    configDesc,
+    ghConfig: resolvedGhConfig,
+    ghClient: recorder,
+    resolvedToken,
   });
+
+  // Populate live state. May re-invoke bootstrapGitHub — mergeWireEntries deduplicates.
+  await backend.reload();
+
+  // Exercises GET_REPO_LABELS_QUERY with the exact variables LabelResolver uses.
+  const statusKeys = Object.keys(scrumConfig.scrum.status);
+  const priorityKeys = scrumConfig.scrum.priority.map((p) => p.key);
+  await backend.getPlatformState({ canonicalStatusKeys: statusKeys, canonicalPriorityKeys: priorityKeys });
+
+  // Exercises LIST_MILESTONES_QUERY per tracked repo via EpicService.
+  await backend.getEpics();
+
   wireEntryGroups.push(...await recorder.persistWireResponses(fixturesDir));
   recorder.resetCallLog();
 
-  // ── Phase 6: user node IDs ────────────────────────────────────────────────
+  // ── Phase 5: write-path pre-warm (GET_USER_NODE_ID) ──────────────────────────
+  // UserMilestoneResolver is only exercised during mutations; capture it here
+  // so fixture replay covers write-path tests.
   const loginToResolve = resolvedGhConfig.owner_type === "user"
     ? resolvedGhConfig.owner
     : (resolvedGhConfig.team?.[0]?.login ?? resolvedGhConfig.owner);
@@ -181,16 +185,6 @@ export const captureWireFixtures = async (opts: {
   wireEntryGroups.push(...await recorder.persistWireResponses(fixturesDir));
 
   const catalog = buildFixtureCatalog(resolvedGhConfig, bootState, fullBoardItems);
-
-  // Warm createGitHubBackend path (validates wiring; no extra persist)
-  createGitHubBackend({
-    scrumConfig,
-    projectRoot,
-    configDesc,
-    ghConfig: resolvedGhConfig,
-    ghClient: recorder,
-    resolvedToken,
-  });
 
   return {
     wireEntries: mergeWireEntries(wireEntryGroups),
