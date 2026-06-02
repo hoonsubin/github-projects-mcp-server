@@ -77,23 +77,25 @@ Do **not** mock the GitHub adapter with hand-rolled stubs in integration paths. 
 
 ### `src/test/tools/` — tool-surface tests
 
-| File                                                                          | Purpose                                                 |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------- |
-| [`scrum-read.contract.test.ts`](src/test/tools/scrum-read.contract.test.ts)   | 5 read tools — Zod schema + config contract             |
-| [`scrum-write.contract.test.ts`](src/test/tools/scrum-write.contract.test.ts) | 7 write tools — Zod schema                              |
-| [`scrum-read.golden.test.ts`](src/test/tools/scrum-read.golden.test.ts)       | Golden snapshots for `scrum_orient`, `scrum_find_items` |
-| [`scrum-bridge.test.ts`](src/test/tools/scrum-bridge.test.ts)                 | Fixture replay through orient/find_items handlers       |
-| [`contract-test-utils.ts`](src/test/tools/contract-test-utils.ts)             | `assertHandlerSchema`, `parseHandlerPayload`            |
+| File                                                                            | Purpose                                                             |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| [`scrum-read.contract.test.ts`](src/test/tools/scrum-read.contract.test.ts)     | 5 read tools — Zod schema + config contract                         |
+| [`scrum-write.contract.test.ts`](src/test/tools/scrum-write.contract.test.ts)   | 7 write tools — Zod schema                                          |
+| [`scrum-read.golden.test.ts`](src/test/tools/scrum-read.golden.test.ts)         | Golden snapshots for `scrum_orient`, `scrum_find_items`             |
+| [`scrum-bridge.test.ts`](src/test/tools/scrum-bridge.test.ts)                   | Fixture replay through orient/find_items handlers                   |
+| [`contract-test-utils.ts`](src/test/tools/contract-test-utils.ts)               | `assertHandlerSchema`, `assertMcpToolOutput`, `parseHandlerPayload` |
+| [`scrum-mcp.integration.test.ts`](src/test/tools/scrum-mcp.integration.test.ts) | `CallTool` through MCP SDK + InMemoryTransport (output validation)  |
 
-Handlers are exported from [`src/tools/scrum-read.ts`](src/tools/scrum-read.ts) and [`src/tools/scrum-write.ts`](src/tools/scrum-write.ts). Call handlers directly in tests — not the MCP registration layer.
+Handlers are exported from [`src/tools/scrum-read.ts`](src/tools/scrum-read.ts) and [`src/tools/scrum-write.ts`](src/tools/scrum-write.ts). Contract tests call handlers directly but must assert `structuredContent` (see `assertHandlerSchema`). [`scrum-mcp.integration.test.ts`](src/test/tools/scrum-mcp.integration.test.ts) exercises the full MCP `CallTool` path.
 
 ### Adding or changing a tool
 
 1. Add or update the output schema in [`src/schemas/scrum-outputs.ts`](src/schemas/scrum-outputs.ts) (always `.strict()`).
 2. Register `outputSchema` on the tool definition in `src/tools/`.
-3. Add a contract test in `src/test/tools/*.contract.test.ts` using `assertHandlerSchema`.
-4. For read tools with config-coupled vocabulary, also call `assertOrientMatchesConfig` / `assertFindItemsMatchesConfig`.
-5. Run `deno task test`, `deno lint`, and `deno task depcruise`.
+3. Add a contract test in `src/test/tools/*.contract.test.ts` using `assertHandlerSchema` (validates `structuredContent`, text JSON, and MCP `.shape` parsing).
+4. For read tools, consider extending `scrum-mcp.integration.test.ts` if the tool introduces new output-schema edge cases.
+5. For read tools with config-coupled vocabulary, also call `assertOrientMatchesConfig` / `assertFindItemsMatchesConfig`.
+6. Run `deno task test`, `deno lint`, and `deno task depcruise`.
 
 ### Golden snapshots
 

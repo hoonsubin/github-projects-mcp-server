@@ -11,6 +11,7 @@ import {
 import { ConfigShapedFakeBackend } from "../support/fake-backend.ts";
 import {
   AddVocabularyResultSchema,
+  CreateStoryOutputSchema,
   CreateStoryPartialFailureSchema,
   CreateStoryResponseSchema,
   LogImpedimentResultSchema,
@@ -96,6 +97,7 @@ Deno.test("scrum_create_story — happy path schema", async () => {
     }),
     CreateStoryResponseSchema,
     "scrum_create_story",
+    CreateStoryOutputSchema.shape,
   );
 });
 
@@ -114,6 +116,7 @@ Deno.test("scrum_create_story — partial failure when post-create setField fail
     }),
     CreateStoryResponseSchema,
     "scrum_create_story (partial)",
+    CreateStoryOutputSchema.shape,
   );
 
   const parsed = CreateStoryPartialFailureSchema.safeParse(payload);

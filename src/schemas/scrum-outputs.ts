@@ -320,8 +320,8 @@ export const PlanSprintResultSchema = z.object({
   goal: z.string().optional(),
 }).strict();
 
-export const CreateStoryPartialFailureSchema = z.object({
-  story: StorySchema,
+/** Flat story fields plus partial-failure markers (matches MCP outputSchema). */
+export const CreateStoryPartialFailureSchema = StorySchema.extend({
   partialFailure: z.literal(true),
   failedFields: z.array(
     z.object({
@@ -336,15 +336,10 @@ export const CreateStoryResponseSchema = z.union([
   StorySchema,
 ]);
 
-/** MCP outputSchema — superset accepting success Story or partial-failure envelope. */
-export const CreateStoryOutputSchema = StorySchema.extend({
-  partialFailure: z.literal(true).optional(),
-  failedFields: z.array(
-    z.object({
-      field: z.string(),
-      reason: z.string(),
-    }).strict(),
-  ).optional(),
+/** MCP outputSchema — success Story or same shape with partialFailure + failedFields set. */
+export const CreateStoryOutputSchema = CreateStoryPartialFailureSchema.partial({
+  partialFailure: true,
+  failedFields: true,
 });
 
 export const LogImpedimentResultSchema = z.object({
