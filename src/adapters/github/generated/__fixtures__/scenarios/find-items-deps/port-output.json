@@ -3,37 +3,180 @@
     "items": [
       {
         "ref": {
-          "id": "PVTI_lAHOAmfLjc4BWiTtzgt_T0w",
-          "key": "209"
+          "id": "PVTI_lAHOAmfLjc4BWiTtzguSvrg",
+          "key": "222"
         },
-        "title": "Impediment: Epic CRUD operations are incomplete",
-        "type": "impediment",
-        "status": "In Progress",
-        "story_points": 5,
-        "priority": "Must",
-        "assignees": [
-          "hoonsubin"
+        "title": "[Story]: Agent can mark two items as \"related\" without implying a hard blocking dependency",
+        "type": "user_story",
+        "status": "Ready",
+        "story_points": 3,
+        "priority": "Could",
+        "assignees": [],
+        "labels": [
+          "feature",
+          "use case layer"
         ],
-        "labels": [],
         "sprint": {
           "name": "Sprint 4",
           "ref": {
             "id": "07155ad6"
           }
         },
-        "epic": null,
+        "epic": {
+          "ref": {
+            "id": "MI_kwDOSJo3Ms4A9J0x"
+          },
+          "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+        },
         "blocked_by": [],
         "blocks": [],
         "custom_fields": {
-          "__typename": "Issue",
-          "Assignees": "{\"__typename\":\"ProjectV2ItemFieldUserValue\",\"users\":[\"hoonsubin\"]}",
-          "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
-          "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"Impediment: Epic CRUD operations are incomplete\"}",
-          "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Impediment\",\"color\":\"RED\",\"optionId\":\"64b7eea3\"}",
-          "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Must\",\"color\":\"RED\",\"optionId\":\"457ca5cd\"}",
-          "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"In Progress\",\"color\":\"BLUE\",\"optionId\":\"98236657\"}",
-          "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":5}",
-          "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"07155ad6\",\"title\":\"Sprint 4\",\"startDate\":\"2026-06-02\",\"duration\":11}"
+          "__typename": "Issue"
+        }
+      },
+      {
+        "ref": {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgt_P2U",
+          "key": "192"
+        },
+        "title": "[User Story]: Developer has PlatformVocabularyMap interface + GitHub implementation — all Scrum concepts mapped to/from GitHub primitives",
+        "type": "user_story",
+        "status": "Ready",
+        "story_points": 2,
+        "priority": "Could",
+        "assignees": [],
+        "labels": [
+          "feature",
+          "adapter layer"
+        ],
+        "sprint": {
+          "name": "Sprint 4",
+          "ref": {
+            "id": "07155ad6"
+          }
+        },
+        "epic": {
+          "ref": {
+            "id": "MI_kwDOSJo3Ms4A9dd1"
+          },
+          "name": "Adapter Layer Assembly Pattern"
+        },
+        "blocked_by": [
+          {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgt_QOc",
+            "key": "195"
+          },
+          {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgt_PuI",
+            "key": "191"
+          }
+        ],
+        "blocks": [],
+        "custom_fields": {
+          "__typename": "Issue"
+        }
+      },
+      {
+        "ref": {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgugQBg",
+          "key": "231"
+        },
+        "title": "[Bug]: Org-level GitHub Issue Fields silently dropped from all read paths",
+        "type": "bug",
+        "status": "Ready",
+        "story_points": 5,
+        "priority": "Must",
+        "assignees": [],
+        "labels": [
+          "tool bug",
+          "adapter layer"
+        ],
+        "sprint": {
+          "name": "Sprint 4",
+          "ref": {
+            "id": "07155ad6"
+          }
+        },
+        "epic": {
+          "ref": {
+            "id": "MI_kwDOSJo3Ms4A9EBk"
+          },
+          "name": "Bug Fixes & Diagnostics"
+        },
+        "blocked_by": [],
+        "blocks": [],
+        "custom_fields": {
+          "__typename": "Issue"
+        }
+      },
+      {
+        "ref": {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgt_QOc",
+          "key": "195"
+        },
+        "title": "[User Story]: Agent receives factual capability statements — NATIVE/EMULATED/UNAVAILABLE for every operation",
+        "type": "user_story",
+        "status": "Done",
+        "story_points": 2,
+        "priority": "Should",
+        "assignees": [
+          "hoonsubin"
+        ],
+        "labels": [
+          "feature",
+          "adapter layer"
+        ],
+        "sprint": {
+          "name": "Sprint 4",
+          "ref": {
+            "id": "07155ad6"
+          }
+        },
+        "epic": {
+          "ref": {
+            "id": "MI_kwDOSJo3Ms4A9dd1"
+          },
+          "name": "Adapter Layer Assembly Pattern"
+        },
+        "blocked_by": [],
+        "blocks": [],
+        "custom_fields": {
+          "__typename": "Issue"
+        }
+      },
+      {
+        "ref": {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzguSuew",
+          "key": "216"
+        },
+        "title": "[Bug]: scrum_find_items custom_fields duplicates top-level fields as JSON-stringified GitHub API noise — 40–50% per-item payload waste",
+        "type": "tech_debt",
+        "status": "In Progress",
+        "story_points": 2,
+        "priority": "Must",
+        "assignees": [
+          "hoonsubin"
+        ],
+        "labels": [
+          "refactor",
+          "adapter layer"
+        ],
+        "sprint": {
+          "name": "Sprint 4",
+          "ref": {
+            "id": "07155ad6"
+          }
+        },
+        "epic": {
+          "ref": {
+            "id": "MI_kwDOSJo3Ms4A9J0x"
+          },
+          "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+        },
+        "blocked_by": [],
+        "blocks": [],
+        "custom_fields": {
+          "__typename": "Issue"
         }
       },
       {
@@ -65,16 +208,7 @@
         "blocked_by": [],
         "blocks": [],
         "custom_fields": {
-          "__typename": "Issue",
-          "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
-          "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"feature\",\"color\":\"a29bfe\"}]}",
-          "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Scrum Process & Agent Rule Hardening\"}}",
-          "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Story]: SprintSnapshot.impediments — sprint-level enrichment\"}",
-          "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Ready\",\"color\":\"YELLOW\",\"optionId\":\"47fc9ee4\"}",
-          "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Could\",\"color\":\"YELLOW\",\"optionId\":\"a69f4b15\"}",
-          "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":3}",
-          "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"User Story\",\"color\":\"YELLOW\",\"optionId\":\"bf0dd60d\"}",
-          "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"07155ad6\",\"title\":\"Sprint 4\",\"startDate\":\"2026-06-02\",\"duration\":11}"
+          "__typename": "Issue"
         }
       },
       {
@@ -112,16 +246,36 @@
         ],
         "blocks": [],
         "custom_fields": {
-          "__typename": "Issue",
-          "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
-          "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"feature\",\"color\":\"a29bfe\"},{\"name\":\"adapter layer\",\"color\":\"e69dd2\"}]}",
-          "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"MCP Tool Surface Modernization for Scrum Theory Alignment\"}}",
-          "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Story]: Agent can request a minimal listing projection from scrum_find_items for bulk-scan use cases\"}",
-          "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"User Story\",\"color\":\"YELLOW\",\"optionId\":\"bf0dd60d\"}",
-          "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Must\",\"color\":\"RED\",\"optionId\":\"457ca5cd\"}",
-          "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Ready\",\"color\":\"YELLOW\",\"optionId\":\"47fc9ee4\"}",
-          "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":3}",
-          "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"07155ad6\",\"title\":\"Sprint 4\",\"startDate\":\"2026-06-02\",\"duration\":11}"
+          "__typename": "Issue"
+        }
+      },
+      {
+        "ref": {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgt_T0w",
+          "key": "209"
+        },
+        "title": "Impediment: Epic CRUD operations are incomplete",
+        "type": "impediment",
+        "status": "Ready",
+        "story_points": 5,
+        "priority": "Must",
+        "assignees": [
+          "hoonsubin"
+        ],
+        "labels": [
+          "invalid"
+        ],
+        "sprint": {
+          "name": "Sprint 4",
+          "ref": {
+            "id": "07155ad6"
+          }
+        },
+        "epic": null,
+        "blocked_by": [],
+        "blocks": [],
+        "custom_fields": {
+          "__typename": "Issue"
         }
       },
       {
@@ -155,17 +309,7 @@
         "blocked_by": [],
         "blocks": [],
         "custom_fields": {
-          "__typename": "Issue",
-          "Assignees": "{\"__typename\":\"ProjectV2ItemFieldUserValue\",\"users\":[\"hoonsubin\"]}",
-          "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
-          "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"adapter layer\",\"color\":\"e69dd2\"}]}",
-          "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Adapter Layer Assembly Pattern\"}}",
-          "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Spike]: Audit adapter-layer query formation pipeline — trace use case requests to GraphQL payloads and identify urgent query-level optimization opportunities\"}",
-          "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Spike\",\"color\":\"PINK\",\"optionId\":\"2a3adc49\"}",
-          "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Should\",\"color\":\"ORANGE\",\"optionId\":\"15203b56\"}",
-          "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
-          "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":8}",
-          "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"07155ad6\",\"title\":\"Sprint 4\",\"startDate\":\"2026-06-02\",\"duration\":11}"
+          "__typename": "Issue"
         }
       },
       {
@@ -200,236 +344,14 @@
         "blocked_by": [],
         "blocks": [],
         "custom_fields": {
-          "__typename": "Issue",
-          "Assignees": "{\"__typename\":\"ProjectV2ItemFieldUserValue\",\"users\":[\"hoonsubin\"]}",
-          "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
-          "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"feature\",\"color\":\"a29bfe\"},{\"name\":\"adapter layer\",\"color\":\"e69dd2\"}]}",
-          "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Adapter Layer Assembly Pattern\"}}",
-          "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Spike]: Audit tool surface → GitHub API call graph — map every MCP tool invocation to its full wire-level call sequence\"}",
-          "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Spike\",\"color\":\"PINK\",\"optionId\":\"2a3adc49\"}",
-          "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Must\",\"color\":\"RED\",\"optionId\":\"457ca5cd\"}",
-          "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
-          "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":8}",
-          "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"07155ad6\",\"title\":\"Sprint 4\",\"startDate\":\"2026-06-02\",\"duration\":11}"
-        }
-      },
-      {
-        "ref": {
-          "id": "PVTI_lAHOAmfLjc4BWiTtzgt-tUY",
-          "key": "182"
-        },
-        "title": "Have `ItemDetailResult` extend `PartialResult` for per-field warning metadata",
-        "type": "tech_debt",
-        "status": "Ready",
-        "story_points": 2,
-        "priority": "Should",
-        "assignees": [],
-        "labels": [
-          "refactor"
-        ],
-        "sprint": {
-          "name": "Sprint 4",
-          "ref": {
-            "id": "07155ad6"
-          }
-        },
-        "epic": null,
-        "blocked_by": [
-          {
-            "id": "PVTI_lAHOAmfLjc4BWiTtzgt_ODQ",
-            "key": "184"
-          }
-        ],
-        "blocks": [],
-        "custom_fields": {
-          "__typename": "Issue",
-          "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
-          "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"refactor\",\"color\":\"517924\"}]}",
-          "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"Have `ItemDetailResult` extend `PartialResult` for per-field warning metadata\"}",
-          "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
-          "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Should\",\"color\":\"ORANGE\",\"optionId\":\"15203b56\"}",
-          "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Ready\",\"color\":\"YELLOW\",\"optionId\":\"47fc9ee4\"}",
-          "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
-          "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"07155ad6\",\"title\":\"Sprint 4\",\"startDate\":\"2026-06-02\",\"duration\":11}"
-        }
-      },
-      {
-        "ref": {
-          "id": "PVTI_lAHOAmfLjc4BWiTtzgs12Q8",
-          "key": "54"
-        },
-        "title": "[Story]: getOrphanImpediments() — implement in backend",
-        "type": "user_story",
-        "status": "Ready",
-        "story_points": 2,
-        "priority": "Should",
-        "assignees": [],
-        "labels": [
-          "feature"
-        ],
-        "sprint": {
-          "name": "Sprint 4",
-          "ref": {
-            "id": "07155ad6"
-          }
-        },
-        "epic": {
-          "ref": {
-            "id": "MI_kwDOSJo3Ms4A9EBe"
-          },
-          "name": "Scrum Process & Agent Rule Hardening"
-        },
-        "blocked_by": [],
-        "blocks": [],
-        "custom_fields": {
-          "__typename": "Issue",
-          "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
-          "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"feature\",\"color\":\"a29bfe\"}]}",
-          "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Scrum Process & Agent Rule Hardening\"}}",
-          "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Story]: getOrphanImpediments() — implement in backend\"}",
-          "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Should\",\"color\":\"ORANGE\",\"optionId\":\"15203b56\"}",
-          "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Ready\",\"color\":\"YELLOW\",\"optionId\":\"47fc9ee4\"}",
-          "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
-          "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"User Story\",\"color\":\"YELLOW\",\"optionId\":\"bf0dd60d\"}",
-          "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"07155ad6\",\"title\":\"Sprint 4\",\"startDate\":\"2026-06-02\",\"duration\":11}"
-        }
-      },
-      {
-        "ref": {
-          "id": "PVTI_lAHOAmfLjc4BWiTtzgt_OHU",
-          "key": "185"
-        },
-        "title": "[Tech Debt]: Extract fragment library — catalog recurring field selections into named, composable fragments",
-        "type": "tech_debt",
-        "status": "In Progress",
-        "story_points": 2,
-        "priority": "Should",
-        "assignees": [],
-        "labels": [
-          "refactor",
-          "adapter layer"
-        ],
-        "sprint": {
-          "name": "Sprint 4",
-          "ref": {
-            "id": "07155ad6"
-          }
-        },
-        "epic": {
-          "ref": {
-            "id": "MI_kwDOSJo3Ms4A9dd1"
-          },
-          "name": "Adapter Layer Assembly Pattern"
-        },
-        "blocked_by": [
-          {
-            "id": "PVTI_lAHOAmfLjc4BWiTtzgt_ODQ",
-            "key": "184"
-          }
-        ],
-        "blocks": [],
-        "custom_fields": {
-          "__typename": "Issue",
-          "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
-          "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"refactor\",\"color\":\"517924\"},{\"name\":\"adapter layer\",\"color\":\"e69dd2\"}]}",
-          "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Adapter Layer Assembly Pattern\"}}",
-          "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Extract fragment library — catalog recurring field selections into named, composable fragments\"}",
-          "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
-          "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Should\",\"color\":\"ORANGE\",\"optionId\":\"15203b56\"}",
-          "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"In Progress\",\"color\":\"BLUE\",\"optionId\":\"98236657\"}",
-          "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
-          "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"07155ad6\",\"title\":\"Sprint 4\",\"startDate\":\"2026-06-02\",\"duration\":11}"
-        }
-      },
-      {
-        "ref": {
-          "id": "PVTI_lAHOAmfLjc4BWiTtzgt_ODQ",
-          "key": "184"
-        },
-        "title": "[Tech Debt]: Separate query building from pagination infrastructure — extract `buildItemsQuery()` from `PaginatedProjectItemFetcher`",
-        "type": "tech_debt",
-        "status": "Done",
-        "story_points": 2,
-        "priority": "Must",
-        "assignees": [],
-        "labels": [
-          "refactor",
-          "adapter layer"
-        ],
-        "sprint": {
-          "name": "Sprint 4",
-          "ref": {
-            "id": "07155ad6"
-          }
-        },
-        "epic": {
-          "ref": {
-            "id": "MI_kwDOSJo3Ms4A9dd1"
-          },
-          "name": "Adapter Layer Assembly Pattern"
-        },
-        "blocked_by": [],
-        "blocks": [],
-        "custom_fields": {
-          "__typename": "Issue",
-          "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
-          "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"refactor\",\"color\":\"517924\"},{\"name\":\"adapter layer\",\"color\":\"e69dd2\"}]}",
-          "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"Adapter Layer Assembly Pattern\"}}",
-          "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Separate query building from pagination infrastructure — extract `buildItemsQuery()` from `PaginatedProjectItemFetcher`\"}",
-          "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
-          "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Must\",\"color\":\"RED\",\"optionId\":\"457ca5cd\"}",
-          "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Done\",\"color\":\"GREEN\",\"optionId\":\"4ad38d58\"}",
-          "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
-          "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"07155ad6\",\"title\":\"Sprint 4\",\"startDate\":\"2026-06-02\",\"duration\":11}"
-        }
-      },
-      {
-        "ref": {
-          "id": "PVTI_lAHOAmfLjc4BWiTtzguSug0",
-          "key": "218"
-        },
-        "title": "[Tech Debt]: Remove null-value response fields — omit dependency_map when null, backfill sprint.ref",
-        "type": "tech_debt",
-        "status": "Ready",
-        "story_points": 2,
-        "priority": "Could",
-        "assignees": [],
-        "labels": [
-          "refactor",
-          "adapter layer"
-        ],
-        "sprint": {
-          "name": "Sprint 4",
-          "ref": {
-            "id": "07155ad6"
-          }
-        },
-        "epic": {
-          "ref": {
-            "id": "MI_kwDOSJo3Ms4A9J0x"
-          },
-          "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
-        },
-        "blocked_by": [],
-        "blocks": [],
-        "custom_fields": {
-          "__typename": "Issue",
-          "Repository": "{\"__typename\":\"ProjectV2ItemFieldRepositoryValue\",\"repository\":{\"name\":\"github-projects-mcp-server\",\"nameWithOwner\":\"hoonsubin/github-projects-mcp-server\"}}",
-          "Labels": "{\"__typename\":\"ProjectV2ItemFieldLabelValue\",\"labels\":[{\"name\":\"refactor\",\"color\":\"517924\"},{\"name\":\"adapter layer\",\"color\":\"e69dd2\"}]}",
-          "Milestone": "{\"__typename\":\"ProjectV2ItemFieldMilestoneValue\",\"milestone\":{\"title\":\"MCP Tool Surface Modernization for Scrum Theory Alignment\"}}",
-          "Title": "{\"__typename\":\"ProjectV2ItemFieldTextValue\",\"text\":\"[Tech Debt]: Remove null-value response fields — omit dependency_map when null, backfill sprint.ref\"}",
-          "Type": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Tech Debt\",\"color\":\"BLUE\",\"optionId\":\"3c772012\"}",
-          "Priority": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Could\",\"color\":\"YELLOW\",\"optionId\":\"a69f4b15\"}",
-          "Status": "{\"__typename\":\"ProjectV2ItemFieldSingleSelectValue\",\"name\":\"Ready\",\"color\":\"YELLOW\",\"optionId\":\"47fc9ee4\"}",
-          "Story Points": "{\"__typename\":\"ProjectV2ItemFieldNumberValue\",\"number\":2}",
-          "Sprint": "{\"__typename\":\"ProjectV2ItemFieldIterationValue\",\"iterationId\":\"07155ad6\",\"title\":\"Sprint 4\",\"startDate\":\"2026-06-02\",\"duration\":11}"
+          "__typename": "Issue"
         }
       }
     ],
     "total_count": 163,
     "scope_summary": {
-      "sprint_count": 117,
-      "backlog_count": 46
+      "sprint_count": 118,
+      "backlog_count": 45
     },
     "dependency_map": {
       "13": {
@@ -2099,7 +2021,7 @@
       "182": {
         "key": "182",
         "title": "Have `ItemDetailResult` extend `PartialResult` for per-field warning metadata",
-        "status": "Ready",
+        "status": "Done",
         "sprint": "Sprint 4",
         "epic_name": null,
         "story_points": 2,
@@ -2121,7 +2043,6 @@
         "resolved": true,
         "blocks": [
           "182",
-          "185",
           "219"
         ],
         "blocked_by": []
@@ -2129,19 +2050,17 @@
       "185": {
         "key": "185",
         "title": "[Tech Debt]: Extract fragment library — catalog recurring field selections into named, composable fragments",
-        "status": "In Progress",
-        "sprint": "Sprint 4",
-        "epic_name": "Adapter Layer Assembly Pattern",
-        "story_points": 2,
-        "priority": "Should",
-        "resolved": true,
+        "status": null,
+        "sprint": null,
+        "epic_name": null,
+        "story_points": null,
+        "priority": null,
+        "resolved": false,
         "blocks": [
           "186",
           "187"
         ],
-        "blocked_by": [
-          "184"
-        ]
+        "blocked_by": []
       },
       "186": {
         "key": "186",
@@ -2162,7 +2081,7 @@
       },
       "187": {
         "key": "187",
-        "title": "[User Story]: Agent can see non-canonical project fields in search results — normalizer passes through all field values",
+        "title": "[Bug]: Non-canonical project fields (deadlines, custom scores, flags) silently dropped in scrum_find_items — custom_fields sparsely populated",
         "status": "Backlog",
         "sprint": "Sprint 4",
         "epic_name": "Adapter Layer Assembly Pattern",
@@ -2177,7 +2096,7 @@
       "188": {
         "key": "188",
         "title": "[Spike]: Design search API query assembler — validate GraphQL shape, routing rules, and fallback behavior",
-        "status": "Backlog",
+        "status": "Done",
         "sprint": "Sprint 4",
         "epic_name": "Adapter Layer Assembly Pattern",
         "story_points": 1,
@@ -2193,7 +2112,7 @@
       "189": {
         "key": "189",
         "title": "[User Story]: Agent can search backlog by text, labels, and assignee using GitHub Search API",
-        "status": "Backlog",
+        "status": "Done",
         "sprint": "Sprint 4",
         "epic_name": "Adapter Layer Assembly Pattern",
         "story_points": 2,
@@ -2222,7 +2141,7 @@
       "191": {
         "key": "191",
         "title": "[User Story]: Developer adding a new backend has AbstractAssembler with port method defaults — only implements assembly and normalization",
-        "status": "Backlog",
+        "status": "Done",
         "sprint": "Sprint 4",
         "epic_name": "Adapter Layer Assembly Pattern",
         "story_points": 3,
@@ -2240,7 +2159,7 @@
       "192": {
         "key": "192",
         "title": "[User Story]: Developer has PlatformVocabularyMap interface + GitHub implementation — all Scrum concepts mapped to/from GitHub primitives",
-        "status": "Backlog",
+        "status": "Ready",
         "sprint": "Sprint 4",
         "epic_name": "Adapter Layer Assembly Pattern",
         "story_points": 2,
@@ -2272,7 +2191,7 @@
       "195": {
         "key": "195",
         "title": "[User Story]: Agent receives factual capability statements — NATIVE/EMULATED/UNAVAILABLE for every operation",
-        "status": "Ready",
+        "status": "Done",
         "sprint": "Sprint 4",
         "epic_name": "Adapter Layer Assembly Pattern",
         "story_points": 2,
@@ -2287,7 +2206,7 @@
       "196": {
         "key": "196",
         "title": "[User Story]: Agent receives actionable error guidance — BackendError subclasses with recoverySuggestion",
-        "status": "Backlog",
+        "status": "Done",
         "sprint": "Sprint 4",
         "epic_name": "Adapter Layer Assembly Pattern",
         "story_points": 1,
@@ -2326,7 +2245,7 @@
       "209": {
         "key": "209",
         "title": "Impediment: Epic CRUD operations are incomplete",
-        "status": "In Progress",
+        "status": "Ready",
         "sprint": "Sprint 4",
         "epic_name": null,
         "story_points": 5,
@@ -2388,7 +2307,7 @@
       "214": {
         "key": "214",
         "title": "[Bug]: estimated:false filter returns Pull Requests and Done items as unestimated backlog",
-        "status": "Backlog",
+        "status": "Ready",
         "sprint": "Sprint 4",
         "epic_name": "Bug Fixes & Diagnostics",
         "story_points": 1,
@@ -2411,12 +2330,12 @@
       },
       "216": {
         "key": "216",
-        "title": "[Tech Debt]: Strip canonical fields from custom_fields passthrough in ResultNormalizer",
-        "status": "Backlog",
-        "sprint": null,
+        "title": "[Bug]: scrum_find_items custom_fields duplicates top-level fields as JSON-stringified GitHub API noise — 40–50% per-item payload waste",
+        "status": "In Progress",
+        "sprint": "Sprint 4",
         "epic_name": "MCP Tool Surface Modernization for Scrum Theory Alignment",
         "story_points": 2,
-        "priority": "Should",
+        "priority": "Must",
         "resolved": true,
         "blocks": [],
         "blocked_by": []
@@ -2424,8 +2343,8 @@
       "217": {
         "key": "217",
         "title": "[Tech Debt]: Replace readiness.by_type in scrum_get_board_health with flat active-item risk counts",
-        "status": "Backlog",
-        "sprint": null,
+        "status": "Ready",
+        "sprint": "Sprint 4",
         "epic_name": "MCP Tool Surface Modernization for Scrum Theory Alignment",
         "story_points": 3,
         "priority": "Should",
@@ -2435,7 +2354,7 @@
       },
       "218": {
         "key": "218",
-        "title": "[Tech Debt]: Remove null-value response fields — omit dependency_map when null, backfill sprint.ref",
+        "title": "[Bug]: scrum_find_items serializes two structurally misleading empty fields — dependency_map: null and sprint.ref.id: \"\"",
         "status": "Ready",
         "sprint": "Sprint 4",
         "epic_name": "MCP Tool Surface Modernization for Scrum Theory Alignment",
@@ -2486,7 +2405,7 @@
       "222": {
         "key": "222",
         "title": "[Story]: Agent can mark two items as \"related\" without implying a hard blocking dependency",
-        "status": "Backlog",
+        "status": "Ready",
         "sprint": "Sprint 4",
         "epic_name": "MCP Tool Surface Modernization for Scrum Theory Alignment",
         "story_points": 3,
@@ -2503,18 +2422,6 @@
         "epic_name": "Bug Fixes & Diagnostics",
         "story_points": 1,
         "priority": "Should",
-        "resolved": true,
-        "blocks": [],
-        "blocked_by": []
-      },
-      "228": {
-        "key": "228",
-        "title": "[Spike]: Investigate sprint goal field feasibility on GitHub API",
-        "status": "Backlog",
-        "sprint": null,
-        "epic_name": null,
-        "story_points": null,
-        "priority": "Could",
         "resolved": true,
         "blocks": [],
         "blocked_by": []
@@ -2548,11 +2455,35 @@
       "231": {
         "key": "231",
         "title": "[Bug]: Org-level GitHub Issue Fields silently dropped from all read paths",
-        "status": "Backlog",
+        "status": "Ready",
         "sprint": "Sprint 4",
         "epic_name": "Bug Fixes & Diagnostics",
         "story_points": 5,
         "priority": "Must",
+        "resolved": true,
+        "blocks": [],
+        "blocked_by": []
+      },
+      "237": {
+        "key": "237",
+        "title": "[Bug]: scrum_find_items blocked_by entries omit title — agents cannot identify blockers without extra round-trips",
+        "status": "Backlog",
+        "sprint": null,
+        "epic_name": "Adapter Layer Assembly Pattern",
+        "story_points": 1,
+        "priority": "Should",
+        "resolved": true,
+        "blocks": [],
+        "blocked_by": []
+      },
+      "238": {
+        "key": "238",
+        "title": "[Bug]: scrum_find_items blocks field always empty — downstream dependency impact invisible, dead field on every item",
+        "status": "Backlog",
+        "sprint": null,
+        "epic_name": "Adapter Layer Assembly Pattern",
+        "story_points": 2,
+        "priority": "Could",
         "resolved": true,
         "blocks": [],
         "blocked_by": []

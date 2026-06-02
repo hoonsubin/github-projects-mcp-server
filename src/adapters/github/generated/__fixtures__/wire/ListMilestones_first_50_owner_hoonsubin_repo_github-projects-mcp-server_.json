@@ -128,10 +128,10 @@
           "description": "Make the adapter a pure assembly layer whose only responsibility is composing the right API fragments to satisfy a port contract, so future use-case or framework changes never require internal re-architecture — only re-assembly.",
           "state": "OPEN",
           "openIssues": {
-            "totalCount": 10
+            "totalCount": 7
           },
           "closedIssues": {
-            "totalCount": 3
+            "totalCount": 8
           }
         }
       ]

@@ -14,10 +14,27 @@ import { toItemListing } from "../../../scrum/listing-mappers.ts";
 import type { ProjectItem } from "../types.ts";
 import type { BacklogItemListing, DependencyMap, Story } from "../../../domain/types.ts";
 
-/** Populate custom_fields passthrough (__typename + all board field values). */
+// Field names that map to canonical top-level properties and must never appear
+// in custom_fields. Covers both GH built-ins and the standard configurable set.
+// ID-based filtering (canonicalIds) handles renames; name-based is the fallback.
+const CANONICAL_FIELD_NAMES = new Set([
+  "Title",
+  "Assignees",
+  "Labels",
+  "Milestone",
+  "Repository",
+  "Status",
+  "Priority",
+  "Story Points",
+  "Sprint",
+  "Type",
+]);
+
+/** Populate custom_fields passthrough for non-canonical board field values only. */
 const enrichListingCustomFields = (
   listing: BacklogItemListing,
   item: ProjectItem,
+  config: GitHubBootState,
 ): BacklogItemListing => {
   const customFields: Record<string, string | number | boolean | null> = {
     ...(listing.custom_fields ?? {}),
@@ -27,40 +44,41 @@ const enrichListingCustomFields = (
     customFields["__typename"] = item.content.__typename;
   }
 
+  const { fields, typeResolution } = config.live;
+  const canonicalIds = new Set<string>(
+    [
+      fields.statusFieldId,
+      fields.sprintFieldId,
+      fields.storyPointsFieldId,
+      fields.priorityFieldId,
+      fields.epicFieldId,
+      fields.assigneeFieldId,
+      typeResolution.source === "board_field" ? typeResolution.fieldId : null,
+    ].filter((id): id is string => id !== null && id !== ""),
+  );
+
   for (const fv of item.fieldValues.nodes) {
-    if (fv.field?.name) {
-      customFields[fv.field.name] = JSON.stringify({
-        __typename: fv.__typename,
-        ...(fv.iterationId !== undefined ? { iterationId: fv.iterationId } : {}),
-        ...(fv.title !== undefined ? { title: fv.title } : {}),
-        ...(fv.startDate !== undefined ? { startDate: fv.startDate } : {}),
-        ...(fv.duration !== undefined ? { duration: fv.duration } : {}),
-        ...(fv.text !== undefined ? { text: fv.text } : {}),
-        ...(fv.number !== undefined ? { number: fv.number } : {}),
-        ...(fv.date !== undefined ? { date: fv.date } : {}),
-        ...(fv.name !== undefined ? { name: fv.name } : {}),
-        ...(fv.color !== undefined ? { color: fv.color } : {}),
-        ...(fv.optionId !== undefined ? { optionId: fv.optionId } : {}),
-        ...(fv.users ? { users: fv.users.nodes.map((u) => u?.login ?? null) } : {}),
-        ...(fv.labels
-          ? {
-            labels: fv.labels.nodes.map((l) => ({
-              name: l?.name ?? "",
-              color: l?.color ?? "",
-            })),
-          }
-          : {}),
-        ...(fv.milestone ? { milestone: { id: fv.milestone.id, title: fv.milestone.title } } : {}),
-        ...(fv.repository
-          ? {
-            repository: {
-              name: fv.repository.name,
-              nameWithOwner: fv.repository.nameWithOwner,
-            },
-          }
-          : {}),
-      });
-    }
+    if (!fv.field?.name) continue;
+    if (canonicalIds.has(fv.field.id)) continue;
+    if (CANONICAL_FIELD_NAMES.has(fv.field.name)) continue;
+
+    customFields[fv.field.name] = JSON.stringify({
+      // __typename, color, optionId intentionally omitted — GitHub API noise
+      ...(fv.iterationId !== undefined ? { iterationId: fv.iterationId } : {}),
+      ...(fv.title !== undefined ? { title: fv.title } : {}),
+      ...(fv.startDate !== undefined ? { startDate: fv.startDate } : {}),
+      ...(fv.duration !== undefined ? { duration: fv.duration } : {}),
+      ...(fv.text !== undefined ? { text: fv.text } : {}),
+      ...(fv.number !== undefined ? { number: fv.number } : {}),
+      ...(fv.date !== undefined ? { date: fv.date } : {}),
+      ...(fv.name !== undefined ? { name: fv.name } : {}),
+      ...(fv.users ? { users: fv.users.nodes.map((u) => u?.login ?? null) } : {}),
+      ...(fv.labels ? { labels: fv.labels.nodes.map((l) => ({ name: l?.name ?? "" })) } : {}),
+      ...(fv.milestone ? { milestone: { id: fv.milestone.id, title: fv.milestone.title } } : {}),
+      ...(fv.repository
+        ? { repository: { name: fv.repository.name, nameWithOwner: fv.repository.nameWithOwner } }
+        : {}),
+    });
   }
 
   return { ...listing, custom_fields: customFields };
@@ -107,7 +125,7 @@ export class ResultNormalizer {
 
     const enriched = listings.map((listing) => {
       const item = itemById.get(listing.ref.id);
-      return item ? enrichListingCustomFields(listing, item) : listing;
+      return item ? enrichListingCustomFields(listing, item, this.config) : listing;
     });
 
     const sprintCount = resolvedStories.filter((s) => s.sprint !== null).length;

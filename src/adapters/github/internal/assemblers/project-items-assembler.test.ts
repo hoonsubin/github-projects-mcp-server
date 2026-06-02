@@ -5,7 +5,7 @@
 // AssemblerOutput with custom_fields enrichment.
 // =============================================================================
 
-import { assertEquals, assertExists } from "@std/assert";
+import { assertEquals, assertExists, assertStrictEquals } from "@std/assert";
 import { ProjectItemsAssembler } from "./project-items-assembler.ts";
 import { ProjectItemsQueryBuilder } from "../project-items-query-builder.ts";
 import { ExecutionEngine } from "../execution-engine.ts";
@@ -75,6 +75,25 @@ Deno.test({
     const first = output.items[0];
     assertExists(first.custom_fields);
     assertExists(first.custom_fields["__typename"]);
+
+    // Canonical fields must not leak into custom_fields
+    assertStrictEquals(first.custom_fields["Status"], undefined);
+    assertStrictEquals(first.custom_fields["Priority"], undefined);
+    assertStrictEquals(first.custom_fields["Sprint"], undefined);
+    assertStrictEquals(first.custom_fields["Story Points"], undefined);
+    assertStrictEquals(first.custom_fields["Assignees"], undefined);
+    assertStrictEquals(first.custom_fields["Labels"], undefined);
+    assertStrictEquals(first.custom_fields["Title"], undefined);
+
+    // GitHub API noise must be stripped from all serialized values
+    for (const val of Object.values(first.custom_fields)) {
+      if (typeof val === "string" && val.startsWith("{")) {
+        const parsed = JSON.parse(val) as Record<string, unknown>;
+        assertStrictEquals("color" in parsed, false);
+        assertStrictEquals("optionId" in parsed, false);
+        assertStrictEquals("__typename" in parsed, false);
+      }
+    }
   },
 });
 

@@ -18,14 +18,14 @@
     "file": "wire/query_login_String_number_Int_cursor_String_user_login_login_p_login_hoonsubin_number_5_.json"
   },
   {
-    "hash": "query($login: String!, $number: Int!, $cursor: String) { user(login: $login) { p:{\"cursor\":\"Y3Vyc29yOnYyOpK5MDAwMDAwMDAuMDA5NjQ2MzAyMjUwODAzOM4LBrUp\",\"login\":\"hoonsubin\",\"number\":5}",
+    "hash": "query($login: String!, $number: Int!, $cursor: String) { user(login: $login) { p:{\"cursor\":\"Y3Vyc29yOnYyOpKrMDAwMDAwMDAuMDHOCzXmIQ==\",\"login\":\"hoonsubin\",\"number\":5}",
     "operation": "query($login: String!, $number: Int!, $cursor: String) { user(login: $login) { p",
     "variables": {
       "login": "hoonsubin",
       "number": 5,
-      "cursor": "Y3Vyc29yOnYyOpK5MDAwMDAwMDAuMDA5NjQ2MzAyMjUwODAzOM4LBrUp"
+      "cursor": "Y3Vyc29yOnYyOpKrMDAwMDAwMDAuMDHOCzXmIQ=="
     },
-    "file": "wire/query_login_String_number_Int_cursor_String_user_login_login_p_cursor_Y3Vyc29yOnYyOpK5MDAwMDAwMDAuMDA5NjQ2MzAyMjUwODAzOM4LBrUp_login_hoonsubin_number_5_.json"
+    "file": "wire/query_login_String_number_Int_cursor_String_user_login_login_p_cursor_Y3Vyc29yOnYyOpKrMDAwMDAwMDAuMDHOCzXmIQ_login_hoonsubin_number_5_.json"
   },
   {
     "hash": "GetImpedimentIssues:{\"owner\":\"hoonsubin\",\"repo\":\"github-projects-mcp-server\",\"states\":[\"OPEN\"]}",
