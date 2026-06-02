@@ -33,7 +33,7 @@ export class SprintHistoryService {
     const windowSlice = completedSorted.slice(0, window);
     if (windowSlice.length === 0) return [];
 
-    const allItems = preloadedItems ?? await this.projectItemsCache.getOrFetchAllItems();
+    const allItems = preloadedItems ?? await this.projectItemsCache.getOrFetchAggregateItems();
     const { sprintFieldId, statusFieldId, storyPointsFieldId } = this.ctx.config.live.fields;
 
     return windowSlice.map((iter) => {

@@ -180,20 +180,18 @@ export const buildStoryFromRaw = (
 
   // ── DraftIssue branch ───────────────────────────────────────────────────────
   if (content.__typename === "DraftIssue") {
-    // assignees is absent when includeDraftIssueContent: false - skip this item
-    if (!content.assignees) return null;
     const draft: DraftStory = {
       kind: "draft",
       ref: { id: item.id },
       key: null,
       title: content.title,
-      body: content.body,
+      body: content.body ?? "",
       type: boardFields.type,
       status: boardFields.status,
       sprint: boardFields.sprint,
       story_points: boardFields.story_points,
       priority: boardFields.priority,
-      assignees: content.assignees.nodes.map((a) => a.login),
+      assignees: content.assignees?.nodes.map((a) => a.login) ?? [],
       labels: [],
       epic: null,
       created_at: item.createdAt,
@@ -205,37 +203,37 @@ export const buildStoryFromRaw = (
   }
 
   // ── Issue / PullRequest branch ──────────────────────────────────────────────
-  // Both have number, title, url, body, assignees, labels
-  // labels/assignees are absent when includePRContent: false - skip this item
-  if (!content.labels || !content.assignees) return null;
-  // Type comes from either the board field or org issue type, depending on bootstrap typeResolution.
-  // All repo labels are passed through unfiltered.
-  const labels: string[] = content.labels.nodes.map((l: { name: string }) => l.name);
+  // Aggregate query profiles omit labels/assignees; default to empty collections.
+  const labels: string[] = content.labels?.nodes.map((l: { name: string }) => l.name) ?? [];
+  const assignees: string[] = content.assignees?.nodes.map((a) => a.login) ?? [];
   const epic = content.__typename === "Issue" && content.milestone
     ? { ref: { id: content.milestone.id }, name: content.milestone.title }
     : null;
 
-  // Dependencies come from native Issue.blockedBy GraphQL field
-  const blockedBy = content.__typename === "Issue"
+  const blockedBy = content.__typename === "Issue" && content.blockedBy
     ? mapIssueDependencies(content)
     : [] as DependencyEntry[];
+
+  const body = "body" in content ? (content.body ?? "") : "";
+  const url = "url" in content && content.url ? content.url : "";
+
   const issue: IssueStory = {
     kind: "issue",
     ref: { id: item.id },
     key: content.number.toString(),
     title: content.title,
-    body: content.body,
+    body,
     type: boardFields.type,
     status: boardFields.status,
     sprint: boardFields.sprint,
     story_points: boardFields.story_points,
     priority: boardFields.priority,
-    assignees: content.assignees.nodes.map((a) => a.login),
+    assignees,
     labels,
     epic,
     created_at: item.createdAt,
     updated_at: item.updatedAt,
-    url: content.url,
+    url,
     blocked_by: blockedBy,
   };
   return issue;

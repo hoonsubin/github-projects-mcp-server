@@ -252,14 +252,20 @@ export class StoryQueryService {
     return { value: { story, comments: null, linked_artifacts: null }, warnings: [] };
   }
 
+  /** Lean aggregate board scan (shared cache). */
   fetchAllItems(): Promise<ProjectItem[]> {
+    return this.projectItemsCache.getOrFetchAggregateItems();
+  }
+
+  /** Full ItemContent board scan for Story-shaped consumers (e.g. board health). */
+  fetchFullItems(): Promise<ProjectItem[]> {
     return this.projectItemsCache.getOrFetchAllItems();
   }
 
   async computeSprintCompletion(
     iterationId: string,
   ): Promise<{ completed: number; total: number }> {
-    const allItems = await this.projectItemsCache.getOrFetchAllItems();
+    const allItems = await this.projectItemsCache.getOrFetchAggregateItems();
     const { sprintFieldId, statusFieldId, storyPointsFieldId } = this.ctx.config.live.fields;
 
     const sprintItems = allItems.filter((item) => {

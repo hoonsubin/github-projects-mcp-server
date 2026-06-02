@@ -34,11 +34,11 @@ import type { CreateStoryInput, ImpedimentListing } from "../../../scrum/ports.t
 import type { ImpedimentRef, SprintRef, StoryRef } from "../../../domain/types.ts";
 
 /** Filter sprint impediments from an in-memory project item list (no board scan). */
-export function listSprintImpedimentsFromItems(
+export const listSprintImpedimentsFromItems = (
   allItems: readonly ProjectItem[],
   config: GitHubBootState,
   sprint: SprintRef,
-): ImpedimentListing[] {
+): ImpedimentListing[] => {
   const iterationId = resolveSprint(sprint, config);
   if (!iterationId) return [];
 
@@ -87,7 +87,7 @@ export function listSprintImpedimentsFromItems(
         resolved_at: null,
       };
     });
-}
+};
 
 // ── Shared issue node shape ────────────────────────────────────────────────────
 
@@ -186,7 +186,7 @@ export class ImpedimentService {
   }
 
   async getSprintImpediments(sprint: SprintRef): Promise<ImpedimentListing[]> {
-    const allItems = await this.projectItemsCache.getOrFetchAllItems();
+    const allItems = await this.projectItemsCache.getOrFetchAggregateItems();
     return listSprintImpedimentsFromItems(allItems, this.ctx.config, sprint);
   }
 

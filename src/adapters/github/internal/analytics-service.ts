@@ -64,7 +64,7 @@ export class AnalyticsService {
     }
 
     // both: one board fetch shared by burndown + history builders.
-    const allItems = await this.projectItemsCache.getOrFetchAllItems();
+    const allItems = await this.projectItemsCache.getOrFetchAggregateItems();
     let burndown: BurndownResponse | null = null;
     let history: SprintSnapshot[] | null = null;
     try {

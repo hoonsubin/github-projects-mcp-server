@@ -58,7 +58,7 @@ export class BurndownCalculator {
       );
     }
 
-    const allItems = preloadedItems ?? await this.projectItemsCache.getOrFetchAllItems();
+    const allItems = preloadedItems ?? await this.projectItemsCache.getOrFetchAggregateItems();
     const sprintFieldId = this.ctx.config.live.fields.sprintFieldId;
     const items = allItems.filter((item) =>
       item.fieldValues.nodes.some(

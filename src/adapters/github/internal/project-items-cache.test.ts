@@ -18,50 +18,61 @@ type ItemsPage = {
   };
 };
 
-Deno.test("ProjectItemsCache - deduplicates concurrent getOrFetchAllItems calls", async () => {
+const ctx = (gh: ReturnType<typeof createGhSpy>) =>
+  makeCtx(gh, { ghConfig: { owner_type: "user" } });
+
+Deno.test("ProjectItemsCache - deduplicates concurrent aggregate fetches", async () => {
   const gh = createGhSpy();
   gh.enqueue(p1Fixture as ItemsPage);
   gh.enqueue(p2Fixture as ItemsPage);
 
-  const cache = new ProjectItemsCache(
-    makeCtx(gh, { ghConfig: { owner_type: "user" } }),
-  );
+  const cache = new ProjectItemsCache(ctx(gh));
   const [first, second] = await Promise.all([
-    cache.getOrFetchAllItems(),
-    cache.getOrFetchAllItems(),
+    cache.getOrFetchAggregateItems(),
+    cache.getOrFetchAggregateItems(),
   ]);
 
   assertEquals(first.length, second.length);
   assertEquals(gh.graphqlCalls.length, 2);
 });
 
-Deno.test("ProjectItemsCache - returns cached items without refetch", async () => {
+Deno.test("ProjectItemsCache - aggregate and full profiles use separate caches", async () => {
+  const gh = createGhSpy();
+  gh.enqueue(p1Fixture as ItemsPage);
+  gh.enqueue(p2Fixture as ItemsPage);
+  gh.enqueue(p1Fixture as ItemsPage);
+  gh.enqueue(p2Fixture as ItemsPage);
+
+  const cache = new ProjectItemsCache(ctx(gh));
+  await cache.getOrFetchAggregateItems();
+  await cache.getOrFetchAllItems();
+
+  assertEquals(gh.graphqlCalls.length, 4);
+});
+
+Deno.test("ProjectItemsCache - returns cached aggregate items without refetch", async () => {
   const gh = createGhSpy();
   gh.enqueue(p1Fixture as ItemsPage);
   gh.enqueue(p2Fixture as ItemsPage);
 
-  const cache = new ProjectItemsCache(
-    makeCtx(gh, { ghConfig: { owner_type: "user" } }),
-  );
-  await cache.getOrFetchAllItems();
-  await cache.getOrFetchAllItems();
+  const cache = new ProjectItemsCache(ctx(gh));
+  await cache.getOrFetchAggregateItems();
+  await cache.getOrFetchAggregateItems();
 
   assertEquals(gh.graphqlCalls.length, 2);
 });
 
-Deno.test("ProjectItemsCache - invalidate forces a new fetch", async () => {
+Deno.test("ProjectItemsCache - invalidate clears both profiles", async () => {
   const gh = createGhSpy();
   gh.enqueue(p1Fixture as ItemsPage);
   gh.enqueue(p2Fixture as ItemsPage);
   gh.enqueue(p1Fixture as ItemsPage);
   gh.enqueue(p2Fixture as ItemsPage);
 
-  const cache = new ProjectItemsCache(
-    makeCtx(gh, { ghConfig: { owner_type: "user" } }),
-  );
-  await cache.getOrFetchAllItems();
+  const cache = new ProjectItemsCache(ctx(gh));
+  await cache.getOrFetchAggregateItems();
   cache.invalidate();
-  await cache.getOrFetchAllItems();
+  await cache.getOrFetchAggregateItems();
 
   assertEquals(gh.graphqlCalls.length, 4);
 });

@@ -39,7 +39,7 @@ export class BoardHealthService {
    * @param sprintScope - "current" | "next" | "<name>" | "all"
    */
   async getBoardHealth(sprintScope: string): Promise<BacklogHealth> {
-    const allItems = await this.storyQueryService.fetchAllItems();
+    const allItems = await this.storyQueryService.fetchFullItems();
     const stories = this.fetchStoriesForScope(sprintScope, allItems);
 
     // Exclude Done items from all active-work metrics - they're already resolved

@@ -3,8 +3,8 @@
 // ProjectItemsQueryBuilder
 //
 // Builds the GraphQL query document for fetching GitHub Projects v2 items.
-// Field selections come from ItemContent and ItemFieldValues fragments in
-// operations.graphql via the fragment registry in queries.ts.
+// Field selections come from ItemContent / ItemContentAggregate and
+// ItemFieldValues fragments in operations.graphql via queries.ts.
 // =============================================================================
 
 import type { OwnerType, PageInfoRef, ProjectItem, ProjectV2Ref } from "../types.ts";
@@ -30,9 +30,22 @@ export interface ProjectItemsResponse {
 export class ProjectItemsQueryBuilder {
   constructor(private readonly ownerType: OwnerType) {}
 
+  /** Full content + field values — for board health and other Story-shaped consumers. */
   buildQuery(): string {
+    return this.buildProjectItemsQuery("ItemContent");
+  }
+
+  /**
+   * Lean content + field values — for aggregation scans that only need board
+   * fields and minimal issue identity (number, title, type, state).
+   */
+  buildAggregateQuery(): string {
+    return this.buildProjectItemsQuery("ItemContentAggregate");
+  }
+
+  private buildProjectItemsQuery(contentFragment: "ItemContent" | "ItemContentAggregate"): string {
     const ownerField = this.ownerType === "user" ? "user" : "organization";
-    const itemContentSource = getFragmentSource("ItemContent");
+    const itemContentSource = getFragmentSource(contentFragment);
     const itemFieldValuesSource = getFragmentSource("ItemFieldValues");
 
     return `
@@ -45,7 +58,7 @@ export class ProjectItemsQueryBuilder {
             pageInfo { hasNextPage endCursor }
             nodes {
               id type createdAt updatedAt isArchived
-              ...ItemContent
+              ...${contentFragment}
               ...ItemFieldValues
             }
           }

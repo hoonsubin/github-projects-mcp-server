@@ -24,11 +24,11 @@ interface GetIssueProjectItemResponse {
  * Look up the project item for an issue number on the configured board.
  * Returns null when the issue is not linked to the project.
  */
-export async function fetchProjectItemByIssueNumber(
+export const fetchProjectItemByIssueNumber = async (
   gh: GitHubClient,
   ghConfig: GitHubBackendConfig,
   issueNumber: number,
-): Promise<ProjectItem | null> {
+): Promise<ProjectItem | null> => {
   const { owner, tracked_repos, project_number } = ghConfig;
 
   for (const repo of tracked_repos) {
@@ -46,26 +46,26 @@ export async function fetchProjectItemByIssueNumber(
   }
 
   return null;
-}
+};
 
 /** Project item ID for an issue on the configured board, or null. */
-export async function fetchProjectItemIdByIssueNumber(
+export const fetchProjectItemIdByIssueNumber = async (
   gh: GitHubClient,
   ghConfig: GitHubBackendConfig,
   issueNumber: number,
-): Promise<string | null> {
+): Promise<string | null> => {
   const item = await fetchProjectItemByIssueNumber(gh, ghConfig, issueNumber);
   return item?.id ?? null;
-}
+};
 
 /**
  * Resolve an issue number to a project item ID or throw NOT_FOUND.
  */
-export async function resolveProjectItemIdByIssueNumber(
+export const resolveProjectItemIdByIssueNumber = async (
   gh: GitHubClient,
   ghConfig: GitHubBackendConfig,
   issueNumber: number,
-): Promise<string> {
+): Promise<string> => {
   const itemId = await fetchProjectItemIdByIssueNumber(gh, ghConfig, issueNumber);
   if (itemId) return itemId;
 
@@ -78,4 +78,4 @@ export async function resolveProjectItemIdByIssueNumber(
       context: { storyNumber: issueNumber },
     },
   );
-}
+};

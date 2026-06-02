@@ -46,7 +46,7 @@ const ORG_QUERY = new ProjectItemsQueryBuilder("org").buildQuery();
 
 // ── Synthetic response builders ───────────────────────────────────────────────
 
-function makeEmptyPage(ownerType: "user" | "org" = "user") {
+const makeEmptyPage = (ownerType: "user" | "org" = "user") => {
   const page = {
     totalCount: 0,
     pageInfo: { hasNextPage: false, endCursor: null },
@@ -55,11 +55,11 @@ function makeEmptyPage(ownerType: "user" | "org" = "user") {
   return ownerType === "user"
     ? { user: { projectV2: { id: "PVT_test", items: page } } }
     : { organization: { projectV2: { id: "PVT_test", items: page } } };
-}
+};
 
-function makeNotFoundPage(ownerType: "user" | "org" = "user") {
+const makeNotFoundPage = (ownerType: "user" | "org" = "user") => {
   return ownerType === "user" ? { user: null } : { organization: null };
-}
+};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Group A — Fixture-based tests

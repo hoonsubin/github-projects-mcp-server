@@ -25,7 +25,7 @@ export interface GitHubClientSpy extends GitHubClient {
  * Enqueue an Error instance to simulate a transport-level failure:
  *   gh.enqueue(new GitHubApiError("...", { code: "AUTH_FAILED", ... }))
  */
-export function createGhSpy(): GitHubClientSpy {
+export const createGhSpy = (): GitHubClientSpy => {
   const queue: unknown[] = [];
   const spy: GitHubClientSpy = {
     graphqlCalls: [],
@@ -54,7 +54,7 @@ export function createGhSpy(): GitHubClientSpy {
     },
   };
   return spy;
-}
+};
 
 // ── GitHubBootState factory ───────────────────────────────────────────────────
 
@@ -65,7 +65,7 @@ export function createGhSpy(): GitHubClientSpy {
  * Use this instead of `{} as unknown as GitHubBootState` — the cast hides
  * breakage when GitHubBootState fields change.
  */
-export function makeConfig(overrides: Partial<GitHubBootState> = {}): GitHubBootState {
+export const makeConfig = (overrides: Partial<GitHubBootState> = {}): GitHubBootState => {
   return {
     scrumConfig: {
       project: { name: "Test" },
@@ -107,7 +107,7 @@ export function makeConfig(overrides: Partial<GitHubBootState> = {}): GitHubBoot
     },
     ...overrides,
   };
-}
+};
 
 // ── GitHubInfraContext factory ────────────────────────────────────────────────
 
@@ -122,10 +122,10 @@ type CtxOverrides = Partial<Omit<GitHubBootState, "ghConfig">> & {
  * deep-merged so callers can set only owner_type without re-specifying
  * the entire ghConfig object.
  */
-export function makeCtx(
+export const makeCtx = (
   gh: GitHubClient,
   overrides: CtxOverrides = {},
-): GitHubInfraContext {
+): GitHubInfraContext => {
   const { ghConfig: ghConfigOverrides, ...restOverrides } = overrides;
   const mergedGhConfig = ghConfigOverrides
     ? { ...makeConfig().ghConfig, ...ghConfigOverrides }
@@ -141,4 +141,4 @@ export function makeCtx(
     repo: config.ghConfig.tracked_repos[0],
     ghConfig: config.ghConfig,
   };
-}
+};

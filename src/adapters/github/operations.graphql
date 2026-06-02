@@ -112,6 +112,27 @@ fragment ItemContent on ProjectV2Item {
   }
 }
 
+# ── ItemContentAggregate ──────────────────────────────────────────────────────
+# Lean content projection for board-wide aggregation scans (burndown, history,
+# sprint completion, impediment cross-ref). Omits labels, assignees, milestone,
+# blockedBy, and repository fields. Pair with ItemFieldValues for board fields.
+
+fragment ItemContentAggregate on ProjectV2Item {
+  content {
+    __typename
+    ... on Issue {
+      id number title body state
+      issueType { id name }
+    }
+    ... on PullRequest {
+      id number title state
+    }
+    ... on DraftIssue {
+      id title
+    }
+  }
+}
+
 # ── ItemFieldValues ───────────────────────────────────────────────────────────
 # All field values for a project item.
 #
