@@ -191,7 +191,7 @@ export class StoryMutationService {
         },
       );
     }
-    await this.fieldValueMutator.setFieldType(itemId, input.type);
+    await this.fieldValueMutator.setFieldType(itemId, input.type, issueId);
 
     if (input.priority) {
       await this.fieldValueMutator.setFieldPriority(itemId, input.priority);
@@ -338,7 +338,11 @@ export class StoryMutationService {
         ) {
           await this.convertDraftToIssue(resolved.itemId);
         }
-        return this.fieldValueMutator.setFieldType(itemId, value as string | null);
+        return this.fieldValueMutator.setFieldType(
+          itemId,
+          value as string | null,
+          resolved.issueId,
+        );
       case "assignee": {
         const assigneeIssueId = resolved.issueId ?? await this.convertDraftToIssue(resolved.itemId);
         return this.fieldValueMutator.setFieldAssignee(assigneeIssueId, value as string | null);

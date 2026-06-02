@@ -39,7 +39,16 @@ interface RepoLabelsResponse {
  * Injected into GitHubProjectBackend via constructor (DIP).
  */
 export class LabelResolver {
+  private labelsCache: GitHubLabel[] | null = null;
+  private labelsFetchPromise: Promise<GitHubLabel[]> | null = null;
+
   constructor(private readonly ctx: GitHubInfraContext) {}
+
+  /** Drop cached repo labels (e.g. after reload or creating a label). */
+  invalidateLabelCache(): void {
+    this.labelsCache = null;
+    this.labelsFetchPromise = null;
+  }
 
   /** Fetch the repository node ID from GitHub GraphQL API */
   async fetchRepoNodeId(): Promise<string> {
@@ -63,8 +72,22 @@ export class LabelResolver {
     return nodeId;
   }
 
-  /** Fetch all existing labels for the repository */
-  private async fetchAllLabels(): Promise<GitHubLabel[]> {
+  /** Fetch all existing labels for the repository (session-cached). */
+  private fetchAllLabels(): Promise<GitHubLabel[]> {
+    if (this.labelsCache) return Promise.resolve(this.labelsCache);
+
+    if (!this.labelsFetchPromise) {
+      this.labelsFetchPromise = this.loadAllLabelsFromApi().then((labels) => {
+        this.labelsCache = labels;
+        this.labelsFetchPromise = null;
+        return labels;
+      });
+    }
+
+    return this.labelsFetchPromise;
+  }
+
+  private async loadAllLabelsFromApi(): Promise<GitHubLabel[]> {
     const result = await this.ctx.gh.graphql<RepoLabelsResponse>(GET_REPO_LABELS_QUERY, {
       owner: this.ctx.owner,
       repo: this.ctx.repo,
@@ -181,6 +204,7 @@ export class LabelResolver {
         }
         resolved.push({ id: label.id, name });
       }
+      this.invalidateLabelCache();
     }
 
     return resolved;
@@ -199,6 +223,7 @@ export class LabelResolver {
       CREATE_LABEL_MUTATION,
       { repositoryId, name: value, color },
     );
+    this.invalidateLabelCache();
     return { created: true };
   }
 

@@ -251,6 +251,7 @@ export class GitHubAdapterFactory implements AdapterFactory {
     // ── Facade assembly - single parameter object, no positional args ────
 
     const deps: GitHubBackendDependencies = {
+      gh: ghClient,
       labelResolver,
       fieldValueMutator,
       vocabularyManager,

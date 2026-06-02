@@ -188,8 +188,16 @@ export class FieldValueMutator {
     }
   }
 
-  /** Update the type of a project item via the Type single-select field */
-  async setFieldType(itemId: string, value: string | null): Promise<void> {
+  /**
+   * Update the type of a project item via the Type single-select field.
+   * @param issueId - When org issue types are used, pass the issue node ID from
+   *   resolveStory() to avoid a redundant GetProjectItemById lookup.
+   */
+  async setFieldType(
+    itemId: string,
+    value: string | null,
+    issueId?: string | null,
+  ): Promise<void> {
     const { typeResolution, typeOptions } = this.ctx.config.live;
     if (value === null) {
       if (typeResolution.source === "board_field") {
@@ -246,10 +254,10 @@ export class FieldValueMutator {
       return;
     }
 
-    const issueId = await this.resolveIssueNodeId(itemId);
+    const resolvedIssueId = issueId ?? await this.resolveIssueNodeId(itemId);
     await this.ctx.gh.graphql<{ updateIssue: { issue: { id: string } } }>(
       SET_ISSUE_TYPE_MUTATION,
-      { issueId, issueTypeId: optionId },
+      { issueId: resolvedIssueId, issueTypeId: optionId },
     );
   }
 

@@ -10,7 +10,6 @@
 
 import { GITHUB_CAPABILITIES } from "../capabilities.ts";
 import { AbstractProjectBackend } from "../abstract-backend.ts";
-import { GitHubApiError } from "./errors.ts";
 import { assertNever } from "../../domain/errors.ts";
 import { type GitHubBootState } from "./bootstrap.ts";
 import { LabelResolver } from "./internal/label-resolver.ts";
@@ -29,6 +28,8 @@ import { DirectLookupAssembler } from "./internal/assemblers/direct-lookup-assem
 import { ProjectItemsAssembler } from "./internal/assemblers/project-items-assembler.ts";
 import { SearchApiAssembler } from "./internal/assemblers/search-api-assembler.ts";
 import { MixedAssembler } from "./internal/assemblers/mixed-assembler.ts";
+import { resolveProjectItemIdByIssueNumber } from "./internal/resolve-issue-number.ts";
+import type { GitHubClient } from "./internal/http-client.ts";
 import type { GitHubBackendConfig } from "./types.ts";
 import type {
   AnalyticsQuery,
@@ -65,6 +66,7 @@ import type {
  * search API, mixed) wired to ExecutionEngine + ResultNormalizer.
  */
 export interface GitHubBackendDependencies {
+  readonly gh: GitHubClient;
   readonly labelResolver: LabelResolver;
   readonly fieldValueMutator: FieldValueMutator;
   readonly vocabularyManager: VocabularyManager;
@@ -97,41 +99,17 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
   // ── resolveRef (override AbstractProjectBackend default) ──────────────────
 
   /**
-   * Resolve a { number } StoryRef by looking up the issue number via findItems.
+   * Resolve a { number } StoryRef via GetIssueProjectItem (no board scan).
    * { id } refs pass through unchanged (already resolved).
    */
   protected override async resolveRef(ref: StoryRef): Promise<StoryRef> {
-    if ("id" in ref && !("number" in ref)) return ref;
-    const result = await this.findItems({
-      scope: "all",
-      keys: [String(ref.number)],
-      search: "",
-      types: [],
-      statuses: [],
-      priority: "",
-      epic_id: "",
-      labels: [],
-      assignee: "",
-      estimated: undefined,
-      sprint_ref: null,
-      include_dependencies: false,
-      limit: 1,
-    });
-    if (!result.value) {
-      throw new Error("findItems returned null value without throwing");
-    }
-    if (result.value.items.length === 0) {
-      throw new GitHubApiError(
-        `Story #${ref.number} not found on the project board.`,
-        {
-          code: "NOT_FOUND",
-          recovery: "Verify the issue number and ensure it appears in the project. " +
-            "Use scrum_find_items to search for stories by keyword if the number may be incorrect.",
-          context: { storyNumber: ref.number },
-        },
-      );
-    }
-    return { id: result.value.items[0].ref.id };
+    if (!("number" in ref)) return ref;
+    const id = await resolveProjectItemIdByIssueNumber(
+      this.deps.gh,
+      this.deps.ghConfig,
+      ref.number,
+    );
+    return { id };
   }
 
   // ── Platform state ────────────────────────────────────────────────────────
@@ -239,8 +217,9 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
     return { value, warnings: [...new Set(warnings)] };
   }
 
-  reload(): Promise<void> {
-    return this.deps.configReloader.reload();
+  async reload(): Promise<void> {
+    await this.deps.configReloader.reload();
+    this.deps.labelResolver.invalidateLabelCache();
   }
 
   // ── Port methods (P7 - real implementations) ──────────────────────────────
