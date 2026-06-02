@@ -8,7 +8,7 @@ import {
   UnsupportedCapabilityError,
 } from "../../adapters/abstract-backend.ts";
 import { AdapterError } from "../../domain/errors.ts";
-import type { PlatformCapabilities } from "../../adapters/capabilities.ts";
+import { CapabilityStatus, type PlatformCapabilities } from "../../adapters/capabilities.ts";
 import type {
   AnalyticsResult,
   BacklogHealth,
@@ -45,11 +45,11 @@ import { computeSprintEndDate } from "../../scrum/sprint-math.ts";
 const FAKE_CAPABILITIES: PlatformCapabilities = {
   platform: "fake",
   supports: {
-    auditLogBurndown: false,
-    nativeSprints: true,
-    dependencies: true,
-    fileReader: false,
-    stableItemKeys: true,
+    auditLogBurndown: CapabilityStatus.EMULATED,
+    nativeSprints: CapabilityStatus.NATIVE,
+    dependencies: CapabilityStatus.NATIVE,
+    fileReader: CapabilityStatus.UNAVAILABLE,
+    stableItemKeys: CapabilityStatus.NATIVE,
   },
 };
 
