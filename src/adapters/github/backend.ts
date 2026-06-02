@@ -55,12 +55,12 @@ import { type BackendCallResult, catchBackend } from "../../services/error-enric
 import type {
   AnalyticsResult,
   BacklogHealth,
+  EntityRef,
   EpicListing,
   ImpedimentRef,
   ImpedimentStatus,
   ItemSearchResult,
   IterationEntry,
-  EntityRef,
   SprintRef,
   Story,
   StoryRef,

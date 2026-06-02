@@ -17,8 +17,8 @@ import {
   buildEnrichedStory,
   buildLinkedPrList,
   buildStoryFromRaw,
-  sprintCompletionFromAggregates,
   type IssueDetailsInput,
+  sprintCompletionFromAggregates,
 } from "../mappers.ts";
 import {
   GET_DRAFT_ISSUE_DETAILS_QUERY,

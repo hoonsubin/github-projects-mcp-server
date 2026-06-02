@@ -562,13 +562,11 @@ export const applyStorySnapshotOverrides = (
 
   let blocked_by = story.blocked_by;
   if (overrides.blocked_by !== undefined) {
-    blocked_by = overrides.blocked_by === null
-      ? []
-      : overrides.blocked_by.map((ref) => ({
-        ref: "id" in ref ? { id: ref.id } : { id: "" },
-        key: "number" in ref ? String(ref.number) : "",
-        title: null,
-      }));
+    blocked_by = overrides.blocked_by === null ? [] : overrides.blocked_by.map((ref) => ({
+      ref: "id" in ref ? { id: ref.id } : { id: "" },
+      key: "number" in ref ? String(ref.number) : "",
+      title: null,
+    }));
   }
 
   return {
@@ -635,7 +633,5 @@ export const storySnapshotOverridesFromCreateStory = (
   ...(input.labels !== undefined ? { labels: input.labels } : {}),
   ...(input.assignees !== undefined ? { assignees: input.assignees } : {}),
   ...(input.epic !== undefined ? { epic: input.epic } : {}),
-  ...(input.sprint !== undefined
-    ? { sprint: sprintDisplayTitle(input.sprint, config) }
-    : {}),
+  ...(input.sprint !== undefined ? { sprint: sprintDisplayTitle(input.sprint, config) } : {}),
 });
