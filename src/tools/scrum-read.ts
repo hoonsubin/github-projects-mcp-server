@@ -15,6 +15,13 @@ import {
 } from "../schemas/scrum.ts";
 import { z } from "zod";
 import {
+  AnalyticsResultSchema,
+  BacklogHealthSchema,
+  ItemDetailResultSchema,
+  ItemSearchResultSchema,
+  OrientResultSchema,
+} from "../schemas/scrum-outputs.ts";
+import {
   handleFindItems,
   handleGetAnalytics,
   handleGetBoardHealth,
@@ -66,6 +73,7 @@ export const registerScrumReadTools = (
 
         No arguments required. Pass {} or omit arguments entirely.`,
       inputSchema: z.object({ _: z.string().optional() }).shape,
+      outputSchema: OrientResultSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -94,6 +102,7 @@ export const registerScrumReadTools = (
 
         Returns: Story object with full body, comments array, and linked PR list.`,
       inputSchema: GetStorySchema.shape,
+      outputSchema: ItemDetailResultSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -147,6 +156,7 @@ export const registerScrumReadTools = (
           dependency_map: DependencyMap | null  - populated only when include_dependencies=true
         }`,
       inputSchema: FindItemsSchema.shape,
+      outputSchema: ItemSearchResultSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -188,6 +198,7 @@ export const registerScrumReadTools = (
           window: number
         }`,
       inputSchema: GetAnalyticsSchema.shape,
+      outputSchema: AnalyticsResultSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -222,6 +233,7 @@ export const registerScrumReadTools = (
           ungroomed_count: number
         }`,
       inputSchema: GetBoardHealthSchema.shape,
+      outputSchema: BacklogHealthSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,

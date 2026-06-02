@@ -45,6 +45,24 @@
         "file": "wire/ListMilestones_first_50_owner_hoonsubin_repo_github-projects-mcp-server_.json"
       },
       {
+        "hash": "GetRepoLabels:{\"owner\":\"hoonsubin\",\"repo\":\"github-projects-mcp-server\"}",
+        "operation": "GetRepoLabels",
+        "variables": {
+          "owner": "hoonsubin",
+          "repo": "github-projects-mcp-server"
+        },
+        "file": "wire/GetRepoLabels_owner_hoonsubin_repo_github-projects-mcp-server_.json"
+      },
+      {
+        "hash": "ListMilestones:{\"owner\":\"hoonsubin\",\"repo\":\"github-projects-mcp-server\"}",
+        "operation": "ListMilestones",
+        "variables": {
+          "owner": "hoonsubin",
+          "repo": "github-projects-mcp-server"
+        },
+        "file": "wire/ListMilestones_owner_hoonsubin_repo_github-projects-mcp-server_.json"
+      },
+      {
         "hash": "GetRepoLabels:{\"first\":100,\"owner\":\"hoonsubin\",\"repo\":\"github-projects-mcp-server\"}",
         "operation": "GetRepoLabels",
         "variables": {
@@ -117,6 +135,8 @@
     "wire/query_login_String_number_Int_cursor_String_user_login_login_p_login_hoonsubin_number_5_.json",
     "wire/query_login_String_number_Int_cursor_String_user_login_login_p_cursor_Y3Vyc29yOnYyOpK5MDAwMDAwMDAuMDA5NjQ2MzAyMjUwODAzOM4LBrUp_login_hoonsubin_number_5_.json",
     "wire/ListMilestones_first_50_owner_hoonsubin_repo_github-projects-mcp-server_.json",
+    "wire/GetRepoLabels_owner_hoonsubin_repo_github-projects-mcp-server_.json",
+    "wire/ListMilestones_owner_hoonsubin_repo_github-projects-mcp-server_.json",
     "wire/GetRepoLabels_first_100_owner_hoonsubin_repo_github-projects-mcp-server_.json",
     "wire/GetUserNodeId_login_hoonsubin_.json",
     "scenarios/orient/port-output.json",

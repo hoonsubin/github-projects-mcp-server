@@ -210,3 +210,138 @@ export const ImpedimentListingSchema = z.object({
   raised_at: z.string(),
   resolved_at: z.string().nullable(),
 }).strict();
+
+const ReadinessBreakdownSchema = z.object({
+  ready: z.number(),
+  not_ready: z.number(),
+  total: z.number(),
+}).strict();
+
+export const BacklogHealthSchema = z.object({
+  readiness: z.object({
+    by_type: z.record(z.string(), ReadinessBreakdownSchema),
+    overall_pct: z.number(),
+  }).strict(),
+  sprint_risk: z.object({
+    unestimated_count: z.number(),
+    blocked_count: z.number(),
+    no_assignee_count: z.number(),
+  }).strict().nullable(),
+  impediments: z.object({
+    orphan_count: z.number(),
+    open_count: z.number(),
+  }).strict(),
+  ungroomed_count: z.number(),
+  warnings: z.array(z.string()).optional(),
+}).strict();
+
+const SprintWindowMetaSchema = z.object({
+  name: z.string(),
+  start_date: z.string(),
+  end_date: z.string(),
+  duration_days: z.number(),
+  days_remaining: z.number(),
+}).strict();
+
+const BurndownResponseSchema = z.object({
+  sprint: SprintWindowMetaSchema,
+  data_source: z.enum(["audit_log", "issue_close_proxy"]),
+  warning: z.string().optional(),
+  series: z.array(z.object({
+    date: z.string(),
+    remaining_points: z.number(),
+    completed_points: z.number(),
+  }).strict()),
+  ideal: z.array(z.object({
+    date: z.string(),
+    remaining_points: z.number(),
+  }).strict()),
+  stories: z.array(z.object({
+    number: z.number(),
+    title: z.string(),
+    points: z.number(),
+    status: z.string().nullable(),
+    completed_at: z.string().nullable(),
+  }).strict()),
+}).strict();
+
+const SprintTotalsSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("active"),
+    by_status: z.record(z.string(), z.number()),
+    story_points: z.number(),
+  }).strict(),
+  z.object({
+    kind: z.literal("completed"),
+    by_status: z.record(z.string(), z.number()),
+    story_points: z.number(),
+    committed_points: z.number(),
+    completed_points: z.number(),
+  }).strict(),
+]);
+
+const SprintSnapshotSchema = z.object({
+  sprint: SprintWindowMetaSchema,
+  items: z.array(BacklogItemListingSchema),
+  total_count: z.number(),
+  totals: SprintTotalsSchema,
+}).strict();
+
+export const AnalyticsResultSchema = z.object({
+  burndown: BurndownResponseSchema.nullable(),
+  history: z.array(SprintSnapshotSchema).nullable(),
+  window: z.number(),
+  warnings: z.array(z.string()).optional(),
+}).strict();
+
+export const AddVocabularyResultSchema = z.object({
+  created: z.boolean(),
+  kind: z.string(),
+  value: z.string(),
+}).strict();
+
+const StoryRefOutputSchema = z.object({ id: z.string() }).passthrough();
+
+export const PlanSprintResultSchema = z.object({
+  sprint: z.union([z.string(), z.null()]),
+  assigned: z.array(StoryRefOutputSchema),
+  skipped: z.array(z.object({
+    ref: StoryRefOutputSchema,
+    reason: z.string(),
+  }).strict()),
+  goal: z.string().optional(),
+}).strict();
+
+export const CreateStoryPartialFailureSchema = z.object({
+  story: StorySchema,
+  partialFailure: z.literal(true),
+  failedFields: z.array(z.object({
+    field: z.string(),
+    reason: z.string(),
+  }).strict()),
+}).strict();
+
+export const CreateStoryResponseSchema = z.union([
+  CreateStoryPartialFailureSchema,
+  StorySchema,
+]);
+
+/** MCP outputSchema — superset accepting success Story or partial-failure envelope. */
+export const CreateStoryOutputSchema = StorySchema.extend({
+  partialFailure: z.literal(true).optional(),
+  failedFields: z.array(z.object({
+    field: z.string(),
+    reason: z.string(),
+  }).strict()).optional(),
+});
+
+export const LogImpedimentResultSchema = z.object({
+  impediment: ImpedimentListingSchema,
+  affects: z.unknown().nullable(),
+}).strict();
+
+export const SetFieldResponseSchema = StorySchema;
+
+export const UpdateStoryResponseSchema = StorySchema;
+
+export const UpdateImpedimentResponseSchema = ImpedimentListingSchema;

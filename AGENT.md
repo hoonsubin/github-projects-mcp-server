@@ -11,17 +11,34 @@ This file provides guidance to agents when working with code in this repository.
 
 ## Layer Contract
 
-Three layers. Inner layers never import outer.
+Handler → Use-case → Adapter. Violation signal: a handler that imports GraphQL queries, `loadConfig`, or any raw GitHub type is a layer breach - fix it before shipping.
 
-```
-Framework (src/tools/ + src/schemas/)  →  Zod validation, thin handlers
-Use-Case (src/scrum/ + src/domain/ + src/services/)  →  Pure computation, depends on port interface
-Adapter  (src/adapters/)               →  Implements ProjectBackend port
-```
+## Deno Module Conventions
 
-Entry: [`src/server.ts`](src/server.ts) — bootstraps McpServer, registers tools, selects transport.
+- MCP SDK imports end in `.js` (CJS interop - do **not** change to `.ts`): `@modelcontextprotocol/sdk/server/mcp.js`
+- Third-party packages declared in `deno.json` import map only; no CDN bare URLs.
+- Permissions: do not add `--allow-*` flags beyond what `deno.json` already declares.
 
-Violation signal: a handler that imports GraphQL queries, `loadConfig`, or any raw GitHub type is a layer breach.
+## Zod
+
+Validation happens at the handler boundary - use-cases receive typed values, not raw input.
+
+## Error Handling
+
+- Wrap unknown errors at handler boundary with `enrichError()` (`src/services/error-enrichment.ts`).
+- Handlers return plain structured text - **never throw to the MCP transport**.
+
+## Logging and Transport Safety
+
+- The server runs both `stdio` and `StreamableHTTP` transports simultaneously.
+- Never use `console.log` - it pollutes `stdio` and breaks the MCP wire format.
+- Use `log.*` from `src/services/logger.ts`; it gates output on `DEBUG` / `TRACE` env vars.
+
+## Testing
+
+- Test files: co-located `*.test.ts` or under `src/`. Run with `deno test`.
+- Use-cases are unit-tested with a stub `ProjectBackend` (pure TypeScript, no network).
+- Do not mock the GitHub adapter in integration paths - use fixture data or real API calls.
 
 ## Commands
 

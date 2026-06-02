@@ -15,6 +15,15 @@ import {
 } from "../schemas/scrum.ts";
 import { z } from "zod";
 import {
+  AddVocabularyResultSchema,
+  CreateStoryOutputSchema,
+  LogImpedimentResultSchema,
+  PlanSprintResultSchema,
+  SetFieldResponseSchema,
+  UpdateImpedimentResponseSchema,
+  UpdateStoryResponseSchema,
+} from "../schemas/scrum-outputs.ts";
+import {
   handleAddVocabulary,
   handleCreateStory,
   handleLogImpediment,
@@ -64,6 +73,7 @@ export const registerScrumWriteTools = (
 
         Safe to call if the value already exists - operation is idempotent.`,
       inputSchema: AddVocabularySchema.shape,
+      outputSchema: AddVocabularyResultSchema.shape,
       annotations: { role: "admin" },
     },
     (params: z.infer<typeof AddVocabularySchema>) => handleAddVocabulary(backend, params),
@@ -96,6 +106,7 @@ export const registerScrumWriteTools = (
 
         Returns: updated Story object.`,
       inputSchema: SetFieldSchema.shape,
+      outputSchema: SetFieldResponseSchema.shape,
       annotations: { role: "admin" },
     },
     (params: z.infer<typeof SetFieldSchema>) => handleSetField(backend, params),
@@ -127,6 +138,7 @@ export const registerScrumWriteTools = (
 
         Returns: updated Story object.`,
       inputSchema: UpdateStorySchema.shape,
+      outputSchema: UpdateStoryResponseSchema.shape,
       annotations: { role: "admin" },
     },
     (params: z.infer<typeof UpdateStorySchema>) => handleUpdateStory(backend, params),
@@ -158,6 +170,7 @@ export const registerScrumWriteTools = (
 
         Returns: created Story object, or partial-failure shape { story, partialFailure: true, failedFields[] }.`,
       inputSchema: CreateStorySchema.shape,
+      outputSchema: CreateStoryOutputSchema.shape,
       annotations: { role: "admin" },
     },
     (params: z.infer<typeof CreateStorySchema>) => handleCreateStory(backend, params),
@@ -182,6 +195,7 @@ export const registerScrumWriteTools = (
         Returns: { sprint, assigned: StoryRef[], skipped: [{ ref, reason }] }
         The operation continues through individual failures - check skipped[] for errors.`,
       inputSchema: PlanSprintSchema.shape,
+      outputSchema: PlanSprintResultSchema.shape,
       annotations: { role: "admin" },
     },
     (params: z.infer<typeof PlanSprintSchema>) => handlePlanSprint(backend, params),
@@ -207,6 +221,7 @@ export const registerScrumWriteTools = (
 
         Returns: the created impediment Story object.`,
       inputSchema: LogImpedimentSchema.shape,
+      outputSchema: LogImpedimentResultSchema.shape,
       annotations: { role: "admin" },
     },
     (params: z.infer<typeof LogImpedimentSchema>) =>
@@ -226,6 +241,7 @@ export const registerScrumWriteTools = (
 
         Returns: the updated ImpedimentListing.`,
       inputSchema: UpdateImpedimentSchema.shape,
+      outputSchema: UpdateImpedimentResponseSchema.shape,
       annotations: { role: "admin" },
     },
     (params: z.infer<typeof UpdateImpedimentSchema>) => handleUpdateImpediment(backend, params),

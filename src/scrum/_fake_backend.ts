@@ -7,6 +7,7 @@ import {
   AbstractProjectBackend,
   UnsupportedCapabilityError,
 } from "../adapters/abstract-backend.ts";
+import { AdapterError } from "../domain/errors.ts";
 import type { PlatformCapabilities } from "../adapters/capabilities.ts";
 import type {
   AnalyticsResult,
@@ -20,6 +21,7 @@ import type {
   SprintRef,
   Story,
   StoryRef,
+  SupportedBackend,
 } from "../domain/types.ts";
 import type {
   AnalyticsQuery,
@@ -63,6 +65,8 @@ export interface ConfigShapedFakeBackendOptions {
   boardHealth?: BacklogHealth;
   analytics?: AnalyticsResult;
   storyDetail?: StoryDetail;
+  /** When set, setField throws for this field (partial-failure contract tests). */
+  setFieldFailureOn?: ScrumField;
 }
 
 const DEFAULT_SPRINT: SprintInfo = {
@@ -150,6 +154,12 @@ const buildDefaultAnalytics = (profile: ConfigProfile): AnalyticsResult => ({
   window: profile.expectedVelocityWindow,
 });
 
+class FakeAdapterError extends AdapterError {
+  readonly backendName: SupportedBackend = "github";
+  readonly code = "NOT_FOUND";
+  readonly recovery = "Simulated adapter failure for contract tests.";
+}
+
 /**
  * In-memory backend for tool-surface contract tests.
  * Platform vocabulary and listing field values are derived from ConfigProfile.
@@ -165,6 +175,7 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
   private boardHealth: BacklogHealth;
   private analytics: AnalyticsResult;
   private storyDetail: StoryDetail;
+  private setFieldFailureOn?: ScrumField;
 
   constructor(profile: ConfigProfile, options: ConfigShapedFakeBackendOptions = {}) {
     super();
@@ -187,6 +198,7 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
       comments: [],
       linked_artifacts: [],
     };
+    this.setFieldFailureOn = options.setFieldFailureOn;
   }
 
   static fromBoot(
@@ -204,6 +216,31 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
       boardHealth: this.boardHealth,
       analytics: this.analytics,
       storyDetail: this.storyDetail,
+      setFieldFailureOn: this.setFieldFailureOn,
+    });
+  }
+
+  withSetFieldFailureOn(field: ScrumField): ConfigShapedFakeBackend {
+    return new ConfigShapedFakeBackend(this.profile, {
+      items: this.items,
+      epics: this.epics,
+      sprintCompletion: this.sprintCompletion,
+      boardHealth: this.boardHealth,
+      analytics: this.analytics,
+      storyDetail: this.storyDetail,
+      setFieldFailureOn: field,
+    });
+  }
+
+  withAnalytics(analytics: AnalyticsResult): ConfigShapedFakeBackend {
+    return new ConfigShapedFakeBackend(this.profile, {
+      items: this.items,
+      epics: this.epics,
+      sprintCompletion: this.sprintCompletion,
+      boardHealth: this.boardHealth,
+      analytics,
+      storyDetail: this.storyDetail,
+      setFieldFailureOn: this.setFieldFailureOn,
     });
   }
 
@@ -396,6 +433,9 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
     value: string | number | SprintRef | null,
   ): Promise<void> {
     this.log("setField", ref, field, value);
+    if (this.setFieldFailureOn === field) {
+      return Promise.reject(new FakeAdapterError(`Simulated failure setting ${field}`));
+    }
     return Promise.resolve();
   }
 
