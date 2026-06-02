@@ -39,7 +39,8 @@
     ".roo/",
     "docs/",
     "**/*.js",
-    "**/*.mjs"
+    "**/*.mjs",
+    "**/__fixtures__/"
   ],
   "compilerOptions": {
     "lib": [
@@ -59,8 +60,7 @@
     "exclude": [
       "**/_test*",
       "**/*.test.ts",
-      "**/test/",
-      "**/__fixtures__/"
+      "**/test/"
     ]
   },
   "fmt": {
