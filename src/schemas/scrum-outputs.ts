@@ -247,22 +247,28 @@ const BurndownResponseSchema = z.object({
   sprint: SprintWindowMetaSchema,
   data_source: z.enum(["audit_log", "issue_close_proxy"]),
   warning: z.string().optional(),
-  series: z.array(z.object({
-    date: z.string(),
-    remaining_points: z.number(),
-    completed_points: z.number(),
-  }).strict()),
-  ideal: z.array(z.object({
-    date: z.string(),
-    remaining_points: z.number(),
-  }).strict()),
-  stories: z.array(z.object({
-    number: z.number(),
-    title: z.string(),
-    points: z.number(),
-    status: z.string().nullable(),
-    completed_at: z.string().nullable(),
-  }).strict()),
+  series: z.array(
+    z.object({
+      date: z.string(),
+      remaining_points: z.number(),
+      completed_points: z.number(),
+    }).strict(),
+  ),
+  ideal: z.array(
+    z.object({
+      date: z.string(),
+      remaining_points: z.number(),
+    }).strict(),
+  ),
+  stories: z.array(
+    z.object({
+      number: z.number(),
+      title: z.string(),
+      points: z.number(),
+      status: z.string().nullable(),
+      completed_at: z.string().nullable(),
+    }).strict(),
+  ),
 }).strict();
 
 const SprintTotalsSchema = z.discriminatedUnion("kind", [
@@ -305,20 +311,24 @@ const StoryRefOutputSchema = z.object({ id: z.string() }).passthrough();
 export const PlanSprintResultSchema = z.object({
   sprint: z.union([z.string(), z.null()]),
   assigned: z.array(StoryRefOutputSchema),
-  skipped: z.array(z.object({
-    ref: StoryRefOutputSchema,
-    reason: z.string(),
-  }).strict()),
+  skipped: z.array(
+    z.object({
+      ref: StoryRefOutputSchema,
+      reason: z.string(),
+    }).strict(),
+  ),
   goal: z.string().optional(),
 }).strict();
 
 export const CreateStoryPartialFailureSchema = z.object({
   story: StorySchema,
   partialFailure: z.literal(true),
-  failedFields: z.array(z.object({
-    field: z.string(),
-    reason: z.string(),
-  }).strict()),
+  failedFields: z.array(
+    z.object({
+      field: z.string(),
+      reason: z.string(),
+    }).strict(),
+  ),
 }).strict();
 
 export const CreateStoryResponseSchema = z.union([
@@ -329,10 +339,12 @@ export const CreateStoryResponseSchema = z.union([
 /** MCP outputSchema — superset accepting success Story or partial-failure envelope. */
 export const CreateStoryOutputSchema = StorySchema.extend({
   partialFailure: z.literal(true).optional(),
-  failedFields: z.array(z.object({
-    field: z.string(),
-    reason: z.string(),
-  }).strict()).optional(),
+  failedFields: z.array(
+    z.object({
+      field: z.string(),
+      reason: z.string(),
+    }).strict(),
+  ).optional(),
 });
 
 export const LogImpedimentResultSchema = z.object({

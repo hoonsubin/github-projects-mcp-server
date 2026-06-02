@@ -8,7 +8,10 @@ import {
   committedFakeBackendPromise,
   committedScrumConfigPromise,
 } from "../scrum/_test_utils.ts";
-import { assertFindItemsMatchesConfig, assertOrientMatchesConfig } from "../scrum/_contract_assertions.ts";
+import {
+  assertFindItemsMatchesConfig,
+  assertOrientMatchesConfig,
+} from "../scrum/_contract_assertions.ts";
 import type { ItemSearchResult, OrientResult } from "../domain/types.ts";
 import {
   AnalyticsResultSchema,
@@ -115,7 +118,10 @@ Deno.test("scrum_get_analytics — both views schema", async () => {
   const backend = await committedFakeBackendPromise;
 
   assertHandlerSchema(
-    await handleGetAnalytics(backend, { view: "both", history_window: profile.expectedVelocityWindow }),
+    await handleGetAnalytics(backend, {
+      view: "both",
+      history_window: profile.expectedVelocityWindow,
+    }),
     AnalyticsResultSchema,
     "scrum_get_analytics (both)",
   );
@@ -131,7 +137,10 @@ Deno.test("scrum_get_analytics — history-only variant", async () => {
   const backend = (await committedFakeBackendPromise).withAnalytics(historyOnly);
 
   const payload = assertHandlerSchema(
-    await handleGetAnalytics(backend, { view: "history", history_window: profile.expectedVelocityWindow }),
+    await handleGetAnalytics(backend, {
+      view: "history",
+      history_window: profile.expectedVelocityWindow,
+    }),
     AnalyticsResultSchema,
     "scrum_get_analytics (history)",
   );

@@ -3,10 +3,7 @@
 // =============================================================================
 
 import { assertSnapshot } from "@std/testing/snapshot";
-import {
-  committedFakeBackendPromise,
-  committedScrumConfigPromise,
-} from "../scrum/_test_utils.ts";
+import { committedFakeBackendPromise, committedScrumConfigPromise } from "../scrum/_test_utils.ts";
 import { normalizeSnapshot } from "./_snapshot_normalize.ts";
 import { parseHandlerPayload } from "./_contract_test_utils.ts";
 import { handleFindItems, handleOrient } from "./scrum-read.ts";

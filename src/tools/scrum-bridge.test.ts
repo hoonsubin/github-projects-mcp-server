@@ -9,13 +9,13 @@ import {
   committedFixtureBackendPromise,
   committedScrumConfigPromise,
 } from "../scrum/_test_utils.ts";
-import { assertFindItemsMatchesConfig, assertOrientMatchesConfig } from "../scrum/_contract_assertions.ts";
+import {
+  assertFindItemsMatchesConfig,
+  assertOrientMatchesConfig,
+} from "../scrum/_contract_assertions.ts";
 import type { ItemSearchResult, OrientResult } from "../domain/types.ts";
 import { loadFixtureManifest } from "../adapters/github/internal/fixture-replay/load-manifest.ts";
-import {
-  ItemSearchResultSchema,
-  OrientResultSchema,
-} from "../schemas/scrum-outputs.ts";
+import { ItemSearchResultSchema, OrientResultSchema } from "../schemas/scrum-outputs.ts";
 import { assertHandlerSchema, parseHandlerPayload } from "./_contract_test_utils.ts";
 import { normalizeSnapshot } from "./_snapshot_normalize.ts";
 import { handleFindItems, handleOrient } from "./scrum-read.ts";
