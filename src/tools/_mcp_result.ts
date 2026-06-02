@@ -5,10 +5,12 @@
 /** Shape returned by scrum tool handlers before MCP SDK wrapping. */
 export interface McpTextResult {
   readonly content: ReadonlyArray<{ readonly type: "text"; readonly text: string }>;
+  readonly structuredContent?: Record<string, unknown>;
 }
 
 export const toMcpTextResult = (payload: unknown): McpTextResult => ({
   content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+  structuredContent: payload as Record<string, unknown>,
 });
 
 /** Parse the JSON payload from a tool handler's text content block. */

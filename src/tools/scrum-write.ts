@@ -168,7 +168,7 @@ export const registerScrumWriteTools = (
           assignees    string[] - GitHub logins
           sprint       "current" | "next" | "<sprint-name>" - places on board; omit for backlog
 
-        Returns: created Story object, or partial-failure shape { story, partialFailure: true, failedFields[] }.`,
+        Returns: created Story object, or the same fields with partialFailure: true and failedFields[].`,
       inputSchema: CreateStorySchema.shape,
       outputSchema: CreateStoryOutputSchema.shape,
       annotations: { role: "admin" },

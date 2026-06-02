@@ -20,11 +20,7 @@ import { pickDefined } from "../../services/pick-defined.ts";
 import type { z } from "zod";
 import { type McpTextResult, toMcpTextResult } from "../_mcp_result.ts";
 
-interface PartialFailureResult {
-  story: Story | StoryRef;
-  partialFailure: true;
-  failedFields: Array<{ field: string; reason: string }>;
-}
+type PartialFailureFields = Array<{ field: string; reason: string }>;
 
 export const resolveP0PriorityDisplay = (scrumConfig: ScrumConfig): string =>
   scrumConfig.priority_display?.[scrumConfig.scrum.priority?.[0]?.key ?? "p0"] ?? "Must";
@@ -85,7 +81,7 @@ export const handleCreateStory = async (
   params: z.infer<typeof CreateStorySchema>,
 ): Promise<McpTextResult> => {
   const storyRef = await backend.createStory(params as CreateStoryInput);
-  const failedFields: PartialFailureResult["failedFields"] = [];
+  const failedFields: PartialFailureFields = [];
 
   if (params.sprint !== undefined) {
     const sprintVal = params.sprint;
@@ -117,12 +113,11 @@ export const handleCreateStory = async (
   for (const reason of readWarnings) failedFields.push({ field: "read", reason });
 
   if (failedFields.length > 0) {
-    const result: PartialFailureResult & { story: Story } = {
-      story: storyDetail as Story,
+    return toMcpTextResult({
+      ...(storyDetail as Story),
       partialFailure: true,
       failedFields,
-    };
-    return toMcpTextResult(result);
+    });
   }
 
   return toMcpTextResult(storyDetail);

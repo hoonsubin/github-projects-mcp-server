@@ -57,7 +57,9 @@
   ],
   "compile": {
     "exclude": [
+      "**/_test*",
       "**/*.test.ts",
+      "**/test/",
       "**/__fixtures__/"
     ]
   },
