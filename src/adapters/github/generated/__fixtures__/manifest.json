@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "capturedAt": "2026-06-02T21:32:26.976Z",
+  "capturedAt": "2026-06-02T23:25:56.214Z",
   "platform": "github",
   "owner": "hoonsubin",
   "projectNumber": 5,
@@ -25,14 +25,14 @@
         "file": "wire/query_login_String_number_Int_cursor_String_user_login_login_p_login_hoonsubin_number_5_.json"
       },
       {
-        "hash": "query($login: String!, $number: Int!, $cursor: String) { user(login: $login) { p:{\"cursor\":\"Y3Vyc29yOnYyOpK5MDAwMDAwMDAuMDA5NjQ2MzAyMjUwODAzOM4LBrUp\",\"login\":\"hoonsubin\",\"number\":5}",
+        "hash": "query($login: String!, $number: Int!, $cursor: String) { user(login: $login) { p:{\"cursor\":\"Y3Vyc29yOnYyOpKrMDAwMDAwMDAuMDHOCzXmIQ==\",\"login\":\"hoonsubin\",\"number\":5}",
         "operation": "query($login: String!, $number: Int!, $cursor: String) { user(login: $login) { p",
         "variables": {
           "login": "hoonsubin",
           "number": 5,
-          "cursor": "Y3Vyc29yOnYyOpK5MDAwMDAwMDAuMDA5NjQ2MzAyMjUwODAzOM4LBrUp"
+          "cursor": "Y3Vyc29yOnYyOpKrMDAwMDAwMDAuMDHOCzXmIQ=="
         },
-        "file": "wire/query_login_String_number_Int_cursor_String_user_login_login_p_cursor_Y3Vyc29yOnYyOpK5MDAwMDAwMDAuMDA5NjQ2MzAyMjUwODAzOM4LBrUp_login_hoonsubin_number_5_.json"
+        "file": "wire/query_login_String_number_Int_cursor_String_user_login_login_p_cursor_Y3Vyc29yOnYyOpKrMDAwMDAwMDAuMDHOCzXmIQ_login_hoonsubin_number_5_.json"
       },
       {
         "hash": "ListMilestones:{\"first\":50,\"owner\":\"hoonsubin\",\"repo\":\"github-projects-mcp-server\"}",
@@ -43,24 +43,6 @@
           "first": 50
         },
         "file": "wire/ListMilestones_first_50_owner_hoonsubin_repo_github-projects-mcp-server_.json"
-      },
-      {
-        "hash": "GetRepoLabels:{\"owner\":\"hoonsubin\",\"repo\":\"github-projects-mcp-server\"}",
-        "operation": "GetRepoLabels",
-        "variables": {
-          "owner": "hoonsubin",
-          "repo": "github-projects-mcp-server"
-        },
-        "file": "wire/GetRepoLabels_owner_hoonsubin_repo_github-projects-mcp-server_.json"
-      },
-      {
-        "hash": "ListMilestones:{\"owner\":\"hoonsubin\",\"repo\":\"github-projects-mcp-server\"}",
-        "operation": "ListMilestones",
-        "variables": {
-          "owner": "hoonsubin",
-          "repo": "github-projects-mcp-server"
-        },
-        "file": "wire/ListMilestones_owner_hoonsubin_repo_github-projects-mcp-server_.json"
       },
       {
         "hash": "GetRepoLabels:{\"first\":100,\"owner\":\"hoonsubin\",\"repo\":\"github-projects-mcp-server\"}",
@@ -115,8 +97,8 @@
   },
   "catalog": {
     "sampleItemRef": {
-      "id": "PVTI_lAHOAmfLjc4BWiTtzgt_T0w",
-      "key": "209"
+      "id": "PVTI_lAHOAmfLjc4BWiTtzguSvrg",
+      "key": "222"
     },
     "sampleDraftRef": null,
     "activeSprintId": "07155ad6",
@@ -133,10 +115,8 @@
     "user-node-ids.json",
     "wire/GetUserProjectFieldsBootstrap_login_hoonsubin_number_5_.json",
     "wire/query_login_String_number_Int_cursor_String_user_login_login_p_login_hoonsubin_number_5_.json",
-    "wire/query_login_String_number_Int_cursor_String_user_login_login_p_cursor_Y3Vyc29yOnYyOpK5MDAwMDAwMDAuMDA5NjQ2MzAyMjUwODAzOM4LBrUp_login_hoonsubin_number_5_.json",
+    "wire/query_login_String_number_Int_cursor_String_user_login_login_p_cursor_Y3Vyc29yOnYyOpKrMDAwMDAwMDAuMDHOCzXmIQ_login_hoonsubin_number_5_.json",
     "wire/ListMilestones_first_50_owner_hoonsubin_repo_github-projects-mcp-server_.json",
-    "wire/GetRepoLabels_owner_hoonsubin_repo_github-projects-mcp-server_.json",
-    "wire/ListMilestones_owner_hoonsubin_repo_github-projects-mcp-server_.json",
     "wire/GetRepoLabels_first_100_owner_hoonsubin_repo_github-projects-mcp-server_.json",
     "wire/GetUserNodeId_login_hoonsubin_.json",
     "scenarios/orient/port-output.json",

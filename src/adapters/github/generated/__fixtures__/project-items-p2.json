@@ -6,9 +6,571 @@
         "totalCount": 163,
         "pageInfo": {
           "hasNextPage": false,
-          "endCursor": "Y3Vyc29yOnYyOpK5MDAwMDAwMDAuMDA0MjczNTA0MjczNTA0Ms4LoEAY"
+          "endCursor": "Y3Vyc29yOnYyOpK5MDAwMDAwMDAuMDA0MjM3Mjg4MTM1NTkzMs4Lotwg"
         },
         "nodes": [
+          {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgs15ss",
+            "type": "ISSUE",
+            "createdAt": "2026-05-15T13:55:22Z",
+            "updatedAt": "2026-05-20T11:22:39Z",
+            "isArchived": false,
+            "content": {
+              "__typename": "Issue",
+              "id": "I_kwDOSJo3Ms8AAAABCYFiWg",
+              "number": 57,
+              "title": "[Story]: scrum_orient field paths in 1_workflow.xml",
+              "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/57",
+              "state": "CLOSED",
+              "body": "# User Story\n\n## Pre-submission check\n- [ ] I have searched existing issues and this story is not already tracked.\n\n## As a…\ndeveloper\n\n## I want…\nto fix `scrum_orient` field paths in 1_workflow.xml\n\n## So that…\nthe agent uses correct field names after T.1 renames them\n\n## Acceptance Criteria\n- [ ] Every field path listed in Step 1 exists as a key in a real `scrum_orient` response\n- [ ] No reference to `declared_vocabulary`, `config.autonomy`, or nested `fields.*.missing_options` remains in Step 1\n\n## Story Point Estimate\n2\n\n## Affected component\nAgent mode (.roo/)\n\n## Additional context / notes\n### Implementation Steps\n- Open `.roo/rules-scrum-master/1_workflow.xml`, find Step 1 (session initialization)\n- Replace `declared_vocabulary` with `vocabulary` everywhere in Step 1\n- Replace `vocabulary.definition_of_ready` → `vocabulary.dor`\n- Replace `vocabulary.definition_of_done` → `vocabulary.dod`\n- Replace `config.autonomy` → `vocabulary.autonomy.require_confirmation_above_n_items`\n- Replace nested `platform_state.fields.*.missing_options` references → `platform_state.missing_options`\n\n### Dependencies\n- **Depends on:** #50 (orient response shape)\n- **Unblocks:** nothing",
+              "issueType": null,
+              "assignees": {
+                "nodes": []
+              },
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "feature",
+                    "color": "a29bfe"
+                  }
+                ]
+              },
+              "milestone": null,
+              "repository": {
+                "name": "github-projects-mcp-server",
+                "nameWithOwner": "hoonsubin/github-projects-mcp-server"
+              },
+              "blockedBy": {
+                "nodes": []
+              }
+            },
+            "fieldValues": {
+              "nodes": [
+                {
+                  "__typename": "ProjectV2ItemFieldRepositoryValue",
+                  "repository": {
+                    "name": "github-projects-mcp-server",
+                    "nameWithOwner": "hoonsubin/github-projects-mcp-server"
+                  },
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seo",
+                    "name": "Repository"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldLabelValue",
+                  "labels": {
+                    "nodes": [
+                      {
+                        "name": "feature",
+                        "color": "a29bfe"
+                      }
+                    ]
+                  },
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1sec",
+                    "name": "Labels"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldTextValue",
+                  "text": "[Story]: scrum_orient field paths in 1_workflow.xml",
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seQ",
+                    "name": "Title"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "name": "Could",
+                  "color": "YELLOW",
+                  "optionId": "a69f4b15",
+                  "field": {
+                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1soA",
+                    "name": "Priority"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldNumberValue",
+                  "number": 2,
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1soI",
+                    "name": "Story Points"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "name": "Done",
+                  "color": "GREEN",
+                  "optionId": "4ad38d58",
+                  "field": {
+                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1seY",
+                    "name": "Status"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "name": "User Story",
+                  "color": "YELLOW",
+                  "optionId": "bf0dd60d",
+                  "field": {
+                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhS9YWs",
+                    "name": "Type"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgs152I",
+            "type": "ISSUE",
+            "createdAt": "2026-05-15T13:55:44Z",
+            "updatedAt": "2026-05-20T20:33:36Z",
+            "isArchived": false,
+            "content": {
+              "__typename": "Issue",
+              "id": "I_kwDOSJo3Ms8AAAABCYFrfA",
+              "number": 58,
+              "title": "[Story]: Impediment de-duplication guidance",
+              "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/58",
+              "state": "CLOSED",
+              "body": "# User Story\n\n## Pre-submission check\n- [ ] I have searched existing issues and this story is not already tracked.\n\n## As a…\ndeveloper\n\n## I want…\nimpediment de-duplication guidance in the health check\n\n## So that…\nthe agent doesn't create duplicate impediments on every session start\n\n## Acceptance Criteria\n- [x] The health check step describes the de-duplication check before logging\n- [x] Duplicate impediment creation across sessions is not possible by following the rule\n\n## Story Point Estimate\n1\n\n## Affected component\nAgent mode (.roo/)\n\n## Additional context / notes\n### Implementation Steps\n- Open `.roo/rules-scrum-master/1_workflow.xml`, Step 3 (health check)\n- Before the `scrum_log_impediment` call instruction, insert: \"First call `scrum_get_backlog` with `labels: ['impediment']`. Only log a new impediment for blocked stories that have no matching open entry in that result.\"\n\n### Dependencies\n- **Depends on:** nothing (independent — start immediately)\n- **Unblocks:** nothing",
+              "issueType": null,
+              "assignees": {
+                "nodes": []
+              },
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "feature",
+                    "color": "a29bfe"
+                  }
+                ]
+              },
+              "milestone": null,
+              "repository": {
+                "name": "github-projects-mcp-server",
+                "nameWithOwner": "hoonsubin/github-projects-mcp-server"
+              },
+              "blockedBy": {
+                "nodes": []
+              }
+            },
+            "fieldValues": {
+              "nodes": [
+                {
+                  "__typename": "ProjectV2ItemFieldRepositoryValue",
+                  "repository": {
+                    "name": "github-projects-mcp-server",
+                    "nameWithOwner": "hoonsubin/github-projects-mcp-server"
+                  },
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seo",
+                    "name": "Repository"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldLabelValue",
+                  "labels": {
+                    "nodes": [
+                      {
+                        "name": "feature",
+                        "color": "a29bfe"
+                      }
+                    ]
+                  },
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1sec",
+                    "name": "Labels"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldTextValue",
+                  "text": "[Story]: Impediment de-duplication guidance",
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seQ",
+                    "name": "Title"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "name": "Could",
+                  "color": "YELLOW",
+                  "optionId": "a69f4b15",
+                  "field": {
+                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1soA",
+                    "name": "Priority"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "name": "Done",
+                  "color": "GREEN",
+                  "optionId": "4ad38d58",
+                  "field": {
+                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1seY",
+                    "name": "Status"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldNumberValue",
+                  "number": 1,
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1soI",
+                    "name": "Story Points"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldIterationValue",
+                  "title": "Sprint 2",
+                  "startDate": "2026-05-17",
+                  "duration": 6,
+                  "iterationId": "9085132c",
+                  "field": {
+                    "id": "PVTIF_lAHOAmfLjc4BWiTtzhR1soM",
+                    "name": "Sprint"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgs16PE",
+            "type": "ISSUE",
+            "createdAt": "2026-05-15T13:56:39Z",
+            "updatedAt": "2026-05-20T11:22:44Z",
+            "isArchived": false,
+            "content": {
+              "__typename": "Issue",
+              "id": "I_kwDOSJo3Ms8AAAABCYGEag",
+              "number": 59,
+              "title": "[Story]: Ceremony template delivery path",
+              "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/59",
+              "state": "CLOSED",
+              "body": "# User Story\n\n## Pre-submission check\n- [ ] I have searched existing issues and this story is not already tracked.\n\n## As a…\ndeveloper\n\n## I want…\nceremony templates to be delivered to GitHub Discussions\n\n## So that…\nceremony records are properly stored and accessible\n\n## Acceptance Criteria\n- [ ] Each of the five ceremony playbooks has an explicit final step naming the delivery target and command\n- [ ] The step references `ceremony_records.discussion_category` from config rather than a hardcoded category name\n\n## Story Point Estimate\n2\n\n## Affected component\nAgent mode (.roo/)\n\n## Additional context / notes\n### Implementation Steps\n- Open `1_workflow.xml`\n- For each of the five ceremony tool sequences (`sprint_planning`, `daily_standup`, `backlog_refinement`, `sprint_review`, `retrospective`), add a final step:\n  - \"Fill in the blank sections with session data. Post the completed document to GitHub Discussions under `ceremony_records.discussion_category` from `config.yml` using `gh discussion create` via `execute_command`.\"\n\n### Dependencies\n- **Depends on:** nothing (Won't priority — defer or remove from active backlog)\n- **Unblocks:** nothing",
+              "issueType": null,
+              "assignees": {
+                "nodes": []
+              },
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "feature",
+                    "color": "a29bfe"
+                  }
+                ]
+              },
+              "milestone": null,
+              "repository": {
+                "name": "github-projects-mcp-server",
+                "nameWithOwner": "hoonsubin/github-projects-mcp-server"
+              },
+              "blockedBy": {
+                "nodes": []
+              }
+            },
+            "fieldValues": {
+              "nodes": [
+                {
+                  "__typename": "ProjectV2ItemFieldRepositoryValue",
+                  "repository": {
+                    "name": "github-projects-mcp-server",
+                    "nameWithOwner": "hoonsubin/github-projects-mcp-server"
+                  },
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seo",
+                    "name": "Repository"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldLabelValue",
+                  "labels": {
+                    "nodes": [
+                      {
+                        "name": "feature",
+                        "color": "a29bfe"
+                      }
+                    ]
+                  },
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1sec",
+                    "name": "Labels"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldTextValue",
+                  "text": "[Story]: Ceremony template delivery path",
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seQ",
+                    "name": "Title"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "name": "Won't",
+                  "color": "PINK",
+                  "optionId": "c84aabd3",
+                  "field": {
+                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1soA",
+                    "name": "Priority"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "name": "Done",
+                  "color": "GREEN",
+                  "optionId": "4ad38d58",
+                  "field": {
+                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1seY",
+                    "name": "Status"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldNumberValue",
+                  "number": 2,
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1soI",
+                    "name": "Story Points"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "name": "User Story",
+                  "color": "YELLOW",
+                  "optionId": "bf0dd60d",
+                  "field": {
+                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhS9YWs",
+                    "name": "Type"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgsGtSY",
+            "type": "ISSUE",
+            "createdAt": "2026-05-07T23:02:56Z",
+            "updatedAt": "2026-05-19T13:45:44Z",
+            "isArchived": false,
+            "content": {
+              "__typename": "Issue",
+              "id": "I_kwDOSJo3Ms8AAAABBmk_3w",
+              "number": 16,
+              "title": "[Story]: Cutover and Cleanup (Phase 4)",
+              "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/16",
+              "state": "CLOSED",
+              "body": "# User Story\n\n## Pre-submission check\n- [ ] I have searched existing issues and this story is not already tracked.\n\n## As a…\ndeveloper completing the refactoring\n\n## I want…\nto switch the server to serve `scrum_*` tools and remove all legacy code\n\n## So that…\nthe codebase is clean, the new architecture is complete, and there is no confusion about which tools to use\n\n## Acceptance Criteria\n- [ ] `index.ts` registers `registerScrumReadTools` and `registerScrumWriteTools` instead of legacy tool registrations\n- [ ] Legacy tool files (`projects.ts`, `items.ts`, `repository.ts`) are deleted\n- [ ] Dead schemas removed from `schemas/inputs.ts`\n- [ ] Legacy types removed from `types.ts`; domain types moved to `src/domain/`\n- [ ] `github_graphql` tool has deprecation marker\n- [ ] `deno check src/index.ts` passes clean\n- [ ] All existing tests pass\n- [ ] Server starts and all 13 tools (7 read + 6 write) respond correctly\n\n## Story Point Estimate\n8\n\n## Affected component\nMCP tool surface (scrum_* tools)\n\n## Additional context / notes\n**Epic:** Refactoring Plan\n**Priority:** P3 — Final cleanup\n**Dependencies:** Story C (write tool implementations) must be complete and verified first",
+              "issueType": null,
+              "assignees": {
+                "nodes": []
+              },
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "feature",
+                    "color": "a29bfe"
+                  }
+                ]
+              },
+              "milestone": null,
+              "repository": {
+                "name": "github-projects-mcp-server",
+                "nameWithOwner": "hoonsubin/github-projects-mcp-server"
+              },
+              "blockedBy": {
+                "nodes": []
+              }
+            },
+            "fieldValues": {
+              "nodes": [
+                {
+                  "__typename": "ProjectV2ItemFieldRepositoryValue",
+                  "repository": {
+                    "name": "github-projects-mcp-server",
+                    "nameWithOwner": "hoonsubin/github-projects-mcp-server"
+                  },
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seo",
+                    "name": "Repository"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldLabelValue",
+                  "labels": {
+                    "nodes": [
+                      {
+                        "name": "feature",
+                        "color": "a29bfe"
+                      }
+                    ]
+                  },
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1sec",
+                    "name": "Labels"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldTextValue",
+                  "text": "[Story]: Cutover and Cleanup (Phase 4)",
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seQ",
+                    "name": "Title"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "name": "Done",
+                  "color": "GREEN",
+                  "optionId": "4ad38d58",
+                  "field": {
+                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1seY",
+                    "name": "Status"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "name": "Must",
+                  "color": "RED",
+                  "optionId": "457ca5cd",
+                  "field": {
+                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1soA",
+                    "name": "Priority"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldNumberValue",
+                  "number": 8,
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1soI",
+                    "name": "Story Points"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldIterationValue",
+                  "title": "Sprint 1",
+                  "startDate": "2026-05-03",
+                  "duration": 14,
+                  "iterationId": "b1710bb8",
+                  "field": {
+                    "id": "PVTIF_lAHOAmfLjc4BWiTtzhR1soM",
+                    "name": "Sprint"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgsGtSk",
+            "type": "ISSUE",
+            "createdAt": "2026-05-07T23:02:56Z",
+            "updatedAt": "2026-05-20T11:30:11Z",
+            "isArchived": false,
+            "content": {
+              "__typename": "Issue",
+              "id": "I_kwDOSJo3Ms8AAAABBmlAGw",
+              "number": 17,
+              "title": "[Story]: Implement scrum_plan_sprint Write Tool",
+              "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/17",
+              "state": "CLOSED",
+              "body": "# User Story\n\n## Pre-submission check\n- [ ] I have searched existing issues and this story is not already tracked.\n\n## As a…\nAI agent\n\n## I want…\nto bulk-assign multiple stories to a sprint in one call\n\n## So that…\nI can commit scope during sprint planning efficiently\n\n## Acceptance Criteria\n- [ ] Accepts `sprint: SprintRef`, `stories: StoryRef[]`, `replace: boolean` (default false)\n- [ ] If `replace: true`: fetch existing sprint items and clear sprint field on each first\n- [ ] For each story: calls `resolveStory`, then applies sprint field-set logic\n- [ ] Collects `assigned` refs and `skipped` entries (`{ ref, reason }`)\n- [ ] Returns partial-success report: `{ assigned: StoryRef[], skipped: [{ ref, reason }] }`\n- [ ] Handles conflicts gracefully (e.g., story already in sprint)\n\n## Story Point Estimate\n3\n\n## Affected component\nMCP tool surface (scrum_* tools)\n\n## Additional context / notes\n**Epic:** Refactoring Plan\n**Priority:** P0 — Critical path\n\n### Dependencies\n- **Depends on:** #14 (Write Tool Implementations Phase 3)\n- **Unblocks:** #19 (Cutover and Cleanup Phase 4)",
+              "issueType": null,
+              "assignees": {
+                "nodes": []
+              },
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "feature",
+                    "color": "a29bfe"
+                  }
+                ]
+              },
+              "milestone": null,
+              "repository": {
+                "name": "github-projects-mcp-server",
+                "nameWithOwner": "hoonsubin/github-projects-mcp-server"
+              },
+              "blockedBy": {
+                "nodes": []
+              }
+            },
+            "fieldValues": {
+              "nodes": [
+                {
+                  "__typename": "ProjectV2ItemFieldRepositoryValue",
+                  "repository": {
+                    "name": "github-projects-mcp-server",
+                    "nameWithOwner": "hoonsubin/github-projects-mcp-server"
+                  },
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seo",
+                    "name": "Repository"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldLabelValue",
+                  "labels": {
+                    "nodes": [
+                      {
+                        "name": "feature",
+                        "color": "a29bfe"
+                      }
+                    ]
+                  },
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1sec",
+                    "name": "Labels"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldTextValue",
+                  "text": "[Story]: Implement scrum_plan_sprint Write Tool",
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seQ",
+                    "name": "Title"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "name": "Done",
+                  "color": "GREEN",
+                  "optionId": "4ad38d58",
+                  "field": {
+                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1seY",
+                    "name": "Status"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "name": "Must",
+                  "color": "RED",
+                  "optionId": "457ca5cd",
+                  "field": {
+                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1soA",
+                    "name": "Priority"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldNumberValue",
+                  "number": 3,
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1soI",
+                    "name": "Story Points"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "name": "User Story",
+                  "color": "YELLOW",
+                  "optionId": "bf0dd60d",
+                  "field": {
+                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhS9YWs",
+                    "name": "Type"
+                  }
+                }
+              ]
+            }
+          },
           {
             "id": "PVTI_lAHOAmfLjc4BWiTtzgs16wo",
             "type": "ISSUE",
@@ -5644,16 +6206,16 @@
             "id": "PVTI_lAHOAmfLjc4BWiTtzgt_Oro",
             "type": "ISSUE",
             "createdAt": "2026-05-27T21:33:50Z",
-            "updatedAt": "2026-06-02T10:07:20Z",
+            "updatedAt": "2026-06-02T22:32:25Z",
             "isArchived": false,
             "content": {
               "__typename": "Issue",
               "id": "I_kwDOSJo3Ms8AAAABDlw8vA",
               "number": 187,
-              "title": "[User Story]: Agent can see non-canonical project fields in search results — normalizer passes through all field values",
+              "title": "[Bug]: Non-canonical project fields (deadlines, custom scores, flags) silently dropped in scrum_find_items — custom_fields sparsely populated",
               "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/187",
               "state": "OPEN",
-              "body": "### User Story\n\nAs an **agent user searching the backlog**, I want to see **all project field values in custom_fields**, so that **deadlines, custom scores, non-standard flags, and other project-specific metadata are available for filtering and decision-making**.\n\n### Problem\n\nThe `custom_fields` field exists in `BacklogItemListing` but is sparsely populated. Non-canonical project fields (deadlines, custom scores, non-standard flags) are silently dropped in the mapping layer because the query and mapper are coupled to only the four canonical fields.\n\n### Solution\n\nExtend the normalizer to include all field value types from the GraphQL response in `custom_fields`. The normalizer does not filter or interpret non-canonical metadata — it passes through everything. The agent receives it; the agent decides whether it is meaningful.\n\n### Acceptance Criteria\n- [ ] `custom_fields` in `BacklogItemListing` populated with all field values from the GraphQL response\n- [ ] Non-canonical fields (deadlines, custom scores, flags) appear in results alongside canonical fields\n- [ ] No field value types are silently dropped in the mapping layer\n- [ ] Existing tests pass; new tests cover passthrough of non-canonical field types\n- [ ] No changes to domain types, port interfaces, or use-case functions\n\n### Dependencies\n- [ ] Fragment library extracted (item #185)",
+              "body": "## Problem\n\n`scrum_find_items` responses include a `custom_fields` field in `BacklogItemListing` but it is sparsely populated. Non-canonical project fields — deadlines, custom numeric scores, non-standard flags, and any board field outside the Scrum vocabulary — are silently dropped in the mapping layer.\n\nThe query and mapper are coupled to a fixed set of canonical field types (iteration, single-select, number, and a small named set). Any ProjectV2 field a team configures outside that set is invisible in `scrum_find_items` output, even when it contains decision-relevant data. There is no error or warning — the fields are simply absent.\n\n## Impact\n\nAgents cannot filter, sort, or act on project-specific metadata that teams commonly use: due dates, custom priority scores, effort estimates in non-standard fields. The data exists in GitHub Projects but never reaches the agent.\n\n## Context — relationship to #216\n\nBoth issues affect `custom_fields` but in opposite directions:\n\n| Issue | Problem |\n|---|---|\n| #216 | Canonical fields *incorrectly included* in `custom_fields` (duplication, noise) |\n| This issue | Non-canonical fields *incorrectly excluded* from `custom_fields` (missing signal) |\n\nThe correct end state: `custom_fields` contains *only* non-canonical fields, and *all* of them. These two issues should be resolved together or in immediate sequence.\n\n## Affected file\n\n`src/adapters/github/internal/result-normalizer.ts` — field value mapping in `enrichListingCustomFields()`\n\n## Acceptance Criteria\n- [ ] All non-canonical field value types from the GraphQL response appear in `custom_fields`\n- [ ] No non-canonical field type is silently dropped in the mapping layer\n- [ ] Canonical fields (Title, Status, Type, Priority, Story Points, Sprint, Assignees, Labels, Milestone, Repository) are not present in `custom_fields` (handled by #216)\n- [ ] Existing tests pass; new tests cover passthrough of non-canonical field types\n- [ ] No changes to domain types, port interfaces, or use-case functions",
               "issueType": null,
               "assignees": {
                 "nodes": []
@@ -5734,7 +6296,7 @@
                 },
                 {
                   "__typename": "ProjectV2ItemFieldTextValue",
-                  "text": "[User Story]: Agent can see non-canonical project fields in search results — normalizer passes through all field values",
+                  "text": "[Bug]: Non-canonical project fields (deadlines, custom scores, flags) silently dropped in scrum_find_items — custom_fields sparsely populated",
                   "field": {
                     "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seQ",
                     "name": "Title"
@@ -5796,7 +6358,7 @@
             "id": "PVTI_lAHOAmfLjc4BWiTtzgt_Ouc",
             "type": "ISSUE",
             "createdAt": "2026-05-27T21:34:01Z",
-            "updatedAt": "2026-06-02T17:23:39Z",
+            "updatedAt": "2026-06-02T22:15:42Z",
             "isArchived": false,
             "content": {
               "__typename": "Issue",
@@ -5804,7 +6366,7 @@
               "number": 188,
               "title": "[Spike]: Design search API query assembler — validate GraphQL shape, routing rules, and fallback behavior",
               "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/188",
-              "state": "OPEN",
+              "state": "CLOSED",
               "body": "### Purpose\n\nInvestigate and validate the GitHub Search API query shape for backlog search before committing to implementation.\n\n### Investigation Goals\n- [ ] Validate the GraphQL `search(type: ISSUE)` query shape returns project item field values correctly\n- [ ] Confirm routing rules: `keys` → direct lookup, `search`/`labels`/`assignee` only → search API, board fields → project items\n- [ ] Determine fallback behavior when filter includes both board fields and text/labels\n- [ ] Confirm draft issue handling (drafts don't appear in search results — what's the UX?)\n- [ ] Validate search string composition: `repo:owner/repo is:issue is:open + filters`\n- [ ] Measure performance: does search API actually reduce latency vs. full board scan?\n\n### Output\nA brief findings document (in a comment on this item) with:\n- Confirmed GraphQL query shape with example response\n- Routing table with validated constraints\n- Performance comparison data\n- Any API limitations or gotchas discovered\n\n### Timebox\n8 hours\n\n### Dependencies\n- [ ] Strategy router exists for wiring (item #186)",
               "issueType": null,
               "assignees": {
@@ -5914,9 +6476,9 @@
                 },
                 {
                   "__typename": "ProjectV2ItemFieldSingleSelectValue",
-                  "name": "Backlog",
-                  "color": "PURPLE",
-                  "optionId": "f75ad846",
+                  "name": "Done",
+                  "color": "GREEN",
+                  "optionId": "4ad38d58",
                   "field": {
                     "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1seY",
                     "name": "Status"
@@ -5948,7 +6510,7 @@
             "id": "PVTI_lAHOAmfLjc4BWiTtzgt_PHI",
             "type": "ISSUE",
             "createdAt": "2026-05-27T21:35:46Z",
-            "updatedAt": "2026-06-02T10:07:49Z",
+            "updatedAt": "2026-06-02T22:19:27Z",
             "isArchived": false,
             "content": {
               "__typename": "Issue",
@@ -5956,7 +6518,7 @@
               "number": 189,
               "title": "[User Story]: Agent can search backlog by text, labels, and assignee using GitHub Search API",
               "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/189",
-              "state": "OPEN",
+              "state": "CLOSED",
               "body": "### User Story\n\nAs an **agent user searching the backlog**, I want to search by **text, labels, and assignee using the GitHub Search API**, so that **queries are faster and don't require a full board scan**.\n\n### Problem\n\nThe current implementation always performs a full project item scan → client-side filter. Text search, label filters, and assignee filters are all applied in-memory after fetching every item. This is slow and wasteful when the user only needs a text match.\n\n### Solution\n\nImplement the search API execution path:\n- `SearchQueryBuilder` assembles a GitHub Search GraphQL query from the filter\n- `SearchResultNormalizer` maps the inverted response shape (issues with nested `projectItems`) into `BacklogItemListing[]`\n- Wire into the `FilterStrategyRouter` as the `SEARCH_API` path\n\n### Acceptance Criteria\n- [ ] `SearchQueryBuilder` produces valid GraphQL search queries from `ResolvedItemFilter`\n- [ ] `SearchResultNormalizer` correctly maps search response into `BacklogItemListing[]` with all fields populated\n- [ ] Text search, label filter, and assignee filter use the search API path when no board fields are present\n- [ ] Board field filters fall back to project item pagination (search API can't serve them)\n- [ ] Agent experiences faster search results for text/label/assignee queries\n- [ ] Existing tests pass; new tests cover search API path\n- [ ] No changes to port interfaces, use-case functions, or tool handlers\n\n### Dependencies\n- [ ] Strategy router exists for wiring (item #186)\n- [ ] Search query design validated (Spike)",
               "issueType": null,
               "assignees": {
@@ -6061,9 +6623,9 @@
                 },
                 {
                   "__typename": "ProjectV2ItemFieldSingleSelectValue",
-                  "name": "Backlog",
-                  "color": "PURPLE",
-                  "optionId": "f75ad846",
+                  "name": "Done",
+                  "color": "GREEN",
+                  "optionId": "4ad38d58",
                   "field": {
                     "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1seY",
                     "name": "Status"
@@ -6105,7 +6667,7 @@
             "id": "PVTI_lAHOAmfLjc4BWiTtzgt_PuI",
             "type": "ISSUE",
             "createdAt": "2026-05-27T21:38:19Z",
-            "updatedAt": "2026-06-02T10:06:30Z",
+            "updatedAt": "2026-06-02T22:15:45Z",
             "isArchived": false,
             "content": {
               "__typename": "Issue",
@@ -6113,7 +6675,7 @@
               "number": 191,
               "title": "[User Story]: Developer adding a new backend has AbstractAssembler with port method defaults — only implements assembly and normalization",
               "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/191",
-              "state": "OPEN",
+              "state": "CLOSED",
               "body": "### User Story\n\nAs a **developer adding a new backend integration**, I want **an `AbstractAssembler` base class with port method defaults**, so that **I only implement assembly and normalization methods — the execute + return pattern is provided**.\n\n### Problem\n\nWithout an abstract base class, every new backend implementer must re-implement the entire data flow: assemble requests, execute them, normalize responses, handle capability checks, and surface warnings. This is repetitive and error-prone.\n\n### Solution\n\nImplement `AbstractAssembler` with:\n- Abstract methods for assembly (`assembleItemSearch`, `assembleItemFetch`, etc.) and normalization (`normalizeItemList`, `normalizeSingleItem`, etc.)\n- Concrete port method defaults that call the `assemble → execute → normalize → return` pattern\n- Capability check before assembly: `UNAVAILABLE` → throw `CapabilityUnavailableError`; `EMULATED` → proceed + append warning\n- Error decoration: raw HTTP/GraphQL errors wrapped in `BackendError` subclasses\n\n### Acceptance Criteria\n- [ ] `AbstractAssembler` exists with all abstract `assemble*` and `normalize*` method signatures\n- [ ] Port method defaults (`findItems`, `getStory`, `createItem`, `setField`, `getSprint`, `getAnalytics`) follow assemble → execute → normalize pattern\n- [ ] Capability checks gate execution — `UNAVAILABLE` ops throw before assembly\n- [ ] `EMULATED` ops proceed with warning appended to result\n- [ ] Raw platform errors decorated into `BackendError` subclasses\n- [ ] GitHub concrete assembler implements the contract and passes existing tests\n- [ ] No changes to port interfaces, use-case functions, or tool handlers\n\n### Dependencies\n- [ ] AbstractAssembler design spike completed",
               "issueType": null,
               "assignees": {
@@ -6223,9 +6785,9 @@
                 },
                 {
                   "__typename": "ProjectV2ItemFieldSingleSelectValue",
-                  "name": "Backlog",
-                  "color": "PURPLE",
-                  "optionId": "f75ad846",
+                  "name": "Done",
+                  "color": "GREEN",
+                  "optionId": "4ad38d58",
                   "field": {
                     "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1seY",
                     "name": "Status"
@@ -6234,163 +6796,6 @@
                 {
                   "__typename": "ProjectV2ItemFieldNumberValue",
                   "number": 3,
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1soI",
-                    "name": "Story Points"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldIterationValue",
-                  "title": "Sprint 4",
-                  "startDate": "2026-06-02",
-                  "duration": 11,
-                  "iterationId": "07155ad6",
-                  "field": {
-                    "id": "PVTIF_lAHOAmfLjc4BWiTtzhR1soM",
-                    "name": "Sprint"
-                  }
-                }
-              ]
-            }
-          },
-          {
-            "id": "PVTI_lAHOAmfLjc4BWiTtzgt_P2U",
-            "type": "ISSUE",
-            "createdAt": "2026-05-27T21:38:51Z",
-            "updatedAt": "2026-06-02T10:08:07Z",
-            "isArchived": false,
-            "content": {
-              "__typename": "Issue",
-              "id": "I_kwDOSJo3Ms8AAAABDlynAA",
-              "number": 192,
-              "title": "[User Story]: Developer has PlatformVocabularyMap interface + GitHub implementation — all Scrum concepts mapped to/from GitHub primitives",
-              "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/192",
-              "state": "OPEN",
-              "body": "### User Story\n\nAs a **developer adding a new backend integration**, I have **a `PlatformVocabularyMap` interface with a working GitHub implementation**, so that **I understand how Scrum concepts translate to platform primitives — and can replicate the pattern for my backend**.\n\n### Problem\n\nWithout a formal vocabulary mapping, each backend implements Scrum concept encoding/decoding ad-hoc. There's no contract for how `type`, `status`, `sprint`, `priority`, `story_points`, `epic`, `blocked_by`, and `labels` map between Scrum semantics and platform primitives.\n\n### Solution\n\nImplement `PlatformVocabularyMap` interface and GitHub concrete implementation:\n- For each Scrum concept: `support: CapabilityStatus`, `encode(ScrumValue) → PlatformValue`, `decode(PlatformValue) → ScrumValue`, `constraint?: string`\n- `isSpecialLabel(platformLabel) → boolean` — returns true if label encodes Scrum metadata\n- `extractUserLabels(allPlatformLabels) → string[]` — strips special labels, returns user-facing ones\n- GitHub implementation maps type/status/sprint/priority/story_points/epic/blocked_by through GitHub Projects V2 custom fields\n\n### Acceptance Criteria\n- [ ] `PlatformVocabularyMap` interface defined with encode/decode/constraint per Scrum concept\n- [ ] GitHub implementation decodes all concepts from project V2 field values correctly\n- [ ] `isSpecialLabel` correctly identifies Scrum metadata labels vs. user labels\n- [ ] `extractUserLabels` strips special labels, returns only user-facing ones\n- [ ] Normalizer uses vocabulary map for all field decode calls\n- [ ] Existing tests pass with the vocabulary map integrated\n\n### Dependencies\n- [ ] AbstractAssembler implemented\n- [ ] CapabilityStatus enum exists",
-              "issueType": null,
-              "assignees": {
-                "nodes": []
-              },
-              "labels": {
-                "nodes": [
-                  {
-                    "name": "feature",
-                    "color": "a29bfe"
-                  },
-                  {
-                    "name": "adapter layer",
-                    "color": "e69dd2"
-                  }
-                ]
-              },
-              "milestone": {
-                "id": "MI_kwDOSJo3Ms4A9dd1",
-                "title": "Adapter Layer Assembly Pattern",
-                "dueOn": null
-              },
-              "repository": {
-                "name": "github-projects-mcp-server",
-                "nameWithOwner": "hoonsubin/github-projects-mcp-server"
-              },
-              "blockedBy": {
-                "nodes": [
-                  {
-                    "id": "I_kwDOSJo3Ms8AAAABDlzDvA",
-                    "number": 195,
-                    "title": "[User Story]: Agent receives factual capability statements — NATIVE/EMULATED/UNAVAILABLE for every operation"
-                  },
-                  {
-                    "id": "I_kwDOSJo3Ms8AAAABDlydKQ",
-                    "number": 191,
-                    "title": "[User Story]: Developer adding a new backend has AbstractAssembler with port method defaults — only implements assembly and normalization"
-                  }
-                ]
-              }
-            },
-            "fieldValues": {
-              "nodes": [
-                {
-                  "__typename": "ProjectV2ItemFieldRepositoryValue",
-                  "repository": {
-                    "name": "github-projects-mcp-server",
-                    "nameWithOwner": "hoonsubin/github-projects-mcp-server"
-                  },
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seo",
-                    "name": "Repository"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldLabelValue",
-                  "labels": {
-                    "nodes": [
-                      {
-                        "name": "feature",
-                        "color": "a29bfe"
-                      },
-                      {
-                        "name": "adapter layer",
-                        "color": "e69dd2"
-                      }
-                    ]
-                  },
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1sec",
-                    "name": "Labels"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldMilestoneValue",
-                  "milestone": {
-                    "title": "Adapter Layer Assembly Pattern",
-                    "dueOn": null
-                  },
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1sek",
-                    "name": "Milestone"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldTextValue",
-                  "text": "[User Story]: Developer has PlatformVocabularyMap interface + GitHub implementation — all Scrum concepts mapped to/from GitHub primitives",
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seQ",
-                    "name": "Title"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
-                  "name": "User Story",
-                  "color": "YELLOW",
-                  "optionId": "bf0dd60d",
-                  "field": {
-                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhS9YWs",
-                    "name": "Type"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
-                  "name": "Could",
-                  "color": "YELLOW",
-                  "optionId": "a69f4b15",
-                  "field": {
-                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1soA",
-                    "name": "Priority"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
-                  "name": "Backlog",
-                  "color": "PURPLE",
-                  "optionId": "f75ad846",
-                  "field": {
-                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1seY",
-                    "name": "Status"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldNumberValue",
-                  "number": 2,
                   "field": {
                     "id": "PVTF_lAHOAmfLjc4BWiTtzhR1soI",
                     "name": "Story Points"
@@ -6560,7 +6965,7 @@
             "id": "PVTI_lAHOAmfLjc4BWiTtzgt_QRQ",
             "type": "ISSUE",
             "createdAt": "2026-05-27T21:40:31Z",
-            "updatedAt": "2026-06-02T10:07:08Z",
+            "updatedAt": "2026-06-02T22:15:46Z",
             "isArchived": false,
             "content": {
               "__typename": "Issue",
@@ -6568,7 +6973,7 @@
               "number": 196,
               "title": "[User Story]: Agent receives actionable error guidance — BackendError subclasses with recoverySuggestion",
               "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/196",
-              "state": "OPEN",
+              "state": "CLOSED",
               "body": "### User Story\n\nAs an **agent user**, I want to receive **actionable error guidance from the backend** (typed `BackendError` subclasses with recovery suggestions), so that **I can recover from errors without seeing raw stack traces or cryptic HTTP status codes**.\n\n### Problem\n\nRaw HTTP/GraphQL errors surface as generic strings or stack traces. The agent can't interpret whether an error is an auth issue (check the token), a rate limit (retry in X seconds), a capability gap (try a different approach), or a platform constraint (results are partial).\n\n### Solution\n\nImplement the error decoration hierarchy:\n\n```\nBackendError (base)\nBackendAuthError          — token missing/expired → check env var\nCapabilityUnavailableError — op can't be expressed → try alternative\nCapabilityEmulationWarning — op works with encoding conventions\nPlatformConstraintError    — partial/reduced fidelity result\nBackendRateLimitError      — retry after X seconds\n```\n\nThe abstract assembler's `execute()` wrapper catches raw errors from the execution engine and re-throws them as typed `BackendError` subclasses. Each carries a `recoverySuggestion` the agent can surface to the user.\n\n### Acceptance Criteria\n- [ ] `BackendError` base class with `capability`, `platform`, `recoverySuggestion`, `platformContext` fields\n- [ ] All five error subclasses implemented with appropriate `recoverySuggestion` defaults\n- [ ] `AbstractAssembler.execute()` wraps raw errors into typed subclasses\n- [ ] Use-case functions catch `CapabilityUnavailableError` → surface in `warnings[]`\n- [ ] Fatal errors produce structured error strings (not stack traces) in tool responses\n- [ ] Agent never sees a raw HTTP status code or GraphQL error\n\n### Dependencies\n- [ ] AbstractAssembler implemented\n- [ ] CapabilityStatus enum exists",
               "issueType": null,
               "assignees": {
@@ -6673,9 +7078,9 @@
                 },
                 {
                   "__typename": "ProjectV2ItemFieldSingleSelectValue",
-                  "name": "Backlog",
-                  "color": "PURPLE",
-                  "optionId": "f75ad846",
+                  "name": "Done",
+                  "color": "GREEN",
+                  "optionId": "4ad38d58",
                   "field": {
                     "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1seY",
                     "name": "Status"
@@ -6849,652 +7254,6 @@
                   "field": {
                     "id": "PVTF_lAHOAmfLjc4BWiTtzhR1soI",
                     "name": "Story Points"
-                  }
-                }
-              ]
-            }
-          },
-          {
-            "id": "PVTI_lAHOAmfLjc4BWiTtzguSudU",
-            "type": "ISSUE",
-            "createdAt": "2026-05-31T11:56:58Z",
-            "updatedAt": "2026-06-02T17:22:52Z",
-            "isArchived": false,
-            "content": {
-              "__typename": "Issue",
-              "id": "I_kwDOSJo3Ms8AAAABD6V9lQ",
-              "number": 214,
-              "title": "[Bug]: estimated:false filter returns Pull Requests and Done items as unestimated backlog",
-              "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/214",
-              "state": "OPEN",
-              "body": "**Observed behaviour:** `scrum_find_items` with `estimated: false` returns Pull Request items and Done-status issues as unestimated backlog candidates. Pull Requests are never estimable PBIs and should not appear in estimation gap reports.\n\n**Expected behaviour:** The `estimated: false` filter returns only Issues (not PRs) with no story points, and excludes terminal-status items unless `statuses` is explicitly provided.\n\n**Root cause:** The estimation predicate in `item-filter.ts` does not gate on item kind:\n```ts\nif (!filter.estimated && (story.story_points ?? 0) !== 0) return false;\n```\nPRs have `story_points: null` and always pass this check.\n\n**Fix:**\n1. Skip estimation filtering for Pull Request items (`story.kind === \"pull_request\"`)\n2. When `estimated: false` is used without an explicit `statuses` filter, exclude terminal-status items (Done) by default\n\n## Acceptance Criteria\n- [ ] `scrum_find_items({ scope: \"backlog\", estimated: false })` returns no Pull Request items\n- [ ] Done-status items are excluded from `estimated: false` results unless `statuses` explicitly includes `\"Done\"`\n- [ ] `estimated: true` continues to work correctly for Issues with story points set\n- [ ] A genuine Issue with `story_points: null` and status `\"Backlog\"` is still returned by `estimated: false`",
-              "issueType": null,
-              "assignees": {
-                "nodes": []
-              },
-              "labels": {
-                "nodes": [
-                  {
-                    "name": "tool bug",
-                    "color": "e1012b"
-                  },
-                  {
-                    "name": "adapter layer",
-                    "color": "e69dd2"
-                  }
-                ]
-              },
-              "milestone": {
-                "id": "MI_kwDOSJo3Ms4A9EBk",
-                "title": "Bug Fixes & Diagnostics",
-                "dueOn": null
-              },
-              "repository": {
-                "name": "github-projects-mcp-server",
-                "nameWithOwner": "hoonsubin/github-projects-mcp-server"
-              },
-              "blockedBy": {
-                "nodes": []
-              }
-            },
-            "fieldValues": {
-              "nodes": [
-                {
-                  "__typename": "ProjectV2ItemFieldRepositoryValue",
-                  "repository": {
-                    "name": "github-projects-mcp-server",
-                    "nameWithOwner": "hoonsubin/github-projects-mcp-server"
-                  },
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seo",
-                    "name": "Repository"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldLabelValue",
-                  "labels": {
-                    "nodes": [
-                      {
-                        "name": "tool bug",
-                        "color": "e1012b"
-                      },
-                      {
-                        "name": "adapter layer",
-                        "color": "e69dd2"
-                      }
-                    ]
-                  },
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1sec",
-                    "name": "Labels"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldMilestoneValue",
-                  "milestone": {
-                    "title": "Bug Fixes & Diagnostics",
-                    "dueOn": null
-                  },
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1sek",
-                    "name": "Milestone"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldTextValue",
-                  "text": "[Bug]: estimated:false filter returns Pull Requests and Done items as unestimated backlog",
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seQ",
-                    "name": "Title"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
-                  "name": "Bug",
-                  "color": "ORANGE",
-                  "optionId": "2be032b4",
-                  "field": {
-                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhS9YWs",
-                    "name": "Type"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
-                  "name": "Should",
-                  "color": "ORANGE",
-                  "optionId": "15203b56",
-                  "field": {
-                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1soA",
-                    "name": "Priority"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
-                  "name": "Backlog",
-                  "color": "PURPLE",
-                  "optionId": "f75ad846",
-                  "field": {
-                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1seY",
-                    "name": "Status"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldNumberValue",
-                  "number": 1,
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1soI",
-                    "name": "Story Points"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldIterationValue",
-                  "title": "Sprint 4",
-                  "startDate": "2026-06-02",
-                  "duration": 11,
-                  "iterationId": "07155ad6",
-                  "field": {
-                    "id": "PVTIF_lAHOAmfLjc4BWiTtzhR1soM",
-                    "name": "Sprint"
-                  }
-                }
-              ]
-            }
-          },
-          {
-            "id": "PVTI_lAHOAmfLjc4BWiTtzguSuew",
-            "type": "ISSUE",
-            "createdAt": "2026-05-31T11:57:10Z",
-            "updatedAt": "2026-05-31T11:57:14Z",
-            "isArchived": false,
-            "content": {
-              "__typename": "Issue",
-              "id": "I_kwDOSJo3Ms8AAAABD6V_Wg",
-              "number": 216,
-              "title": "[Tech Debt]: Strip canonical fields from custom_fields passthrough in ResultNormalizer",
-              "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/216",
-              "state": "OPEN",
-              "body": "## Current State\n`enrichListingCustomFields()` in `result-normalizer.ts` serializes all GitHub ProjectV2 field value nodes onto every listing's `custom_fields` object, including fields already represented as canonical top-level fields: `Title`, `Status`, `Type`, `Priority`, `Story Points`, `Sprint`, `Assignees`, `Labels`, `Milestone`, and `Repository`. This duplicates 400–900 characters per item in every `scrum_find_items` response.\n\n## Cost of Deferral\nEvery response carries significant redundant payload. With 50 items at ~600 chars average, this is ~30KB of wasted context per query — a direct token cost on every agent session.\n\n## Desired State\n`custom_fields` is a passthrough for genuinely non-canonical fields only. Canonical field names are filtered at serialization time. `color`, `optionId`, and nested `__typename` values inside field entries are also stripped as internal GitHub identifiers with no agent utility.\n\n## Proposed Change\nAdd a denylist to `enrichListingCustomFields` in `result-normalizer.ts`:\n```ts\nconst CANONICAL_FIELD_NAMES = new Set([\n  \"Title\", \"Status\", \"Type\", \"Priority\", \"Story Points\",\n  \"Sprint\", \"Assignees\", \"Labels\", \"Milestone\", \"Repository\"\n]);\n```\n\n## Acceptance Criteria\n- [ ] `custom_fields` in a listing response contains no keys from the canonical denylist\n- [ ] `custom_fields` still surfaces any genuinely non-canonical project fields\n- [ ] `color`, `optionId`, and nested `__typename` are excluded from serialized field values\n- [ ] Root-level `__typename` on `custom_fields` (e.g. `\"Issue\"`, `\"PullRequest\"`) is retained as it indicates item kind\n- [ ] Average per-item response size is measurably reduced\n- [ ] Existing item type, status, priority, and sprint values are unaffected (sourced from canonical fields, not custom_fields)",
-              "issueType": null,
-              "assignees": {
-                "nodes": []
-              },
-              "labels": {
-                "nodes": [
-                  {
-                    "name": "refactor",
-                    "color": "517924"
-                  },
-                  {
-                    "name": "adapter layer",
-                    "color": "e69dd2"
-                  }
-                ]
-              },
-              "milestone": {
-                "id": "MI_kwDOSJo3Ms4A9J0x",
-                "title": "MCP Tool Surface Modernization for Scrum Theory Alignment",
-                "dueOn": null
-              },
-              "repository": {
-                "name": "github-projects-mcp-server",
-                "nameWithOwner": "hoonsubin/github-projects-mcp-server"
-              },
-              "blockedBy": {
-                "nodes": []
-              }
-            },
-            "fieldValues": {
-              "nodes": [
-                {
-                  "__typename": "ProjectV2ItemFieldRepositoryValue",
-                  "repository": {
-                    "name": "github-projects-mcp-server",
-                    "nameWithOwner": "hoonsubin/github-projects-mcp-server"
-                  },
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seo",
-                    "name": "Repository"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldLabelValue",
-                  "labels": {
-                    "nodes": [
-                      {
-                        "name": "refactor",
-                        "color": "517924"
-                      },
-                      {
-                        "name": "adapter layer",
-                        "color": "e69dd2"
-                      }
-                    ]
-                  },
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1sec",
-                    "name": "Labels"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldMilestoneValue",
-                  "milestone": {
-                    "title": "MCP Tool Surface Modernization for Scrum Theory Alignment",
-                    "dueOn": null
-                  },
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1sek",
-                    "name": "Milestone"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldTextValue",
-                  "text": "[Tech Debt]: Strip canonical fields from custom_fields passthrough in ResultNormalizer",
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seQ",
-                    "name": "Title"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
-                  "name": "Tech Debt",
-                  "color": "BLUE",
-                  "optionId": "3c772012",
-                  "field": {
-                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhS9YWs",
-                    "name": "Type"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
-                  "name": "Should",
-                  "color": "ORANGE",
-                  "optionId": "15203b56",
-                  "field": {
-                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1soA",
-                    "name": "Priority"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
-                  "name": "Backlog",
-                  "color": "PURPLE",
-                  "optionId": "f75ad846",
-                  "field": {
-                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1seY",
-                    "name": "Status"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldNumberValue",
-                  "number": 2,
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1soI",
-                    "name": "Story Points"
-                  }
-                }
-              ]
-            }
-          },
-          {
-            "id": "PVTI_lAHOAmfLjc4BWiTtzguSufw",
-            "type": "ISSUE",
-            "createdAt": "2026-05-31T11:57:18Z",
-            "updatedAt": "2026-05-31T11:57:23Z",
-            "isArchived": false,
-            "content": {
-              "__typename": "Issue",
-              "id": "I_kwDOSJo3Ms8AAAABD6WA3A",
-              "number": 217,
-              "title": "[Tech Debt]: Replace readiness.by_type in scrum_get_board_health with flat active-item risk counts",
-              "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/217",
-              "state": "OPEN",
-              "body": "## Current State\n`scrum_get_board_health` computes a `readiness.by_type` object applying DoR rules (AC check, estimation check, type check) server-side and returns ready/not-ready counts across 6 item types. When the sprint has no active items (e.g. next sprint), this produces 18 zero-valued fields. DoR interpretation belongs to the agent, not the server.\n\n## Problems\n1. When the sprint has no active items, 18 zero-valued fields are returned — pure noise\n2. Server deciding \"this item is not ready\" conflicts with the agent's responsibility to apply DoR rules from `scrum_orient` vocabulary\n3. `overall_pct` presents a conclusion rather than facts the agent can reason from\n\n## Cost of Deferral\nEvery board health call carries agent-layer reasoning in the server, increasing tool coupling and making the health endpoint harder to evolve.\n\n## Desired State\nReplace `readiness` with a flat `active_items` object:\n```json\n{\n  \"active_items\": {\n    \"total\": 4,\n    \"unestimated\": 1,\n    \"no_type\": 0,\n    \"no_ac\": 0,\n    \"no_assignee\": 1,\n    \"blocked\": 0\n  }\n}\n```\nReturn `\"active_items\": null` when the sprint has no active items.\n\n**DoD note:** SKILL.md agent rules referencing `readiness.by_type` or `overall_pct` must be updated to use `active_items` counts and apply DoR rules from `scrum_orient` vocabulary.\n\n## Acceptance Criteria\n- [ ] `scrum_get_board_health` response no longer contains `readiness` or `overall_pct` fields\n- [ ] Response contains `active_items` with fields: `total`, `unestimated`, `no_type`, `no_ac`, `no_assignee`, `blocked`\n- [ ] `active_items` counts exclude Done-status items\n- [ ] When no active items exist for the sprint scope, `active_items` is `null`\n- [ ] SKILL.md updated: references to `readiness.by_type` or `overall_pct` replaced with `active_items` reasoning pattern\n- [ ] Agent using `active_items.unestimated > 0` correctly identifies unestimated work without server interpretation",
-              "issueType": null,
-              "assignees": {
-                "nodes": []
-              },
-              "labels": {
-                "nodes": [
-                  {
-                    "name": "refactor",
-                    "color": "517924"
-                  },
-                  {
-                    "name": "use case layer",
-                    "color": "6958b7"
-                  }
-                ]
-              },
-              "milestone": {
-                "id": "MI_kwDOSJo3Ms4A9J0x",
-                "title": "MCP Tool Surface Modernization for Scrum Theory Alignment",
-                "dueOn": null
-              },
-              "repository": {
-                "name": "github-projects-mcp-server",
-                "nameWithOwner": "hoonsubin/github-projects-mcp-server"
-              },
-              "blockedBy": {
-                "nodes": []
-              }
-            },
-            "fieldValues": {
-              "nodes": [
-                {
-                  "__typename": "ProjectV2ItemFieldRepositoryValue",
-                  "repository": {
-                    "name": "github-projects-mcp-server",
-                    "nameWithOwner": "hoonsubin/github-projects-mcp-server"
-                  },
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seo",
-                    "name": "Repository"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldLabelValue",
-                  "labels": {
-                    "nodes": [
-                      {
-                        "name": "refactor",
-                        "color": "517924"
-                      },
-                      {
-                        "name": "use case layer",
-                        "color": "6958b7"
-                      }
-                    ]
-                  },
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1sec",
-                    "name": "Labels"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldMilestoneValue",
-                  "milestone": {
-                    "title": "MCP Tool Surface Modernization for Scrum Theory Alignment",
-                    "dueOn": null
-                  },
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1sek",
-                    "name": "Milestone"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldTextValue",
-                  "text": "[Tech Debt]: Replace readiness.by_type in scrum_get_board_health with flat active-item risk counts",
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seQ",
-                    "name": "Title"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
-                  "name": "Tech Debt",
-                  "color": "BLUE",
-                  "optionId": "3c772012",
-                  "field": {
-                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhS9YWs",
-                    "name": "Type"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
-                  "name": "Should",
-                  "color": "ORANGE",
-                  "optionId": "15203b56",
-                  "field": {
-                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1soA",
-                    "name": "Priority"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
-                  "name": "Backlog",
-                  "color": "PURPLE",
-                  "optionId": "f75ad846",
-                  "field": {
-                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1seY",
-                    "name": "Status"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldNumberValue",
-                  "number": 3,
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1soI",
-                    "name": "Story Points"
-                  }
-                }
-              ]
-            }
-          },
-          {
-            "id": "PVTI_lAHOAmfLjc4BWiTtzguSvrg",
-            "type": "ISSUE",
-            "createdAt": "2026-05-31T12:04:40Z",
-            "updatedAt": "2026-06-02T10:01:45Z",
-            "isArchived": false,
-            "content": {
-              "__typename": "Issue",
-              "id": "I_kwDOSJo3Ms8AAAABD6XGfw",
-              "number": 222,
-              "title": "[Story]: Agent can mark two items as \"related\" without implying a hard blocking dependency",
-              "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/222",
-              "state": "OPEN",
-              "body": "As the Scrum Master agent, I can mark two backlog items as \"related\" so that complementary or thematically linked stories remain discoverable on the board without implying one blocks the other.\n\n## Background\nThe current dependency model supports only `blocked_by`/`blocks` (hard upstream/downstream blocking). Items that share context, operate on the same component, or are complementary stories cannot be linked without incorrectly implying a sequencing constraint. Example: #187 (\"pass through non-canonical fields in normalizer\") and #216 (\"strip canonical fields from normalizer\") are two sides of the same component story — invisible to each other on the board.\n\n## Desired Behaviour\n`scrum_update_story` accepts a `related_to: StoryRef[]` field. Related items appear in `scrum_get_item_detail` responses and in `scrum_find_items` listings as a `related` array. No ordering, blocking, or sprint-planning semantics are implied.\n\n## Acceptance Criteria\n- [ ] `scrum_update_story` accepts `related_to: [{ id: string }]` to set related items (replaces existing related set, consistent with existing `blocked_by` behaviour)\n- [ ] `scrum_get_item_detail` response includes `related: [{ key, title }]` when related items exist\n- [ ] `scrum_find_items` listings include `related: [{ key }]` (keys only — no titles, to keep listing payload small)\n- [ ] Related links are bidirectional — linking A → B automatically surfaces B in A's related list and A in B's\n- [ ] Related links do not affect DoR checks, dependency graph traversal, or sprint risk counts\n- [ ] Tool description for `scrum_update_story` documents the `related_to` parameter",
-              "issueType": null,
-              "assignees": {
-                "nodes": []
-              },
-              "labels": {
-                "nodes": [
-                  {
-                    "name": "feature",
-                    "color": "a29bfe"
-                  },
-                  {
-                    "name": "use case layer",
-                    "color": "6958b7"
-                  }
-                ]
-              },
-              "milestone": {
-                "id": "MI_kwDOSJo3Ms4A9J0x",
-                "title": "MCP Tool Surface Modernization for Scrum Theory Alignment",
-                "dueOn": null
-              },
-              "repository": {
-                "name": "github-projects-mcp-server",
-                "nameWithOwner": "hoonsubin/github-projects-mcp-server"
-              },
-              "blockedBy": {
-                "nodes": []
-              }
-            },
-            "fieldValues": {
-              "nodes": [
-                {
-                  "__typename": "ProjectV2ItemFieldRepositoryValue",
-                  "repository": {
-                    "name": "github-projects-mcp-server",
-                    "nameWithOwner": "hoonsubin/github-projects-mcp-server"
-                  },
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seo",
-                    "name": "Repository"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldLabelValue",
-                  "labels": {
-                    "nodes": [
-                      {
-                        "name": "feature",
-                        "color": "a29bfe"
-                      },
-                      {
-                        "name": "use case layer",
-                        "color": "6958b7"
-                      }
-                    ]
-                  },
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1sec",
-                    "name": "Labels"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldMilestoneValue",
-                  "milestone": {
-                    "title": "MCP Tool Surface Modernization for Scrum Theory Alignment",
-                    "dueOn": null
-                  },
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1sek",
-                    "name": "Milestone"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldTextValue",
-                  "text": "[Story]: Agent can mark two items as \"related\" without implying a hard blocking dependency",
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seQ",
-                    "name": "Title"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
-                  "name": "User Story",
-                  "color": "YELLOW",
-                  "optionId": "bf0dd60d",
-                  "field": {
-                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhS9YWs",
-                    "name": "Type"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
-                  "name": "Could",
-                  "color": "YELLOW",
-                  "optionId": "a69f4b15",
-                  "field": {
-                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1soA",
-                    "name": "Priority"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
-                  "name": "Backlog",
-                  "color": "PURPLE",
-                  "optionId": "f75ad846",
-                  "field": {
-                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1seY",
-                    "name": "Status"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldNumberValue",
-                  "number": 3,
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1soI",
-                    "name": "Story Points"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldIterationValue",
-                  "title": "Sprint 4",
-                  "startDate": "2026-06-02",
-                  "duration": 11,
-                  "iterationId": "07155ad6",
-                  "field": {
-                    "id": "PVTIF_lAHOAmfLjc4BWiTtzhR1soM",
-                    "name": "Sprint"
-                  }
-                }
-              ]
-            }
-          },
-          {
-            "id": "PVTI_lAHOAmfLjc4BWiTtzgugBV4",
-            "type": "ISSUE",
-            "createdAt": "2026-06-02T13:37:33Z",
-            "updatedAt": "2026-06-02T13:37:36Z",
-            "isArchived": false,
-            "content": {
-              "__typename": "Issue",
-              "id": "I_kwDOSJo3Ms8AAAABEIG0zw",
-              "number": 228,
-              "title": "[Spike]: Investigate sprint goal field feasibility on GitHub API",
-              "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/228",
-              "state": "OPEN",
-              "body": "# User Story\n\n## Pre-submission check\n- [x] I have searched existing issues and this investigation is not already tracked.\n\n## Question(s) to answer\n1. Does the GitHub Projects v2 GraphQL API expose iteration goals in any field we haven't queried (beyond `iterations { id title startDate duration }`)?\n2. What workarounds exist for storing sprint goals (comment-based, milestone field, custom single-select)?\n3. What is the implementation effort for each viable workaround?\n\n## Motivation / context\nTicket #52 wants to add an optional `goal` field to `scrum_plan_sprint`, but the GitHub adapter already reports `\"sprint goal\" is NOT_IMPLEMENTED` because the GitHub Projects API does not expose iteration goals. This spike will determine whether viable workarounds exist or if the feature is fundamentally blocked.\n\n## Time-box\n3 points maximum. If the question isn't answered within the time-box, stop and report what was learned.\n\n## Out of scope\n- No implementation of any workaround — proof-of-concept queries only\n- No changes to the public tool surface\n\n## Output / deliverable definition\n- [ ] A comment on this issue summarising the query shape and round-trip count\n- [ ] A recommendation: viable workaround OR confirmed blocker\n- [ ] A follow-on story or tech-debt item created if implementation work is needed\n\n## Affected component\nGitHub adapter (src/adapters/github/) + External API / platform behaviour\n\n## Additional context / related issues\n- Depends on: #52 (scrum_plan_sprint — add goal field)\n- The `ProjectV2IterationField` GraphQL schema only exposes `iterations { id title startDate duration }` — no `goal` field exists.",
-              "issueType": null,
-              "assignees": {
-                "nodes": []
-              },
-              "labels": {
-                "nodes": []
-              },
-              "milestone": null,
-              "repository": {
-                "name": "github-projects-mcp-server",
-                "nameWithOwner": "hoonsubin/github-projects-mcp-server"
-              },
-              "blockedBy": {
-                "nodes": []
-              }
-            },
-            "fieldValues": {
-              "nodes": [
-                {
-                  "__typename": "ProjectV2ItemFieldRepositoryValue",
-                  "repository": {
-                    "name": "github-projects-mcp-server",
-                    "nameWithOwner": "hoonsubin/github-projects-mcp-server"
-                  },
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seo",
-                    "name": "Repository"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldTextValue",
-                  "text": "[Spike]: Investigate sprint goal field feasibility on GitHub API",
-                  "field": {
-                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seQ",
-                    "name": "Title"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
-                  "name": "Spike",
-                  "color": "PINK",
-                  "optionId": "2a3adc49",
-                  "field": {
-                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhS9YWs",
-                    "name": "Type"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
-                  "name": "Could",
-                  "color": "YELLOW",
-                  "optionId": "a69f4b15",
-                  "field": {
-                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1soA",
-                    "name": "Priority"
-                  }
-                },
-                {
-                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
-                  "name": "Backlog",
-                  "color": "PURPLE",
-                  "optionId": "f75ad846",
-                  "field": {
-                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1seY",
-                    "name": "Status"
                   }
                 }
               ]
@@ -7726,19 +7485,19 @@
             }
           },
           {
-            "id": "PVTI_lAHOAmfLjc4BWiTtzgugQBg",
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgui3BA",
             "type": "ISSUE",
-            "createdAt": "2026-06-02T14:09:48Z",
-            "updatedAt": "2026-06-02T20:30:33Z",
+            "createdAt": "2026-06-02T22:32:59Z",
+            "updatedAt": "2026-06-02T22:33:04Z",
             "isArchived": false,
             "content": {
               "__typename": "Issue",
-              "id": "I_kwDOSJo3Ms8AAAABEIWVGw",
-              "number": 231,
-              "title": "[Bug]: Org-level GitHub Issue Fields silently dropped from all read paths",
-              "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/231",
+              "id": "I_kwDOSJo3Ms8AAAABELeUtA",
+              "number": 237,
+              "title": "[Bug]: scrum_find_items blocked_by entries omit title — agents cannot identify blockers without extra round-trips",
+              "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/237",
               "state": "OPEN",
-              "body": "## Description\nOrg-level GitHub Issue Fields (Priority, Effort, custom single-select/text/number/date fields) added as project board columns have their values silently dropped by the GitHub adapter. The GitHub GraphQL API returns these values as `ProjectV2ItemIssueFieldValue` nodes, but the adapter has zero handling for this type across five layers — meaning every read path (item listing, story detail, board health, analytics) loses those field values entirely.\n\nReference: [GitHub Community Discussion #189141 — Issue fields: Structured issue metadata is in public preview](https://github.com/orgs/community/discussions/189141)\n\n## Steps to Reproduce\n1. Enable org-level issue fields in an organization's GitHub settings (Settings → Planning → Issue fields)\n2. Add one or more issue fields (e.g., Priority, Effort) as columns to a GitHub Project V2 board\n3. Set field values on issues already tracked in the project\n4. Call `scrum_find_items` or `scrum_get_item_detail` via the MCP server\n5. Observe: the issue field values are absent from all responses\n\n## Expected Behaviour\nAll project field values are returned, including values originating from org-level issue fields. The adapter should unwrap `ProjectV2ItemIssueFieldValue` nodes and expose their inner values (single-select, text, number, or date) as regular field values.\n\n## Actual Behaviour\n`ProjectV2ItemIssueFieldValue` nodes are silently dropped at five layers:\n\n### Layer 1 — GraphQL fragment (`src/adapters/github/operations.graphql`)\nThe `ItemFieldValues` fragment (line 122) selects inline fragments for 9 legacy field value types but has **no `... on ProjectV2ItemIssueFieldValue`** inline fragment. The response nodes land in GraphQL's response but are never matched.\n\n### Layer 2 — TypeScript interface (`src/adapters/github/types.ts`)\n`ItemFieldValue` (line 314) has no `issueFieldValue` property. The `ProjectV2ItemIssueFieldValue` type wraps its value inside `issueFieldValue: IssueFieldDateValue | IssueFieldNumberValue | IssueFieldSingleSelectValue | IssueFieldTextValue` — a completely different nesting shape than the flat `name`/`optionId`/`number` on traditional field values.\n\n### Layer 3 — Field extraction (`src/adapters/github/mappers.ts`)\n`extractBoardFields` (line 106) receives nodes typed as `FieldValueNode` which only exposes `field.id`, `name`, `title`, `number` as flat properties. For `ProjectV2ItemIssueFieldValue`, the single-select display name lives inside `fv.issueFieldValue.name` — one level deeper, and the type system doesn't even model it.\n\n### Layer 4 — Custom fields passthrough (`src/adapters/github/internal/result-normalizer.ts`)\n`enrichListingCustomFields` (line 18) iterates field value nodes and serializes flat properties (`iterationId`, `title`, `text`, `number`, `name`, `optionId`, etc.) into the `custom_fields` map. `ProjectV2ItemIssueFieldValue` has none of these at the top level — the inner `issueFieldValue` is never reached.\n\n### Layer 5 — Write path (`src/adapters/github/internal/field-value-mutator.ts`)\nAll mutations use the `updateProjectV2ItemFieldValue` mutation. For issue-backed project fields, the correct mutation is `setIssueFieldValue` / `updateIssueFieldValue` (from the Issue Fields REST/GraphQL API). Writing values to issue-backed fields via the wrong mutation may silently fail.\n\n### Example API Call\n\nRequest:\n\n```json\n﻿{\n  \"query\": \"query GetOrgProjectFieldsBootstrap($login: String!, $number: Int!) { organization(login: $login) { projectV2(number: $number) { id fields(first: 50) { nodes { ... on ProjectV2Field { id name dataType } ... on ProjectV2SingleSelectField { id name dataType options { id name color description } } ... on ProjectV2IterationField { id name dataType configuration { iterations { id title startDate duration } completedIterations { id title startDate duration } } } } } } } }\",\n  \"variables\": {\n    \"login\": \"TeamSTEP\",\n    \"number\": 6\n  }\n}\n```\n\nResponse:\n\n```json\n{\n  \"data\": {\n    \"organization\": {\n      \"projectV2\": {\n        \"id\": \"PVT_kwDOA8v0i84BZLIM\",\n        \"fields\": {\n          \"nodes\": [\n            {\n              \"id\": \"PVTF_lADOA8v0i84BZLIMzhULtnE\",\n              \"name\": \"Title\",\n              \"dataType\": \"TITLE\"\n            },\n            {\n              \"id\": \"PVTF_lADOA8v0i84BZLIMzhULtnI\",\n              \"name\": \"Assignees\",\n              \"dataType\": \"ASSIGNEES\"\n            },\n            {\n              \"id\": \"PVTF_lADOA8v0i84BZLIMzhULtnQ\",\n              \"name\": \"Labels\",\n              \"dataType\": \"LABELS\"\n            },\n            {\n              \"id\": \"PVTF_lADOA8v0i84BZLIMzhULtnU\",\n              \"name\": \"Linked pull requests\",\n              \"dataType\": \"LINKED_PULL_REQUESTS\"\n            },\n            {\n              \"id\": \"PVTF_lADOA8v0i84BZLIMzhULtnY\",\n              \"name\": \"Milestone\",\n              \"dataType\": \"MILESTONE\"\n            },\n            {\n              \"id\": \"PVTF_lADOA8v0i84BZLIMzhULtnc\",\n              \"name\": \"Repository\",\n              \"dataType\": \"REPOSITORY\"\n            },\n            {\n              \"id\": \"PVTF_lADOA8v0i84BZLIMzhULtnk\",\n              \"name\": \"Reviewers\",\n              \"dataType\": \"REVIEWERS\"\n            },\n            {\n              \"id\": \"PVTF_lADOA8v0i84BZLIMzhULtno\",\n              \"name\": \"Parent issue\",\n              \"dataType\": \"PARENT_ISSUE\"\n            },\n            {\n              \"id\": \"PVTSSF_lADOA8v0i84BZLIMzhUL0S0\",\n              \"name\": \"Priority\",\n              \"dataType\": \"SINGLE_SELECT\",\n              \"options\": []\n            },\n            {\n              \"id\": \"PVTF_lADOA8v0i84BZLIMzhUL0Sw\",\n              \"name\": \"Story Points\",\n              \"dataType\": \"NUMBER\"\n            },\n            {\n              \"id\": \"PVTSSF_lADOA8v0i84BZLIMzhULtnM\",\n              \"name\": \"Status\",\n              \"dataType\": \"SINGLE_SELECT\",\n              \"options\": [\n                {\n                  \"id\": \"f75ad846\",\n                  \"name\": \"Backlog\",\n                  \"color\": \"PURPLE\",\n                  \"description\": \"\"\n                },\n                {\n                  \"id\": \"47fc9ee4\",\n                  \"name\": \"Ready\",\n                  \"color\": \"YELLOW\",\n                  \"description\": \"\"\n                },\n                {\n                  \"id\": \"98236657\",\n                  \"name\": \"In Progress\",\n                  \"color\": \"BLUE\",\n                  \"description\": \"\"\n                },\n                {\n                  \"id\": \"259e60b9\",\n                  \"name\": \"In Review\",\n                  \"color\": \"ORANGE\",\n                  \"description\": \"\"\n                },\n                {\n                  \"id\": \"4ad38d58\",\n                  \"name\": \"Done\",\n                  \"color\": \"GREEN\",\n                  \"description\": \"\"\n                },\n                {\n                  \"id\": \"99d05126\",\n                  \"name\": \"Blocked\",\n                  \"color\": \"RED\",\n                  \"description\": \"\"\n                }\n              ]\n            },\n            {\n              \"id\": \"PVTIF_lADOA8v0i84BZLIMzhULtoI\",\n              \"name\": \"Sprint\",\n              \"dataType\": \"ITERATION\",\n              \"configuration\": {\n                \"iterations\": [\n                  {\n                    \"id\": \"07155ad6\",\n                    \"title\": \"Sprint 4\",\n                    \"startDate\": \"2026-06-06\",\n                    \"duration\": 7\n                  }\n                ],\n                \"completedIterations\": [\n                  {\n                    \"id\": \"ecba33e9\",\n                    \"title\": \"Sprint 3\",\n                    \"startDate\": \"2026-05-24\",\n                    \"duration\": 8\n                  },\n                  {\n                    \"id\": \"9085132c\",\n                    \"title\": \"Sprint 2\",\n                    \"startDate\": \"2026-05-17\",\n                    \"duration\": 6\n                  },\n                  {\n                    \"id\": \"b1710bb8\",\n                    \"title\": \"Sprint 1\",\n                    \"startDate\": \"2026-05-03\",\n                    \"duration\": 14\n                  }\n                ]\n              }\n            },\n            {\n              \"id\": \"PVTF_lADOA8v0i84BZLIMzhULtns\",\n              \"name\": \"Sub-issues progress\",\n              \"dataType\": \"SUB_ISSUES_PROGRESS\"\n            },\n            {\n              \"id\": \"PVTF_lADOA8v0i84BZLIMzhULtnw\",\n              \"name\": \"Created\",\n              \"dataType\": \"CREATED\"\n            },\n            {\n              \"id\": \"PVTF_lADOA8v0i84BZLIMzhULtn0\",\n              \"name\": \"Updated\",\n              \"dataType\": \"UPDATED\"\n            },\n            {\n              \"id\": \"PVTF_lADOA8v0i84BZLIMzhULtn4\",\n              \"name\": \"Closed\",\n              \"dataType\": \"CLOSED\"\n            },\n            {\n              \"id\": \"PVTF_lADOA8v0i84BZLIMzhULtoM\",\n              \"name\": \"Start date\",\n              \"dataType\": \"DATE\"\n            },\n            {\n              \"id\": \"PVTF_lADOA8v0i84BZLIMzhULtoQ\",\n              \"name\": \"Target date\",\n              \"dataType\": \"DATE\"\n            }\n          ]\n        }\n      }\n    }\n  }\n}\n```\n\n`Priority` returns an empty array, even though the issue field is made public and the options exists on the project board\n\n## Environment\n- **Component:** GitHub adapter (all read + write paths)\n- **Affected tools:** `scrum_find_items`, `scrum_get_item_detail`, `scrum_get_board_health`, `scrum_get_analytics`, `scrum_set_field`\n\n## Acceptance Criteria\n- [ ] `ProjectV2ItemIssueFieldValue` inline fragment added to `ItemFieldValues` in `operations.graphql`, selecting the four nested `ProjectV2IssueFieldValues` union members (`IssueFieldDateValue`, `IssueFieldNumberValue`, `IssueFieldSingleSelectValue`, `IssueFieldTextValue`) via the `issueFieldValue` field\n- [ ] `ItemFieldValue` TypeScript interface extended with an `issueFieldValue` property typed to the appropriate nested union\n- [ ] `extractBoardFields` unwraps single-select/date/number/text values from the nested `issueFieldValue` structure, mapping by `field.id` against the resolved field IDs from bootstrap\n- [ ] `enrichListingCustomFields` serializes `ProjectV2ItemIssueFieldValue` inner values into the `custom_fields` passthrough\n- [ ] Write path uses `setIssueFieldValue` / `updateIssueFieldValue` mutations for fields identified as issue-backed (by matching field name against issue fields returned from the org-level API)\n- [ ] Existing tests pass; field values from legacy (non-issue) project fields continue to work unchanged",
+              "body": "## Problem\n\nIn `scrum_find_items` responses, `blocked_by` entries contain only `{ id, key }` — the blocker's title is absent. An agent reading a listing response cannot identify what is blocking an item without making additional `scrum_get_item_detail` calls.\n\n**scrum_find_items blocked_by (current):**\n```json\n\"blocked_by\": [{ \"id\": \"I_kwDO...\", \"key\": \"185\" }]\n```\n\n**scrum_get_item_detail blocked_by (correct shape):**\n```json\n\"blocked_by\": [{ \"key\": \"185\", \"title\": \"[Tech Debt]: Extract fragment library...\", \"ref\": { \"id\": \"...\" } }]\n```\n\nThe item title is available in the fetched data at listing build time — the listing normalizer does not include it.\n\n## Impact\n\nDuring dependency chain analysis (grooming, sprint planning, impediment review), an agent holding only a `scrum_find_items` response cannot understand what is blocking what without extra round-trips — one `scrum_get_item_detail` call per unique blocker key encountered. This cost was observed directly during grooming session 2026-06-03.\n\n## Affected file\n\n`src/adapters/github/internal/result-normalizer.ts` — `blocked_by` mapping in `toItemListing()`\n\n## Acceptance Criteria\n- [ ] `blocked_by` entries in `scrum_find_items` responses include a `title` field\n- [ ] Shape matches `scrum_get_item_detail` blocked_by: `{ key, title, ref }`\n- [ ] No additional API calls required to identify blockers from a listing response\n- [ ] Existing tests pass; new test covers title presence in `blocked_by` listing entries",
               "issueType": null,
               "assignees": {
                 "nodes": []
@@ -7756,8 +7515,8 @@
                 ]
               },
               "milestone": {
-                "id": "MI_kwDOSJo3Ms4A9EBk",
-                "title": "Bug Fixes & Diagnostics",
+                "id": "MI_kwDOSJo3Ms4A9dd1",
+                "title": "Adapter Layer Assembly Pattern",
                 "dueOn": null
               },
               "repository": {
@@ -7803,7 +7562,7 @@
                 {
                   "__typename": "ProjectV2ItemFieldMilestoneValue",
                   "milestone": {
-                    "title": "Bug Fixes & Diagnostics",
+                    "title": "Adapter Layer Assembly Pattern",
                     "dueOn": null
                   },
                   "field": {
@@ -7813,7 +7572,7 @@
                 },
                 {
                   "__typename": "ProjectV2ItemFieldTextValue",
-                  "text": "[Bug]: Org-level GitHub Issue Fields silently dropped from all read paths",
+                  "text": "[Bug]: scrum_find_items blocked_by entries omit title — agents cannot identify blockers without extra round-trips",
                   "field": {
                     "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seQ",
                     "name": "Title"
@@ -7831,9 +7590,9 @@
                 },
                 {
                   "__typename": "ProjectV2ItemFieldSingleSelectValue",
-                  "name": "Must",
-                  "color": "RED",
-                  "optionId": "457ca5cd",
+                  "name": "Should",
+                  "color": "ORANGE",
+                  "optionId": "15203b56",
                   "field": {
                     "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1soA",
                     "name": "Priority"
@@ -7851,21 +7610,145 @@
                 },
                 {
                   "__typename": "ProjectV2ItemFieldNumberValue",
-                  "number": 5,
+                  "number": 1,
                   "field": {
                     "id": "PVTF_lAHOAmfLjc4BWiTtzhR1soI",
                     "name": "Story Points"
                   }
+                }
+              ]
+            }
+          },
+          {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgui3CA",
+            "type": "ISSUE",
+            "createdAt": "2026-06-02T22:33:06Z",
+            "updatedAt": "2026-06-02T22:33:10Z",
+            "isArchived": false,
+            "content": {
+              "__typename": "Issue",
+              "id": "I_kwDOSJo3Ms8AAAABELeXQg",
+              "number": 238,
+              "title": "[Bug]: scrum_find_items blocks field always empty — downstream dependency impact invisible, dead field on every item",
+              "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/238",
+              "state": "OPEN",
+              "body": "## Problem\n\nEvery item in `scrum_find_items` carries `\"blocks\": []` regardless of actual dependency relationships. The server populates `blocked_by` (upstream dependencies) by reading each item's own data. It never computes the reverse — which items this item is blocking downstream.\n\nThe field is present on every response item but semantically empty on all of them. This has two costs:\n\n**1. Agents cannot determine downstream blast radius.**\nIf an item is resolved or re-prioritized, an agent cannot tell from the listing which downstream items are affected or become unblocked. This information is needed for sprint planning and impediment resolution.\n\n**2. Dead field on every item.**\n`\"blocks\": []` appears on every item in every `scrum_find_items` response — wasted context with no signal.\n\n## Impact\n\nSprint planning and impediment resolution both benefit from knowing downstream dependencies. Currently this information is unavailable from any listing tool. Agents working from `scrum_find_items` output have no path to downstream impact analysis.\n\n## Design decision required\n\nTwo valid resolutions — decision should be made before implementation:\n\n**(a) Compute `blocks` via cross-reference:** after fetching all items, build a reverse map from each item's `blocked_by` entries. O(n), no extra API calls. Accurate only for items present in the fetched set — may be incomplete under pagination.\n\n**(b) Remove `blocks` from listing schema:** omit the field entirely. Honest representation of a server-side gap. `scrum_get_item_detail` can still expose downstream dependencies if that tool's response is extended.\n\nOption (b) is recommended if the fetched set may be a subset of all board items, since a partial cross-reference produces a misleading graph.\n\n## Affected files\n\n- `src/adapters/github/internal/result-normalizer.ts` — `toItemListing()` / listing schema\n- `src/scrum/ports.ts` / `src/domain/types.ts` — `BacklogItemListing` type if field is removed\n\n## Acceptance Criteria\n- [ ] `blocks` is either accurately populated in listing responses, or removed from the listing schema entirely\n- [ ] No silent empty arrays — either real data or field absent\n- [ ] If removed from listing: `scrum_get_item_detail` still exposes downstream dependencies where available\n- [ ] Existing tests updated to reflect whichever resolution is chosen",
+              "issueType": null,
+              "assignees": {
+                "nodes": []
+              },
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "tool bug",
+                    "color": "e1012b"
+                  },
+                  {
+                    "name": "adapter layer",
+                    "color": "e69dd2"
+                  }
+                ]
+              },
+              "milestone": {
+                "id": "MI_kwDOSJo3Ms4A9dd1",
+                "title": "Adapter Layer Assembly Pattern",
+                "dueOn": null
+              },
+              "repository": {
+                "name": "github-projects-mcp-server",
+                "nameWithOwner": "hoonsubin/github-projects-mcp-server"
+              },
+              "blockedBy": {
+                "nodes": []
+              }
+            },
+            "fieldValues": {
+              "nodes": [
+                {
+                  "__typename": "ProjectV2ItemFieldRepositoryValue",
+                  "repository": {
+                    "name": "github-projects-mcp-server",
+                    "nameWithOwner": "hoonsubin/github-projects-mcp-server"
+                  },
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seo",
+                    "name": "Repository"
+                  }
                 },
                 {
-                  "__typename": "ProjectV2ItemFieldIterationValue",
-                  "title": "Sprint 4",
-                  "startDate": "2026-06-02",
-                  "duration": 11,
-                  "iterationId": "07155ad6",
+                  "__typename": "ProjectV2ItemFieldLabelValue",
+                  "labels": {
+                    "nodes": [
+                      {
+                        "name": "tool bug",
+                        "color": "e1012b"
+                      },
+                      {
+                        "name": "adapter layer",
+                        "color": "e69dd2"
+                      }
+                    ]
+                  },
                   "field": {
-                    "id": "PVTIF_lAHOAmfLjc4BWiTtzhR1soM",
-                    "name": "Sprint"
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1sec",
+                    "name": "Labels"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldMilestoneValue",
+                  "milestone": {
+                    "title": "Adapter Layer Assembly Pattern",
+                    "dueOn": null
+                  },
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1sek",
+                    "name": "Milestone"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldTextValue",
+                  "text": "[Bug]: scrum_find_items blocks field always empty — downstream dependency impact invisible, dead field on every item",
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seQ",
+                    "name": "Title"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "name": "Bug",
+                  "color": "ORANGE",
+                  "optionId": "2be032b4",
+                  "field": {
+                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhS9YWs",
+                    "name": "Type"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "name": "Could",
+                  "color": "YELLOW",
+                  "optionId": "a69f4b15",
+                  "field": {
+                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1soA",
+                    "name": "Priority"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "name": "Backlog",
+                  "color": "PURPLE",
+                  "optionId": "f75ad846",
+                  "field": {
+                    "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1seY",
+                    "name": "Status"
+                  }
+                },
+                {
+                  "__typename": "ProjectV2ItemFieldNumberValue",
+                  "number": 2,
+                  "field": {
+                    "id": "PVTF_lAHOAmfLjc4BWiTtzhR1soI",
+                    "name": "Story Points"
                   }
                 }
               ]

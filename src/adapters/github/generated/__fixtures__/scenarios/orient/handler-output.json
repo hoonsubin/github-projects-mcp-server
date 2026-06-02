@@ -145,7 +145,7 @@
           "name": "Adapter Layer Assembly Pattern",
           "description": "Make the adapter a pure assembly layer whose only responsibility is composing the right API fragments to satisfy a port contract, so future use-case or framework changes never require internal re-architecture — only re-assembly.",
           "status": "open",
-          "open_item_count": 10
+          "open_item_count": 7
         }
       ],
       "total_count": 11

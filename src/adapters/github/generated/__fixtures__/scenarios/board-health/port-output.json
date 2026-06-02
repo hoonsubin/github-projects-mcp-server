@@ -18,13 +18,13 @@
       },
       "spike": {
         "ready": 0,
-        "not_ready": 1,
-        "total": 1
+        "not_ready": 0,
+        "total": 0
       },
       "user_story": {
-        "ready": 4,
+        "ready": 0,
         "not_ready": 6,
-        "total": 10
+        "total": 6
       },
       "impediment": {
         "ready": 0,
@@ -32,12 +32,12 @@
         "total": 1
       }
     },
-    "overall_pct": 22
+    "overall_pct": 0
   },
   "sprint_risk": {
     "unestimated_count": 0,
     "blocked_count": 0,
-    "no_assignee_count": 17
+    "no_assignee_count": 11
   },
   "impediments": {
     "orphan_count": 0,
