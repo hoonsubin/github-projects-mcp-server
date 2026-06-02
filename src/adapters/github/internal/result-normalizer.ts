@@ -18,8 +18,16 @@ import type { BacklogItemListing, DependencyMap, Story } from "../../../domain/t
 // in custom_fields. Covers both GH built-ins and the standard configurable set.
 // ID-based filtering (canonicalIds) handles renames; name-based is the fallback.
 const CANONICAL_FIELD_NAMES = new Set([
-  "Title", "Assignees", "Labels", "Milestone", "Repository",
-  "Status", "Priority", "Story Points", "Sprint", "Type",
+  "Title",
+  "Assignees",
+  "Labels",
+  "Milestone",
+  "Repository",
+  "Status",
+  "Priority",
+  "Story Points",
+  "Sprint",
+  "Type",
 ]);
 
 /** Populate custom_fields passthrough for non-canonical board field values only. */

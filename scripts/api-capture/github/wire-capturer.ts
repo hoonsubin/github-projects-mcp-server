@@ -160,7 +160,10 @@ export const captureWireFixtures = async (opts: {
   // Exercises GET_REPO_LABELS_QUERY with the exact variables LabelResolver uses.
   const statusKeys = Object.keys(scrumConfig.scrum.status);
   const priorityKeys = scrumConfig.scrum.priority.map((p) => p.key);
-  await backend.getPlatformState({ canonicalStatusKeys: statusKeys, canonicalPriorityKeys: priorityKeys });
+  await backend.getPlatformState({
+    canonicalStatusKeys: statusKeys,
+    canonicalPriorityKeys: priorityKeys,
+  });
 
   // Exercises LIST_MILESTONES_QUERY per tracked repo via EpicService.
   await backend.getEpics();
