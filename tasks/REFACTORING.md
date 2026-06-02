@@ -1,0 +1,350 @@
+# QueryBuilder Architecture Design
+
+**Context:** `scrum-master-toolkit` — Deno/TypeScript MCP server exposing `scrum_*` tools backed by GitHub Projects v2. **Companion spikes:** [#190](https://github.com/hoonsubin/github-projects-mcp-server/issues/190) (call graph audit), [#220](https://github.com/hoonsubin/github-projects-mcp-server/issues/220) (query formation audit). **Source docs:** `docs/AUDIT.md`, `tasks/REFACTORING.md`.
+
+---
+
+## 1. Problem diagnosis
+
+### 1.1 Two compounding problems
+
+The current implementation suffers from two orthogonal problems that multiply each other:
+
+**Problem A — Redundant call count.** A single agent session calling `orient` → `board_health` → `analytics(both)` burns at minimum **5 full board scans** (`ProjectItems×P`):
+
+- `scrum_orient`: 1 scan (sprint completion)
+- `scrum_get_board_health`: 2 scans (one in `StoryQueryService.fetchAllItems`, one in `ImpedimentService.getSprintImpediments`)
+- `scrum_get_analytics(both)`: 2 scans (`SprintHistoryService` + `BurndownCalculator` independently)
+
+Each scan pages up to 20 × 100 items. No cross-tool or cross-service cache exists.
+
+**Problem B — Maximum payload per call.** `ProjectItemsQueryBuilder` has exactly one query shape: `ItemContent` + `ItemFieldValues` — always, regardless of caller intent. This fetches ~55 field paths per item but aggregation-only callers (`computeSprintCompletion`, burndown, history) consume only ~5–6. Waste: **~80–85% per page** for aggregation callers.
+
+**Compounded:** 5 full board scans × ~80% waste = the server is doing roughly **25× more data transfer work** than necessary for a normal agent session.
+
+### 1.2 The assembler pipeline is narrow
+
+The `classifyFilter → Assembler → ExecutionEngine` pipeline governs only `scrum_find_items`. Every other board-scan caller bypasses it entirely:
+
+| Caller                                      | Bypass method                          |
+| ------------------------------------------- | -------------------------------------- |
+| `StoryQueryService.fetchAllItems`           | `PaginatedProjectItemFetcher` directly |
+| `StoryQueryService.computeSprintCompletion` | Same                                   |
+| `BurndownCalculator`                        | Same                                   |
+| `SprintHistoryService`                      | Same                                   |
+| `ImpedimentService` (board cross-ref)       | Same                                   |
+
+All bypass callers get the same over-fetched `ItemContent` + `ItemFieldValues` payload with no filtering — even when they only need 2–3 field values.
+
+### 1.3 The mapper null-guard is a hidden blocker
+
+`buildStoryFromRaw` in `mappers.ts` returns `null` when `content.labels` or `content.assignees` is missing on Issue/PR nodes. This forces **all callers** — including aggregation-only paths that have no use for label/assignee data — to request the full `ItemContent` fragment. Any attempt to introduce a lean aggregate query profile fails silently (all items map to `null`) without first addressing this guard.
+
+### 1.4 Immediately fixable redundancies (from AUDIT.md R1–R5)
+
+| ID | Issue                                                             | Impact                                              |
+| -- | ----------------------------------------------------------------- | --------------------------------------------------- |
+| R1 | `scrum_set_field` calls `getStoryDetail` after every mutation     | +3 GraphQL calls per invocation                     |
+| R2 | `BoardHealthService` runs `ProjectItems×P` twice in one tool call | 1 redundant full scan per `board_health` invocation |
+| R3 | `resolveRef({number})` routes through full `findItems` router     | Lookup tax on every write tool using issue number   |
+| R4 | `AnalyticsService view=both` fetches full board twice             | 1 redundant full scan per `analytics(both)`         |
+| R5 | `orient` sprint completion runs full board scan                   | Pays full `ItemContent` payload for 2 field values  |
+
+R1 and R3 are surgical fixes. R2, R4, R5 share the same root cause and are solved together by the target architecture.
+
+### 1.5 BackendPort is leaking adapter internals
+
+The current port interface (`ProjectReader`) has separate methods for `getBoardHealth`, `getAnalytics`, and `getSprintCompletion` that map 1:1 to internal adapter services (`BoardHealthService`, `AnalyticsService`, `StoryQueryService`). This means the port is shaped by the implementation rather than by what use cases need — the wrong dependency direction.
+
+---
+
+## 2. GitHub server-side filtering capabilities (live research findings)
+
+As of June 2026, after live schema + community research:
+
+| Filter mechanism                                  | Status           | Notes                                                  |
+| ------------------------------------------------- | ---------------- | ------------------------------------------------------ |
+| `items(query: "is:unarchived")`                   | ✅ Works         | Eliminates archived items server-side                  |
+| `items(query: "status:\"In Progress\"")`          | ✅ Partial       | Single-value status filter; multi-value not documented |
+| `items(query:)` iteration/sprint filter           | ❌ Not supported | No documented syntax; client-side only                 |
+| `items(query:)` story points / number fields      | ❌ Not supported | Client-side only                                       |
+| `fieldValueFilters` argument on `items()`         | ❌ Not in schema | Feature request #16106 open since May 2022, unresolved |
+| `ProjectV2Item.fieldValueByName(name:)`           | ✅ Available     | Reduces field payload per item, not item count         |
+| `search(query:)` (issues)                         | ✅ Available     | Filters text/label/assignee/repo — not board fields    |
+| Org issue fields (`ProjectV2ItemIssueFieldValue`) | ✅ Readable      | Not filterable server-side                             |
+
+**Key conclusion:** Full custom-field server-side filtering is not achievable. The tiered approach (server coarse filter via `query:` arg + client-side fine filter) is the ceiling of what the API supports today. The `query:` arg is worth using for `is:unarchived` (always) and single-status filters where applicable, but it cannot replace client-side iteration/sprint filtering.
+
+**Implication for the architecture:** Client-side pagination + in-memory filtering remains mandatory. The optimization target is therefore **reducing per-page payload** (query profiles) and **eliminating redundant full scans** (session-scoped aggregation), not eliminating pagination.
+
+---
+
+## 3. Target architecture
+
+### 3.1 Core principle
+
+> **`ProjectItemsQueryBuilder` is the single source of truth for all `ProjectItems` board scans.** No service, assembler, or use case calls `PaginatedProjectItemFetcher` or `gh.graphql()` with a board-scan document directly. All board-scan concerns — query shape, server-side `query:` arg, field selection — are owned by `ProjectItemsQueryBuilder`.
+
+### 3.2 Layer diagram (target state)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Tool Surface  (scrum_*.ts)                                     │
+│  raw user params                                                │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+┌────────────────────────▼────────────────────────────────────────┐
+│  Use Cases  (src/scrum/)                                        │
+│  orientUseCase · findItemsUseCase · boardHealthUseCase          │
+│  analyticsUseCase · write/detail use cases                      │
+└────────────────────────┬────────────────────────────────────────┘
+                         │  BackendPort method calls
+┌────────────────────────▼────────────────────────────────────────┐
+│  BackendPort  (platform-agnostic boundary)                      │
+│  findItems · getStoryDetail · getAggregates                     │
+│  getPlatformState · reload · mutations                          │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+┌────────────────────────▼────────────────────────────────────────┐
+│  GitHub Adapter  (src/adapters/github/)                         │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  Board Query Pipeline  (all ProjectItems fetches)       │   │
+│  │                                                         │   │
+│  │  classifyFilter ──► ProjectItemsAssembler  ──┐          │   │
+│  │                                              │          │   │
+│  │  StoryQueryService ──────────────────────────┤          │   │
+│  │  BoardHealthService ─────────────────────────┤          │   │
+│  │  AnalyticsService ───────────────────────────┤          │   │
+│  │  ImpedimentService ──────────────────────────┤          │   │
+│  │                                              ▼          │   │
+│  │                          ProjectItemsQueryBuilder       │   │
+│  │                          IN:  profile                   │   │
+│  │                               queryArg?                 │   │
+│  │                               configuredFieldTypeNames  │   │
+│  │                          OUT: { document, variables }   │   │
+│  │                                              │          │   │
+│  │                                    ExecutionEngine      │   │
+│  │                                    (pagination)         │   │
+│  └──────────────────────────────────────────────┼──────────┘   │
+│                                                  │              │
+│  SearchApiAssembler ──────── ExecutionEngine ────┤ (non-board)  │
+│  DirectLookupAssembler ──────────────────────────┤ (non-board)  │
+│  MutationServices ───────────────────────────────┘ (non-board)  │
+└─────────────────────────────────────────────────────────────────┘
+                         │
+                   GitHub GraphQL API
+                   projectV2.items(query: …, after: cursor)
+```
+
+**Blue paths** = board scan (all route through `ProjectItemsQueryBuilder`). **Non-board paths** (`SearchIssues`, `GetIssueProjectItem`, mutations) bypass the board pipeline entirely — this is intentional.
+
+### 3.3 `ProjectItemsQueryBuilder` interface (blackbox spec)
+
+```typescript
+type QueryProfile = "listing" | "aggregate";
+
+interface BuildQueryOptions {
+  profile: QueryProfile;
+  queryArg?: string; // items(query: "…") server-side coarse filter
+  configuredFieldTypeNames: string[]; // from config.live.fields — trims ItemFieldValues
+}
+
+// Output passed to ExecutionEngine
+interface BoardScanRequest {
+  document: string;
+  variables: { login: string; number: number; queryArg?: string };
+}
+```
+
+**`listing` profile:** Full `ItemContent` minus unused fields (`state`, `repository.*`, `labels.color`, `milestone.dueOn`). Conditional `body` (only when `filter.search` is set). Conditional `blockedBy` (only when `include_dependencies`). Used by `scrum_find_items`.
+
+**`aggregate` profile:** No `ItemContent`. Minimal `fieldValues` with only: `ProjectV2ItemFieldIterationValue`, `ProjectV2ItemFieldSingleSelectValue`, `ProjectV2ItemFieldNumberValue`. Plus `assignees { totalCount }` and `blockedBy { totalCount }`. Estimated payload reduction: **60–80%** vs current shape. Used by all non-listing board scans.
+
+**`buildQueryArg(filter)` helper:**
+
+```typescript
+buildQueryArg(filter: ResolvedItemFilter): string {
+  const parts = ['is:unarchived']; // always, unless filter.includeArchived
+  if (filter.statuses?.length === 1) {
+    parts.push(`status:"${filter.statuses[0]}"`);
+  }
+  return parts.join(' ');
+}
+```
+
+### 3.4 Clean BackendPort interface
+
+The port is defined by what use cases need, not by adapter internals:
+
+```typescript
+interface BackendPort {
+  // Bootstrap
+  reload(): Promise<void>;
+  getPlatformState(vocab: VocabularyFilter): Promise<BackendCallResult<PlatformState>>;
+
+  // Read
+  findItems(filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResult>>;
+  getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>>;
+  getAggregates(scope: BoardScope): Promise<BoardAggregates>; // ← replaces getBoardHealth + getAnalytics + getSprintCompletion
+
+  // Mutations
+  createStory(input: CreateStoryInput): Promise<StoryRef>;
+  updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void>;
+  setField(ref: StoryRef, field: ScrumField, value: FieldValue): Promise<void>;
+  addComment(ref: StoryRef, body: string): Promise<void>;
+  logImpediment(input: ImpedimentInput): Promise<ImpedimentRef>;
+  updateImpediment(ref: ImpedimentRef, update: ImpedimentUpdate): Promise<ImpedimentListing>;
+  getOrphanImpediments(): Promise<ImpedimentListing[]>;
+  addVocabulary(kind: VocabularyKind, value: string): Promise<CreateResult>;
+
+  // Epic
+  getEpics(sprintIterationId?: string | null): Promise<EpicListing[]>;
+}
+```
+
+**Key change:** `getAggregates(scope)` replaces three separate port methods (`getBoardHealth`, `getAnalytics`, `getSprintCompletion`). Use cases call it once and extract what they need. The adapter implements it with a single aggregate-profile board scan.
+
+`getOrphanImpediments` stays separate — it is a label-based issue query (`GetImpedimentIssues`), not a board scan, so it correctly does not go through `ProjectItemsQueryBuilder`.
+
+### 3.5 `BoardAggregates` type spec
+
+`BoardAggregates` is the output of `getAggregates()` — pure facts from a single aggregate board scan. No Scrum judgments; those belong in use cases.
+
+```typescript
+/**
+ * Lean per-item projection from the aggregate query profile.
+ * No body, label list, assignee list, or repository data.
+ * `sprintId` maps from the platform's iteration concept (platform-agnostic term at port boundary).
+ */
+interface ItemAggregate {
+  readonly id: string;
+  readonly type: string | null; // board Type field value
+  readonly status: string | null; // board Status field value
+  readonly sprintId: string | null; // null = backlog
+  readonly storyPoints: number | null;
+  readonly hasBlockers: boolean; // blockedBy totalCount > 0
+  readonly hasAssignee: boolean; // assignees totalCount > 0
+  readonly issueNumber: number | null; // null for draft issues; used by burndown REST
+  readonly isArchived: boolean;
+}
+
+/**
+ * Pre-grouped per-sprint summary. Adapter computes counts using
+ * terminal-status mapping from config — use cases read, don't re-iterate.
+ */
+interface SprintSummary {
+  readonly sprintId: string;
+  readonly sprintName: string;
+  readonly items: readonly ItemAggregate[];
+  readonly totalItems: number;
+  readonly totalPoints: number;
+  readonly completedPoints: number; // points in terminal (done) statuses
+  readonly itemsByStatus: Record<string, number>;
+  readonly pointsByStatus: Record<string, number>;
+  readonly unestimatedCount: number;
+  readonly blockedCount: number;
+  readonly unassignedCount: number;
+}
+
+/**
+ * Output of a single aggregate board scan.
+ * Items live inside SprintSummary.items and backlog[] — not as a flat root array,
+ * because no use case needs the full board as an unstructured list.
+ *
+ * Orphan impediments (label-tracked, off-board) are NOT here.
+ * They come from getOrphanImpediments() and are composed by the use case.
+ */
+interface BoardAggregates {
+  readonly sprintSummaries: readonly SprintSummary[]; // all sprints, newest-first
+  readonly backlog: readonly ItemAggregate[]; // sprintId === null
+  readonly meta: {
+    readonly totalCount: number;
+    readonly truncated: boolean; // hit pagination ceiling — counts are incomplete
+    readonly fetchedAt: string; // ISO-8601
+  };
+}
+```
+
+**How use cases read it:**
+
+```
+orientUseCase (sprint completion):
+  sprintSummaries.find(s => s.sprintId === activeSprintId)
+  → { completed: s.completedPoints, total: s.totalPoints }
+
+boardHealthUseCase:
+  active = sprintSummaries.find(active sprint)
+  → SprintRisk { unestimated_count: active.unestimatedCount,
+                 blocked_count: active.blockedCount,
+                 no_assignee_count: active.unassignedCount }
+  all items across summaries + backlog → readiness by_type
+
+analyticsUseCase (history):
+  sprintSummaries.filter(completedSprintIds)
+  → map to SprintSnapshot via SprintInfo from PlatformState
+
+analyticsUseCase (burndown):
+  sprintSummaries.find(active).items
+  → BurndownStoryInput[] { issueNumber, storyPoints, status }
+  → then parallel REST timeline per issueNumber
+```
+
+### 3.6 Mapper split (prerequisite)
+
+Before the aggregate profile can be used, `buildStoryFromRaw` in `mappers.ts` must be split:
+
+```typescript
+// Existing — listing profile; requires full ItemContent; null-guard stays
+buildStoryFromRaw(item, config): Story | null
+
+// New — aggregate profile; only fieldValues needed; no null-guard on labels/assignees
+buildAggregateFromRaw(item, config): ItemAggregate
+```
+
+`buildAggregateFromRaw` does not return `null` — aggregate items without labels/assignees are valid and expected.
+
+---
+
+## 4. Sequenced implementation plan
+
+Dependencies flow top to bottom; each step unblocks the next.
+
+| Step | Change                                                                                                       | Layer                                      | Unblocks                                                                               |
+| ---- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------ | -------------------------------------------------------------------------------------- |
+| 1    | Add `buildAggregateFromRaw` in `mappers.ts`; relax null-guard for aggregate callers                          | Adapter (`mappers.ts`)                     | Everything below                                                                       |
+| 2    | Add `profile` + `buildQueryArg` to `ProjectItemsQueryBuilder`; extend `PlatformRequest` to carry `queryArg?` | Adapter (`project-items-query-builder.ts`) | Steps 3, 4                                                                             |
+| 3    | Wire all bypass callers to the board query pipeline with aggregate profile                                   | Adapter (services)                         | Eliminates R2, R4, R5; `PaginatedProjectItemFetcher` becomes dead code for board scans |
+| 4    | Wire `buildQueryArg` output into `ProjectItemsAssembler.assemble()`                                          | Adapter (assembler)                        | `is:unarchived` + single-status server filter for `findItems`                          |
+| 5    | Add `getAggregates(scope)` to `BackendPort`; implement in `GitHubProjectBackend`                             | Port + Adapter                             | Clean port interface; collapses getBoardHealth + getAnalytics + getSprintCompletion    |
+| 6    | Update use cases to call `getAggregates` + read from `BoardAggregates`                                       | Use case layer                             | Removes platform-specific calls from use cases                                         |
+| 7    | R1: Remove `getStoryDetail` post-mutation re-read in `set_field` handler                                     | Tool handler                               | −3 GraphQL calls per `scrum_set_field`                                                 |
+| 8    | R3: Bypass router for `resolveRef({number})` — direct `GetIssueProjectItem`                                  | Adapter                                    | Removes router overhead on all write tools using issue numbers                         |
+
+Steps 1–4 are adapter-only (no port or use-case changes). Step 5 requires a port change. Steps 7–8 are independent and can run in parallel with any of the above.
+
+---
+
+## 5. Unresolved questions
+
+**Q1 — `getAggregates` scope parameter.** Should it always return all sprints (full board) or accept a `BoardScope` that limits which sprints are loaded? `boardHealth` and `burndown` only need the active sprint; `history` needs completed sprints. A scope parameter could halve the item set for health/burndown but adds a branching code path. Decision needed before implementing Step 5.
+
+**Q2 — `items(query:)` iteration syntax.** The research confirms `status:"X"` works but iteration/sprint filtering via `query:` is undocumented and likely unsupported. A live probe with a real token is required before investing in a `buildQueryArg` sprint-filter path. If it works, page count for sprint-scoped queries could drop dramatically. If it doesn't, the `queryArg` benefit is limited to `is:unarchived` + single-status.
+
+**Q3 — Request-scoped cache.** Even with a single `getAggregates` call per tool invocation, back-to-back tool calls in a session (e.g. `orient` then `board_health`) still each trigger a full board scan. A session-scoped `BoardAggregates` cache keyed by `fetchedAt` TTL would eliminate this. Adds complexity; worth a separate spike.
+
+**Q4 — `BoardScope` definition.** The `getAggregates(scope: BoardScope)` signature was agreed but `BoardScope` not yet defined. Minimum viable: `{ sprint: 'active' | 'all' }`. Needs to be defined before Step 5 is implementable.
+
+**Q5 — `EpicPort` / `getEpics`.** Epics are fetched via `ListMilestones` (REST, per repo), not a board scan. They're currently called in `orientUseCase`. Not affected by this refactor but the port interface consolidation in Step 5 is a good time to audit whether `EpicPort` should remain a separate interface or merge into `BackendPort` directly.
+
+**Q6 — Parallel REST calls in burndown.** `BurndownCalculator` currently calls REST issue timeline **sequentially** per sprint story. With the aggregate profile supplying `issueNumber[]`, these REST calls become parallelizable (`Promise.all`). This is a separate optimization that can be done as part of Step 3 or deferred.
+
+---
+
+## 6. What this does NOT change
+
+- **Tool names and parameter shapes** — zero changes to the MCP tool surface. Agents using these tools see no difference.
+- **`SearchApiAssembler` and `DirectLookupAssembler`** — not board scans; correctly bypass `ProjectItemsQueryBuilder`.
+- **Mutation paths** — `StoryMutationService`, `FieldValueMutator`, `LabelResolver`, `VocabularyManager` — unaffected.
+- **`getOrphanImpediments`** — label-based issue query; stays separate from board scan pipeline.
+- **`ConfigReloader` / bootstrap** — orient still pays one `GetUserProjectFieldsBootstrap` call per invocation; that's a use-case-layer concern out of scope here.
