@@ -86,6 +86,8 @@ Types load from `vocabulary.item_types` via `scrum_orient`. For mismatch criteri
 
 When declared type does not match content signals: surface a mismatch flag. Do not auto-reclassify. Config templates take precedence over `references/item-types.md`.
 
+For spikes specifically: questions must target the uncertainty itself, not a pre-assumed solution. A well-formed spike produces findings that would change what gets built; if they wouldn't, the questions need reframing before the spike enters Planning.
+
 ## Estimation scale
 
 SP and priority are independent dimensions. Conflating them is a dysfunction — surface it when seen.
@@ -96,6 +98,8 @@ SP and priority are independent dimensions. Conflating them is a dysfunction —
 | Priority | Business / delivery value | Human (PO or equivalent) |
 
 ## Quality gates
+
+Before drafting any item: verify the problem described reflects the system's actual current state, not a prior mental model. Tickets written from stale assumptions resolve on inspection, not implementation.
 
 **Definition of Ready** — item enters Planning only if ALL are true:
 1. Written in the format required for its type
@@ -120,6 +124,7 @@ SP and priority are independent dimensions. Conflating them is a dysfunction —
 - No single item exceeds ~40% of sprint velocity without a split plan
 - Fewer than 15% of sprint-candidate items have no estimate
 - No item in the top 20 untouched for 2+ sprints
+- Ready items untouched for 1+ sprints are premise-verified before next sprint entry — the described gap should be confirmed current, not assumed
 
 **Throughput forecast:** `sprints_to_clear = remaining_backlog_SP / avg_velocity`  
 Flag when `sprints_to_clear > planning_horizon`.
