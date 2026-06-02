@@ -28,6 +28,7 @@ import { DirectLookupAssembler } from "./internal/assemblers/direct-lookup-assem
 import { ProjectItemsAssembler } from "./internal/assemblers/project-items-assembler.ts";
 import { SearchApiAssembler } from "./internal/assemblers/search-api-assembler.ts";
 import { MixedAssembler } from "./internal/assemblers/mixed-assembler.ts";
+import { ProjectItemsCache } from "./internal/project-items-cache.ts";
 import { resolveProjectItemIdByIssueNumber } from "./internal/resolve-issue-number.ts";
 import type { GitHubClient } from "./internal/http-client.ts";
 import type { GitHubBackendConfig } from "./types.ts";
@@ -67,6 +68,7 @@ import type {
  */
 export interface GitHubBackendDependencies {
   readonly gh: GitHubClient;
+  readonly projectItemsCache: ProjectItemsCache;
   readonly labelResolver: LabelResolver;
   readonly fieldValueMutator: FieldValueMutator;
   readonly vocabularyManager: VocabularyManager;
@@ -219,6 +221,7 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
 
   async reload(): Promise<void> {
     await this.deps.configReloader.reload();
+    this.deps.projectItemsCache.invalidate();
     this.deps.labelResolver.invalidateLabelCache();
   }
 

@@ -6,7 +6,7 @@
 // =============================================================================
 
 import { StoryQueryService } from "./story-query-service.ts";
-import { ImpedimentService } from "./impediment-service.ts";
+import { ImpedimentService, listSprintImpedimentsFromItems } from "./impediment-service.ts";
 import { resolveSprint } from "./resolver.ts";
 import { buildStoryFromRaw } from "../mappers.ts";
 import { computeReadinessSummary } from "../../../domain/rules/readiness.ts";
@@ -16,12 +16,13 @@ import type { GitHubBootState } from "../bootstrap.ts";
 import type { GitHubBackendConfig } from "../types.ts";
 import type { ImpedimentListing } from "../../../scrum/ports.ts";
 import type { BacklogHealth, SprintRef, SprintRisk, Story } from "../../../domain/types.ts";
+import type { ProjectItem } from "../types.ts";
 
 // ── BoardHealthService class ──────────────────────────────────────────────────
 
 /**
  * Board health dashboard - aggregated metrics without item lists.
- * Uses existing StoryQueryService and ImpedimentService; no new API queries.
+ * Uses StoryQueryService for one cached board fetch per getBoardHealth call.
  * Injected into GitHubProjectBackend via constructor (DIP).
  */
 export class BoardHealthService {
@@ -38,7 +39,8 @@ export class BoardHealthService {
    * @param sprintScope - "current" | "next" | "<name>" | "all"
    */
   async getBoardHealth(sprintScope: string): Promise<BacklogHealth> {
-    const stories = await this.fetchStoriesForScope(sprintScope);
+    const allItems = await this.storyQueryService.fetchAllItems();
+    const stories = this.fetchStoriesForScope(sprintScope, allItems);
 
     // Exclude Done items from all active-work metrics - they're already resolved
     // and inflate risk counts and readiness percentages when included.
@@ -53,7 +55,7 @@ export class BoardHealthService {
     const sprintRisk = this.computeSprintRiskCounts(sprintScope, activeStories);
 
     // ── Impediments ───────────────────────────────────────────────────────
-    const impedimentCounts = await this.computeImpedimentCounts(sprintScope);
+    const impedimentCounts = await this.computeImpedimentCounts(sprintScope, allItems);
 
     // ── Ungroomed count ───────────────────────────────────────────────────
     const ungroomedCount = activeStories.filter((story) => {
@@ -124,9 +126,10 @@ export class BoardHealthService {
   /**
    * Fetch all items and filter by sprint scope, returning domain Story objects.
    */
-  private async fetchStoriesForScope(sprintScope: string): Promise<Story[]> {
-    const allItems = await this.storyQueryService.fetchAllItems();
-
+  private fetchStoriesForScope(
+    sprintScope: string,
+    allItems: readonly ProjectItem[],
+  ): Story[] {
     if (sprintScope === "all") {
       return allItems
         .map((item) => buildStoryFromRaw(item, this.config))
@@ -182,6 +185,7 @@ export class BoardHealthService {
    */
   private async computeImpedimentCounts(
     sprintScope: string,
+    allItems: readonly ProjectItem[],
   ): Promise<{ orphan_count: number; open_count: number }> {
     const orphans = await this.impedimentService.getOrphanImpediments();
     const orphanCount = orphans.filter(
@@ -192,14 +196,16 @@ export class BoardHealthService {
     if (sprintScope !== "all") {
       const iterationId = resolveSprint(sprintScope, this.config);
       if (iterationId !== null) {
-        sprintImpediments = await this.impedimentService.getSprintImpediments(
+        sprintImpediments = listSprintImpedimentsFromItems(
+          allItems,
+          this.config,
           sprintScope as SprintRef,
         );
       }
     } else {
       const sprint = resolveSprint("current", this.config);
       if (sprint !== null) {
-        sprintImpediments = await this.impedimentService.getSprintImpediments("current");
+        sprintImpediments = listSprintImpedimentsFromItems(allItems, this.config, "current");
       }
     }
 

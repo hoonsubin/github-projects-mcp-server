@@ -8,8 +8,7 @@
 import { GitHubApiError } from "../errors.ts";
 import { type BackendCallResult, catchBackend } from "../../../services/error-enrichment.ts";
 import type * as GH from "../generated/github-types.ts";
-import { PaginatedProjectItemFetcher } from "./pagination.ts";
-import { ProjectItemsQueryBuilder } from "./project-items-query-builder.ts";
+import { ProjectItemsCache } from "./project-items-cache.ts";
 import { resolveStory } from "./resolver.ts";
 import {
   buildCommentList,
@@ -148,12 +147,10 @@ export const buildDependencyMap = (
 
 /** Read-side story operations: detail fetch, bulk item fetch, sprint completion. */
 export class StoryQueryService {
-  private readonly projectItemsQuery: string;
-
-  constructor(private readonly ctx: GitHubInfraContext) {
-    this.projectItemsQuery = new ProjectItemsQueryBuilder(this.ctx.ghConfig.owner_type)
-      .buildQuery();
-  }
+  constructor(
+    private readonly ctx: GitHubInfraContext,
+    private readonly projectItemsCache: ProjectItemsCache,
+  ) {}
 
   async getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>> {
     const resolved = await resolveStory(ref, this.ctx.gh);
@@ -256,25 +253,19 @@ export class StoryQueryService {
   }
 
   fetchAllItems(): Promise<ProjectItem[]> {
-    const fetcher = new PaginatedProjectItemFetcher(this.ctx, this.projectItemsQuery);
-    return fetcher.collect(() => true);
+    return this.projectItemsCache.getOrFetchAllItems();
   }
 
   async computeSprintCompletion(
     iterationId: string,
   ): Promise<{ completed: number; total: number }> {
-    const allItems = await this.fetchAllItems();
+    const allItems = await this.projectItemsCache.getOrFetchAllItems();
+    const { sprintFieldId, statusFieldId, storyPointsFieldId } = this.ctx.config.live.fields;
 
     const sprintItems = allItems.filter((item) => {
-      const fv = item.fieldValues.nodes.find(
-        (v) => v.field?.id === this.ctx.config.live.fields.sprintFieldId,
-      );
+      const fv = item.fieldValues.nodes.find((v) => v.field?.id === sprintFieldId);
       return fv?.iterationId === iterationId;
     });
-
-    const stories = sprintItems
-      .map((item) => buildStoryFromRaw(item, this.ctx.config))
-      .filter((s): s is Story => s !== null);
 
     const statusReverseMap = new Map<string, string>();
     const statusDisplay = this.ctx.config.ghConfig.status_display ?? {};
@@ -285,11 +276,17 @@ export class StoryQueryService {
     let completed = 0;
     let total = 0;
 
-    for (const story of stories) {
-      const points = story.story_points ?? 0;
+    for (const item of sprintItems) {
+      const ptsFv = storyPointsFieldId
+        ? item.fieldValues.nodes.find((v) => v.field?.id === storyPointsFieldId)
+        : null;
+      const points = ptsFv?.number ?? 0;
       total += points;
-      if (story.status) {
-        const canonicalKey = statusReverseMap.get(story.status);
+
+      const statusFv = item.fieldValues.nodes.find((v) => v.field?.id === statusFieldId);
+      const statusName = statusFv && "name" in statusFv ? statusFv.name : null;
+      if (statusName) {
+        const canonicalKey = statusReverseMap.get(statusName);
         if (canonicalKey && this.ctx.config.scrumConfig.scrum.status[canonicalKey]?.terminal) {
           completed += points;
         }

@@ -6,11 +6,10 @@
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
-import { PaginatedProjectItemFetcher } from "./pagination.ts";
-import { ProjectItemsQueryBuilder } from "./project-items-query-builder.ts";
+import { ProjectItemsCache } from "./project-items-cache.ts";
 import type { GitHubInfraContext } from "./infra-context.ts";
 import type { SprintHistoryEntry } from "../../../scrum/ports.ts";
-import type { ProjectItemIssueContent, ProjectItemPRContent } from "../types.ts";
+import type { ProjectItem, ProjectItemIssueContent, ProjectItemPRContent } from "../types.ts";
 
 // ── SprintHistoryService class ───────────────────────────────────────────────
 
@@ -19,16 +18,22 @@ import type { ProjectItemIssueContent, ProjectItemPRContent } from "../types.ts"
  * Injected into GitHubProjectBackend via constructor (DIP).
  */
 export class SprintHistoryService {
-  constructor(private readonly ctx: GitHubInfraContext) {}
+  constructor(
+    private readonly ctx: GitHubInfraContext,
+    private readonly projectItemsCache: ProjectItemsCache,
+  ) {}
 
-  async getCompletedSprintHistory(window: number): Promise<SprintHistoryEntry[]> {
+  async getCompletedSprintHistory(
+    window: number,
+    preloadedItems?: readonly ProjectItem[],
+  ): Promise<SprintHistoryEntry[]> {
     const completedSorted = [...this.ctx.config.live.iterations.completed].sort(
       (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime(),
     );
     const windowSlice = completedSorted.slice(0, window);
     if (windowSlice.length === 0) return [];
 
-    const allItems = await this.fetchAllItems();
+    const allItems = preloadedItems ?? await this.projectItemsCache.getOrFetchAllItems();
     const { sprintFieldId, statusFieldId, storyPointsFieldId } = this.ctx.config.live.fields;
 
     return windowSlice.map((iter) => {
@@ -78,18 +83,5 @@ export class SprintHistoryService {
         stories,
       };
     });
-  }
-
-  // ── Private helpers ──────────────────────────────────────────────────────────
-
-  /**
-   * Fetch all project items (issues, PRs, drafts) for cross-sprint analysis.
-   * DraftIssues are included so the filter in getCompletedSprintHistory can
-   * exclude them explicitly, preserving the original query shape from the paginator.
-   */
-  private fetchAllItems() {
-    const query = new ProjectItemsQueryBuilder(this.ctx.ghConfig.owner_type).buildQuery();
-    const fetcher = new PaginatedProjectItemFetcher(this.ctx, query);
-    return fetcher.collect(() => true);
   }
 }

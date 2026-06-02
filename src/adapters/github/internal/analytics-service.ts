@@ -8,6 +8,8 @@
 import { GitHubApiError } from "../errors.ts";
 import { SprintHistoryService } from "./sprint-history-service.ts";
 import { BurndownCalculator } from "./burndown-calculator.ts";
+import { ProjectItemsCache } from "./project-items-cache.ts";
+import type { ProjectItem } from "../types.ts";
 import { resolveSprint } from "./resolver.ts";
 import { buildDaySeries, buildIdealLine, buildSprintWindow } from "../../../scrum/sprint-math.ts";
 import { historyEntryToItemListing } from "../../../scrum/listing-mappers.ts";
@@ -35,6 +37,7 @@ import type {
 export class AnalyticsService {
   constructor(
     private readonly config: GitHubBootState,
+    private readonly projectItemsCache: ProjectItemsCache,
     private readonly sprintHistoryService: SprintHistoryService,
     private readonly burndownCalculator: BurndownCalculator,
   ) {}
@@ -60,16 +63,17 @@ export class AnalyticsService {
       return { burndown, history: null, window: 0 };
     }
 
-    // both: run both independently so one failing doesn't zero out the other.
+    // both: one board fetch shared by burndown + history builders.
+    const allItems = await this.projectItemsCache.getOrFetchAllItems();
     let burndown: BurndownResponse | null = null;
     let history: SprintSnapshot[] | null = null;
     try {
-      burndown = await this.buildBurndown(query.sprint_ref ?? "current");
+      burndown = await this.buildBurndown(query.sprint_ref ?? "current", allItems);
     } catch (_err) {
       // burndown stays null - partial analytics with history only
     }
     try {
-      history = await this.buildHistory(window);
+      history = await this.buildHistory(window, allItems);
     } catch (_err) {
       // history stays null - partial analytics with burndown only
     }
@@ -83,9 +87,13 @@ export class AnalyticsService {
    * Transforms SprintHistoryService output into domain SprintSnapshot
    * with ItemListing items.
    */
-  private async buildHistory(window: number): Promise<SprintSnapshot[]> {
+  private async buildHistory(
+    window: number,
+    preloadedItems?: readonly ProjectItem[],
+  ): Promise<SprintSnapshot[]> {
     const entries = await this.sprintHistoryService.getCompletedSprintHistory(
       window,
+      preloadedItems,
     );
     if (entries.length === 0) return [];
 
@@ -138,6 +146,7 @@ export class AnalyticsService {
    */
   private async buildBurndown(
     sprintRef: string,
+    preloadedItems?: readonly ProjectItem[],
   ): Promise<BurndownResponse | null> {
     const sprint = resolveSprint(sprintRef, this.config);
     if (sprint === null) {
@@ -154,6 +163,7 @@ export class AnalyticsService {
 
     const input = await this.burndownCalculator.getBurndownInput(
       sprintRef as SprintRef,
+      preloadedItems,
     );
 
     const iterEntry = this.config.live.iterations.all.find((i) => i.id === sprint);
