@@ -17,15 +17,21 @@
 //     receive typed ghConfig via constructor injection.
 //   - Immutable boot constants (scrumConfig, ghConfig) vs mutable live metadata
 //     (GitHubLiveMetadata) are separated at the type level.
+//
+//   - LIVE metadata is NOT fetched at construction time. The factory initializes
+//     an empty skeleton for live; the first orientUseCase → reload() call is
+//     the sole bootstrap query. Only typeTemplatePaths (a pure computation from
+//     config, no API call) is resolved here for MCP template resource registration.
 // =============================================================================
 
 import { GITHUB_CAPABILITIES } from "../capabilities.ts";
 import type { AdapterFactory, AdapterStartupOptions, BackendResult } from "../factory.ts";
-import { bootstrapGitHub, type GitHubBootState } from "./bootstrap.ts";
+import { computeTypeTemplatePaths, type GitHubBootState } from "./bootstrap.ts";
 import { GitHubProjectBackend } from "./backend.ts";
 import type { GitHubBackendDependencies } from "./backend.ts";
 import { graphql, rest } from "./internal/http-client.ts";
 import type { GitHubInfraContext } from "./internal/infra-context.ts";
+import type { GitHubLiveMetadata } from "./bootstrap.ts";
 import { BurndownCalculator } from "./internal/burndown-calculator.ts";
 import { ConfigReloader } from "./internal/config-reloader.ts";
 import { FieldValueMutator } from "./internal/field-value-mutator.ts";
@@ -58,10 +64,17 @@ import { describeContentLocation } from "../../domain/content-location.ts";
  * GitHub Projects adapter factory.
  * Implements AdapterFactory so the composition root can construct the
  * backend through the registry without importing adapter internals directly.
+ *
+ * NOTE: Live metadata (fields, iterations, options) is NOT fetched here.
+ * bootState.live starts as an empty skeleton; the first orientUseCase →
+ * backend.reload() → ConfigReloader.reload() fills it via bootstrapGitHub().
+ * Only typeTemplatePaths (a pure config computation, no API call) is resolved
+ * at construction time for MCP template resource registration.
  */
 export class GitHubAdapterFactory implements AdapterFactory {
   readonly platform = "github";
 
+  // deno-lint-ignore require-await
   async create(options?: AdapterStartupOptions): Promise<BackendResult> {
     const { configLocation, scrumConfig, projectRoot } = options!;
     const configDesc = describeContentLocation(configLocation);
@@ -101,21 +114,45 @@ export class GitHubAdapterFactory implements AdapterFactory {
     const { owner } = resolvedGhConfig;
     const primaryRepo = resolvedGhConfig.tracked_repos[0];
 
-    // ── Bootstrap live GitHub project field metadata ──────────────────────
-    //    Uses the same ghClient (with resolved token) to fetch field IDs,
-    //    option maps, iterations, and template paths from the GitHub API.
-    const live = await bootstrapGitHub({
-      ghConfig: resolvedGhConfig,
-      github: ghClient,
-      projectRoot,
-      configDesc,
-    });
+    // ── Pure: compute type template paths from config (no API call) ───────
+    //    bootstrapGitHub() would also compute these, but we need them at
+    //    construction time for MCP resource registration, BEFORE the first
+    //    orient call triggers the real bootstrap. Since the computation is
+    //    pure (resolveLocation does only string/URL manipulation), we compute
+    //    it separately here.
+    const typeTemplatePaths = computeTypeTemplatePaths(resolvedGhConfig.type_mapping, projectRoot);
 
-    // ── Assemble boot state ───────────────────────────────────────────────
+    // ── Assemble boot state with EMPTY live metadata skeleton ─────────────
+    //    bootState.live is a mutable object patched in-place by ConfigReloader
+    //    on the first reload(). Every service that reads it (via ctx.config.live)
+    //    only does so lazily, AFTER the first orient call populates the data.
+    const emptyLive: GitHubLiveMetadata = {
+      typeResolution: { source: "board_field", fieldId: "" },
+      projectId: "",
+      fields: {
+        sprintFieldId: "",
+        statusFieldId: "",
+        storyPointsFieldId: null,
+        priorityFieldId: null,
+        epicFieldId: null,
+        assigneeFieldId: null,
+      },
+      statusOptions: {},
+      priorityOptions: {},
+      typeOptions: {},
+      typeTemplatePaths,
+      iterations: {
+        active: null,
+        next: null,
+        completed: [],
+        all: [],
+      },
+    };
+
     const bootState: GitHubBootState = {
       scrumConfig,
       ghConfig: resolvedGhConfig,
-      live,
+      live: emptyLive,
     };
 
     // ── Tier 1: Infrastructure context ────────────────────────────────────
@@ -240,7 +277,7 @@ export class GitHubAdapterFactory implements AdapterFactory {
       backend,
       capabilities: GITHUB_CAPABILITIES,
       fileReader,
-      typeTemplatePaths: live.typeTemplatePaths,
+      typeTemplatePaths,
     };
   }
 }
