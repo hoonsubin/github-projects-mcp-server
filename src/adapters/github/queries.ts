@@ -134,8 +134,10 @@ export const GET_FIELD_OPTIONS_QUERY = getQuery("GetFieldOptions");
 
 // ── Bootstrap queries (config-loader) ──────────────────────────────────────────
 export const GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY = getQuery("GetUserProjectFieldsBootstrap");
+export const GET_ORG_BOOTSTRAP_QUERY = getQuery("GetOrgBootstrap");
 export const GET_ORG_PROJECT_FIELDS_BOOTSTRAP_QUERY = getQuery("GetOrgProjectFieldsBootstrap");
 export const GET_ORG_ISSUE_TYPES_BOOTSTRAP_QUERY = getQuery("GetOrgIssueTypesBootstrap");
+export const GET_ORG_ISSUE_FIELDS_BOOTSTRAP_QUERY = getQuery("GetOrgIssueFieldsBootstrap");
 
 // ── Label mutations ────────────────────────────────────────────────────────────
 export const CREATE_LABEL_MUTATION = getQuery("CreateLabel");
@@ -157,6 +159,10 @@ export const ADD_COMMENT_MUTATION = getQuery("AddComment");
 export const UPDATE_FIELD_MUTATION = getQuery("UpdateField");
 export const CONVERT_DRAFT_ISSUE_MUTATION = getQuery("ConvertDraftIssue");
 export const ADD_DRAFT_ISSUE_MUTATION = getQuery("AddDraftIssue");
+
+// ── Issue field mutations ──────────────────────────────────────────────────────
+export const UPDATE_ISSUE_FIELD_MUTATION = getQuery("UpdateIssueField");
+export const CLEAR_ISSUE_FIELD_MUTATION = getQuery("ClearIssueField");
 
 // ── Fragment registry API ──────────────────────────────────────────────────────
 

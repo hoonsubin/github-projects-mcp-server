@@ -62,6 +62,7 @@ const enrichListingCustomFields = (
     if (canonicalIds.has(fv.field.id)) continue;
     if (CANONICAL_FIELD_NAMES.has(fv.field.name)) continue;
 
+    const ifv = fv.issueFieldValue;
     customFields[fv.field.name] = JSON.stringify({
       // __typename, color, optionId intentionally omitted — GitHub API noise
       ...(fv.iterationId !== undefined ? { iterationId: fv.iterationId } : {}),
@@ -78,6 +79,10 @@ const enrichListingCustomFields = (
       ...(fv.repository
         ? { repository: { name: fv.repository.name, nameWithOwner: fv.repository.nameWithOwner } }
         : {}),
+      // Unwrap org-level issue field value (ProjectV2ItemIssueFieldValue).
+      // Single-select: name is the display label; text/date/number: value holds the scalar.
+      ...(ifv?.name !== undefined ? { name: ifv.name } : {}),
+      ...(ifv?.value !== undefined ? { value: ifv.value } : {}),
     });
   }
 

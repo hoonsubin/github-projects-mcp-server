@@ -21,11 +21,13 @@ import type { ContentLocation } from "../../domain/content-location.ts";
 import { resolveLocation, SUPPORTED_TEMPLATE_EXTENSIONS } from "../../scrum/resolve-location.ts";
 import { GitHubApiError } from "./errors.ts";
 import {
-  GET_ORG_ISSUE_TYPES_BOOTSTRAP_QUERY,
-  GET_ORG_PROJECT_FIELDS_BOOTSTRAP_QUERY,
-  GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY,
-} from "./queries.ts";
+  buildOptionMaps,
+  isCanonicalSingleSelectUnavailable,
+  type OrgIssueFieldNode,
+} from "./bootstrap-field-sources.ts";
+import { GET_ORG_BOOTSTRAP_QUERY, GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY } from "./queries.ts";
 import type { SelectFieldNode } from "./types.ts";
+import { classifyIterations } from "./internal/iteration-classifier.ts";
 
 // ── Template path resolver (pure, no API call) ────────────────────────────────
 
@@ -64,6 +66,18 @@ export const computeTypeTemplatePaths = (
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 /**
+ * Metadata for a project field that is backed by an org-level issue field.
+ * Carries the org issue field ID (for write mutations) and option name→ID map
+ * (for single-select writes, since project field options are empty for these).
+ */
+export interface IssueBackedFieldMeta {
+  /** The org-level IssueField node ID used in updateIssueFieldValue mutations. */
+  orgFieldId: string;
+  /** option display name → org-level option relay ID (for single-select fields). */
+  options?: Record<string, string>;
+}
+
+/**
  * Live GitHub project metadata — mutable, patched in-place by ConfigReloader.
  * typeTemplatePaths is included here because it's re-resolved on each reload.
  */
@@ -88,6 +102,12 @@ export interface GitHubLiveMetadata {
     completed: IterationEntry[];
     all: IterationEntry[];
   };
+  /**
+   * Project field IDs backed by org-level issue fields.
+   * Keyed by project field ID (PVTSSF_… / PVTF_…).
+   * Populated only for org-owned projects when issue fields are detected.
+   */
+  issueBackedFields: Record<string, IssueBackedFieldMeta>;
 }
 
 /**
@@ -153,11 +173,6 @@ interface ProjectFieldsResponse {
   user?: { projectV2?: { id: string; fields: { nodes: FieldNode[] } } | null } | null;
   organization?: { projectV2?: { id: string; fields: { nodes: FieldNode[] } } | null } | null;
 }
-
-// ── Type guards ───────────────────────────────────────────────────────────────
-
-const isSingleSelectField = (node: FieldNode): node is SingleSelectFieldNode =>
-  "options" in node && Array.isArray((node as SingleSelectFieldNode).options);
 
 const isIterationField = (node: FieldNode): node is IterationFieldNode => "configuration" in node;
 
@@ -234,14 +249,35 @@ const resolveFieldIds = (
   };
 };
 
-interface ResolvedOptionMaps {
-  statusOptions: Record<string, string>;
-  priorityOptions: Record<string, string>;
-  typeOptions: Record<string, string>;
-}
+/**
+ * Detect which project fields are backed by org-level issue fields by matching
+ * project field names against the org issue field list.
+ */
+const detectIssueBackedFields = (
+  projectFieldNodes: FieldNode[],
+  orgIssueFieldNodes: OrgIssueFieldNode[],
+): Record<string, IssueBackedFieldMeta> => {
+  const issueBackedFields: Record<string, IssueBackedFieldMeta> = {};
+  const orgFieldByName = new Map(orgIssueFieldNodes.map((f) => [f.name, f]));
 
-interface OrgIssueTypesResponse {
+  for (const projectField of projectFieldNodes) {
+    const orgField = orgFieldByName.get(projectField.name);
+    if (!orgField) continue;
+
+    const meta: IssueBackedFieldMeta = { orgFieldId: orgField.id };
+    if (orgField.options && orgField.options.length > 0) {
+      meta.options = Object.fromEntries(orgField.options.map((o) => [o.name, o.id]));
+    }
+    issueBackedFields[projectField.id] = meta;
+  }
+
+  return issueBackedFields;
+};
+
+interface OrgBootstrapResponse {
   organization: {
+    projectV2?: { id: string; fields: { nodes: FieldNode[] } } | null;
+    issueFields: { nodes: OrgIssueFieldNode[] };
     issueTypes: {
       nodes: Array<{
         id: string;
@@ -251,44 +287,6 @@ interface OrgIssueTypesResponse {
     };
   } | null;
 }
-
-const buildOptionMaps = (
-  fieldNodes: FieldNode[],
-  ghConfig: GitHubBackendConfig,
-): ResolvedOptionMaps => {
-  const statusOptions: Record<string, string> = {};
-  const priorityOptions: Record<string, string> = {};
-  const typeOptions: Record<string, string> = {};
-  const { field_mapping, status_display, priority_display, type_mapping } = ghConfig;
-
-  for (const node of fieldNodes) {
-    if (!isSingleSelectField(node)) continue;
-    const displayToId = new Map(node.options.map((o) => [o.name, o.id]));
-
-    if (node.name === field_mapping.status) {
-      for (const displayName of Object.values(status_display)) {
-        const id = displayToId.get(displayName);
-        if (id) statusOptions[displayName] = id;
-      }
-    }
-    if (field_mapping.priority && node.name === field_mapping.priority) {
-      for (const displayName of Object.values(priority_display)) {
-        const id = displayToId.get(displayName);
-        if (id) priorityOptions[displayName] = id;
-      }
-    }
-    if (field_mapping.item_type && type_mapping && node.name === field_mapping.item_type) {
-      for (const [canonicalKey, entry] of Object.entries(type_mapping)) {
-        const id = displayToId.get(entry.display);
-        if (id) typeOptions[canonicalKey] = id;
-      }
-    }
-  }
-
-  return { statusOptions, priorityOptions, typeOptions };
-};
-
-import { classifyIterations } from "./internal/iteration-classifier.ts";
 
 /**
  * Bootstrap live GitHub project field metadata.
@@ -302,19 +300,26 @@ export const bootstrapGitHub = async (params: BootstrapParams): Promise<GitHubLi
 
   const { owner, owner_type: ownerType, project_number: projectNumber } = ghConfig;
 
-  // Validate config cross-references.
-  const bootstrapQuery = ownerType === "user"
-    ? GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY
-    : GET_ORG_PROJECT_FIELDS_BOOTSTRAP_QUERY;
+  let projectNode: { id: string; fields: { nodes: FieldNode[] } } | null | undefined;
+  let orgIssueFieldNodes: OrgIssueFieldNode[] = [];
+  let orgIssueTypes: Array<{ id: string; name: string; isEnabled: boolean }> = [];
 
-  const fieldsResult = await github.graphql<ProjectFieldsResponse>(
-    bootstrapQuery,
-    { login: owner, number: projectNumber },
-  );
-
-  const projectNode = ownerType === "user"
-    ? fieldsResult.user?.projectV2
-    : fieldsResult.organization?.projectV2;
+  if (ownerType === "user") {
+    const fieldsResult = await github.graphql<ProjectFieldsResponse>(
+      GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY,
+      { login: owner, number: projectNumber },
+    );
+    projectNode = fieldsResult.user?.projectV2;
+  } else {
+    const orgResult = await github.graphql<OrgBootstrapResponse>(
+      GET_ORG_BOOTSTRAP_QUERY,
+      { login: owner, number: projectNumber },
+    );
+    const org = orgResult.organization;
+    projectNode = org?.projectV2;
+    orgIssueFieldNodes = org?.issueFields.nodes ?? [];
+    orgIssueTypes = org?.issueTypes.nodes ?? [];
+  }
 
   if (!projectNode) {
     throw new GitHubApiError(
@@ -367,6 +372,7 @@ export const bootstrapGitHub = async (params: BootstrapParams): Promise<GitHubLi
   const { statusOptions, priorityOptions, typeOptions: boardTypeOptions } = buildOptionMaps(
     fieldNodes,
     ghConfig,
+    orgIssueFieldNodes,
   );
 
   let typeResolution: TypeResolution;
@@ -404,16 +410,11 @@ export const bootstrapGitHub = async (params: BootstrapParams): Promise<GitHubLi
     }
     typeResolution = { source: "board_field", fieldId: typeFieldId };
   } else if (ownerType === "org") {
-    const response = await github.graphql<OrgIssueTypesResponse>(
-      GET_ORG_ISSUE_TYPES_BOOTSTRAP_QUERY,
-      { login: owner },
-    );
-    const orgIssueTypes = response.organization?.issueTypes.nodes.filter((it) => it.isEnabled) ??
-      [];
+    const enabledOrgIssueTypes = orgIssueTypes.filter((it) => it.isEnabled);
     typeOptions = {};
     for (const [canonicalKey, mapping] of Object.entries(ghConfig.type_mapping ?? {})) {
       const expected = (mapping.display ?? canonicalKey).toLowerCase();
-      const match = orgIssueTypes.find((it) => it.name.toLowerCase() === expected);
+      const match = enabledOrgIssueTypes.find((it) => it.name.toLowerCase() === expected);
       if (match) typeOptions[canonicalKey] = match.id;
     }
 
@@ -483,6 +484,24 @@ export const bootstrapGitHub = async (params: BootstrapParams): Promise<GitHubLi
     params.iterationAsOf ? new Date(params.iterationAsOf) : new Date(),
   );
 
+  // Detect issue-backed project fields for org-owned projects. Degrade (skip
+  // issue-backed writes) only when both the project board and org issue-field
+  // catalogs lack options for a configured single-select such as Priority.
+  let issueBackedFields: Record<string, IssueBackedFieldMeta> = {};
+  if (ownerType === "org") {
+    const priorityNeedsCatalog = !!ghConfig.field_mapping.priority;
+    const priorityCatalogUnavailable = priorityNeedsCatalog &&
+      isCanonicalSingleSelectUnavailable(
+        ghConfig.field_mapping.priority,
+        fieldNodes,
+        orgIssueFieldNodes,
+        true,
+      );
+    if (!priorityCatalogUnavailable) {
+      issueBackedFields = detectIssueBackedFields(fieldNodes, orgIssueFieldNodes);
+    }
+  }
+
   return {
     typeResolution,
     projectId: projectNode.id,
@@ -499,5 +518,6 @@ export const bootstrapGitHub = async (params: BootstrapParams): Promise<GitHubLi
     typeOptions,
     typeTemplatePaths,
     iterations,
+    issueBackedFields,
   };
 };

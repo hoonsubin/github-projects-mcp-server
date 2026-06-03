@@ -311,6 +311,20 @@ export type MilestoneRefNode = Required<Pick<GH.Milestone, "id" | "title">>;
 /** Minimal issue type reference used in issue content projections. */
 export type IssueTypeRef = Required<Pick<GH.IssueType, "id" | "name">>;
 
+/**
+ * Nested value payload for ProjectV2ItemIssueFieldValue.
+ * One of the four IssueField*Value types returned under the `issueFieldValue` union.
+ */
+export interface ItemIssueFieldValue {
+  // IssueFieldSingleSelectValue
+  name?: string;
+  optionId?: string | null;
+  color?: string;
+  // IssueFieldTextValue | IssueFieldDateValue (value: String!)
+  // IssueFieldNumberValue (value: Float!)
+  value?: string | number | null;
+}
+
 export interface ItemFieldValue {
   __typename: string;
   field: FieldValueField;
@@ -337,6 +351,8 @@ export interface ItemFieldValue {
   milestone?: FieldValueMilestone;
   // Repository (GH.ProjectV2ItemFieldRepositoryValue)
   repository?: FieldValueRepository;
+  // Issue field (GH.ProjectV2ItemIssueFieldValue) — wraps org-level issue field values
+  issueFieldValue?: ItemIssueFieldValue | null;
 }
 
 // ── Board extraction types (absorbed from raw-types.ts) ──────────────────────
@@ -350,6 +366,11 @@ export interface FieldValueNode {
   name?: string; // single-select option display name
   title?: string; // iteration title
   number?: number; // number field value
+  /** Nested value for org-level issue fields (ProjectV2ItemIssueFieldValue). */
+  issueFieldValue?: {
+    name?: string;
+    value?: string | number | null;
+  } | null;
 }
 
 /** Extracted board fields from a field-value node array. */

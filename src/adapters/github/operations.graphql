@@ -181,6 +181,23 @@ fragment ItemFieldValues on ProjectV2Item {
         repository { name nameWithOwner }
         field { ... on ProjectV2FieldCommon { id name } }
       }
+      ... on ProjectV2ItemIssueFieldValue {
+        field { ... on ProjectV2FieldCommon { id name } }
+        issueFieldValue {
+          ... on IssueFieldSingleSelectValue {
+            name optionId color
+          }
+          ... on IssueFieldTextValue {
+            value
+          }
+          ... on IssueFieldNumberValue {
+            value
+          }
+          ... on IssueFieldDateValue {
+            value
+          }
+        }
+      }
     }
   }
 }
@@ -794,6 +811,52 @@ query GetUserProjectFieldsBootstrap($login: String!, $number: Int!) {
   }
 }
 
+# ── GetOrgBootstrap ─────────────────────────────────────────────────────────────
+# Single org bootstrap query: project board fields, org issue fields, and issue types.
+# Used by bootstrapGitHub() for org-owned projects (one round-trip).
+
+query GetOrgBootstrap($login: String!, $number: Int!) {
+  organization(login: $login) {
+    projectV2(number: $number) {
+      id
+      fields(first: 50) {
+        nodes {
+          ... on ProjectV2Field { id name dataType }
+          ... on ProjectV2SingleSelectField {
+            id name dataType
+            options { id name color description }
+          }
+          ... on ProjectV2IterationField {
+            id name dataType
+            configuration {
+              iterations { id title startDate duration }
+              completedIterations { id title startDate duration }
+            }
+          }
+        }
+      }
+    }
+    issueFields(first: 50) {
+      nodes {
+        ... on IssueFieldSingleSelect {
+          id name
+          options { id name color }
+        }
+        ... on IssueFieldText { id name }
+        ... on IssueFieldNumber { id name }
+        ... on IssueFieldDate { id name }
+      }
+    }
+    issueTypes(first: 50) {
+      nodes {
+        id
+        name
+        isEnabled
+      }
+    }
+  }
+}
+
 # ── GetOrgProjectFieldsBootstrap ───────────────────────────────────────────────
 # Bootstrap query for org-owned projects: fetches field metadata including
 # single-select options and iteration config. Used by config-loader.ts.
@@ -829,6 +892,27 @@ query GetOrgIssueTypesBootstrap($login: String!) {
         id
         name
         isEnabled
+      }
+    }
+  }
+}
+
+# ── GetOrgIssueFieldsBootstrap ────────────────────────────────────────────────
+# Fetch org-level issue field definitions including single-select options.
+# Used by bootstrapGitHub() to detect issue-backed project fields and populate
+# their option maps when project field options are empty (issue-backed).
+
+query GetOrgIssueFieldsBootstrap($login: String!) {
+  organization(login: $login) {
+    issueFields(first: 50) {
+      nodes {
+        ... on IssueFieldSingleSelect {
+          id name
+          options { id name color }
+        }
+        ... on IssueFieldText { id name }
+        ... on IssueFieldNumber { id name }
+        ... on IssueFieldDate { id name }
       }
     }
   }
@@ -918,4 +1002,16 @@ mutation ConvertDraftIssue($itemId: ID!, $repositoryId: ID!) {
   convertProjectV2DraftIssueItemToIssue(input: {
     itemId: $itemId, repositoryId: $repositoryId
   }) { item { content { __typename ... on Issue { id } } } }
+}
+
+mutation UpdateIssueField($input: UpdateIssueFieldValueInput!) {
+  updateIssueFieldValue(input: $input) {
+    issue { id }
+  }
+}
+
+mutation ClearIssueField($input: DeleteIssueFieldValueInput!) {
+  deleteIssueFieldValue(input: $input) {
+    issue { id }
+  }
 }
