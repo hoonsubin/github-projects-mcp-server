@@ -50,6 +50,7 @@ export const resolveImport = (
  * Identifies exports within the provided modules that are not referenced by any imports in those modules.
  */
 export const findUnusedExports = (modules: ParsedModule[]): UnusedExport[] => {
+  // todo: exclude exports that are used within the same module.
   const moduleMap = new Map<string, ParsedModule>();
   const usedNamesByModule = new Map<string, Set<string>>();
 
@@ -89,7 +90,7 @@ export const findUnusedExports = (modules: ParsedModule[]): UnusedExport[] => {
   for (const mod of modules) {
     const usedSet = usedNamesByModule.get(mod.filePathName)!;
     for (const exp of mod.getExports()) {
-      if (!usedSet.has(exp.name)) {
+      if (!exp.usedInternally && !usedSet.has(exp.name)) {
         unreferencedExports.push({
           ...exp,
           modulePathName: mod.filePathName,

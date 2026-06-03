@@ -47,9 +47,9 @@ if (isMetrics) {
   cliArgs.push("--metrics");
 }
 
-// Add exclude patterns to depcruise CLI
+// Add exclude patterns to depcruise CLI (patterns are already anchored regex)
 for (const pattern of excludePatterns) {
-  cliArgs.push("--exclude", `^${pattern}`);
+  cliArgs.push("--exclude", pattern);
 }
 
 const command = new Deno.Command("deno", {

@@ -1,8 +1,13 @@
 // =============================================================================
 // scripts/audit/renderers/mermaid.ts — Layer dependency graph → mermaid flowchart
 //
-// Transforms a LayerGraphResult into a flowchart TB string. Each layer is a
+// Transforms a LayerGraphResult into a flowchart LR string. Each layer is a
 // subgraph with colored nodes; violation edges are red, valid edges are green.
+//
+// Exports two variants:
+//   renderMermaidSource   — raw mermaid source (no code fence)
+//   renderMermaidFenced   — wrapped in markdown ```mermaid fence (for embedding)
+//   renderMermaid         — (deprecated) alias for renderMermaidFenced
 // =============================================================================
 
 import type { LayerGraphResult, LayerName } from "../types.ts";
@@ -39,8 +44,10 @@ const NODE_LABEL = (source: string): string => {
   return parts.slice(-2).join("/");
 };
 
-export const renderMermaid = (result: LayerGraphResult): string => {
-  const lines: string[] = ["```mermaid", "flowchart LR", ""];
+// ── Private: build raw lines (shared by both public functions) ─────────────────
+
+const buildMermaidLines = (result: LayerGraphResult): string[] => {
+  const lines: string[] = ["flowchart LR", ""];
 
   // Group nodes by layer
   const layerNodes = new Map<LayerName, string[]>();
@@ -80,6 +87,30 @@ export const renderMermaid = (result: LayerGraphResult): string => {
     }
   }
 
-  lines.push("```");
-  return lines.join("\n");
+  return lines;
 };
+
+// ── Public API ──────────────────────────────────────────────────────────────────
+
+/**
+ * Render a mermaid flowchart as **raw** source (no markdown code fence).
+ * Suitable for writing to a standalone `.mermaid` file.
+ */
+export const renderMermaidSource = (result: LayerGraphResult): string => {
+  return buildMermaidLines(result).join("\n") + "\n";
+};
+
+/**
+ * Render a mermaid flowchart wrapped in markdown ` ```mermaid ` fences.
+ * Suitable for embedding inline in a markdown document (e.g. `docs/AUDIT.md`).
+ */
+export const renderMermaidFenced = (result: LayerGraphResult): string => {
+  const body = buildMermaidLines(result).join("\n");
+  return "```mermaid\n" + body + "\n```\n";
+};
+
+/**
+ * @deprecated Use `renderMermaidFenced` (for markdown embedding) or
+ * `renderMermaidSource` (for standalone file output).
+ */
+export const renderMermaid = renderMermaidFenced;
