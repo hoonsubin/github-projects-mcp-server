@@ -464,7 +464,11 @@ export interface IterationEntry {
 // ── Burndown types (scrum_get_burndown) ───────────────────────────────────────
 
 /** Strategy used to derive burndown data. */
-export type DataSource = "audit_log" | "issue_close_proxy";
+export type DataSource =
+  | "audit_log"
+  | "issue_close_proxy"
+  | "issue_closed_at"
+  | "issue_closed_at_and_timeline";
 
 /** Metadata describing a sprint time window. */
 export interface SprintWindowMeta {

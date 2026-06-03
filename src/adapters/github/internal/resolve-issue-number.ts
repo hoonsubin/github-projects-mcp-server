@@ -1,12 +1,11 @@
 // =============================================================================
 // src/adapters/github/internal/resolve-issue-number.ts
-//
-// Resolves a repository issue number to a project board item via targeted
-// GetIssueProjectItem queries — avoids a full ProjectItems board scan.
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
-import { GET_ISSUE_PROJECT_ITEM_QUERY } from "../queries.ts";
+import { GET_ISSUE_PROJECT_ITEM_QUERY, SEARCH_ISSUES_QUERY } from "../queries.ts";
+import { buildSearchQueryString } from "./search-query-builder.ts";
+import { mapWithConcurrency } from "./concurrent.ts";
 import type { GitHubClient } from "./http-client.ts";
 import type { GitHubBackendConfig, ProjectItem } from "../types.ts";
 
@@ -20,10 +19,28 @@ interface GetIssueProjectItemResponse {
   } | null;
 }
 
-/**
- * Look up the project item for an issue number on the configured board.
- * Returns null when the issue is not linked to the project.
- */
+interface SearchIssuesNode {
+  number: number;
+}
+
+interface SearchIssuesResponse {
+  search?: {
+    nodes: SearchIssuesNode[];
+  } | null;
+}
+
+const LOOKUP_CONCURRENCY = 4;
+
+const pickProjectItem = (
+  nodes: Array<ProjectItem & { project?: { number: number } | null } | null>,
+  projectNumber: number,
+): ProjectItem | null => {
+  const match = nodes.find((n) => n?.project?.number === projectNumber);
+  if (!match) return null;
+  const { project: _project, ...item } = match;
+  return item;
+};
+
 export const fetchProjectItemByIssueNumber = async (
   gh: GitHubClient,
   ghConfig: GitHubBackendConfig,
@@ -38,17 +55,69 @@ export const fetchProjectItemByIssueNumber = async (
     );
 
     const nodes = response.repository?.issue?.projectItems?.nodes ?? [];
-    const match = nodes.find((n) => n?.project?.number === project_number);
-    if (match) {
-      const { project: _project, ...item } = match;
-      return item;
-    }
+    const item = pickProjectItem(nodes, project_number);
+    if (item) return item;
   }
 
   return null;
 };
 
-/** Project item ID for an issue on the configured board, or null. */
+export const fetchProjectItemsByIssueNumbers = async (
+  gh: GitHubClient,
+  ghConfig: GitHubBackendConfig,
+  issueNumbers: readonly number[],
+): Promise<ProjectItem[]> => {
+  const unique = [...new Set(issueNumbers.filter((n) => Number.isFinite(n)))];
+  if (unique.length === 0) return [];
+
+  if (unique.length === 1) {
+    const item = await fetchProjectItemByIssueNumber(gh, ghConfig, unique[0]!);
+    return item ? [item] : [];
+  }
+
+  const found = new Map<number, ProjectItem>();
+
+  if (ghConfig.tracked_repos.length > 0) {
+    const numberClause = unique.map((n) => n.toString()).join(" ");
+    const queryString = buildSearchQueryString({ search: numberClause }, ghConfig);
+
+    const response = await gh.graphql<SearchIssuesResponse>(
+      SEARCH_ISSUES_QUERY,
+      { query: queryString, first: Math.min(unique.length, 100) },
+    );
+
+    const hits = new Set((response.search?.nodes ?? []).map((n) => n.number));
+    const toResolve = unique.filter((n) => hits.has(n));
+
+    const resolved = await mapWithConcurrency(toResolve, LOOKUP_CONCURRENCY, (num) =>
+      fetchProjectItemByIssueNumber(gh, ghConfig, num)
+    );
+    for (let i = 0; i < toResolve.length; i++) {
+      const item = resolved[i];
+      if (item) {
+        const num = toResolve[i]!;
+        const content = item.content;
+        if (content?.__typename === "Issue" && content.number === num) {
+          found.set(num, item);
+        }
+      }
+    }
+  }
+
+  const missing = unique.filter((n) => !found.has(n));
+  if (missing.length > 0) {
+    const rest = await mapWithConcurrency(missing, LOOKUP_CONCURRENCY, (num) =>
+      fetchProjectItemByIssueNumber(gh, ghConfig, num)
+    );
+    for (let i = 0; i < missing.length; i++) {
+      const item = rest[i];
+      if (item) found.set(missing[i]!, item);
+    }
+  }
+
+  return unique.map((n) => found.get(n)).filter((i): i is ProjectItem => i !== null);
+};
+
 export const fetchProjectItemIdByIssueNumber = async (
   gh: GitHubClient,
   ghConfig: GitHubBackendConfig,
@@ -58,9 +127,6 @@ export const fetchProjectItemIdByIssueNumber = async (
   return item?.id ?? null;
 };
 
-/**
- * Resolve an issue number to a project item ID or throw NOT_FOUND.
- */
 export const resolveProjectItemIdByIssueNumber = async (
   gh: GitHubClient,
   ghConfig: GitHubBackendConfig,

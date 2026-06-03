@@ -111,7 +111,12 @@ Deno.test("classifyFilter - labels + sprint_ref → mixed", () => {
   assertEquals(profile.kind, "mixed");
 });
 
-Deno.test("classifyFilter - empty filter → mixed (default catch-all)", () => {
+Deno.test("classifyFilter - empty filter + scope=all → project_items", () => {
   const profile = classifyFilter(baseFilter());
-  assertEquals(profile.kind, "mixed");
+  assertEquals(profile.kind, "project_items");
+});
+
+Deno.test("classifyFilter - empty filter + scope=sprint → search_api", () => {
+  const profile = classifyFilter({ ...baseFilter(), scope: "sprint" });
+  assertEquals(profile.kind, "search_api");
 });

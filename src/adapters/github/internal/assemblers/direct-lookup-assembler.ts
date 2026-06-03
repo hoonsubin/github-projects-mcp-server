@@ -1,8 +1,5 @@
 // =============================================================================
 // src/adapters/github/internal/assemblers/direct-lookup-assembler.ts
-//
-// Handles `keys`-only filter profile via targeted issue → project-item lookup.
-// Avoids a full board scan for direct key lookups.
 // =============================================================================
 
 import type { GitHubBootState } from "../../bootstrap.ts";
@@ -11,7 +8,7 @@ import type { ProjectItem } from "../../types.ts";
 import type { ResolvedItemFilter } from "../../../../scrum/ports.ts";
 import type { AssemblerOutput } from "./types.ts";
 import type { PaginationResult } from "../execution-engine.ts";
-import { fetchProjectItemByIssueNumber } from "../resolve-issue-number.ts";
+import { fetchProjectItemsByIssueNumbers } from "../resolve-issue-number.ts";
 import { ResultNormalizer } from "../result-normalizer.ts";
 import { buildItemFilterFn } from "../item-filter.ts";
 import { buildDependencyMap } from "../story-query-service.ts";
@@ -50,20 +47,9 @@ export class DirectLookupAssembler {
   }
 
   private async fetchProjectItemsForKeys(keys: readonly string[]): Promise<ProjectItem[]> {
-    const items: ProjectItem[] = [];
-
-    for (const key of keys) {
-      const number = Number.parseInt(key, 10);
-      if (Number.isNaN(number)) continue;
-
-      const item = await fetchProjectItemByIssueNumber(
-        this.gh,
-        this.config.ghConfig,
-        number,
-      );
-      if (item) items.push(item);
-    }
-
-    return items;
+    const numbers = keys
+      .map((key) => Number.parseInt(key, 10))
+      .filter((n) => !Number.isNaN(n));
+    return fetchProjectItemsByIssueNumbers(this.gh, this.config.ghConfig, numbers);
   }
 }
