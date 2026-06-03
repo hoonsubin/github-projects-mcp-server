@@ -134,6 +134,7 @@ export const GET_FIELD_OPTIONS_QUERY = getQuery("GetFieldOptions");
 
 // ── Bootstrap queries (config-loader) ──────────────────────────────────────────
 export const GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY = getQuery("GetUserProjectFieldsBootstrap");
+export const GET_ORG_BOOTSTRAP_QUERY = getQuery("GetOrgBootstrap");
 export const GET_ORG_PROJECT_FIELDS_BOOTSTRAP_QUERY = getQuery("GetOrgProjectFieldsBootstrap");
 export const GET_ORG_ISSUE_TYPES_BOOTSTRAP_QUERY = getQuery("GetOrgIssueTypesBootstrap");
 export const GET_ORG_ISSUE_FIELDS_BOOTSTRAP_QUERY = getQuery("GetOrgIssueFieldsBootstrap");

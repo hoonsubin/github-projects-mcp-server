@@ -811,6 +811,52 @@ query GetUserProjectFieldsBootstrap($login: String!, $number: Int!) {
   }
 }
 
+# ── GetOrgBootstrap ─────────────────────────────────────────────────────────────
+# Single org bootstrap query: project board fields, org issue fields, and issue types.
+# Used by bootstrapGitHub() for org-owned projects (one round-trip).
+
+query GetOrgBootstrap($login: String!, $number: Int!) {
+  organization(login: $login) {
+    projectV2(number: $number) {
+      id
+      fields(first: 50) {
+        nodes {
+          ... on ProjectV2Field { id name dataType }
+          ... on ProjectV2SingleSelectField {
+            id name dataType
+            options { id name color description }
+          }
+          ... on ProjectV2IterationField {
+            id name dataType
+            configuration {
+              iterations { id title startDate duration }
+              completedIterations { id title startDate duration }
+            }
+          }
+        }
+      }
+    }
+    issueFields(first: 50) {
+      nodes {
+        ... on IssueFieldSingleSelect {
+          id name
+          options { id name color }
+        }
+        ... on IssueFieldText { id name }
+        ... on IssueFieldNumber { id name }
+        ... on IssueFieldDate { id name }
+      }
+    }
+    issueTypes(first: 50) {
+      nodes {
+        id
+        name
+        isEnabled
+      }
+    }
+  }
+}
+
 # ── GetOrgProjectFieldsBootstrap ───────────────────────────────────────────────
 # Bootstrap query for org-owned projects: fetches field metadata including
 # single-select options and iteration config. Used by config-loader.ts.
