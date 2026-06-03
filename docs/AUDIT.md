@@ -1,7 +1,7 @@
 # Architecture Audit Report
 
-**Generated:** 2026-06-03T14:49:33.414Z
-**Commit:** `ffb9d7c`
+**Generated:** 2026-06-03T15:25:36.690Z
+**Commit:** `003781b`
 **Source directory:** `./src`
 
 ## Architecture Compliance
@@ -154,140 +154,61 @@ _Instability (I) measures outgoing dependencies. I=0 means the module depends on
 
 ## Unused Exports
 
-**Total unused exports:** 131
+**Total unused exports:** 52
 
 | File | Export | Kind |
 |------|--------|------|
 | `src/scrum/sprint-math.ts` | buildSprintMeta | function |
-| `src/scrum/url-rewriters.ts` | URL_REWRITERS | var |
-| `src/scrum/ports.ts` | FieldPresence | interface |
-| `src/scrum/ports.ts` | FieldWithOptions | interface |
-| `src/scrum/ports.ts` | DisplayMap | type |
 | `src/scrum/ports.ts` | StoryListing | interface |
-| `src/scrum/ports.ts` | EpicPort | interface |
 | `src/scrum/template-resource.ts` | templateResourceUseCase | function |
-| `src/scrum/resolve-location.ts` | SUPPORTED_CONFIG_EXTENSIONS | var |
 | `src/scrum/resolve-location.ts` | SupportedConfigExtension | type |
 | `src/scrum/resolve-location.ts` | SupportedTemplateExtension | type |
 | `src/tools/scrum-read.ts` | SCRUM_READ_TOOL_NAMES | var |
 | `src/tools/scrum-read.ts` | registerScrumReadTools | function |
 | `src/tools/scrum-write.ts` | SCRUM_WRITE_TOOL_NAMES | var |
 | `src/tools/scrum-write.ts` | registerScrumWriteTools | function |
-| `src/tools/_snapshot_normalize.ts` | SNAPSHOT_PLACEHOLDER | var |
-| `src/tools/_snapshot_normalize.ts` | normalizeSnapshot | function |
-| `src/tools/handlers/write.ts` | resolveP0PriorityDisplay | function |
 | `src/test/tools/contract-test-utils.ts` | parseHandlerPayload | function |
-| `src/test/tools/contract-test-utils.ts` | McpOutputShape | type |
-| `src/test/tools/contract-test-utils.ts` | assertMcpToolOutput | function |
 | `src/test/tools/contract-test-utils.ts` | assertHandlerSchema | function |
-| `src/test/support/fixture-backend.ts` | BuildFixtureBackendOptions | interface |
-| `src/test/support/fixture-backend.ts` | buildFixtureBackend | function |
 | `src/test/support/fixture-backend.ts` | validateFixtureReplay | function |
-| `src/test/support/scrum-test-utils.ts` | buildTypeTemplatePaths | function |
 | `src/test/support/scrum-test-utils.ts` | typeTemplatePathsPromise | var |
-| `src/test/support/scrum-test-utils.ts` | committedScrumConfigPromise | var |
 | `src/test/support/scrum-test-utils.ts` | committedConfigProfilePromise | var |
 | `src/test/support/scrum-test-utils.ts` | committedFakeBackendPromise | var |
 | `src/test/support/scrum-test-utils.ts` | committedFixtureBackendPromise | var |
 | `src/test/support/scrum-test-utils.ts` | realFileReader | var |
 | `src/test/support/scrum-test-utils.ts` | stubFileReader | var |
 | `src/test/support/scrum-test-utils.ts` | withTestServer | function |
-| `src/test/support/config-profile.ts` | readGitHubBackendConfig | function |
-| `src/test/support/fake-backend.ts` | FakeBackendCall | type |
-| `src/test/support/fake-backend.ts` | ConfigShapedFakeBackendOptions | interface |
-| `src/test/support/fake-backend.ts` | buildCanonicalListingItems | function |
 | `_deno-shim.node.ts` | addEventListener | function |
 | `_deno-shim.node.ts` | Deno | var |
 | `src/schemas/inputs.ts` | GraphQLQuerySchema | var |
-| `src/schemas/scrum-outputs.ts` | BacklogItemListingSchema | var |
-| `src/schemas/scrum-outputs.ts` | StorySchema | var |
-| `src/schemas/scrum-outputs.ts` | ImpedimentListingSchema | var |
-| `src/schemas/scrum-outputs.ts` | CreateStoryPartialFailureSchema | var |
 | `src/schemas/scrum-outputs.ts` | CreateStoryResponseSchema | var |
-| `src/adapters/capabilities.ts` | CapabilityUnavailableError | class |
-| `src/adapters/capabilities.ts` | CapabilityMap | type |
 | `src/adapters/capabilities.ts` | getCapabilities | function |
 | `src/adapters/capabilities.ts` | checkCapability | function |
 | `src/adapters/factory.ts` | createBackend | function |
-| `src/adapters/github/errors.ts` | GitHubErrorCode | type |
 | `src/adapters/github/queries.ts` | ADD_PROJECT_ITEM_MUTATION | var |
 | `src/adapters/github/queries.ts` | GET_ORG_PROJECT_FIELDS_BOOTSTRAP_QUERY | var |
 | `src/adapters/github/queries.ts` | GET_ORG_ISSUE_TYPES_BOOTSTRAP_QUERY | var |
 | `src/adapters/github/queries.ts` | GET_ORG_ISSUE_FIELDS_BOOTSTRAP_QUERY | var |
 | `src/adapters/github/queries.ts` | CREATE_ISSUE_MUTATION | var |
 | `src/adapters/github/mappers.ts` | toSprintInfo | function |
-| `src/adapters/github/internal/fixture-replay/query-hash.ts` | stableVariablesJson | function |
 | `src/adapters/github/internal/fixture-replay/load-manifest.ts` | loadFixtureJson | function |
-| `src/adapters/github/internal/fixture-replay/types.ts` | ScenarioManifestEntry | interface |
-| `src/adapters/github/internal/fixture-replay/types.ts` | FixtureCatalog | interface |
-| `src/adapters/github/internal/fixture-replay/recording-client.ts` | RecordedWireCall | interface |
 | `src/adapters/github/internal/fixture-replay/recording-client.ts` | RecordingGitHubClient | class |
 | `src/adapters/github/internal/fixture-replay/recording-client.ts` | mergeWireEntries | function |
-| `src/adapters/github/internal/assembler-output.ts` | backfillSprintRefs | function |
 | `src/adapters/github/internal/pagination.ts` | isBacklogItem | function |
-| `src/adapters/github/internal/project-items-query-builder.ts` | ProjectV2ItemsPage | interface |
 | `src/adapters/github/internal/display-helpers.ts` | resolveTerminalDisplay | function |
 | `src/adapters/github/internal/display-helpers.ts` | resolveHighestPriorityDisplay | function |
-| `src/adapters/github/internal/resolve-issue-number.ts` | fetchProjectItemIdByIssueNumber | function |
-| `src/adapters/github/internal/search-result-normalizer.ts` | SearchIssueNode | interface |
-| `src/adapters/github/internal/label-resolver.ts` | GitHubLabel | interface |
 | `src/adapters/github/internal/label-resolver.ts` | RepoNodeIdProvider | interface |
-| `src/adapters/github/internal/_test_utils.ts` | GitHubClientSpy | interface |
 | `src/adapters/github/internal/_test_utils.ts` | createGhSpy | function |
-| `src/adapters/github/internal/_test_utils.ts` | makeConfig | function |
 | `src/adapters/github/internal/_test_utils.ts` | makeCtx | function |
-| `src/adapters/github/internal/iteration-classifier.ts` | ClassifiedIterations | interface |
-| `src/adapters/github/internal/iteration-classifier.ts` | utcDateOnly | function |
-| `src/adapters/github/internal/iteration-classifier.ts` | utcStartOfDay | function |
-| `src/adapters/github/internal/execution-engine.ts` | PaginationPolicy | interface |
-| `src/adapters/github/internal/execution-engine.ts` | DEFAULT_PAGINATION_POLICY | var |
-| `src/adapters/github/internal/search-query-builder.ts` | SearchQueryParts | interface |
 | `src/adapters/github/factory.ts` | GitHubAdapterFactory | class |
 | `src/adapters/github/types.ts` | GitHubMilestoneId | type |
 | `src/adapters/github/types.ts` | toEntityRef | function |
 | `src/adapters/github/types.ts` | ItemContentType | type |
-| `src/adapters/github/types.ts` | IssueIdentity | type |
-| `src/adapters/github/types.ts` | PrIdentity | type |
-| `src/adapters/github/types.ts` | PrDiscriminator | type |
 | `src/adapters/github/types.ts` | PrState | type |
-| `src/adapters/github/types.ts` | IssueState | type |
 | `src/adapters/github/types.ts` | IssueRef | type |
 | `src/adapters/github/types.ts` | LabelRef | type |
-| `src/adapters/github/types.ts` | FieldValueField | type |
-| `src/adapters/github/types.ts` | FieldValueUser | type |
-| `src/adapters/github/types.ts` | FieldValueUserNodes | type |
-| `src/adapters/github/types.ts` | FieldValueLabel | type |
-| `src/adapters/github/types.ts` | FieldValueLabelNodes | type |
-| `src/adapters/github/types.ts` | FieldValueMilestone | type |
-| `src/adapters/github/types.ts` | FieldValueRepository | type |
-| `src/adapters/github/types.ts` | LabelColorNodes | type |
-| `src/adapters/github/types.ts` | IssueTypeRef | type |
-| `src/adapters/github/types.ts` | ItemIssueFieldValue | interface |
-| `src/adapters/github/bootstrap-field-sources.ts` | SingleSelectFieldNode | interface |
-| `src/adapters/github/bootstrap-field-sources.ts` | BaseFieldNode | interface |
-| `src/adapters/github/bootstrap-field-sources.ts` | BootstrapFieldNode | type |
-| `src/adapters/github/bootstrap-field-sources.ts` | OrgIssueFieldOption | interface |
-| `src/adapters/github/bootstrap-field-sources.ts` | isSingleSelectField | function |
-| `src/adapters/github/bootstrap-field-sources.ts` | singleSelectOptionMapForField | function |
-| `src/adapters/github/bootstrap-field-sources.ts` | ResolvedOptionMaps | interface |
-| `src/adapters/github/create-backend.ts` | CreateGitHubBackendParams | interface |
-| `src/adapters/github/create-backend.ts` | CreateGitHubBackendResult | interface |
-| `src/adapters/github/bootstrap.ts` | IssueBackedFieldMeta | interface |
-| `src/adapters/github/bootstrap.ts` | TypeResolution | type |
-| `src/domain/errors.ts` | UseCaseErrorCode | type |
-| `src/domain/content-location.ts` | CONTENT_LOCATION_KINDS | var |
 | `src/domain/content-location.ts` | ContentLocationKind | type |
-| `src/domain/types.ts` | EpicStatus | type |
-| `src/domain/types.ts` | SprintName | type |
-| `src/domain/types.ts` | ScrumTemplateUri | type |
-| `src/domain/types.ts` | SprintRiskStance | type |
-| `src/domain/types.ts` | SprintContext | interface |
 | `src/domain/types.ts` | ItemListing | type |
-| `src/domain/types.ts` | SUPPORTED_BACKENDS | var |
-| `src/domain/types.ts` | DataSource | type |
 | `src/domain/types.ts` | SprintTotalsKind | type |
-| `src/domain/config.ts` | AutonomyLevel | type |
-| `src/domain/config.ts` | ArtifactType | type |
 | `src/services/error-enrichment.ts` | enrichError | function |
 
 ---

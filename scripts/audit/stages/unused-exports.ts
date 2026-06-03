@@ -9,8 +9,6 @@ import type { AuditStage, UnusedExportResult } from "../types.ts";
 import { ParsedModule } from "../../diagram/ParsedModule.ts";
 import { findUnusedExports } from "../../diagram/helpers.ts";
 
-// ── Exclusion patterns (same as the old diagram generator) ─────────────────────
-
 const EXCLUDED_DIRS = ["generated/", "graphql/"];
 
 const isExcluded = (filePath: string): boolean => {

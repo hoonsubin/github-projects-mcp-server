@@ -90,7 +90,7 @@ export const findUnusedExports = (modules: ParsedModule[]): UnusedExport[] => {
   for (const mod of modules) {
     const usedSet = usedNamesByModule.get(mod.filePathName)!;
     for (const exp of mod.getExports()) {
-      if (!usedSet.has(exp.name)) {
+      if (!exp.usedInternally && !usedSet.has(exp.name)) {
         unreferencedExports.push({
           ...exp,
           modulePathName: mod.filePathName,
