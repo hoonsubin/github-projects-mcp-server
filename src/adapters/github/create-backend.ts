@@ -91,6 +91,7 @@ export const createGitHubBackend = (
       completed: [],
       all: [],
     },
+    issueBackedFields: {},
   };
 
   const bootState: GitHubBootState = {

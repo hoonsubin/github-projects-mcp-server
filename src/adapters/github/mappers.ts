@@ -132,28 +132,36 @@ const extractBoardFields = (
   for (const fv of nodes) {
     const id = fv.field?.id;
     if (!id) continue;
-    if (id === fields.statusFieldId && fv.name) {
-      status = fv.name;
+
+    // Unwrap org-level issue field values: the display name and number are nested
+    // under issueFieldValue rather than at the top level of the node.
+    const effectiveName: string | undefined = fv.name ??
+      (typeof fv.issueFieldValue?.name === "string" ? fv.issueFieldValue.name : undefined);
+    const effectiveNumber: number | undefined = fv.number ??
+      (typeof fv.issueFieldValue?.value === "number" ? fv.issueFieldValue.value : undefined);
+
+    if (id === fields.statusFieldId && effectiveName) {
+      status = effectiveName;
     } else if (id === fields.sprintFieldId && fv.title) {
       sprint = fv.title;
     } else if (
       fields.storyPointsFieldId &&
       id === fields.storyPointsFieldId &&
-      typeof fv.number === "number"
+      typeof effectiveNumber === "number"
     ) {
-      story_points = fv.number;
+      story_points = effectiveNumber;
     } else if (
       fields.priorityFieldId &&
       id === fields.priorityFieldId &&
-      fv.name
+      effectiveName
     ) {
-      priority = fv.name;
+      priority = effectiveName;
     } else if (
       config.live.typeResolution.source === "board_field" &&
       id === config.live.typeResolution.fieldId &&
-      fv.name
+      effectiveName
     ) {
-      type = (displayToCanonical[fv.name] ?? null) as ItemType | null;
+      type = (displayToCanonical[effectiveName] ?? null) as ItemType | null;
     }
   }
 

@@ -21,6 +21,7 @@ import type { ContentLocation } from "../../domain/content-location.ts";
 import { resolveLocation, SUPPORTED_TEMPLATE_EXTENSIONS } from "../../scrum/resolve-location.ts";
 import { GitHubApiError } from "./errors.ts";
 import {
+  GET_ORG_ISSUE_FIELDS_BOOTSTRAP_QUERY,
   GET_ORG_ISSUE_TYPES_BOOTSTRAP_QUERY,
   GET_ORG_PROJECT_FIELDS_BOOTSTRAP_QUERY,
   GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY,
@@ -64,6 +65,18 @@ export const computeTypeTemplatePaths = (
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 /**
+ * Metadata for a project field that is backed by an org-level issue field.
+ * Carries the org issue field ID (for write mutations) and option name→ID map
+ * (for single-select writes, since project field options are empty for these).
+ */
+export interface IssueBackedFieldMeta {
+  /** The org-level IssueField node ID used in updateIssueFieldValue mutations. */
+  orgFieldId: string;
+  /** option display name → org-level option relay ID (for single-select fields). */
+  options?: Record<string, string>;
+}
+
+/**
  * Live GitHub project metadata — mutable, patched in-place by ConfigReloader.
  * typeTemplatePaths is included here because it's re-resolved on each reload.
  */
@@ -88,6 +101,12 @@ export interface GitHubLiveMetadata {
     completed: IterationEntry[];
     all: IterationEntry[];
   };
+  /**
+   * Project field IDs backed by org-level issue fields.
+   * Keyed by project field ID (PVTSSF_… / PVTF_…).
+   * Populated only for org-owned projects when issue fields are detected.
+   */
+  issueBackedFields: Record<string, IssueBackedFieldMeta>;
 }
 
 /**
@@ -252,6 +271,26 @@ interface OrgIssueTypesResponse {
   } | null;
 }
 
+interface OrgIssueFieldOption {
+  id: string;
+  name: string;
+  color?: string;
+}
+
+interface OrgIssueFieldNode {
+  id: string;
+  name: string;
+  options?: OrgIssueFieldOption[];
+}
+
+interface OrgIssueFieldsResponse {
+  organization: {
+    issueFields: {
+      nodes: OrgIssueFieldNode[];
+    };
+  } | null;
+}
+
 const buildOptionMaps = (
   fieldNodes: FieldNode[],
   ghConfig: GitHubBackendConfig,
@@ -286,6 +325,55 @@ const buildOptionMaps = (
   }
 
   return { statusOptions, priorityOptions, typeOptions };
+};
+
+/**
+ * Detect which project fields are backed by org-level issue fields by matching
+ * project field names against the org issue field list. Org issue fields surface
+ * as ProjectV2ItemIssueFieldValue nodes in item responses; their project-level
+ * single-select representation has empty `options: []`.
+ *
+ * Returns a map of project field ID → IssueBackedFieldMeta. Also patches the
+ * priorityOptions map when the priority field is issue-backed (so the write path
+ * can still resolve display name → option ID).
+ */
+const detectIssueBackedFields = (
+  projectFieldNodes: FieldNode[],
+  orgIssueFieldNodes: OrgIssueFieldNode[],
+  ghConfig: GitHubBackendConfig,
+  priorityOptions: Record<string, string>,
+): Record<string, IssueBackedFieldMeta> => {
+  const issueBackedFields: Record<string, IssueBackedFieldMeta> = {};
+  const orgFieldByName = new Map(orgIssueFieldNodes.map((f) => [f.name, f]));
+
+  for (const projectField of projectFieldNodes) {
+    const orgField = orgFieldByName.get(projectField.name);
+    if (!orgField) continue;
+
+    const meta: IssueBackedFieldMeta = { orgFieldId: orgField.id };
+
+    if (orgField.options && orgField.options.length > 0) {
+      meta.options = Object.fromEntries(orgField.options.map((o) => [o.name, o.id]));
+
+      // Patch priorityOptions when the priority field is issue-backed so that
+      // setFieldPriority can still resolve display name → option ID for writes.
+      if (
+        ghConfig.field_mapping.priority &&
+        projectField.name === ghConfig.field_mapping.priority &&
+        Object.keys(priorityOptions).length === 0
+      ) {
+        const { priority_display } = ghConfig;
+        for (const displayName of Object.values(priority_display)) {
+          const id = meta.options[displayName];
+          if (id) priorityOptions[displayName] = id;
+        }
+      }
+    }
+
+    issueBackedFields[projectField.id] = meta;
+  }
+
+  return issueBackedFields;
 };
 
 import { classifyIterations } from "./internal/iteration-classifier.ts";
@@ -483,6 +571,30 @@ export const bootstrapGitHub = async (params: BootstrapParams): Promise<GitHubLi
     params.iterationAsOf ? new Date(params.iterationAsOf) : new Date(),
   );
 
+  // For org-owned projects, fetch org-level issue field definitions and detect
+  // which project fields are backed by them. This enables the read path to
+  // unwrap ProjectV2ItemIssueFieldValue nodes and the write path to use the
+  // updateIssueFieldValue mutation instead of updateProjectV2ItemFieldValue.
+  let issueBackedFields: Record<string, IssueBackedFieldMeta> = {};
+  if (ownerType === "org") {
+    try {
+      const orgIssueFieldsResult = await github.graphql<OrgIssueFieldsResponse>(
+        GET_ORG_ISSUE_FIELDS_BOOTSTRAP_QUERY,
+        { login: owner },
+      );
+      const orgIssueFieldNodes = orgIssueFieldsResult.organization?.issueFields.nodes ?? [];
+      issueBackedFields = detectIssueBackedFields(
+        fieldNodes,
+        orgIssueFieldNodes,
+        ghConfig,
+        priorityOptions,
+      );
+    } catch {
+      // Non-fatal: issue fields are a public preview feature; gracefully degrade
+      // if the org has not enabled them or the token lacks access.
+    }
+  }
+
   return {
     typeResolution,
     projectId: projectNode.id,
@@ -499,5 +611,6 @@ export const bootstrapGitHub = async (params: BootstrapParams): Promise<GitHubLi
     typeOptions,
     typeTemplatePaths,
     iterations,
+    issueBackedFields,
   };
 };

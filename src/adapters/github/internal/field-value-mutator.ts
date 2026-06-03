@@ -12,9 +12,11 @@ import { UserMilestoneResolver } from "./user-milestone-resolver.ts";
 import type { GitHubInfraContext } from "./infra-context.ts";
 import type { SprintRef } from "../../../domain/types.ts";
 import {
+  CLEAR_ISSUE_FIELD_MUTATION,
   CLEAR_ITEM_FIELD_MUTATION,
   GET_PROJECT_ITEM_BY_ID_QUERY,
   SET_ISSUE_TYPE_MUTATION,
+  UPDATE_ISSUE_FIELD_MUTATION,
   UPDATE_ITEM_FIELD_MUTATION,
 } from "../queries.ts";
 import { CLEAR_ASSIGNEES_MUTATION, SET_ASSIGNEE_MUTATION } from "../queries.ts";
@@ -36,6 +38,47 @@ export class FieldValueMutator {
     await this.ctx.gh.graphql(
       CLEAR_ITEM_FIELD_MUTATION,
       { input: { projectId: this.ctx.config.live.projectId, itemId, fieldId } },
+    );
+  }
+
+  /**
+   * Set an org-level issue field value using updateIssueFieldValue.
+   * Required for fields backed by org issue fields (ProjectV2ItemIssueFieldValue).
+   * `issueId` must be the Issue node ID, not the ProjectV2Item ID.
+   * `orgFieldId` is the org-level IssueField node ID from issueBackedFields.
+   */
+  private async setIssueBackedField(
+    issueId: string,
+    orgFieldId: string,
+    fieldValue: {
+      singleSelectOptionId?: string;
+      textValue?: string;
+      dateValue?: string;
+      numberValue?: number;
+    },
+  ): Promise<void> {
+    await this.ctx.gh.graphql<{ updateIssueFieldValue: { issue: { id: string } } }>(
+      UPDATE_ISSUE_FIELD_MUTATION,
+      {
+        input: {
+          issueId,
+          issueField: {
+            fieldId: orgFieldId,
+            ...fieldValue,
+          },
+        },
+      },
+    );
+  }
+
+  /**
+   * Clear an org-level issue field value using deleteIssueFieldValue.
+   * `issueId` must be the Issue node ID; `orgFieldId` is the org-level IssueField node ID.
+   */
+  private async clearIssueBackedField(issueId: string, orgFieldId: string): Promise<void> {
+    await this.ctx.gh.graphql<{ deleteIssueFieldValue: { issue: { id: string } } }>(
+      CLEAR_ISSUE_FIELD_MUTATION,
+      { input: { issueId, fieldId: orgFieldId } },
     );
   }
 
@@ -122,6 +165,16 @@ export class FieldValueMutator {
           "then re-run the server so config-loader can pick it up.",
       });
     }
+    const issueBacked = this.ctx.config.live.issueBackedFields[fieldId];
+    if (issueBacked) {
+      const issueId = await this.resolveIssueNodeId(itemId);
+      if (value === null) {
+        await this.clearIssueBackedField(issueId, issueBacked.orgFieldId);
+      } else {
+        await this.setIssueBackedField(issueId, issueBacked.orgFieldId, { numberValue: value });
+      }
+      return;
+    }
     if (value === null) {
       await this.clearField(itemId, fieldId);
     } else {
@@ -151,6 +204,36 @@ export class FieldValueMutator {
         recovery: 'Add a single-select field named "Priority" to your GitHub Project, ' +
           "then re-run the server so config-loader can pick it up.",
       });
+    }
+    const issueBacked = this.ctx.config.live.issueBackedFields[fieldId];
+    if (issueBacked) {
+      const issueId = await this.resolveIssueNodeId(itemId);
+      if (value === null) {
+        await this.clearIssueBackedField(issueId, issueBacked.orgFieldId);
+      } else {
+        const optionId = (issueBacked.options ?? {})[value] ??
+          this.ctx.config.live.priorityOptions[value];
+        if (!optionId) {
+          throw new GitHubApiError(
+            `Priority option "${value}" is not in the project vocabulary.`,
+            {
+              code: "OPTION_NOT_FOUND",
+              statusCode: 400,
+              recovery:
+                `Run scrum_add_vocabulary with type "priority" and value "${value}" to add it, then retry.`,
+              context: {
+                field: "priority",
+                value,
+                knownOptions: Object.keys(issueBacked.options ?? this.ctx.config.live.priorityOptions),
+              },
+            },
+          );
+        }
+        await this.setIssueBackedField(issueId, issueBacked.orgFieldId, {
+          singleSelectOptionId: optionId,
+        });
+      }
+      return;
     }
     if (value === null) {
       await this.clearField(itemId, fieldId);

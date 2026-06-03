@@ -181,6 +181,23 @@ fragment ItemFieldValues on ProjectV2Item {
         repository { name nameWithOwner }
         field { ... on ProjectV2FieldCommon { id name } }
       }
+      ... on ProjectV2ItemIssueFieldValue {
+        field { ... on ProjectV2FieldCommon { id name } }
+        issueFieldValue {
+          ... on IssueFieldSingleSelectValue {
+            name optionId color
+          }
+          ... on IssueFieldTextValue {
+            value
+          }
+          ... on IssueFieldNumberValue {
+            value
+          }
+          ... on IssueFieldDateValue {
+            value
+          }
+        }
+      }
     }
   }
 }
@@ -834,6 +851,27 @@ query GetOrgIssueTypesBootstrap($login: String!) {
   }
 }
 
+# ── GetOrgIssueFieldsBootstrap ────────────────────────────────────────────────
+# Fetch org-level issue field definitions including single-select options.
+# Used by bootstrapGitHub() to detect issue-backed project fields and populate
+# their option maps when project field options are empty (issue-backed).
+
+query GetOrgIssueFieldsBootstrap($login: String!) {
+  organization(login: $login) {
+    issueFields(first: 50) {
+      nodes {
+        ... on IssueFieldSingleSelect {
+          id name
+          options { id name color }
+        }
+        ... on IssueFieldText { id name }
+        ... on IssueFieldNumber { id name }
+        ... on IssueFieldDate { id name }
+      }
+    }
+  }
+}
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # MUTATIONS - Label management
@@ -918,4 +956,16 @@ mutation ConvertDraftIssue($itemId: ID!, $repositoryId: ID!) {
   convertProjectV2DraftIssueItemToIssue(input: {
     itemId: $itemId, repositoryId: $repositoryId
   }) { item { content { __typename ... on Issue { id } } } }
+}
+
+mutation UpdateIssueField($input: UpdateIssueFieldValueInput!) {
+  updateIssueFieldValue(input: $input) {
+    issue { id }
+  }
+}
+
+mutation ClearIssueField($input: DeleteIssueFieldValueInput!) {
+  deleteIssueFieldValue(input: $input) {
+    issue { id }
+  }
 }

@@ -86,3 +86,49 @@ Deno.test("sprintCompletionFromAggregates - sums terminal status points", () => 
   const result = sprintCompletionFromAggregates([agg], "iter-1", config);
   assertEquals(result, { completed: 5, total: 5 });
 });
+
+Deno.test("buildAggregateFromRaw - reads story points from ProjectV2ItemIssueFieldValue", () => {
+  const configWithPts = {
+    ...config,
+    live: {
+      ...config.live,
+      fields: {
+        ...config.live.fields,
+        storyPointsFieldId: "PTS_F",
+        priorityFieldId: "PRIO_F",
+      },
+    },
+  } as unknown as GitHubBootState;
+
+  const itemWithIssuePts = {
+    ...issueItem,
+    fieldValues: {
+      nodes: [
+        {
+          field: { id: "SPRINT_F" },
+          iterationId: "iter-1",
+          title: "Sprint 1",
+        },
+        {
+          field: { id: "STATUS_F" },
+          name: "Done",
+        },
+        // Story Points via ProjectV2ItemIssueFieldValue (nested value)
+        {
+          __typename: "ProjectV2ItemIssueFieldValue",
+          field: { id: "PTS_F" },
+          issueFieldValue: { value: 8 },
+        },
+        // Priority via ProjectV2ItemIssueFieldValue (nested single-select)
+        {
+          __typename: "ProjectV2ItemIssueFieldValue",
+          field: { id: "PRIO_F" },
+          issueFieldValue: { name: "Must", optionId: "IFSO_must" },
+        },
+      ],
+    },
+  } as unknown as ProjectItem;
+
+  const agg = buildAggregateFromRaw(itemWithIssuePts, configWithPts);
+  assertEquals(agg.storyPoints, 8);
+});

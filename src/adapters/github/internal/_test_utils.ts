@@ -104,6 +104,7 @@ export const makeConfig = (overrides: Partial<GitHubBootState> = {}): GitHubBoot
         completed: [],
         all: [],
       },
+      issueBackedFields: {},
     },
     ...overrides,
   };

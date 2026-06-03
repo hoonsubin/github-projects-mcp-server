@@ -554,3 +554,108 @@ Deno.test({
     assertStringIncludes(gh.graphqlCalls[0].queryExcerpt, "GetUserNodeId");
   },
 });
+
+
+// =============================================================================
+// Group H - issue-backed field mutations (ProjectV2ItemIssueFieldValue)
+// =============================================================================
+
+const UPDATE_ISSUE_FIELD_OK = {
+  updateIssueFieldValue: { issue: { id: "I_test" } },
+};
+
+const CLEAR_ISSUE_FIELD_OK = {
+  deleteIssueFieldValue: { issue: { id: "I_test" } },
+};
+
+Deno.test({
+  name: "setFieldPriority - uses updateIssueFieldValue for issue-backed priority field",
+  async fn() {
+    const baseConfig = makeConfig();
+    const { mutator, gh } = createMutator({
+      configOverrides: {
+        live: {
+          ...baseConfig.live,
+          priorityOptions: { "Must": "IFSO_must" },
+          issueBackedFields: {
+            "PVTF_priority": { orgFieldId: "IF_priority", options: { "Must": "IFSO_must" } },
+          },
+        },
+      },
+    });
+    // Enqueue GetProjectItemById, then UpdateIssueField
+    gh.enqueue(PROJECT_ITEM_ISSUE_OK, UPDATE_ISSUE_FIELD_OK);
+
+    await mutator.setFieldPriority(TEST_ITEM_ID, "Must");
+
+    assertEquals(gh.graphqlCalls.length, 2);
+    assertStringIncludes(gh.graphqlCalls[0].queryExcerpt, "GetProjectItemById");
+    assertStringIncludes(gh.graphqlCalls[1].queryExcerpt, "UpdateIssueField");
+    assertEquals(
+      (gh.graphqlCalls[1].variables.input as Record<string, unknown>).issueId,
+      "I_issue1",
+    );
+    const issueField = (
+      (gh.graphqlCalls[1].variables.input as Record<string, unknown>).issueField as Record<
+        string,
+        unknown
+      >
+    );
+    assertEquals(issueField.fieldId, "IF_priority");
+    assertEquals(issueField.singleSelectOptionId, "IFSO_must");
+  },
+});
+
+Deno.test({
+  name: "setFieldPriority - clears issue-backed field using deleteIssueFieldValue",
+  async fn() {
+    const baseConfig = makeConfig();
+    const { mutator, gh } = createMutator({
+      configOverrides: {
+        live: {
+          ...baseConfig.live,
+          issueBackedFields: {
+            "PVTF_priority": { orgFieldId: "IF_priority" },
+          },
+        },
+      },
+    });
+    gh.enqueue(PROJECT_ITEM_ISSUE_OK, CLEAR_ISSUE_FIELD_OK);
+
+    await mutator.setFieldPriority(TEST_ITEM_ID, null);
+
+    assertEquals(gh.graphqlCalls.length, 2);
+    assertStringIncludes(gh.graphqlCalls[1].queryExcerpt, "ClearIssueField");
+  },
+});
+
+Deno.test({
+  name: "setFieldStoryPoints - uses updateIssueFieldValue for issue-backed story points field",
+  async fn() {
+    const baseConfig = makeConfig();
+    const { mutator, gh } = createMutator({
+      configOverrides: {
+        live: {
+          ...baseConfig.live,
+          issueBackedFields: {
+            "PVTF_points": { orgFieldId: "IF_points" },
+          },
+        },
+      },
+    });
+    gh.enqueue(PROJECT_ITEM_ISSUE_OK, UPDATE_ISSUE_FIELD_OK);
+
+    await mutator.setFieldStoryPoints(TEST_ITEM_ID, 5);
+
+    assertEquals(gh.graphqlCalls.length, 2);
+    assertStringIncludes(gh.graphqlCalls[1].queryExcerpt, "UpdateIssueField");
+    const issueField = (
+      (gh.graphqlCalls[1].variables.input as Record<string, unknown>).issueField as Record<
+        string,
+        unknown
+      >
+    );
+    assertEquals(issueField.fieldId, "IF_points");
+    assertEquals(issueField.numberValue, 5);
+  },
+});
