@@ -39,6 +39,10 @@ export interface AuditConfig {
   readonly mermaidMode: MermaidMode;
   /** Path for standalone .mermaid file (only used when mermaidMode === "file"). */
   readonly mermaidOutputPath?: string;
+  /** Controls C4 diagram output: off / embed in report / write to .puml file */
+  readonly c4Mode: "off" | "embed" | "file";
+  /** Path for standalone .puml file (only used when c4Mode === "file"). */
+  readonly c4OutputPath?: string;
   readonly skipStages: string[];
   readonly excludeTests: boolean;
 }
@@ -172,11 +176,63 @@ export interface UnusedExportResult {
   readonly exports: readonly UnusedExport[];
 }
 
+// ── C4 diagram types ───────────────────────────────────────────────────────────
+
+export type C4Level = "context" | "container" | "component" | "code";
+
+export type C4Layer = "context" | "container" | "component" | "code";
+
+export type C4ElementType =
+  | "person"
+  | "system"
+  | "container"
+  | "component"
+  | "function"
+  | "class"
+  | "interface"
+  | "external_api";
+
+export interface C4Element {
+  readonly id: string;
+  readonly name: string;
+  readonly type: C4ElementType;
+  readonly technology?: string;
+  readonly description?: string;
+  readonly toolName?: string;
+  readonly layer: C4Layer;
+}
+
+export interface C4Relationship {
+  readonly from: string;
+  readonly to: string;
+  readonly label?: string;
+  readonly technology?: string;
+  readonly direction?: "forward" | "reverse";
+}
+
+export interface C4SliceLevel {
+  readonly elements: readonly C4Element[];
+  readonly relationships: readonly C4Relationship[];
+}
+
+export interface C4DiagramSlice {
+  readonly context: C4SliceLevel;
+  readonly container: C4SliceLevel;
+  readonly component: C4SliceLevel;
+  readonly code: C4SliceLevel;
+}
+
+export interface C4DiagramResult {
+  readonly readTools: C4DiagramSlice;
+  readonly writeTools: C4DiagramSlice;
+}
+
 export type AnyStageResult =
   | ComplianceResult
   | LayerGraphResult
   | StabilityResult
   | FileStatsResult
-  | UnusedExportResult;
+  | UnusedExportResult
+  | C4DiagramResult;
 
 export type AuditResults = Record<string, AnyStageResult | undefined>;

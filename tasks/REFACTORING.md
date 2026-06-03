@@ -141,57 +141,7 @@ As of June 2026, after live schema + community research:
 
 ### 3.2 Layer diagram (target state)
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Tool Surface  (scrum_*.ts)                                     │
-│  raw user params                                                │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────────────┐
-│  Use Cases  (src/scrum/)                                        │
-│  orientUseCase · findItemsUseCase · boardHealthUseCase          │
-│  analyticsUseCase · write/detail use cases                      │
-└────────────────────────┬────────────────────────────────────────┘
-                         │  BackendPort method calls
-┌────────────────────────▼────────────────────────────────────────┐
-│  BackendPort  (platform-agnostic boundary)                      │
-│  findItems · getStoryDetail · getAggregates                     │
-│  getPlatformState · reload · mutations                          │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────────────┐
-│  GitHub Adapter  (src/adapters/github/)                         │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │  Board Query Pipeline  (all ProjectItems fetches)       │   │
-│  │                                                         │   │
-│  │  classifyFilter ──► ProjectItemsAssembler  ──┐          │   │
-│  │                                              │          │   │
-│  │  StoryQueryService ──────────────────────────┤          │   │
-│  │  BoardHealthService ─────────────────────────┤          │   │
-│  │  AnalyticsService ───────────────────────────┤          │   │
-│  │  ImpedimentService ──────────────────────────┤          │   │
-│  │                                              ▼          │   │
-│  │                          ProjectItemsQueryBuilder       │   │
-│  │                          IN:  profile                   │   │
-│  │                               queryArg?                 │   │
-│  │                               configuredFieldTypeNames  │   │
-│  │                          OUT: { document, variables }   │   │
-│  │                                              │          │   │
-│  │                                    ExecutionEngine      │   │
-│  │                                    (pagination)         │   │
-│  └──────────────────────────────────────────────┼──────────┘   │
-│                                                  │              │
-│  SearchApiAssembler ──────── ExecutionEngine ────┤ (non-board)  │
-│  DirectLookupAssembler ──────────────────────────┤ (non-board)  │
-│  MutationServices ───────────────────────────────┘ (non-board)  │
-└─────────────────────────────────────────────────────────────────┘
-                         │
-                   GitHub GraphQL API
-                   projectV2.items(query: …, after: cursor)
-```
-
-**Blue paths** = board scan (all route through `ProjectItemsQueryBuilder`). **Non-board paths** (`SearchIssues`, `GetIssueProjectItem`, mutations) bypass the board pipeline entirely — this is intentional.
+[![](https://img.plantuml.biz/plantuml/dsvg/tLbVRnot4N-_Jy5A3za3l9Bjk8sX06bEqfqZm5PadPoqyFc1jykxstgNt91SNQ-E0J_bEIZo2VhGbtw0FlJD7qMVf3D3BlVFdG4XBG981q7O7SuCPuR3uM-uNnlBjQsAd5rnlHIMZNIoogn8RAK5k_dm2vickYhO2swiqEnAgVnjPWU_iojH25RcF9C3ypQJ9TUyO2LFtlAbcDfDBfW69LmkSz5YICM2LxcTA6cdsTy4U_IeDJZIMgrFLAuqstz2l_xWrIfBtafX37jqyBWrcAYYL598ozuD63i6AvPQLJ9rohv7Xv2kT2gqd-3tz1kytxRUwMZpFgKVKCbkScwkyXI41v-ncry-tCK_iFpvwC_ZI_Q8LXaNbaqhlU29kCDErKkur_Q7CMPqScY1P0xt63UC7jd--EdaoUIKrlkrmJIFjU3fWJKpkU8opOKsXvxo1iM8vn88ZS1QGsvr9MfI8_8zKkv7jZocR7bb13lXHfWxx558bU2CpnDQCfSdbH49ZUoFJoTVZ7sgA9r1gG4nbA9LTXGSMsGoFREYCEtXG4IEkU8w_KRmtAxQF2qoSd79yutDaewUG4GEIZEqa969CnabaAj0-lXlLfMfVpB2JZAHfpEPg-LPKOeqAx1EmX1Fq-zKmkT3qatgNfs0van2fQTziuULLCZqGcaxaqriIdWtbFI_8l0p6S8HBR8SvXhE99myKwlqvbHOdkMH5Wj772sNMYp15nEPH9LYoDZDJpypATOpIUwI53lq7jCRMEgT1ZeuUQ8ATBaVWLgc8T6Ct-eITd9312VhG5Kvfxc0Qrp2Ab2AO2mWQ591l7MsN5cc5aHa-vF9v7Zy1nXahElA4Cv6E3eJOOvezER3Fv3Zk4c1QDWU6DNhtYLFImrh1UwLkR2Padvqck6XotWzNrng1O4MK8ku90wpubgaRBxnYVkWdNqFY0MAMPDkJPOTm20a1BbxFmhQvrJGJbK1I8P5cPH25yfOeah5L6NN41e0BgKPtc5tGxNpdhfIbzABgtNkcRBswVWBL-difXIuqR5S90esxf9slG0ifckwhd9X3jyqAgvGw3ubnpG1i0lkHGWJyrpaW1-yhrz2jSJyY9NCD_SdIMgFwmEHtboQ-9TkdW22hlo9u60HR1jFeKC8QGqYGWKJA4Zt94cUK98yo-mtrPoDKbx2aNQ7tGf9qFN8vm9tR-PmcTbLDNSvuOcG4wUJpoSJo0bC2YT_eTLVe17qI09GIeR75Psih0Kl70YPEmAArm5aT2gobvM0i_SYAqMUIV4R1HVC2D7OQGPZ4HG4vdqaJCCMmaA6cw531pKdz1hZXvE7BZGjjG4B0SckzcgqU04l4Cw7qA6CQ8lXxxM3Ix6n6exrvIQ67XVUQTj5ISwDoHQRYODK54utNakNpieum-bYu1R5F2VnDyxKKKqYYVVEqfxO3nY0U5vbUUfd_Z_6UoRFpeyWE1wlH7bcB82P7mEK0L18lf0L8xtyetztPrC5e8Pm7vv0vxn0KFpjgwiZzWwgTL8LX7IkkSuuE6dOUtARL1qxVtPwd71OJXTZ0406S5PCK1GnGLgLUPPm15ypkTQyD6pyLv5KI1ZB9IoyMmZIuRMBcY4MnE5KbnoUIH7BbIgT6B8wDKwMGEPSMQiAH9bjqpjeCs10eoeDE1vuhQuWenQgpeQjj2K4I12HG1x-pXMq3_ew0mtpJOa90vtpAlFZ0GRwLEbks7WAcjZKYPlVhXXkRTck8NkXrPfU9zZL-Kr9AsEmU_0PxXqFXzOFnl6GRBmYfDndcgyyKm3EBOwPd5TQfcej8QFo17e9cCsTc0JZOmWipTzJoirruhHceIVfg8tSoYLQ6HDZuqHYm6osLkOSaixLCQml06ZSilgr3xKAZpDi0YMc8y-7h1VNdXgAgLJIaVPFJw1idOIO2gwJLSpBh5DnmEmfZPmPKq6nT44coiWKJZJDy0OnXktmjYhxqi-49T5M3ZibJiefwNh_eh9kWuMiZ03WDta__9-oj1sWhPaeH4LbAUbw0Q95Bxn4PsKNMClYQvvNmZ6eKAn92gPnEd8-5pcilL7vDGM8HLHnKgYNrw5pZGl8owKF87HqEYuGX5abHLkMz9D6fv-2-BhWPIdqhsxwFrtnwIYXldsYLN79rz0TKuyBRRwl_vufDD0D8pA5mu4CztQYoG9wzEvEUGxwNjG-6tOvdbxvGWkii3Pt7O-E_tGrlZmVFR_3JgJSyZat3Vny1gVgwkLpDheucqb_Cd_t-83EveXgzH4Kh7y-O7m1MEU89PKsIZlqjLo1rDrUqjFnnVZyT7n-SZQUtc57mFJEZVpDJtzlNIA7UtKMqm7vLNsXkZtGNALkZxMlKBT7cylJvau-3DQtdxli3Eq_TRa08FCifM8zt35BkxlTCKzx6EPghfvn8ko3M6HN0DZmDg5rzSGMKFAQMxZXmCKdgALBoAQLw91RKUaEDDTx7R8FHPUuPMjpOOOsVWbuSiqt1c6bMiEv4mm41UrRePQDlP6EcRqncBrUXDrp-qbRqTsbW-ABHuRlErbeHMav1tHhUu1k7tnLjwBiY7tyLzEoVlmFAghbqPZZBdQAWeV3GQsYZgHhnq3ZrWNuJgKnWf8QWKFwTUwGjxK3H0NLk-xCjrW1gDwM5U7dRNaHStwAj-SWGaYFEX52RZjJGy5sj5ZaoAnkWBTD2EZFsT7wfi0EcGSvbs8HlPDLCHVw_PPXDNJROPA7NA3PVMXndnx2rnPwtPAgWHH8qIFTXn4c8qc3MAKluz48SpxGfmOqiub35wyFV5x5zFa1TsohasyzDmoTnl6eXbbrtqqXsP6069wNRKcw-rXdi6431gjrm5w4TFpKX5li0yp8stDJKjwUdVBozkpWViTDzFi4uJGzzVhxGKTTlOAktwV_pQgscldFMXjWXzBGc7NjwBLbWsQJx9YZsGcx3UXFYMRKDtu0cXhc81_GLDWZFI4MkKdhRoUjrceGTazNMzWUNNBO0TjpEtoFEuS-OCst4zMbdXUi-m5Ai1xDfL6Fw9AbHnny3VkpAlB1Vm40)](https://editor.plantuml.com/uml/tLbVRnot4N-_Jy5A3za3l9Bjk8sX06bEqfqZm5PadPoqyFc1jykxstgNt91SNQ-E0J_bEIZo2VhGbtw0FlJD7qMVf3D3BlVFdG4XBG981q7O7SuCPuR3uM-uNnlBjQsAd5rnlHIMZNIoogn8RAK5k_dm2vickYhO2swiqEnAgVnjPWU_iojH25RcF9C3ypQJ9TUyO2LFtlAbcDfDBfW69LmkSz5YICM2LxcTA6cdsTy4U_IeDJZIMgrFLAuqstz2l_xWrIfBtafX37jqyBWrcAYYL598ozuD63i6AvPQLJ9rohv7Xv2kT2gqd-3tz1kytxRUwMZpFgKVKCbkScwkyXI41v-ncry-tCK_iFpvwC_ZI_Q8LXaNbaqhlU29kCDErKkur_Q7CMPqScY1P0xt63UC7jd--EdaoUIKrlkrmJIFjU3fWJKpkU8opOKsXvxo1iM8vn88ZS1QGsvr9MfI8_8zKkv7jZocR7bb13lXHfWxx558bU2CpnDQCfSdbH49ZUoFJoTVZ7sgA9r1gG4nbA9LTXGSMsGoFREYCEtXG4IEkU8w_KRmtAxQF2qoSd79yutDaewUG4GEIZEqa969CnabaAj0-lXlLfMfVpB2JZAHfpEPg-LPKOeqAx1EmX1Fq-zKmkT3qatgNfs0van2fQTziuULLCZqGcaxaqriIdWtbFI_8l0p6S8HBR8SvXhE99myKwlqvbHOdkMH5Wj772sNMYp15nEPH9LYoDZDJpypATOpIUwI53lq7jCRMEgT1ZeuUQ8ATBaVWLgc8T6Ct-eITd9312VhG5Kvfxc0Qrp2Ab2AO2mWQ591l7MsN5cc5aHa-vF9v7Zy1nXahElA4Cv6E3eJOOvezER3Fv3Zk4c1QDWU6DNhtYLFImrh1UwLkR2Padvqck6XotWzNrng1O4MK8ku90wpubgaRBxnYVkWdNqFY0MAMPDkJPOTm20a1BbxFmhQvrJGJbK1I8P5cPH25yfOeah5L6NN41e0BgKPtc5tGxNpdhfIbzABgtNkcRBswVWBL-difXIuqR5S90esxf9slG0ifckwhd9X3jyqAgvGw3ubnpG1i0lkHGWJyrpaW1-yhrz2jSJyY9NCD_SdIMgFwmEHtboQ-9TkdW22hlo9u60HR1jFeKC8QGqYGWKJA4Zt94cUK98yo-mtrPoDKbx2aNQ7tGf9qFN8vm9tR-PmcTbLDNSvuOcG4wUJpoSJo0bC2YT_eTLVe17qI09GIeR75Psih0Kl70YPEmAArm5aT2gobvM0i_SYAqMUIV4R1HVC2D7OQGPZ4HG4vdqaJCCMmaA6cw531pKdz1hZXvE7BZGjjG4B0SckzcgqU04l4Cw7qA6CQ8lXxxM3Ix6n6exrvIQ67XVUQTj5ISwDoHQRYODK54utNakNpieum-bYu1R5F2VnDyxKKKqYYVVEqfxO3nY0U5vbUUfd_Z_6UoRFpeyWE1wlH7bcB82P7mEK0L18lf0L8xtyetztPrC5e8Pm7vv0vxn0KFpjgwiZzWwgTL8LX7IkkSuuE6dOUtARL1qxVtPwd71OJXTZ0406S5PCK1GnGLgLUPPm15ypkTQyD6pyLv5KI1ZB9IoyMmZIuRMBcY4MnE5KbnoUIH7BbIgT6B8wDKwMGEPSMQiAH9bjqpjeCs10eoeDE1vuhQuWenQgpeQjj2K4I12HG1x-pXMq3_ew0mtpJOa90vtpAlFZ0GRwLEbks7WAcjZKYPlVhXXkRTck8NkXrPfU9zZL-Kr9AsEmU_0PxXqFXzOFnl6GRBmYfDndcgyyKm3EBOwPd5TQfcej8QFo17e9cCsTc0JZOmWipTzJoirruhHceIVfg8tSoYLQ6HDZuqHYm6osLkOSaixLCQml06ZSilgr3xKAZpDi0YMc8y-7h1VNdXgAgLJIaVPFJw1idOIO2gwJLSpBh5DnmEmfZPmPKq6nT44coiWKJZJDy0OnXktmjYhxqi-49T5M3ZibJiefwNh_eh9kWuMiZ03WDta__9-oj1sWhPaeH4LbAUbw0Q95Bxn4PsKNMClYQvvNmZ6eKAn92gPnEd8-5pcilL7vDGM8HLHnKgYNrw5pZGl8owKF87HqEYuGX5abHLkMz9D6fv-2-BhWPIdqhsxwFrtnwIYXldsYLN79rz0TKuyBRRwl_vufDD0D8pA5mu4CztQYoG9wzEvEUGxwNjG-6tOvdbxvGWkii3Pt7O-E_tGrlZmVFR_3JgJSyZat3Vny1gVgwkLpDheucqb_Cd_t-83EveXgzH4Kh7y-O7m1MEU89PKsIZlqjLo1rDrUqjFnnVZyT7n-SZQUtc57mFJEZVpDJtzlNIA7UtKMqm7vLNsXkZtGNALkZxMlKBT7cylJvau-3DQtdxli3Eq_TRa08FCifM8zt35BkxlTCKzx6EPghfvn8ko3M6HN0DZmDg5rzSGMKFAQMxZXmCKdgALBoAQLw91RKUaEDDTx7R8FHPUuPMjpOOOsVWbuSiqt1c6bMiEv4mm41UrRePQDlP6EcRqncBrUXDrp-qbRqTsbW-ABHuRlErbeHMav1tHhUu1k7tnLjwBiY7tyLzEoVlmFAghbqPZZBdQAWeV3GQsYZgHhnq3ZrWNuJgKnWf8QWKFwTUwGjxK3H0NLk-xCjrW1gDwM5U7dRNaHStwAj-SWGaYFEX52RZjJGy5sj5ZaoAnkWBTD2EZFsT7wfi0EcGSvbs8HlPDLCHVw_PPXDNJROPA7NA3PVMXndnx2rnPwtPAgWHH8qIFTXn4c8qc3MAKluz48SpxGfmOqiub35wyFV5x5zFa1TsohasyzDmoTnl6eXbbrtqqXsP6069wNRKcw-rXdi6431gjrm5w4TFpKX5li0yp8stDJKjwUdVBozkpWViTDzFi4uJGzzVhxGKTTlOAktwV_pQgscldFMXjWXzBGc7NjwBLbWsQJx9YZsGcx3UXFYMRKDtu0cXhc81_GLDWZFI4MkKdhRoUjrceGTazNMzWUNNBO0TjpEtoFEuS-OCst4zMbdXUi-m5Ai1xDfL6Fw9AbHnny3VkpAlB1Vm40)
 
 ### 3.3 `ProjectItemsQueryBuilder` interface (blackbox spec)
 

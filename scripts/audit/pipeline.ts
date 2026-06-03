@@ -20,6 +20,7 @@ import { layerGraphStage } from "./stages/layer-graph.ts";
 import { stabilityStage } from "./stages/stability.ts";
 import { fileStatsStage } from "./stages/file-stats.ts";
 import { unusedExportsStage } from "./stages/unused-exports.ts";
+import { c4DiagramStage } from "./stages/c4-diagram.ts";
 
 // ── Pipeline definition ────────────────────────────────────────────────────────
 
@@ -29,6 +30,7 @@ const ALL_STAGES: readonly AuditStage<AnyStageResult>[] = [
   stabilityStage,
   fileStatsStage,
   unusedExportsStage,
+  c4DiagramStage,
 ];
 
 // ── depcruise runners ──────────────────────────────────────────────────────────

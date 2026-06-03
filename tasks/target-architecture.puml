@@ -1,0 +1,199 @@
+@startuml Target Architecture — Scrum Master Toolkit
+!theme plain
+skinparam packageStyle rectangle
+skinparam defaultFontSize 11
+skinparam ArrowColor #444444
+skinparam ArrowThickness 1.2
+skinparam component {
+  BackgroundColor White
+  BorderColor #555555
+}
+skinparam package {
+  BorderColor #888888
+  FontStyle bold
+}
+
+' ─────────────────────────────────────────────────────────────
+' LAYER 1 — Tool Surface
+' ─────────────────────────────────────────────────────────────
+package "Tool Surface   src/tools/" as tools #E8F4FD {
+  [scrum-read.ts\nhandlers/read.ts] as scrumRead
+  [scrum-write.ts\nhandlers/write.ts] as scrumWrite
+}
+
+' ─────────────────────────────────────────────────────────────
+' LAYER 2 — Use Cases
+' ─────────────────────────────────────────────────────────────
+package "Use Cases   src/scrum/" as usecases #EDF7ED {
+  [orientUseCase] as orient
+  [findItemsUseCase] as findItems
+  [boardHealthUseCase] as boardHealth
+  [analyticsUseCase] as analytics
+  [write use cases\n(create · update · setField\nlogImpediment · addVocab)] as writeUC
+  interface "BackendPort\nsrc/scrum/ports.ts\n─────────────────\nfindItems(filter)\ngetStoryDetail(ref)\ngetAggregates(scope)  ← new\ncreatStory / updateStory\nsetField / addComment\nlogImpediment / updateImpediment\ngetOrphanImpediments\naddVocabulary / getEpics" as port
+  note right of port #FFFBE6
+    getAggregates() replaces:
+    • getBoardHealth()
+    • getAnalytics()
+    • getSprintCompletion()
+    Single aggregate-profile scan
+    shared by orient, boardHealth,
+    and analytics use cases.
+  end note
+}
+
+' ─────────────────────────────────────────────────────────────
+' LAYER 3 — Domain (innermost — no outward deps)
+' ─────────────────────────────────────────────────────────────
+package "Domain   src/domain/" as domain #FFF8E7 {
+  [types.ts · config.ts\nerrors.ts · rules/] as domainTypes
+}
+
+' ─────────────────────────────────────────────────────────────
+' LAYER 3 — Schemas (parallel to domain; inward-only deps)
+' ─────────────────────────────────────────────────────────────
+package "Schemas   src/schemas/" as schemas #FFF8E7 {
+  [inputs.ts\nscrum-outputs.ts · scrum.ts] as schemaFiles
+}
+
+' ─────────────────────────────────────────────────────────────
+' LAYER 4 — GitHub Adapter
+' ─────────────────────────────────────────────────────────────
+package "GitHub Adapter   src/adapters/github/" as adapter #FDF3FF {
+
+  [GitHubProjectBackend\n(implements BackendPort)] as backend
+
+  ' ── Board Query Pipeline ──────────────────────────────────
+  package "Board Query Pipeline   (all ProjectItems fetches)" as pipeline #E8E0F0 {
+
+    package "findItems path" as findPath #F0E8FA {
+      [filter-strategy-router.ts\n(classifyFilter)] as router
+      [project-items-assembler.ts] as piAssembler
+    }
+
+    [project-items-query-builder.ts\n─────────────────────────\nIN:  profile (listing|aggregate)\n     queryArg?\n     configuredFieldTypeNames\nOUT: { document, variables }] as queryBuilder
+
+    [project-items-cache.ts\n(session-scoped deduplication\nwraps ExecutionEngine)] as cache
+
+    [execution-engine.ts\n(pagination loop)] as execEngine
+
+    note bottom of queryBuilder #FFFBE6
+      Single source of truth for
+      all ProjectItems board scans.
+      No service bypasses this.
+    end note
+  }
+
+  ' ── Board-Scan Services ───────────────────────────────────
+  package "Board-Scan Services" as boardSvc #EDE0F0 {
+    [story-query-service.ts] as sqs
+    [board-health-service.ts] as bhs
+    [analytics-service.ts\nburndown-calculator.ts\nsprint-history-service.ts] as asvc
+    [impediment-service.ts\n(board cross-ref)] as imps
+  }
+
+  ' ── Non-Board Paths (bypass board pipeline — intentional) ─
+  package "Non-Board Paths" as nonBoard #DCF0EC {
+    [search-api-assembler.ts\n(SearchIssues)] as searchAsm
+    [direct-lookup-assembler.ts\n(GetIssueProjectItem)] as directAsm
+  }
+
+  ' ── Mutation Services (no board scan) ────────────────────
+  package "Mutation Services" as mutSvc #DCF0EC {
+    [story-mutation-service.ts\nfield-value-mutator.ts] as storyMut
+    [label-resolver.ts (cached)\nvocabulary-manager.ts\nuser-milestone-resolver.ts] as labelMut
+  }
+
+  [mappers.ts\n─────────────────────────\nbuildStoryFromRaw()     ← listing\nbuildAggregateFromRaw() ← aggregate] as mappers
+  [epic-service.ts\n(ListMilestones REST)] as epicSvc
+}
+
+' ─────────────────────────────────────────────────────────────
+' EXTERNAL
+' ─────────────────────────────────────────────────────────────
+database "GitHub GraphQL API\nprojectV2.items(query: …, after: cursor)" as ghAPI
+
+' ─────────────────────────────────────────────────────────────
+' DEPENDENCIES
+' ─────────────────────────────────────────────────────────────
+
+' Tool Surface → Use Cases
+scrumRead -down-> orient
+scrumRead -down-> findItems
+scrumRead -down-> boardHealth
+scrumRead -down-> analytics
+scrumWrite -down-> writeUC
+
+' Tool Surface → Schemas (input validation)
+scrumRead -down-> schemaFiles
+scrumWrite -down-> schemaFiles
+
+' Use Cases → Port (the only outward dep from use cases)
+orient -down-> port
+findItems -down-> port
+boardHealth -down-> port
+analytics -down-> port
+writeUC -down-> port
+
+' Use Cases → Domain (inward; always allowed)
+orient --> domainTypes
+findItems --> domainTypes
+boardHealth --> domainTypes
+
+' Schemas → Domain (inward; allowed)
+schemaFiles --> domainTypes
+
+' Port ← Backend implementation
+port .down.> backend : «implements»
+
+' Backend → Board pipeline (findItems)
+backend -down-> router : findItems(filter)
+
+' Backend → Board-scan services (getAggregates)
+backend -down-> sqs : getAggregates(scope)
+backend -down-> bhs : getAggregates(scope)
+backend -down-> asvc : getAggregates(scope)
+backend -down-> imps : getAggregates(scope)
+
+' Backend → Non-board paths
+backend -down-> searchAsm : findItems (search strategy)
+backend -down-> directAsm : getStoryDetail / resolveRef({number})
+
+' Backend → Mutations
+backend -down-> storyMut : createStory · updateStory
+backend -down-> labelMut : labels · vocab · users
+backend -down-> epicSvc  : getEpics
+
+' findItems board pipeline
+router -right-> piAssembler
+piAssembler -right-> queryBuilder : listing profile
+
+' Board-scan services → QueryBuilder (all with aggregate profile)
+sqs -right-> queryBuilder : aggregate profile
+bhs -right-> queryBuilder : aggregate profile
+asvc -right-> queryBuilder : aggregate profile
+imps -right-> queryBuilder : aggregate profile
+
+' QueryBuilder → Cache → ExecutionEngine
+queryBuilder -down-> cache
+cache -down-> execEngine
+
+' Non-board → ExecutionEngine (bypass QueryBuilder — intentional)
+searchAsm -down-> execEngine
+directAsm -down-> execEngine
+
+' ExecutionEngine → GitHub API
+execEngine -down-> ghAPI
+
+' Mutations → GitHub API (direct — no board scan)
+storyMut -down-> ghAPI
+labelMut -down-> ghAPI
+epicSvc  -down-> ghAPI
+
+' Mappers used by board-scan services
+sqs -down-> mappers
+bhs -down-> mappers
+asvc -down-> mappers
+imps -down-> mappers
+
+@enduml

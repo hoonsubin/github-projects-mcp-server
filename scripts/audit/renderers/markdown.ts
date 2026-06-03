@@ -8,6 +8,7 @@
 import type {
   AuditConfig,
   AuditResults,
+  C4DiagramResult,
   ComplianceResult,
   FileStatsResult,
   LayerGraphResult,
@@ -15,6 +16,7 @@ import type {
   UnusedExportResult,
 } from "../types.ts";
 import { renderMermaidFenced } from "./mermaid.ts";
+import { renderC4Fenced } from "./plantuml.ts";
 
 export const renderMarkdown = (
   results: AuditResults,
@@ -82,6 +84,19 @@ export const renderMarkdown = (
       sections.push("");
     } else {
       sections.push("_Layer graph data unavailable._");
+      sections.push("");
+    }
+  }
+
+  if (config.c4Mode === "embed") {
+    sections.push("## C4 Diagrams");
+    sections.push("");
+    const c4diagram = results["c4-diagram"] as C4DiagramResult | undefined;
+    if (c4diagram && c4diagram.readTools.context.elements.length > 0) {
+      sections.push(renderC4Fenced(c4diagram));
+      sections.push("");
+    } else {
+      sections.push("_C4 diagram data unavailable._");
       sections.push("");
     }
   }

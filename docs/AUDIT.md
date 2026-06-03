@@ -1,7 +1,7 @@
 # Architecture Audit Report
 
-**Generated:** 2026-06-03T12:51:01.825Z
-**Commit:** `7721e38`
+**Generated:** 2026-06-03T14:30:07.019Z
+**Commit:** `faa7be9`
 **Source directory:** `./src`
 
 ## Architecture Compliance
@@ -18,6 +18,275 @@ Modules scanned: **97**
 | schemas-must-not-depend-on-src | error | 🟢 Pass | 0 |
 | no-circular-dependencies | error | 🟢 Pass | 0 |
 | no-console-log | error | 🟢 Pass | 0 |
+
+## C4 Diagrams
+
+```plantuml
+@startuml
+!include <c4/C4_Context>
+
+title Read Tools — context diagram
+
+Person(agent, "AI Agent", "LLM", "External agent calling MCP tools")
+System(mcp_server_read, "MCP Server (Read Tools)", "TypeScript, MCP SDK")
+System_Ext(github_backend, "GitHub Projects API", "GraphQL API", "External GitHub Projects backend")
+
+Rel(agent, mcp_server_read, "calls tools", "MCP")
+Rel(mcp_server_read, github_backend, "GraphQL queries", "GitHub GraphQL API")
+
+@enduml
+```
+
+```plantuml
+@startuml
+!include <c4/C4_Context>
+
+title Write Tools — context diagram
+
+Person(agent, "AI Agent", "LLM", "External agent calling MCP tools")
+System(mcp_server_write, "MCP Server (Write Tools)", "TypeScript, MCP SDK")
+System_Ext(github_backend, "GitHub Projects API", "GraphQL API", "External GitHub Projects backend")
+
+Rel(agent, mcp_server_write, "calls tools", "MCP")
+Rel(mcp_server_write, github_backend, "GraphQL queries + mutations", "GitHub GraphQL API")
+
+@enduml
+```
+
+```plantuml
+@startuml
+!include <c4/C4_Container>
+
+title Read Tools — container diagram
+
+Container(mcp_server_read, "MCP Server (Read)", "TypeScript, MCP SDK")
+Container(scrum_orient, "scrum_orient", "MCP Tool")
+Container(handleOrient, "handleOrient", "TypeScript")
+Container(orientUseCase, "orientUseCase", "TypeScript")
+Container(scrum_find_items, "scrum_find_items", "MCP Tool")
+Container(handleFindItems, "handleFindItems", "TypeScript")
+Container(findItemsUseCase, "findItemsUseCase", "TypeScript")
+Container(scrum_get_item_detail, "scrum_get_item_detail", "MCP Tool")
+Container(handleGetItemDetail, "handleGetItemDetail", "TypeScript")
+Container(getStoryUseCase, "getStoryUseCase", "TypeScript")
+Container(scrum_get_board_health, "scrum_get_board_health", "MCP Tool")
+Container(handleGetBoardHealth, "handleGetBoardHealth", "TypeScript")
+Container(getBoardHealthUseCase, "getBoardHealthUseCase", "TypeScript")
+Container(scrum_get_analytics, "scrum_get_analytics", "MCP Tool")
+Container(handleGetAnalytics, "handleGetAnalytics", "TypeScript")
+Container(getAnalyticsUseCase, "getAnalyticsUseCase", "TypeScript")
+Container(project_backend_port, "ProjectBackend Port", "TypeScript Interface")
+Container(github_adapter, "GitHubProjectBackend", "TypeScript, GitHub GraphQL", "src/adapters/github/backend.ts")
+
+Rel(mcp_server_read, scrum_orient, "exposes")
+Rel(scrum_orient, handleOrient, "delegates to")
+Rel(orientUseCase, project_backend_port, "calls via port")
+Rel(handleOrient, orientUseCase, "calls")
+Rel(mcp_server_read, scrum_find_items, "exposes")
+Rel(scrum_find_items, handleFindItems, "delegates to")
+Rel(findItemsUseCase, project_backend_port, "calls via port")
+Rel(handleFindItems, findItemsUseCase, "calls")
+Rel(mcp_server_read, scrum_get_item_detail, "exposes")
+Rel(scrum_get_item_detail, handleGetItemDetail, "delegates to")
+Rel(getStoryUseCase, project_backend_port, "calls via port")
+Rel(handleGetItemDetail, getStoryUseCase, "calls")
+Rel(mcp_server_read, scrum_get_board_health, "exposes")
+Rel(scrum_get_board_health, handleGetBoardHealth, "delegates to")
+Rel(getBoardHealthUseCase, project_backend_port, "calls via port")
+Rel(handleGetBoardHealth, getBoardHealthUseCase, "calls")
+Rel(mcp_server_read, scrum_get_analytics, "exposes")
+Rel(scrum_get_analytics, handleGetAnalytics, "delegates to")
+Rel(getAnalyticsUseCase, project_backend_port, "calls via port")
+Rel(handleGetAnalytics, getAnalyticsUseCase, "calls")
+Rel(github_adapter, project_backend_port, "implements")
+
+@enduml
+```
+
+```plantuml
+@startuml
+!include <c4/C4_Container>
+
+title Write Tools — container diagram
+
+Container(mcp_server_write, "MCP Server (Write)", "TypeScript, MCP SDK")
+Container(scrum_add_vocabulary, "scrum_add_vocabulary", "MCP Tool")
+Container(handleAddVocabulary, "handleAddVocabulary", "TypeScript")
+Container(scrum_create_story, "scrum_create_story", "MCP Tool")
+Container(handleCreateStory, "handleCreateStory", "TypeScript")
+Container(scrum_update_story, "scrum_update_story", "MCP Tool")
+Container(handleUpdateStory, "handleUpdateStory", "TypeScript")
+Container(scrum_set_field, "scrum_set_field", "MCP Tool")
+Container(handleSetField, "handleSetField", "TypeScript")
+Container(scrum_log_impediment, "scrum_log_impediment", "MCP Tool")
+Container(handleLogImpediment, "handleLogImpediment", "TypeScript")
+Container(scrum_update_impediment, "scrum_update_impediment", "MCP Tool")
+Container(handleUpdateImpediment, "handleUpdateImpediment", "TypeScript")
+Container(updateImpedimentUseCase, "updateImpedimentUseCase", "TypeScript")
+Container(scrum_plan_sprint, "scrum_plan_sprint", "MCP Tool")
+Container(handlePlanSprint, "handlePlanSprint", "TypeScript")
+Container(project_backend_port, "ProjectBackend Port", "TypeScript Interface")
+Container(github_adapter, "GitHubProjectBackend", "TypeScript, GitHub GraphQL", "src/adapters/github/backend.ts")
+
+Rel(mcp_server_write, scrum_add_vocabulary, "exposes")
+Rel(scrum_add_vocabulary, handleAddVocabulary, "delegates to")
+Rel(handleAddVocabulary, project_backend_port, "calls backend directly")
+Rel(mcp_server_write, scrum_create_story, "exposes")
+Rel(scrum_create_story, handleCreateStory, "delegates to")
+Rel(handleCreateStory, project_backend_port, "calls backend directly")
+Rel(mcp_server_write, scrum_update_story, "exposes")
+Rel(scrum_update_story, handleUpdateStory, "delegates to")
+Rel(handleUpdateStory, project_backend_port, "calls backend directly")
+Rel(mcp_server_write, scrum_set_field, "exposes")
+Rel(scrum_set_field, handleSetField, "delegates to")
+Rel(handleSetField, project_backend_port, "calls backend directly")
+Rel(mcp_server_write, scrum_log_impediment, "exposes")
+Rel(scrum_log_impediment, handleLogImpediment, "delegates to")
+Rel(handleLogImpediment, project_backend_port, "calls backend directly")
+Rel(mcp_server_write, scrum_update_impediment, "exposes")
+Rel(scrum_update_impediment, handleUpdateImpediment, "delegates to")
+Rel(updateImpedimentUseCase, project_backend_port, "calls via port")
+Rel(handleUpdateImpediment, updateImpedimentUseCase, "calls")
+Rel(mcp_server_write, scrum_plan_sprint, "exposes")
+Rel(scrum_plan_sprint, handlePlanSprint, "delegates to")
+Rel(handlePlanSprint, project_backend_port, "calls backend directly")
+Rel(github_adapter, project_backend_port, "implements")
+
+@enduml
+```
+
+```plantuml
+@startuml
+!include <c4/C4_Component>
+
+title Read Tools — component diagram
+
+Component(port_interface, "ProjectBackend", "TypeScript Interface")
+Component(handleOrient, "handleOrient()", "TypeScript")
+Component(orientUseCase, "orientUseCase()", "TypeScript")
+Component(handleGetItemDetail, "handleGetItemDetail()", "TypeScript")
+Component(getStoryUseCase, "getStoryUseCase()", "TypeScript")
+Component(handleFindItems, "handleFindItems()", "TypeScript")
+Component(findItemsUseCase, "findItemsUseCase()", "TypeScript")
+Component(handleGetAnalytics, "handleGetAnalytics()", "TypeScript")
+Component(getAnalyticsUseCase, "getAnalyticsUseCase()", "TypeScript")
+Component(handleGetBoardHealth, "handleGetBoardHealth()", "TypeScript")
+Component(getBoardHealthUseCase, "getBoardHealthUseCase()", "TypeScript")
+
+Rel(orientUseCase, port_interface, "calls via port")
+Rel(handleOrient, orientUseCase, "calls")
+Rel(getStoryUseCase, port_interface, "calls via port")
+Rel(handleGetItemDetail, getStoryUseCase, "calls")
+Rel(findItemsUseCase, port_interface, "calls via port")
+Rel(handleFindItems, findItemsUseCase, "calls")
+Rel(getAnalyticsUseCase, port_interface, "calls via port")
+Rel(handleGetAnalytics, getAnalyticsUseCase, "calls")
+Rel(getBoardHealthUseCase, port_interface, "calls via port")
+Rel(handleGetBoardHealth, getBoardHealthUseCase, "calls")
+
+@enduml
+```
+
+```plantuml
+@startuml
+!include <c4/C4_Component>
+
+title Write Tools — component diagram
+
+Component(port_interface, "ProjectBackend", "TypeScript Interface")
+Component(handleAddVocabulary, "handleAddVocabulary()", "TypeScript")
+Component(handleSetField, "handleSetField()", "TypeScript")
+Component(handleUpdateStory, "handleUpdateStory()", "TypeScript")
+Component(handleCreateStory, "handleCreateStory()", "TypeScript")
+Component(handlePlanSprint, "handlePlanSprint()", "TypeScript")
+Component(handleLogImpediment, "handleLogImpediment()", "TypeScript")
+Component(handleUpdateImpediment, "handleUpdateImpediment()", "TypeScript")
+Component(updateImpedimentUseCase, "updateImpedimentUseCase()", "TypeScript")
+
+Rel(handleAddVocabulary, port_interface, "calls directly")
+Rel(handleSetField, port_interface, "calls directly")
+Rel(handleUpdateStory, port_interface, "calls directly")
+Rel(handleCreateStory, port_interface, "calls directly")
+Rel(handlePlanSprint, port_interface, "calls directly")
+Rel(handleLogImpediment, port_interface, "calls directly")
+Rel(updateImpedimentUseCase, port_interface, "calls via port")
+Rel(handleUpdateImpediment, updateImpedimentUseCase, "calls")
+
+@enduml
+```
+
+```plantuml
+@startuml
+!include <c4/C4_Component>
+
+title Read Tools — code diagram
+
+Component(project_backend_iface, "ProjectBackend", "TypeScript")
+Component(port_getEpics, "getEpics()", "TypeScript")
+Component(port_getStoryDetail, "getStoryDetail()", "TypeScript")
+Component(port_composeStorySnapshot, "composeStorySnapshot()", "TypeScript")
+Component(port_composeStoryAfterSetField, "composeStoryAfterSetField()", "TypeScript")
+Component(port_composeStoryAfterStoryUpdate, "composeStoryAfterStoryUpdate()", "TypeScript")
+Component(port_composeStoryAfterCreateStory, "composeStoryAfterCreateStory()", "TypeScript")
+Component(port_findItems, "findItems()", "TypeScript")
+Component(port_getAnalytics, "getAnalytics()", "TypeScript")
+Component(port_getBoardHealth, "getBoardHealth()", "TypeScript")
+Component(port_getSprintImpediments, "getSprintImpediments()", "TypeScript")
+Component(port_getOrphanImpediments, "getOrphanImpediments()", "TypeScript")
+Component(port_updateImpediment, "updateImpediment()", "TypeScript")
+Component(port_fetchContent, "fetchContent()", "TypeScript")
+Component(port_getPlatformState, "getPlatformState()", "TypeScript")
+Component(port_getSprintCompletion, "getSprintCompletion()", "TypeScript")
+Component(port_reload, "reload()", "TypeScript")
+Component(github_adapter_impl, "GitHubProjectBackend", "TypeScript")
+
+Rel(project_backend_iface, port_getEpics, "declares")
+Rel(project_backend_iface, port_getStoryDetail, "declares")
+Rel(project_backend_iface, port_composeStorySnapshot, "declares")
+Rel(project_backend_iface, port_composeStoryAfterSetField, "declares")
+Rel(project_backend_iface, port_composeStoryAfterStoryUpdate, "declares")
+Rel(project_backend_iface, port_composeStoryAfterCreateStory, "declares")
+Rel(project_backend_iface, port_findItems, "declares")
+Rel(project_backend_iface, port_getAnalytics, "declares")
+Rel(project_backend_iface, port_getBoardHealth, "declares")
+Rel(project_backend_iface, port_getSprintImpediments, "declares")
+Rel(project_backend_iface, port_getOrphanImpediments, "declares")
+Rel(project_backend_iface, port_updateImpediment, "declares")
+Rel(project_backend_iface, port_fetchContent, "declares")
+Rel(project_backend_iface, port_getPlatformState, "declares")
+Rel(project_backend_iface, port_getSprintCompletion, "declares")
+Rel(project_backend_iface, port_reload, "declares")
+Rel(github_adapter_impl, project_backend_iface, "implements")
+
+@enduml
+```
+
+```plantuml
+@startuml
+!include <c4/C4_Component>
+
+title Write Tools — code diagram
+
+Component(project_backend_iface, "ProjectBackend", "TypeScript")
+Component(port_createStory, "createStory()", "TypeScript")
+Component(port_createImpediment, "createImpediment()", "TypeScript")
+Component(port_updateStory, "updateStory()", "TypeScript")
+Component(port_setField, "setField()", "TypeScript")
+Component(port_addComment, "addComment()", "TypeScript")
+Component(port_addVocabulary, "addVocabulary()", "TypeScript")
+Component(github_adapter_impl, "GitHubProjectBackend", "TypeScript")
+
+Rel(project_backend_iface, port_createStory, "declares")
+Rel(project_backend_iface, port_createImpediment, "declares")
+Rel(project_backend_iface, port_updateStory, "declares")
+Rel(project_backend_iface, port_setField, "declares")
+Rel(project_backend_iface, port_addComment, "declares")
+Rel(project_backend_iface, port_addVocabulary, "declares")
+Rel(github_adapter_impl, project_backend_iface, "implements")
+
+@enduml
+```
+
 
 ## Stability (Instability) Metrics
 

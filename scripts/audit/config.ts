@@ -17,8 +17,12 @@ Options:
                            (not passed)  → section omitted from report
                            --mermaid     → embedded inline in the report
                            --mermaid <path> → saved to standalone .mermaid file
+  --c4-map [<path>]      C4 diagram handling:
+                           (not passed) → section omitted from report
+                           --c4-map     → embedded inline in the report
+                           --c4-map <path> → saved to standalone .puml file
   --skip <stage>         Skip a stage (repeatable). Stages: compliance, layer-graph,
-                         stability, file-stats, unused-exports
+                         stability, file-stats, unused-exports, c4-diagram
   --exclude-tests        Exclude test files (*.test.ts) from the audit
   --dry-run              Shortcut for --output - (print to stdout)
   --help, -h             Show this help
@@ -43,6 +47,8 @@ export const parseCliArgs = (args: string[]): AuditConfig => {
   let outputPath = DEFAULT_OUTPUT_PATH;
   let mermaidMode: "off" | "embed" | "file" = "off";
   let mermaidOutputPath: string | undefined;
+  let c4Mode: "off" | "embed" | "file" = "off";
+  let c4OutputPath: string | undefined;
   let excludeTests = true;
 
   for (let i = 0; i < args.length; i++) {
@@ -80,6 +86,21 @@ export const parseCliArgs = (args: string[]): AuditConfig => {
       } else {
         mermaidMode = "embed";
       }
+    } else if (arg.startsWith("--c4-map=")) {
+      const value = arg.slice("--c4-map=".length);
+      if (value) {
+        c4Mode = "file";
+        c4OutputPath = value;
+      }
+    } else if (arg === "--c4-map") {
+      const nextArg = i + 1 < args.length ? args[i + 1] : undefined;
+      if (nextArg && !nextArg.startsWith("-")) {
+        c4Mode = "file";
+        c4OutputPath = nextArg;
+        i++;
+      } else {
+        c4Mode = "embed";
+      }
     }
   }
 
@@ -88,6 +109,8 @@ export const parseCliArgs = (args: string[]): AuditConfig => {
     outputPath,
     mermaidMode,
     mermaidOutputPath,
+    c4Mode,
+    c4OutputPath,
     skipStages,
     excludeTests,
   };

@@ -8,11 +8,12 @@
 // standalone .mermaid diagram file.
 // =============================================================================
 
-import type { LayerGraphResult } from "./audit/types.ts";
+import type { C4DiagramResult, LayerGraphResult } from "./audit/types.ts";
 import { parseCliArgs } from "./audit/config.ts";
 import { runPipeline } from "./audit/pipeline.ts";
 import { renderMarkdown } from "./audit/renderers/markdown.ts";
 import { saveMermaidFile } from "./audit/renderers/mermaid-file.ts";
+import { savePlantumlFile } from "./audit/renderers/plantuml-file.ts";
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 
@@ -34,6 +35,22 @@ const main = async (): Promise<void> => {
   } else {
     await Deno.writeTextFile(config.outputPath, markdown);
     console.error(`[audit] Written to ${config.outputPath}`);
+  }
+
+  // ── Standalone PlantUML file (only when c4Mode === "file") ───────────────
+  if (config.c4Mode === "file") {
+    const c4Diagram = results["c4-diagram"] as C4DiagramResult | undefined;
+    if (
+      c4Diagram &&
+      c4Diagram.readTools.context.elements.length > 0 &&
+      config.c4OutputPath
+    ) {
+      console.error(`[audit] Writing PlantUML diagram to ${config.c4OutputPath}...`);
+      await savePlantumlFile(c4Diagram, config.c4OutputPath);
+      console.error(`[audit] PlantUML diagram written to ${config.c4OutputPath}`);
+    } else {
+      console.error("[audit] Skipping PlantUML diagram — C4 data unavailable.");
+    }
   }
 
   // ── Standalone mermaid diagram (only when mermaidMode === "file") ──────────
