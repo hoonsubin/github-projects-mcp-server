@@ -65,8 +65,8 @@ export const renderC4Embed = (result: C4DiagramResult): string =>
   collectDiagrams(result)
     .map((diagram) => {
       const encoded = plantumlEncoder.encode(diagram);
-      const svgUrl = `https://www.plantuml.com/plantuml/svg/${encoded}`;
-      const markdownImg = `![C4 Diagram](${svgUrl})`;
+      const pngUrl = `https://www.plantuml.com/plantuml/img/${encoded}`;
+      const markdownImg = `![C4 Diagram](${pngUrl})`;
 
       return markdownImg;
     })
