@@ -163,7 +163,6 @@ export const ADD_DRAFT_ISSUE_MUTATION = getQuery("AddDraftIssue");
 export const UPDATE_ISSUE_FIELD_MUTATION = getQuery("UpdateIssueField");
 export const CLEAR_ISSUE_FIELD_MUTATION = getQuery("ClearIssueField");
 
-
 // ── Fragment registry API ──────────────────────────────────────────────────────
 
 /**

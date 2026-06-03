@@ -224,7 +224,9 @@ export class FieldValueMutator {
               context: {
                 field: "priority",
                 value,
-                knownOptions: Object.keys(issueBacked.options ?? this.ctx.config.live.priorityOptions),
+                knownOptions: Object.keys(
+                  issueBacked.options ?? this.ctx.config.live.priorityOptions,
+                ),
               },
             },
           );

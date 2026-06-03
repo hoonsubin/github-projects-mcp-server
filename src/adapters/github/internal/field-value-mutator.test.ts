@@ -555,7 +555,6 @@ Deno.test({
   },
 });
 
-
 // =============================================================================
 // Group H - issue-backed field mutations (ProjectV2ItemIssueFieldValue)
 // =============================================================================
@@ -595,12 +594,11 @@ Deno.test({
       (gh.graphqlCalls[1].variables.input as Record<string, unknown>).issueId,
       "I_issue1",
     );
-    const issueField = (
-      (gh.graphqlCalls[1].variables.input as Record<string, unknown>).issueField as Record<
+    const issueField = (gh.graphqlCalls[1].variables.input as Record<string, unknown>)
+      .issueField as Record<
         string,
         unknown
-      >
-    );
+      >;
     assertEquals(issueField.fieldId, "IF_priority");
     assertEquals(issueField.singleSelectOptionId, "IFSO_must");
   },
@@ -649,12 +647,11 @@ Deno.test({
 
     assertEquals(gh.graphqlCalls.length, 2);
     assertStringIncludes(gh.graphqlCalls[1].queryExcerpt, "UpdateIssueField");
-    const issueField = (
-      (gh.graphqlCalls[1].variables.input as Record<string, unknown>).issueField as Record<
+    const issueField = (gh.graphqlCalls[1].variables.input as Record<string, unknown>)
+      .issueField as Record<
         string,
         unknown
-      >
-    );
+      >;
     assertEquals(issueField.fieldId, "IF_points");
     assertEquals(issueField.numberValue, 5);
   },
