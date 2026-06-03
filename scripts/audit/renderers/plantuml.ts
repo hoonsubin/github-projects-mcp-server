@@ -13,6 +13,7 @@ import type {
   C4Relationship,
   C4SliceLevel,
 } from "../types.ts";
+import plantumlEncoder from "plantuml-encoder";
 
 // ── Stereotype mapping ─────────────────────────────────────────────────────────
 
@@ -57,12 +58,18 @@ export const renderC4Source = (result: C4DiagramResult): string =>
   collectDiagrams(result).join("\n\n") + "\n";
 
 /**
- * Render a C4 diagram result with each diagram in its own ```plantuml fence.
+ * Render a C4 diagram result with each diagram encoded and linked with the render server.
  * Suitable for embedding inline in a markdown document.
  */
-export const renderC4Fenced = (result: C4DiagramResult): string =>
+export const renderC4Embed = (result: C4DiagramResult): string =>
   collectDiagrams(result)
-    .map((d) => "```plantuml\n" + d + "\n```")
+    .map((diagram) => {
+      const encoded = plantumlEncoder.encode(diagram);
+      const svgUrl = `https://www.plantuml.com/plantuml/svg/${encoded}`;
+      const markdownImg = `![C4 Diagram](${svgUrl})`;
+
+      return markdownImg;
+    })
     .join("\n\n") + "\n";
 
 // ── Internal rendering ─────────────────────────────────────────────────────────

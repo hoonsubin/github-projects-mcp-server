@@ -16,7 +16,7 @@ import type {
   UnusedExportResult,
 } from "../types.ts";
 import { renderMermaidFenced } from "./mermaid.ts";
-import { renderC4Fenced } from "./plantuml.ts";
+import { renderC4Embed } from "./plantuml.ts";
 
 export const renderMarkdown = (
   results: AuditResults,
@@ -93,7 +93,7 @@ export const renderMarkdown = (
     sections.push("");
     const c4diagram = results["c4-diagram"] as C4DiagramResult | undefined;
     if (c4diagram && c4diagram.readTools.context.elements.length > 0) {
-      sections.push(renderC4Fenced(c4diagram));
+      sections.push(renderC4Embed(c4diagram));
       sections.push("");
     } else {
       sections.push("_C4 diagram data unavailable._");
