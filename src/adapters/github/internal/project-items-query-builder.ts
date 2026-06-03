@@ -7,22 +7,14 @@
 // ItemFieldValues fragments in operations.graphql via queries.ts.
 // =============================================================================
 
-import type { OwnerType, PageInfoRef, ProjectItem, ProjectV2Ref } from "../types.ts";
+import type { OwnerType } from "../types.ts";
 import { getFragmentSource } from "../queries.ts";
 import { ownerRootField } from "./owner-graphql.ts";
 
-export interface ProjectV2ItemsPage extends ProjectV2Ref {
-  items: {
-    totalCount: number;
-    pageInfo: PageInfoRef;
-    nodes: ProjectItem[];
-  };
-}
-
-export interface ProjectItemsResponse {
-  user?: { projectV2: ProjectV2ItemsPage | null } | null;
-  organization?: { projectV2: ProjectV2ItemsPage | null } | null;
-}
+export type {
+  ProjectItemsResponse,
+  ProjectV2ItemsPage,
+} from "./project-items-response-types.ts";
 
 /**
  * Builds the GraphQL query document for fetching project items.
@@ -45,7 +37,7 @@ export class ProjectItemsQueryBuilder {
   }
 
   private buildProjectItemsQuery(contentFragment: "ItemContent" | "ItemContentAggregate"): string {
-    const ownerField = this.ownerType === "user" ? "user" : "organization";
+    const ownerField = ownerRootField(this.ownerType);
     const itemContentSource = getFragmentSource(contentFragment);
     const itemFieldValuesSource = getFragmentSource("ItemFieldValues");
 

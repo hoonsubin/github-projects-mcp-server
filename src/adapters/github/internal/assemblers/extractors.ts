@@ -7,9 +7,12 @@
 
 import { GitHubApiError } from "../../errors.ts";
 import type { PageExtractor } from "../execution-engine.ts";
-import type { ProjectItemsResponse } from "../project-items-query-builder.ts";
-import type { OwnerType } from "../../types.ts";
+import type {
+  ProjectItemsResponse,
+  ProjectV2ItemsPage,
+} from "../project-items-response-types.ts";
 import { projectV2FromOwnerResponse } from "../owner-graphql.ts";
+import type { OwnerType } from "../../types.ts";
 
 /** SearchIssues GraphQL response shape (minimal projection). */
 export interface SearchIssuesResponse {
@@ -30,9 +33,7 @@ export const createProjectItemsExtractor = (
   login: string,
 ): PageExtractor<ProjectItemsResponse> => {
   return (response: ProjectItemsResponse) => {
-    const project = ownerType === "user"
-      ? response.user?.projectV2
-      : response.organization?.projectV2;
+    const project = projectV2FromOwnerResponse<ProjectV2ItemsPage>(response, ownerType);
     if (!project) {
       throw new GitHubApiError(
         `Project #${projectNumber} not found for ${ownerType} '${login}'.`,

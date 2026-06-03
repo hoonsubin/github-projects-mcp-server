@@ -12,7 +12,7 @@
 
 import type { GitHubInfraContext } from "./infra-context.ts";
 import { ExecutionEngine } from "./execution-engine.ts";
-import type { PlatformRequest } from "./assemblers/types.ts";
+import type { PlatformRequest } from "./platform-request.ts";
 import { createProjectItemsExtractor } from "./assemblers/extractors.ts";
 import type {
   ItemFieldValue,

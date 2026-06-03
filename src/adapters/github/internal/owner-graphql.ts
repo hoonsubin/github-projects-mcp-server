@@ -3,7 +3,7 @@
 // =============================================================================
 
 import type { OwnerType } from "../types.ts";
-import type { ProjectV2ItemsPage } from "./project-items-query-builder.ts";
+import type { ProjectItemsResponse, ProjectV2ItemsPage } from "./project-items-response-types.ts";
 
 /** GraphQL root field name for an owner type. */
 export type OwnerRootField = "user" | "organization";
@@ -12,10 +12,7 @@ export const ownerRootField = (ownerType: OwnerType): OwnerRootField =>
   ownerType === "user" ? "user" : "organization";
 
 /** Response shape with optional user/organization projectV2 branches. */
-export interface OwnerProjectV2Response {
-  user?: { projectV2: ProjectV2ItemsPage | null } | null;
-  organization?: { projectV2: ProjectV2ItemsPage | null } | null;
-}
+export type OwnerProjectV2Response = ProjectItemsResponse;
 
 /** Bootstrap field metadata response (projectV2 with fields only). */
 export interface OwnerProjectFieldsBootstrapResponse {
@@ -44,3 +41,5 @@ export const projectV2FieldsFromBootstrap = (
   }
   return response.organization?.projectV2 ?? undefined;
 };
+
+export type { ProjectV2ItemsPage };

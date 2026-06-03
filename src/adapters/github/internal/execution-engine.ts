@@ -12,7 +12,7 @@
 // =============================================================================
 
 import type { GitHubClient } from "./http-client.ts";
-import type { PlatformRequest } from "./assemblers/types.ts";
+import type { PlatformRequest } from "./platform-request.ts";
 
 // ── Pagination policy ────────────────────────────────────────────────────────
 

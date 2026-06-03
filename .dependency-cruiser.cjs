@@ -75,6 +75,32 @@ module.exports = {
       to: { circular: true },
     },
 
+    // ── Rule 7b: owner-graphql and response types stay acyclic leaves ─────
+    {
+      name: "owner-graphql-no-query-builder",
+      comment: "owner-graphql.ts must not depend on project-items-query-builder " +
+        "(types live in project-items-response-types.ts).",
+      severity: "error",
+      from: { path: "^src/adapters/github/internal/owner-graphql\\.ts$" },
+      to: { path: "project-items-query-builder" },
+    },
+    {
+      name: "project-items-response-types-is-leaf",
+      comment: "Response type shapes must not import query or execution layers.",
+      severity: "error",
+      from: { path: "^src/adapters/github/internal/project-items-response-types\\.ts$" },
+      to: {
+        path: "^src/adapters/github/internal/(owner-graphql|project-items-query-builder|pagination|assemblers)/",
+      },
+    },
+    {
+      name: "platform-request-is-leaf",
+      comment: "PlatformRequest must not depend on assembler pipeline types.",
+      severity: "error",
+      from: { path: "^src/adapters/github/internal/platform-request\\.ts$" },
+      to: { path: "^src/adapters/github/internal/assemblers/" },
+    },
+
     // ── Rule 8: No console.log in src/ ───────────────────────────────────
     {
       name: "no-console-log",
