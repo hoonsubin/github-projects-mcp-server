@@ -89,8 +89,10 @@ export const fetchProjectItemsByIssueNumbers = async (
     const hits = new Set((response.search?.nodes ?? []).map((n) => n.number));
     const toResolve = unique.filter((n) => hits.has(n));
 
-    const resolved = await mapWithConcurrency(toResolve, LOOKUP_CONCURRENCY, (num) =>
-      fetchProjectItemByIssueNumber(gh, ghConfig, num)
+    const resolved = await mapWithConcurrency(
+      toResolve,
+      LOOKUP_CONCURRENCY,
+      (num) => fetchProjectItemByIssueNumber(gh, ghConfig, num),
     );
     for (let i = 0; i < toResolve.length; i++) {
       const item = resolved[i];
@@ -106,8 +108,10 @@ export const fetchProjectItemsByIssueNumbers = async (
 
   const missing = unique.filter((n) => !found.has(n));
   if (missing.length > 0) {
-    const rest = await mapWithConcurrency(missing, LOOKUP_CONCURRENCY, (num) =>
-      fetchProjectItemByIssueNumber(gh, ghConfig, num)
+    const rest = await mapWithConcurrency(
+      missing,
+      LOOKUP_CONCURRENCY,
+      (num) => fetchProjectItemByIssueNumber(gh, ghConfig, num),
     );
     for (let i = 0; i < missing.length; i++) {
       const item = rest[i];

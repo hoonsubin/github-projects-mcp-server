@@ -7,10 +7,7 @@
 
 import { GitHubApiError } from "../../errors.ts";
 import type { PageExtractor } from "../execution-engine.ts";
-import type {
-  ProjectItemsResponse,
-  ProjectV2ItemsPage,
-} from "../project-items-response-types.ts";
+import type { ProjectItemsResponse, ProjectV2ItemsPage } from "../project-items-response-types.ts";
 import { projectV2FromOwnerResponse } from "../owner-graphql.ts";
 import type { OwnerType } from "../../types.ts";
 

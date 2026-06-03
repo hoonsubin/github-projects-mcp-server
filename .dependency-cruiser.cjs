@@ -90,7 +90,8 @@ module.exports = {
       severity: "error",
       from: { path: "^src/adapters/github/internal/project-items-response-types\\.ts$" },
       to: {
-        path: "^src/adapters/github/internal/(owner-graphql|project-items-query-builder|pagination|assemblers)/",
+        path:
+          "^src/adapters/github/internal/(owner-graphql|project-items-query-builder|pagination|assemblers)/",
       },
     },
     {

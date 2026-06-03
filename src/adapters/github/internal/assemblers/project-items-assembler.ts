@@ -49,7 +49,7 @@ export class ProjectItemsAssembler {
   }
 
   /** Exposed for tests that need raw project items without listing normalization. */
-  async fetchAllProjectItems(): Promise<ProjectItem[]> {
+  fetchAllProjectItems(): Promise<ProjectItem[]> {
     return this.boardScan.fetchFullBoard();
   }
 }

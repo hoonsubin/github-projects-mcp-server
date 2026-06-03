@@ -46,8 +46,10 @@ export class UserMilestoneResolver {
 
   async resolveUserNodeIds(logins: readonly string[]): Promise<string[]> {
     const unique = [...new Set(logins.filter((l) => l.length > 0))];
-    await mapWithConcurrency(unique, USER_LOOKUP_CONCURRENCY, (login) =>
-      this.resolveUserNodeId(login)
+    await mapWithConcurrency(
+      unique,
+      USER_LOOKUP_CONCURRENCY,
+      (login) => this.resolveUserNodeId(login),
     );
     return Promise.all(logins.map((login) => this.resolveUserNodeId(login)));
   }

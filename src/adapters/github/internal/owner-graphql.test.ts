@@ -1,8 +1,8 @@
 import { assertEquals } from "@std/assert";
 import {
   ownerRootField,
-  projectV2FromOwnerResponse,
   projectV2FieldsFromBootstrap,
+  projectV2FromOwnerResponse,
 } from "./owner-graphql.ts";
 
 Deno.test("ownerRootField - maps user and org", () => {

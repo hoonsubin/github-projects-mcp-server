@@ -27,7 +27,7 @@ export const completionsFromBoardItems = (
 
   for (const item of items) {
     const content = item.content;
-    if (content?.__typename !== "Issue" || content.number == null) continue;
+    if (content?.__typename !== "Issue" || content.number === null) continue;
     const closedAt = issueClosedAtFromItem(item);
     if (!closedAt) continue;
     const t = new Date(closedAt).getTime();

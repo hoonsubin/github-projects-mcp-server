@@ -46,7 +46,7 @@ export class DirectLookupAssembler {
     return finalizeAssemblerOutput(output, resolvedFilter, this.config);
   }
 
-  private async fetchProjectItemsForKeys(keys: readonly string[]): Promise<ProjectItem[]> {
+  private fetchProjectItemsForKeys(keys: readonly string[]): Promise<ProjectItem[]> {
     const numbers = keys
       .map((key) => Number.parseInt(key, 10))
       .filter((n) => !Number.isNaN(n));
