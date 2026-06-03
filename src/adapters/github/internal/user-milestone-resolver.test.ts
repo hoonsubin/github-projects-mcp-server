@@ -186,8 +186,6 @@ Deno.test({
   async fn() {
     const { resolver, gh } = createResolver();
     givenUserExists(gh);
-    givenUserExists(gh);
-    givenUserExists(gh);
 
     const nodeIds = await resolver.resolveUserNodeIds([
       REAL_LOGIN,
@@ -200,7 +198,7 @@ Deno.test({
       USER_FOUND.user.id,
       USER_FOUND.user.id,
     ]);
-    assertEquals(gh.graphqlCalls.length, 3);
+    assertEquals(gh.graphqlCalls.length, 1);
     assertEquals(gh.remaining(), 0);
   },
 });

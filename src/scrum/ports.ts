@@ -229,7 +229,11 @@ export interface BurndownInput {
 /** Completion timestamps per story number. */
 export interface CompletionMap {
   completions: Map<number, string>; // issue number → ISO-8601 timestamp
-  dataSource: "audit_log" | "issue_close_proxy";
+  dataSource:
+    | "audit_log"
+    | "issue_close_proxy"
+    | "issue_closed_at"
+    | "issue_closed_at_and_timeline";
   warning?: string;
 }
 
@@ -407,6 +411,12 @@ export interface ProjectReader
    * the server started. Called automatically by orientUseCase.
    */
   reload(): Promise<void>;
+
+  /**
+   * Refresh field metadata without invalidating the session board cache.
+   * Used by scrum_orient to avoid redundant full-board refetches.
+   */
+  reloadMetadata(): Promise<void>;
 }
 
 /**

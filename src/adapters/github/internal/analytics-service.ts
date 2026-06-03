@@ -188,7 +188,7 @@ export class AnalyticsService {
 
     // Resolve completion timestamps
     const { completions, dataSource, warning } = await this.burndownCalculator
-      .resolveCompletionTimestamps(input);
+      .resolveCompletionTimestamps(input, preloadedItems);
 
     // Build burndown series using pure sprint-math helpers
     const ideal: IdealDayPoint[] = buildIdealLine(window, committedPoints);

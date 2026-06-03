@@ -12,7 +12,7 @@
 // =============================================================================
 
 import type { GitHubClient } from "./http-client.ts";
-import type { PlatformRequest } from "./assemblers/types.ts";
+import type { PlatformRequest } from "./platform-request.ts";
 
 // ── Pagination policy ────────────────────────────────────────────────────────
 
@@ -29,11 +29,21 @@ export interface PaginationPolicy {
   /** When true the caller should stop if the API returns a rate-limit signal.
    *  The engine does not detect rate limits itself (the HTTP client does). */
   readonly stopOnRateLimit: boolean;
+  /** Stop paginating once this many nodes have been collected. Undefined = no cap. */
+  readonly maxItems?: number;
 }
 
 export const DEFAULT_PAGINATION_POLICY: PaginationPolicy = {
   maxPages: 20,
-  pageSize: 100,
+  pageSize: 50,
+  stopOnRateLimit: true,
+};
+
+/** Single-page policy for server-filtered queries (e.g. sprint scope). */
+export const SPRINT_PAGINATION_POLICY: PaginationPolicy = {
+  maxPages: 1,
+  pageSize: 50,
+  maxItems: 50,
   stopOnRateLimit: true,
 };
 
@@ -121,7 +131,8 @@ export class ExecutionEngine {
     while (
       pageInfo.hasNextPage &&
       pageInfo.endCursor &&
-      pagesConsumed < this.policy.maxPages
+      pagesConsumed < this.policy.maxPages &&
+      (this.policy.maxItems === undefined || allNodes.length < this.policy.maxItems)
     ) {
       const vars = { ...request.variables, cursor: pageInfo.endCursor };
       const response = await this.gh.graphql<T>(request.document, vars);

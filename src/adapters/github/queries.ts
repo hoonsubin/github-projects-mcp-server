@@ -133,6 +133,7 @@ export const GET_REPO_QUERY = getQuery("GetRepo");
 export const GET_FIELD_OPTIONS_QUERY = getQuery("GetFieldOptions");
 
 // ── Bootstrap queries (config-loader) ──────────────────────────────────────────
+export const GET_OWNER_BOOTSTRAP_QUERY = getQuery("GetOwnerBootstrap");
 export const GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY = getQuery("GetUserProjectFieldsBootstrap");
 export const GET_ORG_BOOTSTRAP_QUERY = getQuery("GetOrgBootstrap");
 export const GET_ORG_PROJECT_FIELDS_BOOTSTRAP_QUERY = getQuery("GetOrgProjectFieldsBootstrap");
@@ -159,8 +160,6 @@ export const ADD_COMMENT_MUTATION = getQuery("AddComment");
 export const UPDATE_FIELD_MUTATION = getQuery("UpdateField");
 export const CONVERT_DRAFT_ISSUE_MUTATION = getQuery("ConvertDraftIssue");
 export const ADD_DRAFT_ISSUE_MUTATION = getQuery("AddDraftIssue");
-
-// ── Issue field mutations ──────────────────────────────────────────────────────
 export const UPDATE_ISSUE_FIELD_MUTATION = getQuery("UpdateIssueField");
 export const CLEAR_ISSUE_FIELD_MUTATION = getQuery("ClearIssueField");
 

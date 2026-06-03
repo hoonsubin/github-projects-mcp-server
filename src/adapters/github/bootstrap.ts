@@ -25,10 +25,9 @@ import {
   isCanonicalSingleSelectUnavailable,
   type OrgIssueFieldNode,
 } from "./bootstrap-field-sources.ts";
-import { GET_ORG_BOOTSTRAP_QUERY, GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY } from "./queries.ts";
+import { GET_OWNER_BOOTSTRAP_QUERY } from "./queries.ts";
 import type { SelectFieldNode } from "./types.ts";
 import { classifyIterations } from "./internal/iteration-classifier.ts";
-
 // ── Template path resolver (pure, no API call) ────────────────────────────────
 
 /**
@@ -274,6 +273,11 @@ const detectIssueBackedFields = (
   return issueBackedFields;
 };
 
+interface OwnerBootstrapResponse {
+  user?: { projectV2?: { id: string; fields: { nodes: FieldNode[] } } | null } | null;
+  organization?: OrgBootstrapResponse["organization"];
+}
+
 interface OrgBootstrapResponse {
   organization: {
     projectV2?: { id: string; fields: { nodes: FieldNode[] } } | null;
@@ -304,18 +308,14 @@ export const bootstrapGitHub = async (params: BootstrapParams): Promise<GitHubLi
   let orgIssueFieldNodes: OrgIssueFieldNode[] = [];
   let orgIssueTypes: Array<{ id: string; name: string; isEnabled: boolean }> = [];
 
+  const ownerResult = await github.graphql<OwnerBootstrapResponse>(
+    GET_OWNER_BOOTSTRAP_QUERY,
+    { login: owner, number: projectNumber, isOrg: ownerType === "org" },
+  );
   if (ownerType === "user") {
-    const fieldsResult = await github.graphql<ProjectFieldsResponse>(
-      GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY,
-      { login: owner, number: projectNumber },
-    );
-    projectNode = fieldsResult.user?.projectV2;
+    projectNode = ownerResult.user?.projectV2;
   } else {
-    const orgResult = await github.graphql<OrgBootstrapResponse>(
-      GET_ORG_BOOTSTRAP_QUERY,
-      { login: owner, number: projectNumber },
-    );
-    const org = orgResult.organization;
+    const org = ownerResult.organization;
     projectNode = org?.projectV2;
     orgIssueFieldNodes = org?.issueFields.nodes ?? [];
     orgIssueTypes = org?.issueTypes.nodes ?? [];

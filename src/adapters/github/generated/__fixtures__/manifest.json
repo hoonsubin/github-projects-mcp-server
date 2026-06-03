@@ -16,6 +16,16 @@
         "file": "wire/GetUserProjectFieldsBootstrap_login_hoonsubin_number_5_.json"
       },
       {
+        "hash": "GetOwnerBootstrap:{\"isOrg\":false,\"login\":\"hoonsubin\",\"number\":5}",
+        "operation": "GetOwnerBootstrap",
+        "variables": {
+          "isOrg": false,
+          "login": "hoonsubin",
+          "number": 5
+        },
+        "file": "wire/GetUserProjectFieldsBootstrap_login_hoonsubin_number_5_.json"
+      },
+      {
         "hash": "query($login: String!, $number: Int!, $cursor: String) { user(login: $login) { p:{\"login\":\"hoonsubin\",\"number\":5}",
         "operation": "query($login: String!, $number: Int!, $cursor: String) { user(login: $login) { p",
         "variables": {

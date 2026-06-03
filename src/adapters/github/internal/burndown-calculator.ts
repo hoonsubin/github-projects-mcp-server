@@ -1,21 +1,21 @@
 // =============================================================================
 // src/adapters/github/internal/burndown-calculator.ts - Burndown Calculation
-//
-// Calculates the actual vs ideal burndown series for a given sprint.
-// Uses PaginatedProjectItemFetcher for item collection and REST timeline
-// for completion event detection.
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
 import { BoardScanCoordinator } from "./board-scan-coordinator.ts";
 import { buildBurndownStoryInput } from "../mappers.ts";
-import { resolveSprint } from "./resolver.ts"; // standalone function - not a class method
+import { resolveSprint } from "./resolver.ts";
 import { computeSprintEndDate } from "../../../scrum/sprint-math.ts";
+import { completionsFromBoardItems } from "./burndown-completion.ts";
+import { mapWithConcurrency } from "./concurrent.ts";
 import type { GitHubInfraContext } from "./infra-context.ts";
 import type { ProjectItem } from "../types.ts";
 import type { BurndownInput, BurndownStoryInput, CompletionMap } from "../../../scrum/ports.ts";
 import type { SprintRef } from "../../../domain/types.ts";
 import { log } from "../../../services/logger.ts";
+
+const TIMELINE_CONCURRENCY = 5;
 
 export class BurndownCalculator {
   constructor(
@@ -23,10 +23,6 @@ export class BurndownCalculator {
     private readonly boardScan: BoardScanCoordinator,
   ) {}
 
-  /**
-   * Collects all stories belonging to the specified sprint and prepares
-   * them for burndown computation.
-   */
   async getBurndownInput(
     sprint: SprintRef,
     preloadedItems?: readonly ProjectItem[],
@@ -38,6 +34,7 @@ export class BurndownCalculator {
         "Burndown does not apply to the backlog.",
         {
           code: "NOT_FOUND",
+          statusCode: 400,
           recovery: "Burndown requires an active sprint. " +
             "Use a specific sprint ref ('current', 'next', or sprint name) instead of null.",
           context: { sprint },
@@ -51,6 +48,7 @@ export class BurndownCalculator {
         `Iteration with ID ${iterationId} not found in configuration.`,
         {
           code: "NOT_FOUND",
+          statusCode: 404,
           recovery: "The iteration may have been deleted or the config is stale. " +
             "Call scrum_orient to refresh platform state.",
           context: { iterationId },
@@ -78,7 +76,7 @@ export class BurndownCalculator {
         name: iterEntry.title,
         startDate: iterEntry.startDate,
         endDate: endDate,
-        goal: null, // NOT_IMPLEMENTED: GitHub Projects API does not expose iteration goals
+        goal: null,
         durationDays: iterEntry.duration,
       },
       stories,
@@ -86,43 +84,61 @@ export class BurndownCalculator {
   }
 
   /**
-   * Resolves completion timestamps for stories by querying the GitHub
-   * REST API issue timeline.
+   * Resolves completion timestamps: prefers issue closedAt from board items,
+   * then REST timeline for remaining stories (bounded concurrency).
    */
-  async resolveCompletionTimestamps(input: BurndownInput): Promise<CompletionMap> {
-    const completions = new Map<number, string>();
-    const start = new Date(input.sprint.startDate).getTime();
-    const end = new Date(input.sprint.endDate).getTime();
+  async resolveCompletionTimestamps(
+    input: BurndownInput,
+    preloadedItems?: readonly ProjectItem[],
+  ): Promise<CompletionMap> {
+    const start = input.sprint.startDate;
+    const end = input.sprint.endDate;
 
-    for (const story of input.stories) {
-      if (story.number === null) continue;
+    const boardItems = preloadedItems ?? await this.boardScan.fetchAggregateBoard();
+    const completions = completionsFromBoardItems(boardItems, start, end);
 
+    const needsTimeline = input.stories.filter(
+      (s) => s.number !== null && !completions.has(s.number),
+    );
+
+    await mapWithConcurrency(needsTimeline, TIMELINE_CONCURRENCY, async (story) => {
+      if (story.number === null) return;
       try {
         const response = await this.ctx.gh.rest<{
           event: string;
           created_at: string;
         }[]>(`repos/${this.ctx.owner}/${this.ctx.repo}/issues/${story.number}/timeline`);
 
+        const startMs = new Date(`${start}T00:00:00Z`).getTime();
+        const endMs = new Date(`${end}T23:59:59.999Z`).getTime();
+
         const lastClosedAt = response.data
           .filter((e) => e.event === "closed")
           .map((e) => new Date(e.created_at).getTime())
-          .filter((t) => t >= start && t <= end)
+          .filter((t) => t >= startMs && t <= endMs)
           .sort((a, b) => b - a)[0];
 
         if (lastClosedAt) {
           completions.set(story.number, new Date(lastClosedAt).toISOString());
         }
       } catch (err) {
-        // Individual timeline fetch errors should not abort the whole burndown.
         log.debug(`burndown: timeline fetch failed for #${story.number}`, err);
-        continue;
       }
-    }
+    });
+
+    const usedBoard = completions.size > 0;
+    const usedTimeline = needsTimeline.length > 0;
 
     return {
       completions,
-      dataSource: "issue_close_proxy",
-      warning: "Completion timestamps are inferred from GitHub issue close events.",
+      dataSource: usedBoard && !usedTimeline
+        ? "issue_closed_at"
+        : usedBoard
+        ? "issue_closed_at_and_timeline"
+        : "issue_close_proxy",
+      warning: usedTimeline
+        ? "Some completion timestamps were inferred from GitHub issue close events via the REST timeline API."
+        : "Completion timestamps use GitHub issue closedAt from the project board.",
     };
   }
 }

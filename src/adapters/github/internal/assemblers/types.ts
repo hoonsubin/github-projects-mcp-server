@@ -5,6 +5,8 @@
 import type { ResolvedItemFilter } from "../../../../scrum/ports.ts";
 import type { BacklogItemListing, DependencyMap } from "../../../../domain/types.ts";
 
+export type { PlatformRequest } from "../platform-request.ts";
+
 /** Discriminated union — one execution strategy per findItems request. */
 export type FilterProfile =
   | { readonly kind: "direct_lookup"; readonly keys: readonly string[] }
@@ -16,13 +18,6 @@ export type FilterProfile =
   }
   | { readonly kind: "project_items"; readonly filter: ResolvedItemFilter }
   | { readonly kind: "mixed"; readonly filter: ResolvedItemFilter };
-
-/** Executable GraphQL request payload produced by assemblers. */
-export interface PlatformRequest {
-  readonly document: string;
-  readonly variables: Record<string, unknown>;
-  readonly operationName?: string;
-}
 
 /** Output from the assembler pipeline, mapped to ItemSearchResult at the backend boundary. */
 export interface AssemblerOutput {

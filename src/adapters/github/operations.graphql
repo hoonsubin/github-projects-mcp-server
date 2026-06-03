@@ -121,7 +121,7 @@ fragment ItemContentAggregate on ProjectV2Item {
   content {
     __typename
     ... on Issue {
-      id number title body state
+      id number title body state closedAt
       issueType { id name }
     }
     ... on PullRequest {
@@ -782,6 +782,73 @@ query GetFieldOptions($fieldId: ID!) {
 # ══════════════════════════════════════════════════════════════════════════════
 # QUERIES - Bootstrap (config-loader)
 # ══════════════════════════════════════════════════════════════════════════════
+
+
+# ── GetOwnerBootstrap ───────────────────────────────────────────────────────────
+# Unified bootstrap for user- or org-owned projects (one round-trip).
+
+query GetOwnerBootstrap($login: String!, $number: Int!, $isOrg: Boolean!) {
+  user(login: $login) @skip(if: $isOrg) {
+    projectV2(number: $number) {
+      id
+      fields(first: 50) {
+        nodes {
+          ... on ProjectV2Field { id name dataType }
+          ... on ProjectV2SingleSelectField {
+            id name dataType
+            options { id name color description }
+          }
+          ... on ProjectV2IterationField {
+            id name dataType
+            configuration {
+              iterations { id title startDate duration }
+              completedIterations { id title startDate duration }
+            }
+          }
+        }
+      }
+    }
+  }
+  organization(login: $login) @include(if: $isOrg) {
+    projectV2(number: $number) {
+      id
+      fields(first: 50) {
+        nodes {
+          ... on ProjectV2Field { id name dataType }
+          ... on ProjectV2SingleSelectField {
+            id name dataType
+            options { id name color description }
+          }
+          ... on ProjectV2IterationField {
+            id name dataType
+            configuration {
+              iterations { id title startDate duration }
+              completedIterations { id title startDate duration }
+            }
+          }
+        }
+      }
+    }
+    issueFields(first: 50) {
+      nodes {
+        ... on IssueFieldSingleSelect {
+          id name
+          options { id name color }
+        }
+        ... on IssueFieldText { id name }
+        ... on IssueFieldNumber { id name }
+        ... on IssueFieldDate { id name }
+      }
+    }
+    issueTypes(first: 50) {
+      nodes {
+        id
+        name
+        isEnabled
+      }
+    }
+  }
+}
 
 # ── GetUserProjectFieldsBootstrap ──────────────────────────────────────────────
 # Bootstrap query for user-owned projects: fetches field metadata including

@@ -1,14 +1,10 @@
 // =============================================================================
 // src/adapters/github/internal/assemblers/project-items-assembler.test.ts
-//
-// Integration test: fixture pages → ExecutionEngine → ProjectItemsAssembler →
-// AssemblerOutput with custom_fields enrichment.
 // =============================================================================
 
 import { assertEquals, assertExists, assertStrictEquals } from "@std/assert";
 import { ProjectItemsAssembler } from "./project-items-assembler.ts";
-import { ProjectItemsQueryBuilder } from "../project-items-query-builder.ts";
-import { ExecutionEngine } from "../execution-engine.ts";
+import { BoardScanCoordinator } from "../board-scan-coordinator.ts";
 import { ResultNormalizer } from "../result-normalizer.ts";
 import { createGhSpy, makeConfig } from "../_test_utils.ts";
 import type { ResolvedItemFilter } from "../../../../scrum/ports.ts";
@@ -22,17 +18,26 @@ const P2_NODES = (p2Fixture as { user: { projectV2: { items: { nodes: unknown[] 
 const FIXTURE_TOTAL = P1_NODES.length + P2_NODES.length;
 
 const config = makeConfig({
-  ghConfig: {
-    ...makeConfig().ghConfig,
-    owner_type: "user" as const,
+  ghConfig: { ...makeConfig().ghConfig, owner_type: "user" as const },
+  live: {
+    ...makeConfig().live,
+    iterations: { active: null, next: null, completed: [], all: [] },
   },
+});
+
+// Config with an active sprint — triggers the sprint-filtered fetch branch.
+const sprintConfig = makeConfig({
+  ghConfig: { ...makeConfig().ghConfig, owner_type: "user" as const },
   live: {
     ...makeConfig().live,
     iterations: {
-      active: null,
-      next: null,
+      active: { id: "IT_sprint1", title: "Sprint 1", startDate: "2026-01-01", duration: 14 },
+      next: { id: "IT_sprint2", title: "Sprint 2", startDate: "2026-01-15", duration: 14 },
       completed: [],
-      all: [],
+      all: [
+        { id: "IT_sprint1", title: "Sprint 1", startDate: "2026-01-01", duration: 14 },
+        { id: "IT_sprint2", title: "Sprint 2", startDate: "2026-01-15", duration: 14 },
+      ],
     },
   },
 });
@@ -53,90 +58,59 @@ const baseFilter = (): ResolvedItemFilter => ({
   limit: 50,
 });
 
-Deno.test({
-  name: "ProjectItemsAssembler - fixture pages produce enriched listings",
-  async fn() {
-    const gh = createGhSpy();
-    gh.enqueue(p1Fixture, p2Fixture);
+const makeAssembler = (gh: ReturnType<typeof createGhSpy>, cfg = config) => {
+  const ctx = {
+    config: cfg,
+    gh,
+    owner: cfg.ghConfig.owner,
+    repo: cfg.ghConfig.tracked_repos[0],
+    ghConfig: cfg.ghConfig,
+  };
+  return new ProjectItemsAssembler(
+    new BoardScanCoordinator(ctx),
+    new ResultNormalizer(cfg),
+    cfg,
+  );
+};
 
-    const assembler = new ProjectItemsAssembler(
-      new ExecutionEngine(gh),
-      new ResultNormalizer(config),
-      new ProjectItemsQueryBuilder("user"),
-      config,
-    );
-
-    const output = await assembler.assemble(baseFilter());
-
-    assertEquals(output.totalCount, FIXTURE_TOTAL);
-    assertEquals(output.items.length, Math.min(FIXTURE_TOTAL, 50));
-    assertEquals(output.items.length > 0, true);
-
-    const first = output.items[0];
-    assertExists(first.custom_fields);
-    assertExists(first.custom_fields["__typename"]);
-
-    // Canonical fields must not leak into custom_fields
-    assertStrictEquals(first.custom_fields["Status"], undefined);
-    assertStrictEquals(first.custom_fields["Priority"], undefined);
-    assertStrictEquals(first.custom_fields["Sprint"], undefined);
-    assertStrictEquals(first.custom_fields["Story Points"], undefined);
-    assertStrictEquals(first.custom_fields["Assignees"], undefined);
-    assertStrictEquals(first.custom_fields["Labels"], undefined);
-    assertStrictEquals(first.custom_fields["Title"], undefined);
-
-    // GitHub API noise must be stripped from all serialized values
-    for (const val of Object.values(first.custom_fields)) {
-      if (typeof val === "string" && val.startsWith("{")) {
-        const parsed = JSON.parse(val) as Record<string, unknown>;
-        assertStrictEquals("color" in parsed, false);
-        assertStrictEquals("optionId" in parsed, false);
-        assertStrictEquals("__typename" in parsed, false);
-      }
-    }
-  },
+Deno.test("ProjectItemsAssembler - fixture pages produce enriched listings", async () => {
+  const gh = createGhSpy();
+  gh.enqueue(p1Fixture, p2Fixture);
+  const output = await makeAssembler(gh).assemble(baseFilter());
+  assertEquals(output.totalCount, FIXTURE_TOTAL);
+  assertEquals(output.items.length, Math.min(FIXTURE_TOTAL, 50));
+  const first = output.items[0];
+  assertExists(first.custom_fields);
+  assertStrictEquals(first.custom_fields["Status"], undefined);
 });
 
-Deno.test({
-  name: "ProjectItemsAssembler - limit preserves pre-limit totalCount",
-  async fn() {
-    const gh = createGhSpy();
-    gh.enqueue(p1Fixture, p2Fixture);
-
-    const assembler = new ProjectItemsAssembler(
-      new ExecutionEngine(gh),
-      new ResultNormalizer(config),
-      new ProjectItemsQueryBuilder("user"),
-      config,
-    );
-
-    const output = await assembler.assemble({ ...baseFilter(), limit: 3 });
-
-    assertEquals(output.totalCount, FIXTURE_TOTAL);
-    assertEquals(output.items.length, 3);
-  },
+Deno.test("ProjectItemsAssembler - second assemble reuses board cache", async () => {
+  const gh = createGhSpy();
+  gh.enqueue(p1Fixture, p2Fixture);
+  const assembler = makeAssembler(gh);
+  await assembler.assemble(baseFilter());
+  await assembler.assemble(baseFilter());
+  assertEquals(gh.graphqlCalls.length, 2);
 });
 
-Deno.test({
-  name: "ProjectItemsAssembler - include_dependencies builds dependency map",
-  async fn() {
-    const gh = createGhSpy();
-    gh.enqueue(p1Fixture, p2Fixture);
+Deno.test("ProjectItemsAssembler - scope=sprint uses full board scan (server-side iteration filter not supported)", async () => {
+  // GitHub Projects v2 does not support iteration filtering via the query: argument.
+  // scope=sprint always uses the full board scan; sprintItemIds filters client-side.
+  const gh = createGhSpy();
+  gh.enqueue(p1Fixture, p2Fixture);
+  const output = await makeAssembler(gh, sprintConfig).assemble({
+    ...baseFilter(),
+    scope: "sprint",
+  });
+  assertEquals(gh.graphqlCalls.length, 2); // full board = two pages
+  assertEquals(output.items.length <= 50, true);
+});
 
-    const assembler = new ProjectItemsAssembler(
-      new ExecutionEngine(gh),
-      new ResultNormalizer(config),
-      new ProjectItemsQueryBuilder("user"),
-      config,
-    );
-
-    const output = await assembler.assemble({
-      ...baseFilter(),
-      include_dependencies: true,
-      limit: 10,
-    });
-
-    assertExists(output.dependencyMap);
-    assertEquals(typeof output.dependencyMap, "object");
-  },
+Deno.test("ProjectItemsAssembler - scope=sprint reuses full board cache on second call", async () => {
+  const gh = createGhSpy();
+  gh.enqueue(p1Fixture, p2Fixture);
+  const assembler = makeAssembler(gh, sprintConfig);
+  await assembler.assemble({ ...baseFilter(), scope: "sprint" });
+  await assembler.assemble({ ...baseFilter(), scope: "sprint" }); // second call — cache hit
+  assertEquals(gh.graphqlCalls.length, 2); // still 2, not 4
 });

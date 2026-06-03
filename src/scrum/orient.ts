@@ -54,7 +54,7 @@ export const orientUseCase = async (
   const canonicalPriorityKeys = scrumConfig.scrum.priority.map((p) => p.key);
 
   // ── Hard prerequisites (no catch - let failures propagate) ────────────
-  await backend.reload();
+  await backend.reloadMetadata();
 
   // getPlatformState returns BackendCallResult - warnings are accumulated per
   // sub-field (e.g. NOT_IMPLEMENTED for sprint goal). Fatal errors propagate.
