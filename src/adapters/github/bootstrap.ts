@@ -27,6 +27,7 @@ import {
   GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY,
 } from "./queries.ts";
 import type { SelectFieldNode } from "./types.ts";
+import { classifyIterations } from "./internal/iteration-classifier.ts";
 
 // ── Template path resolver (pure, no API call) ────────────────────────────────
 
@@ -375,8 +376,6 @@ const detectIssueBackedFields = (
 
   return issueBackedFields;
 };
-
-import { classifyIterations } from "./internal/iteration-classifier.ts";
 
 /**
  * Bootstrap live GitHub project field metadata.
