@@ -3,13 +3,16 @@
 //
 // Usage: deno run --allow-read --allow-env --allow-write --allow-run scripts/generate-audit.ts
 //
-// Parses CLI arguments, runs the pipeline, renders audit.md, and writes the
-// output (or prints to stdout with --output -).
+// Parses CLI arguments, runs the pipeline, renders audit.md, writes the
+// output (or prints to stdout with --output -), and optionally writes a
+// standalone .mermaid diagram file.
 // =============================================================================
 
+import type { LayerGraphResult } from "./audit/types.ts";
 import { parseCliArgs } from "./audit/config.ts";
 import { runPipeline } from "./audit/pipeline.ts";
 import { renderMarkdown } from "./audit/renderers/markdown.ts";
+import { saveMermaidFile } from "./audit/renderers/mermaid-file.ts";
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 
@@ -31,6 +34,18 @@ const main = async (): Promise<void> => {
   } else {
     await Deno.writeTextFile(config.outputPath, markdown);
     console.error(`[audit] Written to ${config.outputPath}`);
+  }
+
+  // ── Standalone mermaid diagram (only when mermaidMode === "file") ──────────
+  if (config.mermaidMode === "file") {
+    const layerGraph = results["layer-graph"] as LayerGraphResult | undefined;
+    if (layerGraph && layerGraph.nodes.length > 0 && config.mermaidOutputPath) {
+      console.error(`[audit] Writing mermaid diagram to ${config.mermaidOutputPath}...`);
+      await saveMermaidFile(layerGraph, config.mermaidOutputPath);
+      console.error(`[audit] Mermaid diagram written to ${config.mermaidOutputPath}`);
+    } else if (!layerGraph || layerGraph.nodes.length === 0) {
+      console.error("[audit] Skipping mermaid diagram — layer-graph data unavailable.");
+    }
   }
 };
 

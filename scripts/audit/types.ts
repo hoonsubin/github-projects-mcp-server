@@ -20,11 +20,25 @@ export interface StageDependencies {
   depcruiseMetricsJson?: DepcruiseOutput;
 }
 
+// ── Mermaid output mode ─────────────────────────────────────────────────────────
+
+/**
+ * Controls how the layer dependency mermaid diagram is handled:
+ * - "off"  →  diagram section is omitted from the report entirely
+ * - "embed" →  diagram is embedded inline in the markdown report
+ * - "file"  →  diagram is saved as a standalone `.mermaid` file (via mermaidOutputPath)
+ */
+export type MermaidMode = "off" | "embed" | "file";
+
 // ── CLI configuration ──────────────────────────────────────────────────────────
 
 export interface AuditConfig {
   readonly srcDir: string;
   readonly outputPath: string;
+  /** Controls mermaid diagram output: off / embed in report / write to file. */
+  readonly mermaidMode: MermaidMode;
+  /** Path for standalone .mermaid file (only used when mermaidMode === "file"). */
+  readonly mermaidOutputPath?: string;
   readonly skipStages: string[];
   readonly excludeTests: boolean;
 }

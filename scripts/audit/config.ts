@@ -13,6 +13,10 @@ const HELP_TEXT = `Usage: deno run -A scripts/generate-audit.ts [options]
 
 Options:
   --output, -o <path>    Output path (default: ./docs/AUDIT.md). Pass "-" for stdout
+  --mermaid [<path>]     Layer dependency graph handling:
+                           (not passed)  → section omitted from report
+                           --mermaid     → embedded inline in the report
+                           --mermaid <path> → saved to standalone .mermaid file
   --skip <stage>         Skip a stage (repeatable). Stages: compliance, layer-graph,
                          stability, file-stats, unused-exports
   --exclude-tests        Exclude test files (*.test.ts) from the audit
@@ -23,6 +27,8 @@ Examples:
   deno run -A scripts/generate-audit.ts
   deno run -A scripts/generate-audit.ts --skip unused-exports --skip file-stats
   deno run -A scripts/generate-audit.ts --output -
+  deno run -A scripts/generate-audit.ts --mermaid
+  deno run -A scripts/generate-audit.ts --mermaid docs/layer-graph.mermaid
   deno run -A scripts/generate-audit.ts --exclude-tests
 `;
 
@@ -35,6 +41,8 @@ Examples:
 export const parseCliArgs = (args: string[]): AuditConfig => {
   const skipStages: string[] = [];
   let outputPath = DEFAULT_OUTPUT_PATH;
+  let mermaidMode: "off" | "embed" | "file" = "off";
+  let mermaidOutputPath: string | undefined;
   let excludeTests = true;
 
   for (let i = 0; i < args.length; i++) {
@@ -55,12 +63,31 @@ export const parseCliArgs = (args: string[]): AuditConfig => {
       outputPath = arg.slice("--output=".length);
     } else if (arg.startsWith("-o=")) {
       outputPath = arg.slice("-o=".length);
+    } else if (arg.startsWith("--mermaid=")) {
+      // --mermaid=<path> → file mode
+      const value = arg.slice("--mermaid=".length);
+      if (value) {
+        mermaidMode = "file";
+        mermaidOutputPath = value;
+      }
+    } else if (arg === "--mermaid") {
+      // Peek ahead: if next arg exists and does NOT start with --, treat it as a path
+      const nextArg = i + 1 < args.length ? args[i + 1] : undefined;
+      if (nextArg && !nextArg.startsWith("-")) {
+        mermaidMode = "file";
+        mermaidOutputPath = nextArg;
+        i++; // consume the path argument
+      } else {
+        mermaidMode = "embed";
+      }
     }
   }
 
   return {
     srcDir: DEFAULT_SRC_DIR,
     outputPath,
+    mermaidMode,
+    mermaidOutputPath,
     skipStages,
     excludeTests,
   };
