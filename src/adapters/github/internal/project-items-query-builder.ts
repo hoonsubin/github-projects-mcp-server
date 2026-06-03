@@ -9,6 +9,7 @@
 
 import type { OwnerType, PageInfoRef, ProjectItem, ProjectV2Ref } from "../types.ts";
 import { getFragmentSource } from "../queries.ts";
+import { ownerRootField } from "./owner-graphql.ts";
 
 export interface ProjectV2ItemsPage extends ProjectV2Ref {
   items: {

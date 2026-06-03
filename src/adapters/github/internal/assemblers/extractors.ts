@@ -9,6 +9,7 @@ import { GitHubApiError } from "../../errors.ts";
 import type { PageExtractor } from "../execution-engine.ts";
 import type { ProjectItemsResponse } from "../project-items-query-builder.ts";
 import type { OwnerType } from "../../types.ts";
+import { projectV2FromOwnerResponse } from "../owner-graphql.ts";
 
 /** SearchIssues GraphQL response shape (minimal projection). */
 export interface SearchIssuesResponse {

@@ -35,7 +35,6 @@ import { SearchApiAssembler } from "./internal/assemblers/search-api-assembler.t
 import { MixedAssembler } from "./internal/assemblers/mixed-assembler.ts";
 import { ExecutionEngine } from "./internal/execution-engine.ts";
 import { ResultNormalizer } from "./internal/result-normalizer.ts";
-import { ProjectItemsQueryBuilder } from "./internal/project-items-query-builder.ts";
 import { GitHubFileReader } from "./internal/file-reader.ts";
 import type { GitHubBackendConfig, ResolvedToken } from "./types.ts";
 import type { ScrumConfig } from "../../domain/config.ts";
@@ -131,12 +130,9 @@ export const createGitHubBackend = (
 
   const executionEngine = new ExecutionEngine(ghClient);
   const resultNormalizer = new ResultNormalizer(bootState);
-  const projectItemsQueryBuilder = new ProjectItemsQueryBuilder(ghConfig.owner_type);
-
   const projectItemsAssembler = new ProjectItemsAssembler(
-    executionEngine,
+    boardScan,
     resultNormalizer,
-    projectItemsQueryBuilder,
     bootState,
   );
   const directLookupAssembler = new DirectLookupAssembler(

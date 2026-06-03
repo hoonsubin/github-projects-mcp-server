@@ -12,7 +12,7 @@ import { DirectLookupAssembler } from "./direct-lookup-assembler.ts";
 import { SearchApiAssembler } from "./search-api-assembler.ts";
 import { ExecutionEngine } from "../execution-engine.ts";
 import { ResultNormalizer } from "../result-normalizer.ts";
-import { ProjectItemsQueryBuilder } from "../project-items-query-builder.ts";
+import { BoardScanCoordinator } from "../board-scan-coordinator.ts";
 import { createGhSpy, makeConfig } from "../_test_utils.ts";
 import type { ResolvedItemFilter } from "../../../../scrum/ports.ts";
 import p1Fixture from "../../generated/__fixtures__/project-items-p1.json" with { type: "json" };
@@ -41,10 +41,16 @@ const baseFilter = (): ResolvedItemFilter => ({
 const buildPipeline = (gh: ReturnType<typeof createGhSpy>) => {
   const engine = new ExecutionEngine(gh);
   const normalizer = new ResultNormalizer(config);
+  const ctx = {
+    config,
+    gh,
+    owner: config.ghConfig.owner,
+    repo: config.ghConfig.tracked_repos[0],
+    ghConfig: config.ghConfig,
+  };
   const projectItems = new ProjectItemsAssembler(
-    engine,
+    new BoardScanCoordinator(ctx),
     normalizer,
-    new ProjectItemsQueryBuilder("user"),
     config,
   );
   return {

@@ -28,6 +28,10 @@ import {
 import { GET_ORG_BOOTSTRAP_QUERY, GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY } from "./queries.ts";
 import type { SelectFieldNode } from "./types.ts";
 import { classifyIterations } from "./internal/iteration-classifier.ts";
+import {
+  type OwnerProjectFieldsBootstrapResponse,
+  projectV2FieldsFromBootstrap,
+} from "./internal/owner-graphql.ts";
 
 // ── Template path resolver (pure, no API call) ────────────────────────────────
 

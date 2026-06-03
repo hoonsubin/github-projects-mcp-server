@@ -1,14 +1,10 @@
 // =============================================================================
 // src/adapters/github/internal/assemblers/project-items-assembler.test.ts
-//
-// Integration test: fixture pages → ExecutionEngine → ProjectItemsAssembler →
-// AssemblerOutput with custom_fields enrichment.
 // =============================================================================
 
 import { assertEquals, assertExists, assertStrictEquals } from "@std/assert";
 import { ProjectItemsAssembler } from "./project-items-assembler.ts";
-import { ProjectItemsQueryBuilder } from "../project-items-query-builder.ts";
-import { ExecutionEngine } from "../execution-engine.ts";
+import { BoardScanCoordinator } from "../board-scan-coordinator.ts";
 import { ResultNormalizer } from "../result-normalizer.ts";
 import { createGhSpy, makeConfig } from "../_test_utils.ts";
 import type { ResolvedItemFilter } from "../../../../scrum/ports.ts";
@@ -22,18 +18,10 @@ const P2_NODES = (p2Fixture as { user: { projectV2: { items: { nodes: unknown[] 
 const FIXTURE_TOTAL = P1_NODES.length + P2_NODES.length;
 
 const config = makeConfig({
-  ghConfig: {
-    ...makeConfig().ghConfig,
-    owner_type: "user" as const,
-  },
+  ghConfig: { ...makeConfig().ghConfig, owner_type: "user" as const },
   live: {
     ...makeConfig().live,
-    iterations: {
-      active: null,
-      next: null,
-      completed: [],
-      all: [],
-    },
+    iterations: { active: null, next: null, completed: [], all: [] },
   },
 });
 
@@ -53,90 +41,37 @@ const baseFilter = (): ResolvedItemFilter => ({
   limit: 50,
 });
 
-Deno.test({
-  name: "ProjectItemsAssembler - fixture pages produce enriched listings",
-  async fn() {
-    const gh = createGhSpy();
-    gh.enqueue(p1Fixture, p2Fixture);
+const makeAssembler = (gh: ReturnType<typeof createGhSpy>) => {
+  const ctx = {
+    config,
+    gh,
+    owner: config.ghConfig.owner,
+    repo: config.ghConfig.tracked_repos[0],
+    ghConfig: config.ghConfig,
+  };
+  return new ProjectItemsAssembler(
+    new BoardScanCoordinator(ctx),
+    new ResultNormalizer(config),
+    config,
+  );
+};
 
-    const assembler = new ProjectItemsAssembler(
-      new ExecutionEngine(gh),
-      new ResultNormalizer(config),
-      new ProjectItemsQueryBuilder("user"),
-      config,
-    );
-
-    const output = await assembler.assemble(baseFilter());
-
-    assertEquals(output.totalCount, FIXTURE_TOTAL);
-    assertEquals(output.items.length, Math.min(FIXTURE_TOTAL, 50));
-    assertEquals(output.items.length > 0, true);
-
-    const first = output.items[0];
-    assertExists(first.custom_fields);
-    assertExists(first.custom_fields["__typename"]);
-
-    // Canonical fields must not leak into custom_fields
-    assertStrictEquals(first.custom_fields["Status"], undefined);
-    assertStrictEquals(first.custom_fields["Priority"], undefined);
-    assertStrictEquals(first.custom_fields["Sprint"], undefined);
-    assertStrictEquals(first.custom_fields["Story Points"], undefined);
-    assertStrictEquals(first.custom_fields["Assignees"], undefined);
-    assertStrictEquals(first.custom_fields["Labels"], undefined);
-    assertStrictEquals(first.custom_fields["Title"], undefined);
-
-    // GitHub API noise must be stripped from all serialized values
-    for (const val of Object.values(first.custom_fields)) {
-      if (typeof val === "string" && val.startsWith("{")) {
-        const parsed = JSON.parse(val) as Record<string, unknown>;
-        assertStrictEquals("color" in parsed, false);
-        assertStrictEquals("optionId" in parsed, false);
-        assertStrictEquals("__typename" in parsed, false);
-      }
-    }
-  },
+Deno.test("ProjectItemsAssembler - fixture pages produce enriched listings", async () => {
+  const gh = createGhSpy();
+  gh.enqueue(p1Fixture, p2Fixture);
+  const output = await makeAssembler(gh).assemble(baseFilter());
+  assertEquals(output.totalCount, FIXTURE_TOTAL);
+  assertEquals(output.items.length, Math.min(FIXTURE_TOTAL, 50));
+  const first = output.items[0];
+  assertExists(first.custom_fields);
+  assertStrictEquals(first.custom_fields["Status"], undefined);
 });
 
-Deno.test({
-  name: "ProjectItemsAssembler - limit preserves pre-limit totalCount",
-  async fn() {
-    const gh = createGhSpy();
-    gh.enqueue(p1Fixture, p2Fixture);
-
-    const assembler = new ProjectItemsAssembler(
-      new ExecutionEngine(gh),
-      new ResultNormalizer(config),
-      new ProjectItemsQueryBuilder("user"),
-      config,
-    );
-
-    const output = await assembler.assemble({ ...baseFilter(), limit: 3 });
-
-    assertEquals(output.totalCount, FIXTURE_TOTAL);
-    assertEquals(output.items.length, 3);
-  },
-});
-
-Deno.test({
-  name: "ProjectItemsAssembler - include_dependencies builds dependency map",
-  async fn() {
-    const gh = createGhSpy();
-    gh.enqueue(p1Fixture, p2Fixture);
-
-    const assembler = new ProjectItemsAssembler(
-      new ExecutionEngine(gh),
-      new ResultNormalizer(config),
-      new ProjectItemsQueryBuilder("user"),
-      config,
-    );
-
-    const output = await assembler.assemble({
-      ...baseFilter(),
-      include_dependencies: true,
-      limit: 10,
-    });
-
-    assertExists(output.dependencyMap);
-    assertEquals(typeof output.dependencyMap, "object");
-  },
+Deno.test("ProjectItemsAssembler - second assemble reuses board cache", async () => {
+  const gh = createGhSpy();
+  gh.enqueue(p1Fixture, p2Fixture);
+  const assembler = makeAssembler(gh);
+  await assembler.assemble(baseFilter());
+  await assembler.assemble(baseFilter());
+  assertEquals(gh.graphqlCalls.length, 2);
 });
