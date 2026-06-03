@@ -174,11 +174,6 @@ interface ProjectFieldsResponse {
   organization?: { projectV2?: { id: string; fields: { nodes: FieldNode[] } } | null } | null;
 }
 
-// ── Type guards ───────────────────────────────────────────────────────────────
-
-const isSingleSelectField = (node: FieldNode): node is SingleSelectFieldNode =>
-  "options" in node && Array.isArray((node as SingleSelectFieldNode).options);
-
 const isIterationField = (node: FieldNode): node is IterationFieldNode => "configuration" in node;
 
 // ── Field resolution helpers ──────────────────────────────────────────────────
