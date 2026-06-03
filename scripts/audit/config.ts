@@ -8,6 +8,7 @@ import type { AuditConfig } from "./types.ts";
 
 const DEFAULT_OUTPUT_PATH = "./docs/AUDIT.md";
 const DEFAULT_SRC_DIR = "./src";
+const DEFAULT_EXCLUDED_DIRS = ["*.test.ts", "**/generated/", "*.graphql", "_*.ts"];
 
 const HELP_TEXT = `Usage: deno run -A scripts/generate-audit.ts [options]
 
@@ -23,7 +24,8 @@ Options:
                            --c4-map <path> → saved to standalone .puml file
   --skip <stage>         Skip a stage (repeatable). Stages: compliance, layer-graph,
                          stability, file-stats, unused-exports, c4-diagram
-  --exclude-tests        Exclude test files (*.test.ts) from the audit
+  --exclude-dir <glob>   Exclude files/directories matching glob (repeatable).
+                         Default: *.test.ts generated/ graphql/
   --dry-run              Shortcut for --output - (print to stdout)
   --help, -h             Show this help
 
@@ -33,8 +35,8 @@ Examples:
   deno run -A scripts/generate-audit.ts --output -
   deno run -A scripts/generate-audit.ts --mermaid
   deno run -A scripts/generate-audit.ts --mermaid docs/layer-graph.mermaid
-  deno run -A scripts/generate-audit.ts --exclude-tests
-`;
+  deno run -A scripts/generate-audit.ts --exclude-dir "**/vendor/**"
+ `;
 
 // ── Public API ─────────────────────────────────────────────────────────────────
 
@@ -49,7 +51,7 @@ export const parseCliArgs = (args: string[]): AuditConfig => {
   let mermaidOutputPath: string | undefined;
   let c4Mode: "off" | "embed" | "file" = "off";
   let c4OutputPath: string | undefined;
-  let excludeTests = true;
+  const excludedDirs = [...DEFAULT_EXCLUDED_DIRS];
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -59,8 +61,8 @@ export const parseCliArgs = (args: string[]): AuditConfig => {
       Deno.exit(0);
     } else if (arg === "--dry-run") {
       outputPath = "-";
-    } else if (arg === "--exclude-tests") {
-      excludeTests = true;
+    } else if (arg === "--exclude-dir" && i + 1 < args.length) {
+      excludedDirs.push(args[++i]);
     } else if (arg === "--skip" && i + 1 < args.length) {
       skipStages.push(args[++i]);
     } else if ((arg === "--output" || arg === "-o") && i + 1 < args.length) {
@@ -112,6 +114,6 @@ export const parseCliArgs = (args: string[]): AuditConfig => {
     c4Mode,
     c4OutputPath,
     skipStages,
-    excludeTests,
+    excludedDirs,
   };
 };

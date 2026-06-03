@@ -1,12 +1,12 @@
 # Architecture Audit Report
 
-**Generated:** 2026-06-03T15:25:36.690Z
-**Commit:** `003781b`
+**Generated:** 2026-06-03T16:28:00.538Z
+**Commit:** `823779f`
 **Source directory:** `./src`
 
 ## Architecture Compliance
 
-Modules scanned: **97**
+Modules scanned: **134**
 
 | Rule | Severity | Status | Violations |
 |------|----------|--------|------------|
@@ -44,87 +44,121 @@ _Instability (I) measures outgoing dependencies. I=0 means the module depends on
 
 | Module | Layer | I | Risk |
 |--------|-------|---|------|
-| `src/adapters/github/internal/_test_utils.ts` | adapter | 1.00 | 🔴 high-risk |
+| `src/adapters/capabilities.test.ts` | adapter | 1.00 | 🔴 high-risk |
+| `src/adapters/github/bootstrap-field-sources.test.ts` | adapter | 1.00 | 🔴 high-risk |
+| `src/adapters/github/bootstrap-iterations.test.ts` | adapter | 1.00 | 🔴 high-risk |
+| `src/adapters/github/internal/assemblers/assembler-pipeline.integration.test.ts` | adapter | 1.00 | 🔴 high-risk |
+| `src/adapters/github/internal/assemblers/direct-lookup-assembler.test.ts` | adapter | 1.00 | 🔴 high-risk |
+| `src/adapters/github/internal/assemblers/project-items-assembler.test.ts` | adapter | 1.00 | 🔴 high-risk |
 | `src/adapters/github/internal/display-helpers.ts` | adapter | 1.00 | 🔴 high-risk |
+| `src/adapters/github/internal/field-value-mutator.test.ts` | adapter | 1.00 | 🔴 high-risk |
+| `src/adapters/github/internal/filter-strategy-router.test.ts` | adapter | 1.00 | 🔴 high-risk |
+| `src/adapters/github/internal/fixture-replay/load-manifest.test.ts` | adapter | 1.00 | 🔴 high-risk |
+| `src/adapters/github/internal/fixture-replay/query-hash.test.ts` | adapter | 1.00 | 🔴 high-risk |
 | `src/adapters/github/internal/fixture-replay/recording-client.ts` | adapter | 1.00 | 🔴 high-risk |
+| `src/adapters/github/internal/item-filter.test.ts` | adapter | 1.00 | 🔴 high-risk |
+| `src/adapters/github/internal/label-resolver.test.ts` | adapter | 1.00 | 🔴 high-risk |
+| `src/adapters/github/internal/pagination.test.ts` | adapter | 1.00 | 🔴 high-risk |
+| `src/adapters/github/internal/project-items-cache.test.ts` | adapter | 1.00 | 🔴 high-risk |
+| `src/adapters/github/internal/project-items-query-builder.test.ts` | adapter | 1.00 | 🔴 high-risk |
+| `src/adapters/github/internal/resolve-issue-number.test.ts` | adapter | 1.00 | 🔴 high-risk |
+| `src/adapters/github/internal/search-query-builder.test.ts` | adapter | 1.00 | 🔴 high-risk |
+| `src/adapters/github/internal/search-result-normalizer.test.ts` | adapter | 1.00 | 🔴 high-risk |
+| `src/adapters/github/internal/story-mutation-service.test.ts` | adapter | 1.00 | 🔴 high-risk |
+| `src/adapters/github/internal/story-query-service.test.ts` | adapter | 1.00 | 🔴 high-risk |
+| `src/adapters/github/internal/user-milestone-resolver.test.ts` | adapter | 1.00 | 🔴 high-risk |
+| `src/adapters/github/mappers-aggregate.test.ts` | adapter | 1.00 | 🔴 high-risk |
+| `src/domain/content-location.test.ts` | domain | 1.00 | 🔴 high-risk |
+| `src/scrum/fetch-location.test.ts` | use-case | 1.00 | 🔴 high-risk |
+| `src/scrum/resolve-location.test.ts` | use-case | 1.00 | 🔴 high-risk |
+| `src/scrum/template-pipeline.test.ts` | use-case | 1.00 | 🔴 high-risk |
+| `src/scrum/template-resource.test.ts` | use-case | 1.00 | 🔴 high-risk |
 | `src/server.ts` | entrypoint | 1.00 | 🔴 high-risk |
-| `src/test/support/scrum-test-utils.ts` | framework | 1.00 | 🔴 high-risk |
-| `src/test/tools/contract-test-utils.ts` | framework | 1.00 | 🔴 high-risk |
+| `src/services/pick-defined.test.ts` | framework | 1.00 | 🔴 high-risk |
+| `src/test/support/config-profile.test.ts` | framework | 1.00 | 🔴 high-risk |
+| `src/test/tools/scrum-bridge.test.ts` | framework | 1.00 | 🔴 high-risk |
+| `src/test/tools/scrum-mcp.integration.test.ts` | framework | 1.00 | 🔴 high-risk |
+| `src/test/tools/scrum-read.contract.test.ts` | framework | 1.00 | 🔴 high-risk |
+| `src/test/tools/scrum-read.golden.test.ts` | framework | 1.00 | 🔴 high-risk |
+| `src/test/tools/scrum-write.contract.test.ts` | framework | 1.00 | 🔴 high-risk |
 | `src/adapters/github/backend.ts` | adapter | 0.96 | 🔴 high-risk |
 | `src/adapters/github/create-backend.ts` | adapter | 0.94 | 🔴 high-risk |
 | `src/test/support/fixture-backend.ts` | framework | 0.92 | 🔴 high-risk |
 | `src/tools/handlers/read.ts` | framework | 0.90 | 🔴 high-risk |
-| `src/test/support/fake-backend.ts` | framework | 0.90 | 🔴 high-risk |
 | `src/tools/handlers/write.ts` | framework | 0.89 | 🔴 high-risk |
-| `src/adapters/github/internal/assemblers/search-api-assembler.ts` | adapter | 0.87 | 🔴 high-risk |
 | `src/adapters/github/factory.ts` | adapter | 0.86 | 🔴 high-risk |
 | `src/scrum/orient.ts` | use-case | 0.86 | 🔴 high-risk |
 | `src/adapters/github/internal/analytics-service.ts` | adapter | 0.85 | 🔴 high-risk |
-| `src/adapters/github/internal/assemblers/direct-lookup-assembler.ts` | adapter | 0.85 | 🔴 high-risk |
-| `src/adapters/github/internal/pagination.ts` | adapter | 0.83 | 🔴 high-risk |
 | `src/adapters/github/internal/burndown-calculator.ts` | adapter | 0.83 | 🔴 high-risk |
 | `src/adapters/github/internal/board-health-service.ts` | adapter | 0.83 | 🔴 high-risk |
-| `src/tools/scrum-write.ts` | framework | 0.83 | 🔴 high-risk |
-| `src/adapters/github/internal/project-items-cache.ts` | adapter | 0.80 | 🔴 high-risk |
+| `src/test/support/fake-backend.ts` | framework | 0.82 | 🔴 high-risk |
+| `src/adapters/github/internal/assemblers/search-api-assembler.ts` | adapter | 0.81 | 🔴 high-risk |
 | `src/adapters/github/internal/impediment-service.ts` | adapter | 0.80 | 🔴 high-risk |
 | `src/adapters/github/internal/file-reader.ts` | adapter | 0.80 | 🔴 high-risk |
 | `src/adapters/github/internal/vocabulary-manager.ts` | adapter | 0.78 | 🟡 moderate |
-| `src/adapters/github/internal/story-mutation-service.ts` | adapter | 0.77 | 🟡 moderate |
 | `src/adapters/github/internal/epic-service.ts` | adapter | 0.75 | 🟡 moderate |
 | `src/adapters/github/internal/fixture-replay/fixture-replay-client.ts` | adapter | 0.75 | 🟡 moderate |
 | `src/scrum/get-story.ts` | use-case | 0.75 | 🟡 moderate |
-| `src/scrum/template-resource.ts` | use-case | 0.75 | 🟡 moderate |
+| `src/adapters/github/internal/assemblers/direct-lookup-assembler.ts` | adapter | 0.73 | 🟡 moderate |
 | `src/adapters/abstract-backend.ts` | adapter | 0.71 | 🟡 moderate |
+| `src/adapters/github/internal/pagination.ts` | adapter | 0.71 | 🟡 moderate |
 | `src/adapters/github/internal/sprint-history-service.ts` | adapter | 0.71 | 🟡 moderate |
-| `src/tools/scrum-read.ts` | framework | 0.71 | 🟡 moderate |
-| `src/adapters/github/internal/assemblers/project-items-assembler.ts` | adapter | 0.71 | 🟡 moderate |
-| `src/adapters/github/internal/resolve-issue-number.ts` | adapter | 0.67 | 🟡 moderate |
-| `src/adapters/github/internal/story-query-service.ts` | adapter | 0.67 | 🟡 moderate |
-| `src/adapters/github/internal/field-value-mutator.ts` | adapter | 0.67 | 🟡 moderate |
-| `src/adapters/github/internal/filter-strategy-router.ts` | adapter | 0.67 | 🟡 moderate |
+| `src/adapters/github/internal/story-mutation-service.ts` | adapter | 0.71 | 🟡 moderate |
+| `src/tools/scrum-write.ts` | framework | 0.71 | 🟡 moderate |
+| `src/adapters/github/internal/project-items-cache.ts` | adapter | 0.67 | 🟡 moderate |
 | `src/scrum/find-items.ts` | use-case | 0.67 | 🟡 moderate |
 | `src/scrum/get-analytics.ts` | use-case | 0.67 | 🟡 moderate |
 | `src/scrum/get-board-health.ts` | use-case | 0.67 | 🟡 moderate |
 | `src/scrum/update-impediment.ts` | use-case | 0.67 | 🟡 moderate |
-| `src/test/support/contract-assertions.ts` | framework | 0.67 | 🟡 moderate |
-| `src/adapters/github/internal/result-normalizer.ts` | adapter | 0.64 | 🟡 moderate |
+| `src/adapters/github/internal/story-query-service.ts` | adapter | 0.63 | 🟡 moderate |
+| `src/adapters/github/internal/assemblers/project-items-assembler.ts` | adapter | 0.63 | 🟡 moderate |
 | `src/adapters/factory.ts` | adapter | 0.63 | 🟡 moderate |
 | `src/adapters/github/internal/assembler-output.ts` | adapter | 0.63 | 🟡 moderate |
-| `src/adapters/github/internal/item-filter.ts` | adapter | 0.63 | 🟡 moderate |
 | `src/adapters/github/internal/assemblers/mixed-assembler.ts` | adapter | 0.60 | 🟡 moderate |
 | `src/adapters/github/internal/config-reloader.ts` | adapter | 0.60 | 🟡 moderate |
-| `src/test/support/config-profile.ts` | framework | 0.60 | 🟡 moderate |
 | `src/adapters/github/internal/assemblers/extractors.ts` | adapter | 0.57 | 🟡 moderate |
-| `src/adapters/github/internal/user-milestone-resolver.ts` | adapter | 0.57 | 🟡 moderate |
-| `src/scrum/config-boot.ts` | use-case | 0.55 | 🟡 moderate |
-| `src/adapters/github/mappers.ts` | adapter | 0.54 | 🟡 moderate |
-| `src/scrum/resolve-location.ts` | use-case | 0.50 | 🟡 moderate |
-| `src/adapters/github/bootstrap-field-sources.ts` | adapter | 0.50 | 🟡 moderate |
-| `src/adapters/github/internal/iteration-classifier.ts` | adapter | 0.50 | 🟡 moderate |
+| `src/adapters/github/internal/resolve-issue-number.ts` | adapter | 0.57 | 🟡 moderate |
+| `src/adapters/github/internal/item-filter.ts` | adapter | 0.56 | 🟡 moderate |
+| `src/adapters/github/internal/field-value-mutator.ts` | adapter | 0.55 | 🟡 moderate |
+| `src/test/support/config-profile.ts` | framework | 0.55 | 🟡 moderate |
 | `src/scrum/listing-mappers.ts` | use-case | 0.50 | 🟡 moderate |
-| `src/adapters/github/internal/search-query-builder.ts` | adapter | 0.50 | 🟡 moderate |
-| `src/adapters/github/internal/search-result-normalizer.ts` | adapter | 0.50 | 🟡 moderate |
-| `src/scrum/fetch-location.ts` | use-case | 0.50 | 🟡 moderate |
-| `src/adapters/github/internal/fixture-replay/load-manifest.ts` | adapter | 0.50 | 🟡 moderate |
-| `src/adapters/github/internal/label-resolver.ts` | adapter | 0.44 | 🟡 moderate |
+| `src/adapters/github/internal/result-normalizer.ts` | adapter | 0.50 | 🟡 moderate |
+| `src/scrum/config-boot.ts` | use-case | 0.50 | 🟡 moderate |
+| `src/scrum/template-resource.ts` | use-case | 0.50 | 🟡 moderate |
+| `src/test/support/scrum-test-utils.ts` | framework | 0.47 | 🟡 moderate |
+| `src/tools/scrum-read.ts` | framework | 0.45 | 🟡 moderate |
+| `src/adapters/github/mappers.ts` | adapter | 0.44 | 🟡 moderate |
+| `src/scrum/resolve-location.ts` | use-case | 0.43 | 🟡 moderate |
+| `src/scrum/fetch-location.ts` | use-case | 0.43 | 🟡 moderate |
 | `src/adapters/github/internal/resolver.ts` | adapter | 0.40 | 🟡 moderate |
-| `src/adapters/github/bootstrap.ts` | adapter | 0.35 | 🟡 moderate |
+| `src/adapters/github/internal/user-milestone-resolver.ts` | adapter | 0.40 | 🟡 moderate |
+| `src/adapters/github/internal/filter-strategy-router.ts` | adapter | 0.40 | 🟡 moderate |
+| `src/test/support/contract-assertions.ts` | framework | 0.40 | 🟡 moderate |
+| `src/adapters/github/internal/label-resolver.ts` | adapter | 0.36 | 🟡 moderate |
 | `src/scrum/url-rewriters.ts` | use-case | 0.33 | 🟡 moderate |
+| `src/adapters/github/bootstrap-field-sources.ts` | adapter | 0.33 | 🟡 moderate |
+| `src/adapters/github/internal/iteration-classifier.ts` | adapter | 0.33 | 🟡 moderate |
 | `src/scrum/sprint-math.ts` | use-case | 0.33 | 🟡 moderate |
-| `src/adapters/github/internal/project-items-query-builder.ts` | adapter | 0.33 | 🟡 moderate |
+| `src/adapters/github/internal/search-query-builder.ts` | adapter | 0.33 | 🟡 moderate |
+| `src/adapters/github/internal/search-result-normalizer.ts` | adapter | 0.33 | 🟡 moderate |
 | `src/schemas/scrum.ts` | framework | 0.33 | 🟡 moderate |
+| `src/adapters/github/bootstrap.ts` | adapter | 0.31 | 🟡 moderate |
 | `src/adapters/github/internal/board-scan-coordinator.ts` | adapter | 0.30 | 🟡 moderate |
-| `src/schemas/scrum-outputs.ts` | framework | 0.25 | 🟡 moderate |
+| `src/adapters/github/internal/_test_utils.ts` | adapter | 0.25 | 🟡 moderate |
+| `src/adapters/github/internal/fixture-replay/load-manifest.ts` | adapter | 0.25 | 🟡 moderate |
 | `src/services/error-enrichment.ts` | framework | 0.22 | 🟡 moderate |
-| `src/adapters/github/internal/execution-engine.ts` | adapter | 0.22 | 🟡 moderate |
 | `src/adapters/github/internal/http-client.ts` | adapter | 0.20 | 🟢 low-risk |
+| `src/adapters/github/internal/project-items-query-builder.ts` | adapter | 0.20 | 🟢 low-risk |
+| `src/test/tools/contract-test-utils.ts` | framework | 0.20 | 🟢 low-risk |
 | `src/adapters/github/internal/infra-context.ts` | adapter | 0.19 | 🟢 low-risk |
+| `src/adapters/github/internal/execution-engine.ts` | adapter | 0.18 | 🟢 low-risk |
 | `src/adapters/github/internal/assemblers/types.ts` | adapter | 0.18 | 🟢 low-risk |
-| `src/adapters/github/errors.ts` | adapter | 0.11 | 🟢 low-risk |
-| `src/scrum/ports.ts` | use-case | 0.09 | 🟢 low-risk |
+| `src/schemas/scrum-outputs.ts` | framework | 0.14 | 🟢 low-risk |
+| `src/scrum/ports.ts` | use-case | 0.08 | 🟢 low-risk |
 | `src/domain/config.ts` | domain | 0.08 | 🟢 low-risk |
-| `src/adapters/github/types.ts` | adapter | 0.08 | 🟢 low-risk |
-| `src/domain/errors.ts` | domain | 0.08 | 🟢 low-risk |
+| `src/adapters/github/errors.ts` | adapter | 0.08 | 🟢 low-risk |
+| `src/domain/errors.ts` | domain | 0.07 | 🟢 low-risk |
+| `src/adapters/github/types.ts` | adapter | 0.07 | 🟢 low-risk |
 | `src/adapters/github/queries.ts` | adapter | 0.07 | 🟢 low-risk |
 | `src/_deno-shim.node.ts` | framework | 0.00 | 🟢 low-risk |
 | `src/domain/types.ts` | domain | 0.00 | 🟢 low-risk |
@@ -134,6 +168,9 @@ _Instability (I) measures outgoing dependencies. I=0 means the module depends on
 | `src/adapters/github/operations.graphql` | adapter | 0.00 | 🟢 low-risk |
 | `src/services/logger.ts` | framework | 0.00 | 🟢 low-risk |
 | `src/domain/rules/readiness.ts` | domain | 0.00 | 🟢 low-risk |
+| `src/adapters/github/generated/__fixtures__/project-items-p1.json` | adapter | 0.00 | 🟢 low-risk |
+| `src/adapters/github/generated/__fixtures__/project-items-p2.json` | adapter | 0.00 | 🟢 low-risk |
+| `src/adapters/github/generated/__fixtures__/user-node-ids.json` | adapter | 0.00 | 🟢 low-risk |
 | `src/adapters/github/internal/fixture-replay/query-hash.ts` | adapter | 0.00 | 🟢 low-risk |
 | `src/adapters/github/internal/fixture-replay/types.ts` | adapter | 0.00 | 🟢 low-risk |
 | `src/domain/rules/acceptance-criteria.ts` | domain | 0.00 | 🟢 low-risk |
@@ -154,35 +191,21 @@ _Instability (I) measures outgoing dependencies. I=0 means the module depends on
 
 ## Unused Exports
 
-**Total unused exports:** 52
+**Total unused exports:** 35
 
 | File | Export | Kind |
 |------|--------|------|
 | `src/scrum/sprint-math.ts` | buildSprintMeta | function |
 | `src/scrum/ports.ts` | StoryListing | interface |
-| `src/scrum/template-resource.ts` | templateResourceUseCase | function |
 | `src/scrum/resolve-location.ts` | SupportedConfigExtension | type |
 | `src/scrum/resolve-location.ts` | SupportedTemplateExtension | type |
 | `src/tools/scrum-read.ts` | SCRUM_READ_TOOL_NAMES | var |
-| `src/tools/scrum-read.ts` | registerScrumReadTools | function |
 | `src/tools/scrum-write.ts` | SCRUM_WRITE_TOOL_NAMES | var |
 | `src/tools/scrum-write.ts` | registerScrumWriteTools | function |
-| `src/test/tools/contract-test-utils.ts` | parseHandlerPayload | function |
-| `src/test/tools/contract-test-utils.ts` | assertHandlerSchema | function |
 | `src/test/support/fixture-backend.ts` | validateFixtureReplay | function |
-| `src/test/support/scrum-test-utils.ts` | typeTemplatePathsPromise | var |
-| `src/test/support/scrum-test-utils.ts` | committedConfigProfilePromise | var |
-| `src/test/support/scrum-test-utils.ts` | committedFakeBackendPromise | var |
-| `src/test/support/scrum-test-utils.ts` | committedFixtureBackendPromise | var |
-| `src/test/support/scrum-test-utils.ts` | realFileReader | var |
-| `src/test/support/scrum-test-utils.ts` | stubFileReader | var |
-| `src/test/support/scrum-test-utils.ts` | withTestServer | function |
 | `_deno-shim.node.ts` | addEventListener | function |
 | `_deno-shim.node.ts` | Deno | var |
 | `src/schemas/inputs.ts` | GraphQLQuerySchema | var |
-| `src/schemas/scrum-outputs.ts` | CreateStoryResponseSchema | var |
-| `src/adapters/capabilities.ts` | getCapabilities | function |
-| `src/adapters/capabilities.ts` | checkCapability | function |
 | `src/adapters/factory.ts` | createBackend | function |
 | `src/adapters/github/queries.ts` | ADD_PROJECT_ITEM_MUTATION | var |
 | `src/adapters/github/queries.ts` | GET_ORG_PROJECT_FIELDS_BOOTSTRAP_QUERY | var |
@@ -193,12 +216,9 @@ _Instability (I) measures outgoing dependencies. I=0 means the module depends on
 | `src/adapters/github/internal/fixture-replay/load-manifest.ts` | loadFixtureJson | function |
 | `src/adapters/github/internal/fixture-replay/recording-client.ts` | RecordingGitHubClient | class |
 | `src/adapters/github/internal/fixture-replay/recording-client.ts` | mergeWireEntries | function |
-| `src/adapters/github/internal/pagination.ts` | isBacklogItem | function |
 | `src/adapters/github/internal/display-helpers.ts` | resolveTerminalDisplay | function |
 | `src/adapters/github/internal/display-helpers.ts` | resolveHighestPriorityDisplay | function |
 | `src/adapters/github/internal/label-resolver.ts` | RepoNodeIdProvider | interface |
-| `src/adapters/github/internal/_test_utils.ts` | createGhSpy | function |
-| `src/adapters/github/internal/_test_utils.ts` | makeCtx | function |
 | `src/adapters/github/factory.ts` | GitHubAdapterFactory | class |
 | `src/adapters/github/types.ts` | GitHubMilestoneId | type |
 | `src/adapters/github/types.ts` | toEntityRef | function |

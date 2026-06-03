@@ -14,6 +14,7 @@ import type {
   StageDependencies,
 } from "./types.ts";
 import type { AuditStage } from "./types.ts";
+import { globToRegExp } from "@std/path/glob-to-regexp";
 
 import { complianceStage } from "./stages/compliance.ts";
 import { layerGraphStage } from "./stages/layer-graph.ts";
@@ -73,8 +74,11 @@ const runDepcruise = async (args: string[]): Promise<DepcruiseOutput> => {
 // ── Pipeline runner ────────────────────────────────────────────────────────────
 
 export const runPipeline = async (config: AuditConfig): Promise<AuditResults> => {
-  // Build depcruise args based on config
-  const depcruiseArgs = config.excludeTests ? ["--exclude", ".*\\.test\\.ts"] : [];
+  // Convert glob patterns to regex and add each as a separate --exclude argument.
+  // depcruise rejects combined patterns joined with | as "too complex".
+  const depcruiseArgs = config.excludedDirs.length > 0
+    ? config.excludedDirs.flatMap((g) => ["--exclude", globToRegExp(g, { extended: true }).source])
+    : [];
 
   // Phase 1: Collect (run depcruise once for violations, once for metrics)
   let depcruiseJson: DepcruiseOutput | undefined;

@@ -44,7 +44,8 @@ export interface AuditConfig {
   /** Path for standalone .puml file (only used when c4Mode === "file"). */
   readonly c4OutputPath?: string;
   readonly skipStages: string[];
-  readonly excludeTests: boolean;
+  /** Glob patterns for files/directories to exclude from the audit (e.g. "*.test.ts", "generated/", "graphql/"). */
+  readonly excludedDirs: string[];
 }
 
 // ── depcruise JSON output types (matching actual v17 output) ───────────────────
