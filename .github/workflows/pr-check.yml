@@ -43,7 +43,7 @@ jobs:
         run: |
           {
             echo 'AUDIT_REPORT<<AUDIT_EOF'
-            deno task audit -- --output - --exclude-tests
+            deno task audit -- --output - --exclude-tests --c4-map
             echo 'AUDIT_EOF'
           } >> "$GITHUB_OUTPUT"
       - name: Post audit comment

@@ -7,6 +7,7 @@ export interface ExportInfo {
   kind: ExportKind;
   type?: string;
   returnType?: string;
+  usedInternally?: boolean;
 }
 
 export interface ImportInfo {

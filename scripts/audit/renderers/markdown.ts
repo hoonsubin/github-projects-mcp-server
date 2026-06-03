@@ -8,13 +8,15 @@
 import type {
   AuditConfig,
   AuditResults,
+  C4DiagramResult,
   ComplianceResult,
   FileStatsResult,
   LayerGraphResult,
   StabilityResult,
   UnusedExportResult,
 } from "../types.ts";
-import { renderMermaid } from "./mermaid.ts";
+import { renderMermaidFenced } from "./mermaid.ts";
+import { renderC4Embed } from "./plantuml.ts";
 
 export const renderMarkdown = (
   results: AuditResults,
@@ -36,7 +38,7 @@ export const renderMarkdown = (
 
   // ── 1. Architecture Compliance ─────────────────────────────────────────────
   const compliance = results.compliance as ComplianceResult | undefined;
-  sections.push("## 1. Architecture Compliance");
+  sections.push("## Architecture Compliance");
   sections.push("");
   if (compliance && compliance.rules.length > 0) {
     sections.push(`Modules scanned: **${compliance.moduleCount}**`);
@@ -72,21 +74,36 @@ export const renderMarkdown = (
     sections.push("");
   }
 
-  // ── 2. Layer Dependency Graph ──────────────────────────────────────────────
-  sections.push("## 2. Layer Dependency Graph");
-  sections.push("");
-  const layerGraph = results["layer-graph"] as LayerGraphResult | undefined;
-  if (layerGraph && layerGraph.nodes.length > 0) {
-    sections.push(renderMermaid(layerGraph));
+  // ── 2. Layer Dependency Graph (only when mermaidMode === "embed") ──────────
+  if (config.mermaidMode === "embed") {
+    sections.push("## Layer Dependency Graph");
     sections.push("");
-  } else {
-    sections.push("_Layer graph data unavailable._");
+    const layerGraph = results["layer-graph"] as LayerGraphResult | undefined;
+    if (layerGraph && layerGraph.nodes.length > 0) {
+      sections.push(renderMermaidFenced(layerGraph));
+      sections.push("");
+    } else {
+      sections.push("_Layer graph data unavailable._");
+      sections.push("");
+    }
+  }
+
+  if (config.c4Mode === "embed") {
+    sections.push("## C4 Diagrams");
     sections.push("");
+    const c4diagram = results["c4-diagram"] as C4DiagramResult | undefined;
+    if (c4diagram && c4diagram.readTools.context.elements.length > 0) {
+      sections.push(renderC4Embed(c4diagram));
+      sections.push("");
+    } else {
+      sections.push("_C4 diagram data unavailable._");
+      sections.push("");
+    }
   }
 
   // ── 3. Stability (Instability) Metrics ─────────────────────────────────────
   const stability = results.stability as StabilityResult | undefined;
-  sections.push("## 3. Stability (Instability) Metrics");
+  sections.push("## Stability (Instability) Metrics");
   sections.push("");
   sections.push(
     "_Instability (I) measures outgoing dependencies. I=0 means the module depends on nothing " +
@@ -112,7 +129,7 @@ export const renderMarkdown = (
 
   // ── 4. File Stats ─────────────────────────────────────────────────────────
   const fileStats = results["file-stats"] as FileStatsResult | undefined;
-  sections.push("## 4. File Statistics");
+  sections.push("## File Statistics");
   sections.push("");
   if (fileStats && fileStats.layers.length > 0) {
     sections.push("| Layer | Files | Total LOC | Top 3 Largest |");
@@ -133,7 +150,7 @@ export const renderMarkdown = (
 
   // ── 5. Unused Exports ─────────────────────────────────────────────────────
   const unusedExports = results["unused-exports"] as UnusedExportResult | undefined;
-  sections.push("## 5. Unused Exports");
+  sections.push("## Unused Exports");
   sections.push("");
   if (unusedExports && unusedExports.exports.length > 0) {
     sections.push(`**Total unused exports:** ${unusedExports.exports.length}`);

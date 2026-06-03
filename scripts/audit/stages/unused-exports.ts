@@ -9,15 +9,11 @@ import type { AuditStage, UnusedExportResult } from "../types.ts";
 import { ParsedModule } from "../../diagram/ParsedModule.ts";
 import { findUnusedExports } from "../../diagram/helpers.ts";
 
-// ── Exclusion patterns (same as the old diagram generator) ─────────────────────
-
-const EXCLUDED_DIRS = ["generated/", "graphql/"];
-
-const isExcluded = (filePath: string): boolean => {
-  for (const dir of EXCLUDED_DIRS) {
+const isExcluded = (filePath: string, excludedDirs: string[]): boolean => {
+  for (const dir of excludedDirs) {
     if (filePath.includes(dir)) return true;
   }
-  return filePath.endsWith(".test.ts");
+  return false;
 };
 
 export const unusedExportsStage: AuditStage<UnusedExportResult> = {
@@ -25,13 +21,13 @@ export const unusedExportsStage: AuditStage<UnusedExportResult> = {
 
   run: async (config, _deps) => {
     const modules: ParsedModule[] = [];
-    const { srcDir } = config;
+    const { srcDir, excludedDirs } = config;
 
     for await (const entry of Deno.readDir(srcDir)) {
       if (entry.isDirectory) {
-        await scanDirectory(`${srcDir}/${entry.name}`, modules);
+        await scanDirectory(`${srcDir}/${entry.name}`, modules, excludedDirs);
       } else {
-        if (isExcluded(entry.name)) continue;
+        if (isExcluded(entry.name, excludedDirs)) continue;
         if (!entry.name.endsWith(".ts") || entry.name.endsWith(".d.ts")) continue;
         const content = await Deno.readTextFile(`${srcDir}/${entry.name}`);
         modules.push(new ParsedModule(entry.name, content));
@@ -49,17 +45,18 @@ export const unusedExportsStage: AuditStage<UnusedExportResult> = {
 const scanDirectory = async (
   dirPath: string,
   modules: ParsedModule[],
+  excludedDirs: string[],
 ): Promise<void> => {
   for await (const entry of Deno.readDir(dirPath)) {
     const fullPath = `${dirPath}/${entry.name}`;
 
     if (entry.isDirectory) {
-      await scanDirectory(fullPath, modules);
+      await scanDirectory(fullPath, modules, excludedDirs);
       continue;
     }
 
     if (!entry.name.endsWith(".ts") || entry.name.endsWith(".d.ts")) continue;
-    if (isExcluded(entry.name)) continue;
+    if (isExcluded(entry.name, excludedDirs)) continue;
 
     // Build path relative to src/ for ParsedModule
     const relativePath = fullPath.replace(/^\.?\/?/, "");
