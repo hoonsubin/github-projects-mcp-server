@@ -85,12 +85,21 @@ export const buildItemFilterFn = (
     }
 
     if (!hasKeys) {
-      if (filter.scope === "sprint" && story.sprint === null) return false;
+      if (filter.scope === "sprint") {
+        if (story.sprint === null) return false;
+        // When sprintItemIds is unavailable (no active iteration in config),
+        // fall back to title comparison so past-sprint items are still excluded.
+        if (sprintItemIds === null && config.live.iterations.active) {
+          if (story.sprint !== config.live.iterations.active.title) return false;
+        }
+      }
       if (filter.scope === "backlog" && story.sprint !== null) return false;
-      // When no explicit statuses filter is provided, exclude terminal-status
-      // items from backlog scope to avoid contaminating grooming queries.
+      // Exclude terminal-status items from sprint and backlog scope when no
+      // explicit statuses filter is provided.  Keys bypass this (keySet path
+      // above) so direct ID/ref lookups always return the item regardless of
+      // status.
       if (
-        filter.scope === "backlog" &&
+        (filter.scope === "sprint" || filter.scope === "backlog") &&
         statusSet === null &&
         story.status !== null &&
         terminalStatuses.has(story.status)

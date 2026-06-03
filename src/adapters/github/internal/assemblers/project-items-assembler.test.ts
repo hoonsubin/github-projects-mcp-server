@@ -25,6 +25,23 @@ const config = makeConfig({
   },
 });
 
+// Config with an active sprint — triggers the sprint-filtered fetch branch.
+const sprintConfig = makeConfig({
+  ghConfig: { ...makeConfig().ghConfig, owner_type: "user" as const },
+  live: {
+    ...makeConfig().live,
+    iterations: {
+      active: { id: "IT_sprint1", title: "Sprint 1", startDate: "2026-01-01", duration: 14 },
+      next: { id: "IT_sprint2", title: "Sprint 2", startDate: "2026-01-15", duration: 14 },
+      completed: [],
+      all: [
+        { id: "IT_sprint1", title: "Sprint 1", startDate: "2026-01-01", duration: 14 },
+        { id: "IT_sprint2", title: "Sprint 2", startDate: "2026-01-15", duration: 14 },
+      ],
+    },
+  },
+});
+
 const baseFilter = (): ResolvedItemFilter => ({
   scope: "all",
   keys: [],
@@ -41,18 +58,18 @@ const baseFilter = (): ResolvedItemFilter => ({
   limit: 50,
 });
 
-const makeAssembler = (gh: ReturnType<typeof createGhSpy>) => {
+const makeAssembler = (gh: ReturnType<typeof createGhSpy>, cfg = config) => {
   const ctx = {
-    config,
+    config: cfg,
     gh,
-    owner: config.ghConfig.owner,
-    repo: config.ghConfig.tracked_repos[0],
-    ghConfig: config.ghConfig,
+    owner: cfg.ghConfig.owner,
+    repo: cfg.ghConfig.tracked_repos[0],
+    ghConfig: cfg.ghConfig,
   };
   return new ProjectItemsAssembler(
     new BoardScanCoordinator(ctx),
-    new ResultNormalizer(config),
-    config,
+    new ResultNormalizer(cfg),
+    cfg,
   );
 };
 
@@ -74,4 +91,26 @@ Deno.test("ProjectItemsAssembler - second assemble reuses board cache", async ()
   await assembler.assemble(baseFilter());
   await assembler.assemble(baseFilter());
   assertEquals(gh.graphqlCalls.length, 2);
+});
+
+Deno.test("ProjectItemsAssembler - scope=sprint uses full board scan (server-side iteration filter not supported)", async () => {
+  // GitHub Projects v2 does not support iteration filtering via the query: argument.
+  // scope=sprint always uses the full board scan; sprintItemIds filters client-side.
+  const gh = createGhSpy();
+  gh.enqueue(p1Fixture, p2Fixture);
+  const output = await makeAssembler(gh, sprintConfig).assemble({
+    ...baseFilter(),
+    scope: "sprint",
+  });
+  assertEquals(gh.graphqlCalls.length, 2); // full board = two pages
+  assertEquals(output.items.length <= 50, true);
+});
+
+Deno.test("ProjectItemsAssembler - scope=sprint reuses full board cache on second call", async () => {
+  const gh = createGhSpy();
+  gh.enqueue(p1Fixture, p2Fixture);
+  const assembler = makeAssembler(gh, sprintConfig);
+  await assembler.assemble({ ...baseFilter(), scope: "sprint" });
+  await assembler.assemble({ ...baseFilter(), scope: "sprint" }); // second call — cache hit
+  assertEquals(gh.graphqlCalls.length, 2); // still 2, not 4
 });

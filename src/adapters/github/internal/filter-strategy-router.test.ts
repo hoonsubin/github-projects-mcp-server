@@ -32,31 +32,35 @@ Deno.test("classifyFilter - keys present → direct_lookup", () => {
   }
 });
 
-Deno.test("classifyFilter - search only → search_api", () => {
+// scope=sprint and scope=backlog always route to project_items so that
+// board-field data (iteration IDs, terminal status) is available for filtering.
+// search_api is only reachable when scope=all (no sprint/backlog semantics needed).
+
+Deno.test("classifyFilter - search only, scope=all → project_items (draft parity)", () => {
   const profile = classifyFilter({
     ...baseFilter(),
-    scope: "backlog",
+    scope: "all",
     search: "auth",
   });
-  assertEquals(profile.kind, "search_api");
+  assertEquals(profile.kind, "project_items");
 });
 
-Deno.test("classifyFilter - labels only → search_api", () => {
+Deno.test("classifyFilter - labels only, scope=all → project_items (draft parity)", () => {
   const profile = classifyFilter({
     ...baseFilter(),
-    scope: "sprint",
+    scope: "all",
     labels: ["bug"],
   });
-  assertEquals(profile.kind, "search_api");
+  assertEquals(profile.kind, "project_items");
 });
 
-Deno.test("classifyFilter - assignee only → search_api", () => {
+Deno.test("classifyFilter - assignee only, scope=all → project_items (draft parity)", () => {
   const profile = classifyFilter({
     ...baseFilter(),
-    scope: "backlog",
+    scope: "all",
     assignee: "octocat",
   });
-  assertEquals(profile.kind, "search_api");
+  assertEquals(profile.kind, "project_items");
 });
 
 Deno.test("classifyFilter - scope=all with search → project_items (draft parity)", () => {
@@ -116,7 +120,22 @@ Deno.test("classifyFilter - empty filter + scope=all → project_items", () => {
   assertEquals(profile.kind, "project_items");
 });
 
-Deno.test("classifyFilter - empty filter + scope=sprint → search_api", () => {
+Deno.test("classifyFilter - empty filter + scope=sprint → project_items", () => {
   const profile = classifyFilter({ ...baseFilter(), scope: "sprint" });
-  assertEquals(profile.kind, "search_api");
+  assertEquals(profile.kind, "project_items");
+});
+
+Deno.test("classifyFilter - empty filter + scope=backlog → project_items", () => {
+  const profile = classifyFilter({ ...baseFilter(), scope: "backlog" });
+  assertEquals(profile.kind, "project_items");
+});
+
+Deno.test("classifyFilter - scope=sprint + search → project_items (board scan, in-memory text match)", () => {
+  const profile = classifyFilter({ ...baseFilter(), scope: "sprint", search: "auth" });
+  assertEquals(profile.kind, "project_items");
+});
+
+Deno.test("classifyFilter - scope=backlog + labels → project_items (board scan, in-memory label match)", () => {
+  const profile = classifyFilter({ ...baseFilter(), scope: "backlog", labels: ["bug"] });
+  assertEquals(profile.kind, "project_items");
 });

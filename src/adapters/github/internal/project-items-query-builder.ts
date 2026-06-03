@@ -43,7 +43,7 @@ export class ProjectItemsQueryBuilder {
       ${ownerField}(login: $login) {
         projectV2(number: $number) {
           id
-          items(first: 100, after: $cursor, orderBy: { field: POSITION, direction: ASC }) {
+          items(first: 50, after: $cursor, orderBy: { field: POSITION, direction: ASC }) {
             totalCount
             pageInfo { hasNextPage endCursor }
             nodes {

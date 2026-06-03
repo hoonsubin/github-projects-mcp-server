@@ -100,51 +100,53 @@ Deno.test({
 });
 
 Deno.test({
-  name: "pipeline - search_api uses SearchIssues and project-membership filter",
+  name: "pipeline - scope=sprint routes to project_items (not search_api)",
+  fn() {
+    const filter = { ...baseFilter(), scope: "sprint" as const };
+    const profile = classifyFilter(filter);
+    assertEquals(profile.kind, "project_items");
+  },
+});
+
+Deno.test({
+  name: "pipeline - scope=backlog routes to project_items (not search_api)",
+  fn() {
+    const filter = { ...baseFilter(), scope: "backlog" as const };
+    const profile = classifyFilter(filter);
+    assertEquals(profile.kind, "project_items");
+  },
+});
+
+Deno.test({
+  name: "pipeline - scope=sprint + search routes to project_items (board scan + in-memory text)",
+  fn() {
+    const filter = { ...baseFilter(), scope: "sprint" as const, search: "auth" };
+    const profile = classifyFilter(filter);
+    assertEquals(profile.kind, "project_items");
+  },
+});
+
+Deno.test({
+  name: "pipeline - scope=all + labels routes to project_items and board-scans",
   async fn() {
+    // scope=all with text filters uses the board scan (draft parity), not search_api.
     const filter: ResolvedItemFilter = {
       ...baseFilter(),
-      scope: "backlog",
-      labels: ["refactor"],
+      scope: "all",
+      labels: ["bug"],
     };
     const profile = classifyFilter(filter);
-    assertEquals(profile.kind, "search_api");
-
-    const sample =
-      (p1Fixture as { user: { projectV2: { items: { nodes: Array<Record<string, unknown>> } } } })
-        .user.projectV2.items.nodes[0];
+    assertEquals(profile.kind, "project_items");
 
     const gh = createGhSpy();
-    gh.enqueue({
-      search: {
-        issueCount: 1,
-        pageInfo: { hasNextPage: false, endCursor: null },
-        nodes: [{
-          ...(sample.content as object),
-          id: (sample.content as { id: string }).id,
-          number: (sample.content as { number: number }).number,
-          projectItems: {
-            nodes: [{
-              project: { id: "PVT_x", number: 6 },
-              id: sample.id,
-              type: sample.type,
-              createdAt: sample.createdAt,
-              updatedAt: sample.updatedAt,
-              isArchived: sample.isArchived,
-              fieldValues: sample.fieldValues,
-            }],
-          },
-        }],
-      },
-    });
+    gh.enqueue(p1Fixture, p2Fixture);
+    const { projectItems } = buildPipeline(gh);
 
-    const { searchApi } = buildPipeline(gh);
-    if (profile.kind !== "search_api") throw new Error("unexpected profile");
-    const output = await searchApi.assemble(profile, filter);
+    if (profile.kind !== "project_items") throw new Error("unexpected profile");
+    const output = await projectItems.assemble(profile.filter);
 
-    assertEquals(gh.graphqlCalls.length, 1);
-    assertEquals(typeof gh.graphqlCalls[0].variables.query, "string");
     assertEquals(output.items.length <= filter.limit, true);
+    assertEquals(gh.graphqlCalls.length, 2); // two pages of board scan
   },
 });
 

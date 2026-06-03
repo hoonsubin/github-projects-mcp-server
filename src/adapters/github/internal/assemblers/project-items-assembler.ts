@@ -27,7 +27,13 @@ export class ProjectItemsAssembler {
   ) {}
 
   async assemble(filter: ResolvedItemFilter): Promise<AssemblerOutput> {
+    // TODO: replace with boardScan.fetchSprintItems() once the correct
+    // GitHub Projects v2 query filter syntax is confirmed (the `query` param
+    // field name is project-specific and `@current` support needs validation).
+    // Until then, use the full board scan with client-side sprintItemIds
+    // filtering, which is correct and benefits from the session cache.
     const allItems = await this.boardScan.fetchFullBoard();
+
     const filterFn = buildItemFilterFn(filter, this.config, allItems);
 
     const output = this.normalizer.normalize(

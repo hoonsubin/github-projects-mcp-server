@@ -13,6 +13,7 @@ import type { ItemFieldValue, ProjectItem } from "../types.ts";
 import type { ResolvedItemFilter } from "../../../scrum/ports.ts";
 import type { Story } from "../../../domain/types.ts";
 import projectItemsP1 from "../generated/__fixtures__/project-items-p1.json" with { type: "json" };
+import projectItemsP2 from "../generated/__fixtures__/project-items-p2.json" with { type: "json" };
 
 const allItems: ProjectItem[] =
   (projectItemsP1 as { user: { projectV2: { items: { nodes: unknown[] } } } })
@@ -373,4 +374,111 @@ Deno.test("buildItemFilterFn - scope=sprint with null sprint_ref excludes past-s
   const results = [currentSprintItem, pastSprintItem, backlogItem].filter(fn);
   assertEquals(results.length, 1);
   assertEquals(results[0].ref.id, "current1");
+});
+
+// ── Terminal-status exclusion for scope=sprint — fixture-based ────────────────
+//
+// Field IDs and iteration IDs are taken directly from the captured fixtures so
+// buildStoryFromRaw produces populated sprint/status fields.  Sprint 4 is used
+// as the "active" sprint because that is what the fixtures contain.
+
+const FIXTURE_SPRINT_FIELD_ID = "PVTIF_lAHOAmfLjc4BWiTtzhR1soM";
+const FIXTURE_STATUS_FIELD_ID = "PVTSSF_lAHOAmfLjc4BWiTtzhR1seY";
+const FIXTURE_ACTIVE_SPRINT_ID = "07155ad6";
+const FIXTURE_ACTIVE_SPRINT_TITLE = "Sprint 4";
+
+const fixtureTerminalConfig = makeConfig({
+  scrumConfig: {
+    project: { name: "Test" },
+    scrum: {
+      priority: [],
+      status: { "done": { terminal: true, blocking: false } },
+    },
+    backends: { github: {} },
+  },
+  ghConfig: {
+    ...makeConfig().ghConfig,
+    status_display: { "done": "Done" },
+  },
+  live: {
+    ...makeConfig().live,
+    fields: {
+      ...makeConfig().live.fields,
+      sprintFieldId: FIXTURE_SPRINT_FIELD_ID,
+      statusFieldId: FIXTURE_STATUS_FIELD_ID,
+    },
+    iterations: {
+      active: {
+        id: FIXTURE_ACTIVE_SPRINT_ID,
+        title: FIXTURE_ACTIVE_SPRINT_TITLE,
+        startDate: "2025-01-01",
+        duration: 14,
+      },
+      next: null,
+      completed: [],
+      all: [{
+        id: FIXTURE_ACTIVE_SPRINT_ID,
+        title: FIXTURE_ACTIVE_SPRINT_TITLE,
+        startDate: "2025-01-01",
+        duration: 14,
+      }],
+    },
+  },
+});
+
+const allFixtureItems: ProjectItem[] = [
+  ...(projectItemsP1 as { user: { projectV2: { items: { nodes: unknown[] } } } })
+    .user.projectV2.items.nodes as ProjectItem[],
+  ...(projectItemsP2 as { user: { projectV2: { items: { nodes: unknown[] } } } })
+    .user.projectV2.items.nodes as ProjectItem[],
+];
+
+const allFixtureStories: Story[] = allFixtureItems
+  .map((item) => buildStoryFromRaw(item, fixtureTerminalConfig))
+  .filter((s): s is Story => s !== null);
+
+Deno.test("buildItemFilterFn - scope=sprint excludes Done items from active sprint", () => {
+  const fn = buildItemFilterFn(
+    { ...baseFilter(), scope: "sprint" },
+    fixtureTerminalConfig,
+    allFixtureItems,
+  );
+  const sprint4Stories = allFixtureStories.filter((s) => s.sprint === FIXTURE_ACTIVE_SPRINT_TITLE);
+  const filtered = sprint4Stories.filter(fn);
+
+  // There are Done items in Sprint 4 in the fixture; none should survive.
+  assertEquals(sprint4Stories.some((s) => s.status === "Done"), true);
+  assertEquals(filtered.every((s) => s.status !== "Done"), true);
+  // Non-terminal sprint items must be present.
+  assertEquals(filtered.length > 0, true);
+});
+
+Deno.test("buildItemFilterFn - scope=sprint with statuses=[Done] includes Done sprint items", () => {
+  const fn = buildItemFilterFn(
+    { ...baseFilter(), scope: "sprint", statuses: ["Done"] },
+    fixtureTerminalConfig,
+    allFixtureItems,
+  );
+  const filtered = allFixtureStories.filter(fn);
+
+  // Explicit status filter bypasses terminal exclusion.
+  assertEquals(filtered.every((s) => s.status === "Done"), true);
+  assertEquals(filtered.length > 0, true);
+});
+
+Deno.test("buildItemFilterFn - scope=sprint with keys bypasses terminal exclusion", () => {
+  // Find a Done item in Sprint 4 from the fixture.
+  const doneSprintStory = allFixtureStories.find(
+    (s) => s.sprint === FIXTURE_ACTIVE_SPRINT_TITLE && s.status === "Done" && s.key,
+  );
+  if (!doneSprintStory?.key) return;
+
+  const fn = buildItemFilterFn(
+    { ...baseFilter(), scope: "sprint", keys: [doneSprintStory.key] },
+    fixtureTerminalConfig,
+    allFixtureItems,
+  );
+  const filtered = allFixtureStories.filter(fn);
+  assertEquals(filtered.length, 1);
+  assertEquals(filtered[0].ref.id, doneSprintStory.ref.id);
 });
