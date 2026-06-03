@@ -12,46 +12,49 @@ import type { ProjectItem } from "../types.ts";
 export const projectItemsToAggregateView = (
   items: readonly ProjectItem[],
 ): ProjectItem[] => {
-  return items.map((item) => {
-    const content = item.content;
-    if (!content) return { ...item };
+  return items.map((item) => projectItemToAggregateView(item));
+};
 
-    if (content.__typename === "Issue") {
-      return {
-        ...item,
-        content: {
-          __typename: "Issue" as const,
-          id: content.id,
-          number: content.number,
-          title: content.title,
-          body: content.body,
-          state: content.state,
-          issueType: content.issueType,
-        },
-      };
-    }
-    if (content.__typename === "PullRequest") {
-      return {
-        ...item,
-        content: {
-          __typename: "PullRequest" as const,
-          id: content.id,
-          number: content.number,
-          title: content.title,
-          state: content.state,
-        },
-      };
-    }
-    if (content.__typename === "DraftIssue") {
-      return {
-        ...item,
-        content: {
-          __typename: "DraftIssue" as const,
-          id: content.id,
-          title: content.title,
-        },
-      };
-    }
-    return { ...item };
-  });
+const projectItemToAggregateView = (item: ProjectItem): ProjectItem => {
+  const content = item.content;
+  if (!content) return item;
+
+  if (content.__typename === "Issue") {
+    return {
+      ...item,
+      content: {
+        __typename: "Issue",
+        id: content.id,
+        number: content.number,
+        title: content.title,
+        body: content.body,
+        state: content.state,
+        closedAt: (content as { closedAt?: string | null }).closedAt ?? null,
+        issueType: content.issueType,
+      },
+    } as unknown as ProjectItem;
+  }
+  if (content.__typename === "PullRequest") {
+    return {
+      ...item,
+      content: {
+        __typename: "PullRequest",
+        id: content.id,
+        number: content.number,
+        title: content.title,
+        state: content.state,
+      },
+    } as unknown as ProjectItem;
+  }
+  if (content.__typename === "DraftIssue") {
+    return {
+      ...item,
+      content: {
+        __typename: "DraftIssue",
+        id: content.id,
+        title: content.title,
+      },
+    } as unknown as ProjectItem;
+  }
+  return item;
 };

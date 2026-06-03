@@ -227,10 +227,14 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
     return { value, warnings: [...new Set(warnings)] };
   }
 
-  async reload(): Promise<void> {
+  override async reloadMetadata(): Promise<void> {
     await this.deps.configReloader.reload();
-    this.deps.boardScan.invalidate();
     this.deps.labelResolver.invalidateLabelCache();
+  }
+
+  override async reload(): Promise<void> {
+    await this.reloadMetadata();
+    this.deps.boardScan.invalidate();
   }
 
   // ── Port methods (P7 - real implementations) ──────────────────────────────

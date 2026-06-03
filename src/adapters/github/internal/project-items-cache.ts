@@ -1,12 +1,14 @@
 // =============================================================================
 // src/adapters/github/internal/project-items-cache.ts
 //
-// Session-scoped cache for full-board ProjectItems fetches. Maintains separate
-// entries for full vs aggregate query profiles. Invalidated on reload().
+// Session-scoped cache for full-board ProjectItems fetches. One canonical full
+// fetch (ItemContent + ItemFieldValues); aggregate views are projected in memory.
+// Invalidated on reload().
 // =============================================================================
 
 import { PaginatedProjectItemFetcher } from "./pagination.ts";
 import { ProjectItemsQueryBuilder } from "./project-items-query-builder.ts";
+import { projectItemsToAggregateView } from "./board-item-projection.ts";
 import type { GitHubInfraContext } from "./infra-context.ts";
 import type { ProjectItem } from "../types.ts";
 
@@ -19,14 +21,12 @@ const emptySlot = (): CacheSlot => ({ cached: null, fetchPromise: null });
 
 export class ProjectItemsCache {
   private readonly fullQuery: string;
-  private readonly aggregateQuery: string;
   private readonly full: CacheSlot = emptySlot();
   private readonly aggregate: CacheSlot = emptySlot();
 
   constructor(private readonly ctx: GitHubInfraContext) {
     const builder = new ProjectItemsQueryBuilder(this.ctx.ghConfig.owner_type);
     this.fullQuery = builder.buildQuery();
-    this.aggregateQuery = builder.buildAggregateQuery();
   }
 
   invalidate(): void {
@@ -41,33 +41,44 @@ export class ProjectItemsCache {
    * Used by board health and other Story-shaped aggregations.
    */
   getOrFetchAllItems(): Promise<ProjectItem[]> {
-    return this.getOrFetch(this.full, this.fullQuery);
+    return this.getOrFetchFull();
   }
 
   /**
-   * All project items with lean ItemContentAggregate.
-   * Used by burndown, history, sprint completion, impediment board cross-ref.
+   * Lean aggregate view derived from the canonical full board cache.
+   * Avoids a second paginated GraphQL round-trip.
    */
   getOrFetchAggregateItems(): Promise<ProjectItem[]> {
-    return this.getOrFetch(this.aggregate, this.aggregateQuery);
+    if (this.aggregate.cached) return Promise.resolve(this.aggregate.cached);
+
+    if (!this.aggregate.fetchPromise) {
+      this.aggregate.fetchPromise = this.getOrFetchFull().then((full) => {
+        const projected = projectItemsToAggregateView(full);
+        this.aggregate.cached = projected;
+        this.aggregate.fetchPromise = null;
+        return projected;
+      });
+    }
+
+    return this.aggregate.fetchPromise;
   }
 
-  private getOrFetch(slot: CacheSlot, query: string): Promise<ProjectItem[]> {
-    if (slot.cached) return Promise.resolve(slot.cached);
+  private getOrFetchFull(): Promise<ProjectItem[]> {
+    if (this.full.cached) return Promise.resolve(this.full.cached);
 
-    if (!slot.fetchPromise) {
-      slot.fetchPromise = this.loadAllFromApi(query).then((items) => {
-        slot.cached = items;
-        slot.fetchPromise = null;
+    if (!this.full.fetchPromise) {
+      this.full.fetchPromise = this.loadAllFromApi().then((items) => {
+        this.full.cached = items;
+        this.full.fetchPromise = null;
         return items;
       });
     }
 
-    return slot.fetchPromise;
+    return this.full.fetchPromise;
   }
 
-  private loadAllFromApi(query: string): Promise<ProjectItem[]> {
-    const fetcher = new PaginatedProjectItemFetcher(this.ctx, query);
+  private loadAllFromApi(): Promise<ProjectItem[]> {
+    const fetcher = new PaginatedProjectItemFetcher(this.ctx, this.fullQuery);
     return fetcher.collect(() => true);
   }
 }

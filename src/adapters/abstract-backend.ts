@@ -103,6 +103,10 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
 
   abstract reload(): Promise<void>;
 
+  reloadMetadata(): Promise<void> {
+    return this.reload();
+  }
+
   // ── ProjectReader - story read ───────────────────────────────────────────
 
   abstract getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>>;

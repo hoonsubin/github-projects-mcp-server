@@ -36,18 +36,16 @@ Deno.test("ProjectItemsCache - deduplicates concurrent aggregate fetches", async
   assertEquals(gh.graphqlCalls.length, 2);
 });
 
-Deno.test("ProjectItemsCache - aggregate and full profiles use separate caches", async () => {
+Deno.test("ProjectItemsCache - aggregate is projected from full without second fetch", async () => {
   const gh = createGhSpy();
-  gh.enqueue(p1Fixture as ItemsPage);
-  gh.enqueue(p2Fixture as ItemsPage);
   gh.enqueue(p1Fixture as ItemsPage);
   gh.enqueue(p2Fixture as ItemsPage);
 
   const cache = new ProjectItemsCache(ctx(gh));
-  await cache.getOrFetchAggregateItems();
   await cache.getOrFetchAllItems();
+  await cache.getOrFetchAggregateItems();
 
-  assertEquals(gh.graphqlCalls.length, 4);
+  assertEquals(gh.graphqlCalls.length, 2);
 });
 
 Deno.test("ProjectItemsCache - returns cached aggregate items without refetch", async () => {
