@@ -218,7 +218,12 @@ const buildContainerLevel = (
       technology: "TypeScript",
       layer: "container",
     });
-    relationships.push({ from: toolId, to: handlerId, label: "delegates to", direction: "forward" });
+    relationships.push({
+      from: toolId,
+      to: handlerId,
+      label: "delegates to",
+      direction: "forward",
+    });
 
     if (uc) {
       const ucId = sanitizeId(uc.useCaseFn);
