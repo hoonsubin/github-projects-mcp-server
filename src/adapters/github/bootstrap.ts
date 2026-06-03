@@ -25,10 +25,7 @@ import {
   isCanonicalSingleSelectUnavailable,
   type OrgIssueFieldNode,
 } from "./bootstrap-field-sources.ts";
-import {
-  GET_ORG_BOOTSTRAP_QUERY,
-  GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY,
-} from "./queries.ts";
+import { GET_ORG_BOOTSTRAP_QUERY, GET_USER_PROJECT_FIELDS_BOOTSTRAP_QUERY } from "./queries.ts";
 import type { SelectFieldNode } from "./types.ts";
 import { classifyIterations } from "./internal/iteration-classifier.ts";
 
@@ -256,7 +253,6 @@ const resolveFieldIds = (
     typeFieldId,
   };
 };
-
 
 /**
  * Detect which project fields are backed by org-level issue fields by matching

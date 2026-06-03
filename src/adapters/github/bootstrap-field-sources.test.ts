@@ -1,10 +1,10 @@
 import { assertEquals } from "@std/assert";
 import {
+  type BootstrapFieldNode,
   buildOptionMaps,
   isCanonicalSingleSelectUnavailable,
-  singleSelectOptionMapForField,
-  type BootstrapFieldNode,
   type OrgIssueFieldNode,
+  singleSelectOptionMapForField,
 } from "./bootstrap-field-sources.ts";
 
 const projectFields: BootstrapFieldNode[] = [
