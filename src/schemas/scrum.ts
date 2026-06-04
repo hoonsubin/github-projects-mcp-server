@@ -46,6 +46,31 @@ const StoryRefSchema: z.ZodType<StoryRef> = z.union([
   }),
 ]);
 
+/** Coerce MCP clients that stringify arrays; map null to [] (clear-all). */
+const parseBlockedByInput = (val: unknown): unknown => {
+  if (val === null) return [];
+  if (typeof val === "string") {
+    try {
+      return JSON.parse(val) as unknown;
+    } catch {
+      return val;
+    }
+  }
+  return val;
+};
+
+const BlockedByInputSchema = z.preprocess(
+  parseBlockedByInput,
+  z
+    .array(StoryRefSchema)
+    .optional()
+    .describe(
+      "Replace the full list of stories that block this story. " +
+        "Each entry is a StoryRef ({ id }) obtained from a previous read tool. " +
+        "Pass null or [] to clear all upstream dependencies. Omit to leave dependencies unchanged.",
+    ),
+);
+
 // Accepted as input by any tool that references an epic (Milestone).
 // Derived from the domain EpicRef type to maintain a single source of truth.
 // Every read tool returns EpicRef.id - pass that value here.
@@ -315,14 +340,7 @@ export const UpdateStorySchema = z
           "Can be combined with content fields (title, body, etc.) in one call. " +
           "Use with only { ref, comment } to post a comment without changing story content.",
       ),
-    blocked_by: z
-      .array(StoryRefSchema)
-      .nullish()
-      .describe(
-        "Replace the full list of stories that block this story. " +
-          "Each entry is a StoryRef ({ id }) obtained from a previous read tool. " +
-          "Pass null to clear all upstream dependencies. Omit to leave dependencies unchanged.",
-      ),
+    blocked_by: BlockedByInputSchema,
   })
   .strict();
 

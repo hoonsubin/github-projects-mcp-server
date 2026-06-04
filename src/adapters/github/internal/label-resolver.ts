@@ -20,9 +20,9 @@ export interface GitHubLabel {
 }
 
 /** Interface for providing repository node IDs. Satisfied by LabelResolver. */
-export interface RepoNodeIdProvider {
-  fetchRepoNodeId(): Promise<string>;
-}
+// export interface RepoNodeIdProvider {
+//   fetchRepoNodeId(): Promise<string>;
+// }
 
 interface RepoLabelsResponse {
   repository?: {

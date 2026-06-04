@@ -22,15 +22,15 @@ import type { GitHubBackendConfig } from "../types.ts";
  * Accepts the pre-extracted status keys and metadata map so callers
  * don't need a full ScrumConfig reference.
  */
-export const resolveTerminalDisplay = (
-  statusKeys: string[],
-  statusMeta: Record<string, { terminal: boolean }>,
-  ghConfig: GitHubBackendConfig,
-): string => {
-  const terminalKey = statusKeys.find((k) => statusMeta[k]?.terminal);
-  if (!terminalKey) return "Done";
-  return ghConfig.status_display[terminalKey] ?? "Done";
-};
+// export const resolveTerminalDisplay = (
+//   statusKeys: string[],
+//   statusMeta: Record<string, { terminal: boolean }>,
+//   ghConfig: GitHubBackendConfig,
+// ): string => {
+//   const terminalKey = statusKeys.find((k) => statusMeta[k]?.terminal);
+//   if (!terminalKey) return "Done";
+//   return ghConfig.status_display[terminalKey] ?? "Done";
+// };
 
 /**
  * Resolve the highest-tier priority display label from the GitHub backend config.
@@ -42,11 +42,11 @@ export const resolveTerminalDisplay = (
  * Accepts the pre-extracted priority keys array so callers don't need a full
  * ScrumConfig reference.
  */
-export const resolveHighestPriorityDisplay = (
-  priorityKeys: string[],
-  ghConfig: GitHubBackendConfig,
-): string => {
-  const p0Key = priorityKeys[0];
-  if (!p0Key) return "Must";
-  return ghConfig.priority_display[p0Key] ?? "Must";
-};
+// export const resolveHighestPriorityDisplay = (
+//   priorityKeys: string[],
+//   ghConfig: GitHubBackendConfig,
+// ): string => {
+//   const p0Key = priorityKeys[0];
+//   if (!p0Key) return "Must";
+//   return ghConfig.priority_display[p0Key] ?? "Must";
+// };

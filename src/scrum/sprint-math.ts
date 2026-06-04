@@ -32,34 +32,34 @@ export const computeSprintEndDate = (startDate: string, durationDays: number): s
  * Build sprint metadata from an IterationEntry.
  * Falls back to { name: "(sprint not found)" } when iterEntry is null.
  */
-export const buildSprintMeta = (iterEntry: IterationEntry | null): {
-  name: string;
-  start_date?: string;
-  end_date?: string;
-  duration_days?: number;
-  days_remaining?: number;
-} => {
-  if (!iterEntry) return { name: "(sprint not found)" };
+// export const buildSprintMeta = (iterEntry: IterationEntry | null): {
+//   name: string;
+//   start_date?: string;
+//   end_date?: string;
+//   duration_days?: number;
+//   days_remaining?: number;
+// } => {
+//   if (!iterEntry) return { name: "(sprint not found)" };
 
-  const endDate = computeSprintEndDate(iterEntry.startDate, iterEntry.duration);
+//   const endDate = computeSprintEndDate(iterEntry.startDate, iterEntry.duration);
 
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
+//   const today = new Date();
+//   today.setUTCHours(0, 0, 0, 0);
 
-  const endDateTime = new Date(`${endDate}T00:00:00Z`);
-  const daysRemaining = Math.max(
-    0,
-    Math.ceil((endDateTime.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
-  );
+//   const endDateTime = new Date(`${endDate}T00:00:00Z`);
+//   const daysRemaining = Math.max(
+//     0,
+//     Math.ceil((endDateTime.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
+//   );
 
-  return {
-    name: iterEntry.title,
-    start_date: iterEntry.startDate,
-    end_date: endDate,
-    duration_days: iterEntry.duration,
-    days_remaining: daysRemaining,
-  };
-};
+//   return {
+//     name: iterEntry.title,
+//     start_date: iterEntry.startDate,
+//     end_date: endDate,
+//     duration_days: iterEntry.duration,
+//     days_remaining: daysRemaining,
+//   };
+// };
 
 // ── Sprint window ──────────────────────────────────────────────────────────────
 

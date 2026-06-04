@@ -9,6 +9,7 @@ import { z } from "zod";
  * Arbitrary read-only GraphQL query. Mutations are blocked at the handler level.
  * Useful for ad-hoc lookups not covered by other tools (e.g. fetching node IDs,
  * listing labels, resolving repo metadata).
+ * todo: likely dead code. I don't even know why this is here
  */
 export const GraphQLQuerySchema = z.object({
   query: z.string().min(1)

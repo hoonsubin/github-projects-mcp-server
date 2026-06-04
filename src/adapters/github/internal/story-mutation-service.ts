@@ -20,8 +20,42 @@ import {
   SET_MILESTONE_MUTATION,
 } from "../queries.ts";
 import type { GitHubInfraContext } from "./infra-context.ts";
+import type { GitHubLiveMetadata } from "../bootstrap.ts";
 import type { CreateStoryInput, ScrumField, StoryUpdates } from "../../../scrum/ports.ts";
 import type { SprintRef, StoryRef } from "../../../domain/types.ts";
+
+/**
+ * Org-backed board fields (priority, story points, etc.) must be written via
+ * updateIssueFieldValue on a real Issue — not while the item is still a draft.
+ */
+const needsRealIssueForBoardFieldWrites = (
+  live: GitHubLiveMetadata,
+  input: CreateStoryInput,
+): boolean => {
+  if (Object.keys(live.issueBackedFields).length === 0) return false;
+  const backed = new Set(Object.keys(live.issueBackedFields));
+  const { fields } = live;
+  if (
+    input.priority &&
+    fields.priorityFieldId &&
+    backed.has(fields.priorityFieldId)
+  ) {
+    return true;
+  }
+  if (
+    input.storyPoints !== undefined &&
+    fields.storyPointsFieldId &&
+    backed.has(fields.storyPointsFieldId)
+  ) {
+    return true;
+  }
+  return false;
+};
+
+const isIssueBackedField = (
+  live: GitHubLiveMetadata,
+  fieldId: string | null | undefined,
+): boolean => !!(fieldId && live.issueBackedFields[fieldId]);
 
 // ── Dependency mutation helpers ──────────────────────────────────────────────
 
@@ -127,8 +161,10 @@ export class StoryMutationService {
   async createStory(input: CreateStoryInput): Promise<StoryRef> {
     const hasLabels = (input.labels?.length ?? 0) > 0;
     const hasEpic = input.epic !== undefined;
-    const requiresIssueForType = this.ctx.config.live.typeResolution.source === "org_issue_type";
-    const needsFullIssue = hasLabels || hasEpic || requiresIssueForType;
+    const live = this.ctx.config.live;
+    const requiresIssueForType = live.typeResolution.source === "org_issue_type";
+    const needsRealIssue = hasLabels || hasEpic || requiresIssueForType ||
+      needsRealIssueForBoardFieldWrites(live, input);
 
     // Resolve assignee IDs upfront - both the draft and full-issue paths use them.
     const assigneeIds = input.assignees
@@ -171,23 +207,23 @@ export class StoryMutationService {
     const storyRef: StoryRef = { id: itemId };
 
     let issueId: string | null = null;
-    if (requiresIssueForType) {
+    if (needsRealIssue) {
       issueId = await this.convertDraftToIssue(itemId);
     }
 
     // Config validation at startup guarantees typeOptions are populated.
-    const optionId = this.ctx.config.live.typeOptions[input.type];
+    const optionId = live.typeOptions[input.type];
     if (!optionId) {
       throw new GitHubApiError(
         `Cannot set story type: "${input.type}" is not a recognized canonical type key. ` +
-          `Valid keys: ${Object.keys(this.ctx.config.live.typeOptions).join(", ")}. ` +
+          `Valid keys: ${Object.keys(live.typeOptions).join(", ")}. ` +
           `Check backends.github.type_mapping in your config file.`,
         {
           code: "OPTION_NOT_FOUND",
           recovery: `Call scrum_orient to see valid type keys (vocabulary.type). ` +
             `If "${input.type}" is a new type, add it to type_mapping in your config file and ` +
             `ensure the matching option exists on the Type project field.`,
-          context: { requested: input.type, valid: Object.keys(this.ctx.config.live.typeOptions) },
+          context: { requested: input.type, valid: Object.keys(live.typeOptions) },
         },
       );
     }
@@ -197,10 +233,12 @@ export class StoryMutationService {
       await this.fieldValueMutator.setFieldPriority(itemId, input.priority);
     }
 
-    // convertProjectV2DraftIssueItemToIssue keeps the same itemId on the project board
-    // but promotes the underlying content to a real Issue, enabling label and
-    // milestone mutations via updateIssue.
-    if (needsFullIssue) {
+    if (input.storyPoints !== undefined) {
+      await this.fieldValueMutator.setFieldStoryPoints(itemId, input.storyPoints);
+    }
+
+    // Label and milestone mutations target the underlying Issue node.
+    if (hasLabels || hasEpic) {
       const ensuredIssueId = issueId ?? await this.convertDraftToIssue(itemId);
 
       if (hasLabels) {
@@ -321,15 +359,38 @@ export class StoryMutationService {
     const resolved = await resolveStory(ref, this.ctx.gh);
     const itemId = resolved.itemId;
 
+    const live = this.ctx.config.live;
+
     switch (field) {
-      case "status":
+      case "status": {
+        if (
+          isIssueBackedField(live, live.fields.statusFieldId) &&
+          resolved.issueId === null
+        ) {
+          await this.convertDraftToIssue(resolved.itemId);
+        }
         return this.fieldValueMutator.setFieldStatus(itemId, value as string);
+      }
       case "sprint":
         return this.fieldValueMutator.setFieldSprint(itemId, value as SprintRef);
-      case "story_points":
+      case "story_points": {
+        if (
+          isIssueBackedField(live, live.fields.storyPointsFieldId) &&
+          resolved.issueId === null
+        ) {
+          await this.convertDraftToIssue(resolved.itemId);
+        }
         return this.fieldValueMutator.setFieldStoryPoints(itemId, value as number | null);
-      case "priority":
+      }
+      case "priority": {
+        if (
+          isIssueBackedField(live, live.fields.priorityFieldId) &&
+          resolved.issueId === null
+        ) {
+          await this.convertDraftToIssue(resolved.itemId);
+        }
         return this.fieldValueMutator.setFieldPriority(itemId, value as string | null);
+      }
       case "type":
         // Org issue-type writes require a real Issue; convert draft content first.
         if (

@@ -278,16 +278,16 @@ export type CreateResult = { readonly created: boolean };
  * ItemListing adds priority as a named field, sprint.ref, and epic info.
  * Scheduled for removal in the next major refactor phase.
  */
-export interface StoryListing {
-  ref: ItemListingRef;
-  title: string;
-  status: string | null;
-  story_points: number | null;
-  priority: string | null;
-  sprint: string | null;
-  writable: boolean; // true for active items, false for history/read-only
-  has_dependencies: DependencyEntry[];
-}
+// export interface StoryListing {
+//   ref: ItemListingRef;
+//   title: string;
+//   status: string | null;
+//   story_points: number | null;
+//   priority: string | null;
+//   sprint: string | null;
+//   writable: boolean; // true for active items, false for history/read-only
+//   has_dependencies: DependencyEntry[];
+// }
 
 /**
  * Lightweight impediment entry for collections.

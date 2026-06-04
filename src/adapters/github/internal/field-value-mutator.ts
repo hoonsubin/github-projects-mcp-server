@@ -84,6 +84,43 @@ export class FieldValueMutator {
 
   /** Update the status of a project item */
   async setFieldStatus(itemId: string, value: string): Promise<void> {
+    const fieldId = this.ctx.config.live.fields.statusFieldId;
+    if (!fieldId) {
+      throw new GitHubApiError("Status field is not configured in this project.", {
+        code: "FIELD_NOT_CONFIGURED",
+        statusCode: 400,
+        recovery: 'Add a single-select field named "Status" to your GitHub Project, ' +
+          "then re-run the server so config-loader can pick it up.",
+      });
+    }
+    const issueBacked = this.ctx.config.live.issueBackedFields[fieldId];
+    if (issueBacked) {
+      const issueId = await this.resolveIssueNodeId(itemId);
+      const optionId = (issueBacked.options ?? {})[value] ??
+        this.ctx.config.live.statusOptions[value];
+      if (!optionId) {
+        throw new GitHubApiError(
+          `Status option "${value}" is not in the project vocabulary.`,
+          {
+            code: "OPTION_NOT_FOUND",
+            statusCode: 400,
+            recovery:
+              `Run scrum_add_vocabulary with type "status" and value "${value}" to add it, then retry.`,
+            context: {
+              field: "status",
+              value,
+              knownOptions: Object.keys(
+                issueBacked.options ?? this.ctx.config.live.statusOptions,
+              ),
+            },
+          },
+        );
+      }
+      await this.setIssueBackedField(issueId, issueBacked.orgFieldId, {
+        singleSelectOptionId: optionId,
+      });
+      return;
+    }
     const optionId = this.ctx.config.live.statusOptions[value];
     if (!optionId) {
       throw new GitHubApiError(
@@ -100,15 +137,6 @@ export class FieldValueMutator {
           },
         },
       );
-    }
-    const fieldId = this.ctx.config.live.fields.statusFieldId;
-    if (!fieldId) {
-      throw new GitHubApiError("Status field is not configured in this project.", {
-        code: "FIELD_NOT_CONFIGURED",
-        statusCode: 400,
-        recovery: 'Add a single-select field named "Status" to your GitHub Project, ' +
-          "then re-run the server so config-loader can pick it up.",
-      });
     }
     await this.ctx.gh.graphql<{ updateProjectV2ItemFieldValue: { projectV2Item: { id: string } } }>(
       UPDATE_ITEM_FIELD_MUTATION,

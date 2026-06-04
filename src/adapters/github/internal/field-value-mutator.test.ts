@@ -198,6 +198,60 @@ Deno.test({
   },
 });
 
+Deno.test({
+  name: "setFieldStatus - uses updateIssueFieldValue for issue-backed status field",
+  async fn() {
+    const baseConfig = makeConfig();
+    const { mutator, gh } = createMutator({
+      configOverrides: {
+        live: {
+          ...baseConfig.live,
+          statusOptions: { "In Progress": "opt_ip" },
+          issueBackedFields: {
+            "PVTF_status": { orgFieldId: "IF_status", options: { "In Progress": "IFSO_ip" } },
+          },
+        },
+      },
+    });
+    gh.enqueue(PROJECT_ITEM_ISSUE_OK, UPDATE_ISSUE_FIELD_OK);
+
+    await mutator.setFieldStatus(TEST_ITEM_ID, "In Progress");
+
+    assertEquals(gh.graphqlCalls.length, 2);
+    assertStringIncludes(gh.graphqlCalls[0].queryExcerpt, "GetProjectItemById");
+    assertStringIncludes(gh.graphqlCalls[1].queryExcerpt, "UpdateIssueField");
+    const issueField = (gh.graphqlCalls[1].variables.input as Record<string, unknown>)
+      .issueField as Record<string, unknown>;
+    assertEquals(issueField.fieldId, "IF_status");
+    assertEquals(issueField.singleSelectOptionId, "IFSO_ip");
+  },
+});
+
+Deno.test({
+  name: "setFieldStatus - prefers issueBacked.options over statusOptions for option id",
+  async fn() {
+    const baseConfig = makeConfig();
+    const { mutator, gh } = createMutator({
+      configOverrides: {
+        live: {
+          ...baseConfig.live,
+          statusOptions: { Done: "opt_done_project" },
+          issueBackedFields: {
+            "PVTF_status": { orgFieldId: "IF_status", options: { Done: "IFSO_done" } },
+          },
+        },
+      },
+    });
+    gh.enqueue(PROJECT_ITEM_ISSUE_OK, UPDATE_ISSUE_FIELD_OK);
+
+    await mutator.setFieldStatus(TEST_ITEM_ID, "Done");
+
+    const issueField = (gh.graphqlCalls[1].variables.input as Record<string, unknown>)
+      .issueField as Record<string, unknown>;
+    assertEquals(issueField.singleSelectOptionId, "IFSO_done");
+  },
+});
+
 // =============================================================================
 // Group C - setFieldSprint
 // =============================================================================
