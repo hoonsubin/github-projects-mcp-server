@@ -3,7 +3,7 @@
 // =============================================================================
 
 import type { CreateStoryInput, ProjectBackend, StoryUpdates } from "../../scrum/ports.ts";
-import type { Story, StoryRef } from "../../domain/types.ts";
+import type { SprintRef, Story, StoryRef } from "../../domain/types.ts";
 import type { ScrumConfig } from "../../domain/config.ts";
 import { updateImpedimentUseCase } from "../../scrum/update-impediment.ts";
 import {
@@ -21,6 +21,27 @@ import type { z } from "zod";
 import { type McpTextResult, toMcpTextResult } from "../_mcp_result.ts";
 
 type PartialFailureFields = Array<{ field: string; reason: string }>;
+
+/** Map MCP tool params (snake_case) to backend CreateStoryInput (camelCase). */
+export const toCreateStoryInput = (
+  params: z.infer<typeof CreateStorySchema>,
+): CreateStoryInput => {
+  const sprint: SprintRef | undefined = params.sprint === undefined || params.sprint === "all"
+    ? undefined
+    : params.sprint as SprintRef;
+
+  return {
+    title: params.title,
+    body: params.body,
+    type: params.type,
+    ...(params.priority !== undefined ? { priority: params.priority } : {}),
+    ...(params.story_points !== undefined ? { storyPoints: params.story_points } : {}),
+    ...(params.labels !== undefined ? { labels: params.labels } : {}),
+    ...(params.epic !== undefined ? { epic: params.epic } : {}),
+    ...(params.assignees !== undefined ? { assignees: params.assignees } : {}),
+    ...(sprint !== undefined ? { sprint } : {}),
+  };
+};
 
 export const resolveP0PriorityDisplay = (scrumConfig: ScrumConfig): string =>
   scrumConfig.priority_display?.[scrumConfig.scrum.priority?.[0]?.key ?? "p0"] ?? "Must";
@@ -80,7 +101,7 @@ export const handleCreateStory = async (
   backend: ProjectBackend,
   params: z.infer<typeof CreateStorySchema>,
 ): Promise<McpTextResult> => {
-  const storyRef = await backend.createStory(params as CreateStoryInput);
+  const storyRef = await backend.createStory(toCreateStoryInput(params));
   const failedFields: PartialFailureFields = [];
 
   if (params.sprint !== undefined) {
@@ -89,22 +110,6 @@ export const handleCreateStory = async (
       () => backend.setField(storyRef, "sprint", sprintVal),
     );
     for (const reason of w) failedFields.push({ field: "sprint", reason });
-  }
-
-  if (params.story_points !== undefined) {
-    const pointsVal = params.story_points;
-    const { warnings: w } = await catchBackend(
-      () => backend.setField(storyRef, "story_points", pointsVal),
-    );
-    for (const reason of w) failedFields.push({ field: "story_points", reason });
-  }
-
-  if (params.priority !== undefined) {
-    const priorityVal = params.priority;
-    const { warnings: w } = await catchBackend(
-      () => backend.setField(storyRef, "priority", priorityVal),
-    );
-    for (const reason of w) failedFields.push({ field: "priority", reason });
   }
 
   const { value: storyDetail, warnings: readWarnings } = await backend.composeStorySnapshot(

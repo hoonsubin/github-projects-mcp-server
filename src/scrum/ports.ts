@@ -13,7 +13,6 @@
 import type {
   AnalyticsResult,
   BacklogHealth,
-  DependencyEntry,
   EntityRef,
   EpicListing,
   EpicRef,
@@ -21,7 +20,6 @@ import type {
   EpicSummary,
   ImpedimentRef,
   ImpedimentStatus,
-  ItemListingRef,
   ItemSearchResult,
   LinkedArtifact,
   SprintRef,
@@ -264,30 +262,6 @@ export interface StoryUpdates {
 export type CreateResult = { readonly created: boolean };
 
 // ── Listing types (SprintSnapshot items) ────────────────────────────────────────
-
-/**
- * Lightweight listing entry for story collections.
- * Does NOT include body, comments, or linked PRs - use StoryDetail for full content.
- *
- * ref.key matches Story.key: the human-readable issue number as a string (e.g. "42"),
- * or null for Draft Issues.
- *
- * writable: true for active sprint items (safe to mutate), false for history/read-only items.
- *
- * @deprecated Use ItemListing from domain/types.ts instead.
- * ItemListing adds priority as a named field, sprint.ref, and epic info.
- * Scheduled for removal in the next major refactor phase.
- */
-export interface StoryListing {
-  ref: ItemListingRef;
-  title: string;
-  status: string | null;
-  story_points: number | null;
-  priority: string | null;
-  sprint: string | null;
-  writable: boolean; // true for active items, false for history/read-only
-  has_dependencies: DependencyEntry[];
-}
 
 /**
  * Lightweight impediment entry for collections.

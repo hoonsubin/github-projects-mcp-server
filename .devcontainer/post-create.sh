@@ -12,6 +12,8 @@ grep -qxF 'export PATH="$HOME/.local/bin:$PATH"' ~/.bashrc || \
 
 export PATH="$HOME/.local/bin:$PATH"
 
+npx ctx7 setup
+
 uv tool install mempalace
 
 mempalace init .

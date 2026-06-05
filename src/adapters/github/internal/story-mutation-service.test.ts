@@ -194,7 +194,14 @@ Deno.test({
   async fn() {
     const { service, gh, fieldCalls } = createService();
     gh.enqueue(ADD_DRAFT_SUCCESS);
-    const input = makeCreateInput({ labels: undefined, epic: undefined, priority: undefined });
+    const input = makeCreateInput({
+      labels: undefined,
+      epic: undefined,
+      priority: undefined,
+      storyPoints: undefined,
+      sprint: undefined,
+      assignees: undefined,
+    });
 
     const ref = await service.createStory(input);
 
@@ -264,14 +271,97 @@ Deno.test({
 Deno.test({
   name: "createStory - sets priority when provided",
   async fn() {
-    const { service, gh } = createService();
+    const { service, gh, fieldCalls } = createService();
     gh.enqueue(ADD_DRAFT_SUCCESS);
     const input = makeCreateInput({ labels: undefined, epic: undefined, priority: "Must" });
 
     await service.createStory(input);
 
-    // Verify setFieldPriority was called - check graphql hadn't queued extra mutations
-    assertEquals(gh.remaining(), 0); // no convert/label/epic mutations queued
+    assertEquals(gh.remaining(), 0);
+    assertEquals(
+      fieldCalls.some((c) => c.method === "setFieldPriority" && c.args[1] === "Must"),
+      true,
+    );
+  },
+});
+
+Deno.test({
+  name: "createStory - converts draft before issue-backed priority",
+  async fn() {
+    const baseConfig = makeConfig();
+    const { service, gh } = createService({
+      configOverrides: {
+        live: {
+          ...baseConfig.live,
+          issueBackedFields: {
+            "PVTF_priority": { orgFieldId: "IF_priority", options: { Must: "IFSO_must" } },
+          },
+        },
+      },
+    });
+    gh.enqueue(ADD_DRAFT_SUCCESS, CONVERT_SUCCESS);
+    const input = makeCreateInput({
+      labels: undefined,
+      epic: undefined,
+      priority: "Must",
+      storyPoints: undefined,
+    });
+
+    await service.createStory(input);
+
+    assertEquals(gh.graphqlCalls.length, 2);
+    assertStringIncludes(gh.graphqlCalls[1].queryExcerpt, "ConvertDraftIssue");
+  },
+});
+
+Deno.test({
+  name: "createStory - applies story points when storyPoints provided",
+  async fn() {
+    const { service, gh, fieldCalls } = createService();
+    gh.enqueue(ADD_DRAFT_SUCCESS);
+    const input = makeCreateInput({
+      labels: undefined,
+      epic: undefined,
+      priority: undefined,
+      storyPoints: 8,
+    });
+
+    await service.createStory(input);
+
+    assertEquals(gh.remaining(), 0);
+    assertEquals(
+      fieldCalls.some((c) => c.method === "setFieldStoryPoints" && c.args[1] === 8),
+      true,
+    );
+  },
+});
+
+Deno.test({
+  name: "createStory - converts draft before issue-backed story points",
+  async fn() {
+    const baseConfig = makeConfig();
+    const { service, gh } = createService({
+      configOverrides: {
+        live: {
+          ...baseConfig.live,
+          issueBackedFields: {
+            "PVTF_points": { orgFieldId: "IF_points" },
+          },
+        },
+      },
+    });
+    gh.enqueue(ADD_DRAFT_SUCCESS, CONVERT_SUCCESS);
+    const input = makeCreateInput({
+      labels: undefined,
+      epic: undefined,
+      priority: undefined,
+      storyPoints: 5,
+    });
+
+    await service.createStory(input);
+
+    assertEquals(gh.graphqlCalls.length, 2);
+    assertStringIncludes(gh.graphqlCalls[1].queryExcerpt, "ConvertDraftIssue");
   },
 });
 
@@ -770,6 +860,29 @@ Deno.test({
     gh.enqueue(RESOLVED_DRAFT, CONVERT_SUCCESS);
 
     await service.setField(makeStoryRef(), "assignee", "testuser");
+  },
+});
+
+Deno.test({
+  name: "setField - auto-converts draft for issue-backed story_points",
+  async fn() {
+    const baseConfig = makeConfig();
+    const { service, gh } = createService({
+      configOverrides: {
+        live: {
+          ...baseConfig.live,
+          issueBackedFields: {
+            "PVTF_points": { orgFieldId: "IF_points" },
+          },
+        },
+      },
+    });
+    gh.enqueue(RESOLVED_DRAFT, CONVERT_SUCCESS);
+
+    await service.setField(makeStoryRef(), "story_points", 5);
+
+    assertEquals(gh.graphqlCalls.length, 2);
+    assertStringIncludes(gh.graphqlCalls[1].queryExcerpt, "ConvertDraftIssue");
   },
 });
 
