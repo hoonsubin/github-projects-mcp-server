@@ -54,7 +54,7 @@
     }
   },
 
-  "forwardPorts": [3000, 6333, 6334, 8080],
+  "forwardPorts": [3000, 6274, 6333, 6334, 8080],
   "portsAttributes": {
     "3000": {
       "label": "MCP Server",
@@ -71,6 +71,10 @@
     "8080": {
       "label": "SearXNG",
       "onAutoForward": "silent"
+    },
+    "6274": {
+      "label": "MCP Inspector",
+      "onAutoForward": "notify"
     }
   },
 
