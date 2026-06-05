@@ -3,10 +3,7 @@
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
-import {
-  RESOLVE_ACTOR_NODE_ID,
-  RESOLVE_ASSIGNABLE_ACTOR,
-} from "../queries.ts";
+import { RESOLVE_ACTOR_NODE_ID, RESOLVE_ASSIGNABLE_ACTOR } from "../queries.ts";
 import { mapWithConcurrency } from "./concurrent.ts";
 import type { GitHubInfraContext } from "./infra-context.ts";
 
@@ -57,8 +54,7 @@ export class UserMilestoneResolver {
       throw new GitHubApiError(`Actor "${login}" not found.`, {
         code: "NOT_FOUND",
         statusCode: 404,
-        recovery:
-          `Check that the GitHub login "${login}" is spelled correctly, ` +
+        recovery: `Check that the GitHub login "${login}" is spelled correctly, ` +
           "the account exists, and it can be assigned to issues in this repository.",
         context: { login },
       });

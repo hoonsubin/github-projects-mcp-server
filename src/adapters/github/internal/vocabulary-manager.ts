@@ -115,13 +115,12 @@ export class VocabularyManager {
     if (issueBacked) {
       return await this.addOrgIssueFieldOption(issueBacked, fieldId, value, optionMapKey);
     }
-    return await this.addProjectBoardOption(fieldId, value, optionMapKey);
+    return await this.addProjectBoardOption(fieldId, value);
   }
 
   private async addProjectBoardOption(
     fieldId: string,
     value: string,
-    optionMapKey: "statusOptions" | "priorityOptions",
   ): Promise<CreateResult> {
     const fieldData = await this.ctx.gh.graphql<GetFieldOptionsResponse>(
       GET_FIELD_OPTIONS_QUERY,
@@ -154,6 +153,12 @@ export class VocabularyManager {
     );
     const currentOptions = fieldData.node?.options ?? [];
     if (currentOptions.some((opt) => opt.name === value)) {
+      this.syncOrgIssueFieldOptionMaps(
+        issueBacked,
+        projectFieldId,
+        currentOptions,
+        optionMapKey,
+      );
       return { created: false };
     }
 
@@ -172,8 +177,13 @@ export class VocabularyManager {
     );
 
     const refreshedOptions = result.updateIssueField?.issueField?.options ?? currentOptions;
-    const optionMap = Object.fromEntries(refreshedOptions.map((o) => [o.name, o.id]));
-    if (!optionMap[value]) {
+    this.syncOrgIssueFieldOptionMaps(
+      issueBacked,
+      projectFieldId,
+      refreshedOptions,
+      optionMapKey,
+    );
+    if (!issueBacked.options?.[value]) {
       throw new GitHubApiError(
         `Failed to add "${value}" to the organization issue field catalog.`,
         {
@@ -184,13 +194,22 @@ export class VocabularyManager {
         },
       );
     }
+
+    return { created: true };
+  }
+
+  private syncOrgIssueFieldOptionMaps(
+    issueBacked: { orgFieldId: string; options?: Record<string, string> },
+    projectFieldId: string,
+    options: OrgIssueFieldOption[],
+    optionMapKey: "statusOptions" | "priorityOptions",
+  ): void {
+    const optionMap = Object.fromEntries(options.map((o) => [o.name, o.id]));
     issueBacked.options = optionMap;
     this.ctx.config.live.issueBackedFields[projectFieldId] = issueBacked;
     this.ctx.config.live[optionMapKey] = {
       ...this.ctx.config.live[optionMapKey],
       ...optionMap,
     };
-
-    return { created: true };
   }
 }

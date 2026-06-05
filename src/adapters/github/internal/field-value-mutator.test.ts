@@ -228,7 +228,8 @@ Deno.test({
 });
 
 Deno.test({
-  name: "setFieldStatus - does not fall back to project statusOptions when issue-backed lookup misses",
+  name:
+    "setFieldStatus - does not fall back to project statusOptions when issue-backed lookup misses",
   async fn() {
     const baseConfig = makeConfig();
     const { mutator, gh } = createMutator({

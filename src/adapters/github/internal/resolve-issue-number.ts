@@ -71,8 +71,7 @@ export const fetchProjectItemByIssueNumber = async (
     {
       code: "AMBIGUOUS_ISSUE_NUMBER",
       statusCode: 400,
-      recovery:
-        "Disambiguate by ensuring only one tracked repo has this issue on the board, " +
+      recovery: "Disambiguate by ensuring only one tracked repo has this issue on the board, " +
         "or use scrum_find_items with search/labels filters instead of keys.",
       context: {
         issueNumber,

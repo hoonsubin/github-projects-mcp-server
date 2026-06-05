@@ -165,6 +165,7 @@ export const UPDATE_FIELD_MUTATION = getQuery("UpdateField");
 export const UPDATE_ORG_ISSUE_FIELD_CATALOG_MUTATION = getQuery("UpdateOrgIssueFieldCatalog");
 export const CONVERT_DRAFT_ISSUE_MUTATION = getQuery("ConvertDraftIssue");
 export const ADD_DRAFT_ISSUE_MUTATION = getQuery("AddDraftIssue");
+export const DELETE_PROJECT_ITEM_MUTATION = getQuery("DeleteProjectItem");
 export const UPDATE_ISSUE_FIELD_MUTATION = getQuery("UpdateIssueField");
 export const CLEAR_ISSUE_FIELD_MUTATION = getQuery("ClearIssueField");
 

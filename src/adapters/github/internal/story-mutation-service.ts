@@ -15,12 +15,14 @@ import {
   ADD_COMMENT_MUTATION,
   ADD_DRAFT_ISSUE_MUTATION,
   CONVERT_DRAFT_ISSUE_MUTATION,
+  DELETE_PROJECT_ITEM_MUTATION,
   GET_BLOCKED_BY_QUERY,
   SET_LABELS_MUTATION,
   SET_MILESTONE_MUTATION,
 } from "../queries.ts";
 import type { GitHubInfraContext } from "./infra-context.ts";
 import type { GitHubLiveMetadata } from "../bootstrap.ts";
+import type { GitHubIssueId } from "../types.ts";
 import type { CreateStoryInput, ScrumField, StoryUpdates } from "../../../scrum/ports.ts";
 import type { SprintRef, StoryRef } from "../../../domain/types.ts";
 
@@ -206,61 +208,66 @@ export class StoryMutationService {
 
     const storyRef: StoryRef = { id: itemId };
 
-    let issueId: string | null = null;
-    if (needsRealIssue) {
-      issueId = await this.convertDraftToIssue(itemId);
-    }
+    try {
+      let issueId: string | null = null;
+      if (needsRealIssue) {
+        issueId = await this.convertDraftToIssue(itemId);
+      }
 
-    // Config validation at startup guarantees typeOptions are populated.
-    const optionId = live.typeOptions[input.type];
-    if (!optionId) {
-      throw new GitHubApiError(
-        `Cannot set story type: "${input.type}" is not a recognized canonical type key. ` +
-          `Valid keys: ${Object.keys(live.typeOptions).join(", ")}. ` +
-          `Check backends.github.type_mapping in your config file.`,
-        {
-          code: "OPTION_NOT_FOUND",
-          recovery: `Call scrum_orient to see valid type keys (vocabulary.type). ` +
-            `If "${input.type}" is a new type, add it to type_mapping in your config file and ` +
-            `ensure the matching option exists on the Type project field.`,
-          context: { requested: input.type, valid: Object.keys(live.typeOptions) },
-        },
-      );
-    }
-    await this.fieldValueMutator.setFieldType(itemId, input.type, issueId);
+      // Config validation at startup guarantees typeOptions are populated.
+      const optionId = live.typeOptions[input.type];
+      if (!optionId) {
+        throw new GitHubApiError(
+          `Cannot set story type: "${input.type}" is not a recognized canonical type key. ` +
+            `Valid keys: ${Object.keys(live.typeOptions).join(", ")}. ` +
+            `Check backends.github.type_mapping in your config file.`,
+          {
+            code: "OPTION_NOT_FOUND",
+            recovery: `Call scrum_orient to see valid type keys (vocabulary.type). ` +
+              `If "${input.type}" is a new type, add it to type_mapping in your config file and ` +
+              `ensure the matching option exists on the Type project field.`,
+            context: { requested: input.type, valid: Object.keys(live.typeOptions) },
+          },
+        );
+      }
+      await this.fieldValueMutator.setFieldType(itemId, input.type, issueId);
 
-    if (input.priority) {
-      await this.fieldValueMutator.setFieldPriority(itemId, input.priority);
-    }
+      if (input.priority) {
+        await this.fieldValueMutator.setFieldPriority(itemId, input.priority);
+      }
 
-    if (input.storyPoints !== undefined) {
-      await this.fieldValueMutator.setFieldStoryPoints(itemId, input.storyPoints);
-    }
+      if (input.storyPoints !== undefined) {
+        await this.fieldValueMutator.setFieldStoryPoints(itemId, input.storyPoints);
+      }
 
-    // Label and milestone mutations target the underlying Issue node.
-    if (hasLabels || hasEpic) {
-      const ensuredIssueId = issueId ?? await this.convertDraftToIssue(itemId);
+      // Label and milestone mutations target the underlying Issue node.
+      if (hasLabels || hasEpic) {
+        const ensuredIssueId = issueId ?? await this.convertDraftToIssue(itemId);
 
-      if (hasLabels) {
-        const labelIds = await this.labelResolver.resolveExistingLabelNodeIds(input.labels!);
-        if (labelIds.length > 0) {
+        if (hasLabels) {
+          const labelIds = await this.labelResolver.resolveExistingLabelNodeIds(input.labels!);
+          if (labelIds.length > 0) {
+            await this.ctx.gh.graphql(
+              SET_LABELS_MUTATION,
+              { issueId: ensuredIssueId, labelIds },
+            );
+          }
+        }
+
+        if (hasEpic) {
+          // EpicRef.id is the GitHub Milestone node ID (MI_...) - no resolution needed.
           await this.ctx.gh.graphql(
-            SET_LABELS_MUTATION,
-            { issueId: ensuredIssueId, labelIds },
+            SET_MILESTONE_MUTATION,
+            { issueId: ensuredIssueId, milestoneId: input.epic!.id },
           );
         }
       }
 
-      if (hasEpic) {
-        // EpicRef.id is the GitHub Milestone node ID (MI_...) - no resolution needed.
-        await this.ctx.gh.graphql(
-          SET_MILESTONE_MUTATION,
-          { issueId: ensuredIssueId, milestoneId: input.epic!.id },
-        );
-      }
+      return storyRef;
+    } catch (error) {
+      await this.rollbackDraftItem(itemId);
+      throw error;
     }
-
-    return storyRef;
   }
 
   async updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void> {
@@ -391,19 +398,21 @@ export class StoryMutationService {
         }
         return this.fieldValueMutator.setFieldPriority(itemId, value as string | null);
       }
-      case "type":
-        // Org issue-type writes require a real Issue; convert draft content first.
+      case "type": {
+        let issueId: GitHubIssueId | null = resolved.issueId;
         if (
-          this.ctx.config.live.typeResolution.source === "org_issue_type" &&
-          resolved.issueId === null
+          live.typeResolution.source === "org_issue_type" &&
+          value !== null &&
+          issueId === null
         ) {
-          await this.convertDraftToIssue(resolved.itemId);
+          issueId = await this.convertDraftToIssue(resolved.itemId) as GitHubIssueId;
         }
         return this.fieldValueMutator.setFieldType(
           itemId,
           value as string | null,
-          resolved.issueId,
+          issueId,
         );
+      }
       case "assignee": {
         const assigneeIssueId = resolved.issueId ?? await this.convertDraftToIssue(resolved.itemId);
         return this.fieldValueMutator.setFieldAssignee(assigneeIssueId, value as string | null);
@@ -430,6 +439,18 @@ export class StoryMutationService {
       ADD_COMMENT_MUTATION,
       { subjectId: issueId, body },
     );
+  }
+
+  /** Best-effort cleanup when story creation fails after the draft item was added. */
+  private async rollbackDraftItem(itemId: string): Promise<void> {
+    try {
+      await this.ctx.gh.graphql(
+        DELETE_PROJECT_ITEM_MUTATION,
+        { input: { projectId: this.ctx.config.live.projectId, itemId } },
+      );
+    } catch {
+      // Preserve the original failure; rollback is best-effort only.
+    }
   }
 
   private async convertDraftToIssue(itemId: string): Promise<string> {

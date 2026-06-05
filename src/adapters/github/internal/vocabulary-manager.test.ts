@@ -13,7 +13,9 @@ const createManager = (configOverrides?: Parameters<typeof makeCtx>[1]) => {
 
 Deno.test("addVocabulary - adds project board status option when field is not issue-backed", async () => {
   const { manager, gh } = createManager();
-  gh.enqueue({ node: { options: [{ id: "opt1", name: "Done", color: "GREEN", description: "" }] } });
+  gh.enqueue({
+    node: { options: [{ id: "opt1", name: "Done", color: "GREEN", description: "" }] },
+  });
   gh.enqueue({ updateProjectV2Field: { projectV2Field: { id: "PVTF_status" } } });
 
   const result = await manager.addVocabulary("status_option", "New Status");
@@ -49,8 +51,32 @@ Deno.test("addVocabulary - adds org issue field option when status is issue-back
 
   assertEquals(result, { created: true });
   assertStringIncludes(gh.graphqlCalls[1].queryExcerpt, "UpdateOrgIssueFieldCatalog");
-  assertEquals(ctx.config.live.issueBackedFields["PVTF_status"]?.options?.["New Status"], "IFSO_new");
+  assertEquals(
+    ctx.config.live.issueBackedFields["PVTF_status"]?.options?.["New Status"],
+    "IFSO_new",
+  );
   assertEquals(ctx.config.live.statusOptions["New Status"], "IFSO_new");
+});
+
+Deno.test("addVocabulary - issue-backed idempotent add syncs in-memory option maps", async () => {
+  const baseConfig = makeCtx(createGhSpy()).config;
+  const { manager, gh, ctx } = createManager({
+    live: {
+      ...baseConfig.live,
+      statusOptions: {},
+      issueBackedFields: {
+        "PVTF_status": { orgFieldId: "IF_status", options: {} },
+      },
+    },
+  });
+
+  gh.enqueue({ node: { options: [{ id: "IFSO_done", name: "Done", color: "GREEN" }] } });
+
+  const result = await manager.addVocabulary("status_option", "Done");
+
+  assertEquals(result, { created: false });
+  assertEquals(ctx.config.live.issueBackedFields["PVTF_status"]?.options?.Done, "IFSO_done");
+  assertEquals(ctx.config.live.statusOptions.Done, "IFSO_done");
 });
 
 Deno.test("addVocabulary - issue-backed option add is idempotent", async () => {
