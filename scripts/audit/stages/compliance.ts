@@ -6,17 +6,19 @@
 // =============================================================================
 
 import type { AuditStage, ComplianceResult, RuleCompliance } from "../types.ts";
+import { createExclusionFilter } from "../filters.ts";
 
 export const complianceStage: AuditStage<ComplianceResult> = {
   name: "compliance",
 
-  run: (_config, deps) => {
+  run: (config, deps) => {
     const depcruiseJson = deps.depcruiseJson;
 
     if (!depcruiseJson) {
       return { moduleCount: 0, rules: [] };
     }
 
+    const isExcluded = createExclusionFilter(config.excludedDirs);
     const moduleCount = depcruiseJson.summary.totalCruised;
     const violations = depcruiseJson.summary.violations;
     const ruleDefs = depcruiseJson.summary.ruleSetUsed?.forbidden ?? [];
@@ -29,8 +31,9 @@ export const complianceStage: AuditStage<ComplianceResult> = {
       ruleViolations.set(rule.name, new Set());
     }
 
-    // Aggregate violations: from → to with rule info
+    // Aggregate violations: from → to with rule info, excluding filtered modules
     for (const violation of violations) {
+      if (isExcluded(violation.from)) continue;
       const existing = ruleViolations.get(violation.rule.name);
       if (existing) {
         existing.add(violation.from);

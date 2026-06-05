@@ -8,11 +8,12 @@
 
 import type { AuditStage, ModuleStability, StabilityResult } from "../types.ts";
 import { classifyModule } from "../layer-classification.ts";
+import { createExclusionFilter } from "../filters.ts";
 
 export const stabilityStage: AuditStage<StabilityResult> = {
   name: "stability",
 
-  run: (_config, deps) => {
+  run: (config, deps) => {
     // Prefer metrics output; fall back to regular output
     const depcruiseJson = deps.depcruiseMetricsJson ?? deps.depcruiseJson;
 
@@ -20,8 +21,10 @@ export const stabilityStage: AuditStage<StabilityResult> = {
       return { modules: [] };
     }
 
+    const isExcluded = createExclusionFilter(config.excludedDirs);
+
     const modules: ModuleStability[] = depcruiseJson.modules
-      .filter((mod) => mod.instability !== undefined)
+      .filter((mod) => mod.instability !== undefined && !isExcluded(mod.source))
       .map((mod) => ({
         source: mod.source,
         layer: classifyModule(mod.source),

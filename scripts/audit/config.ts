@@ -8,7 +8,7 @@ import type { AuditConfig } from "./types.ts";
 
 const DEFAULT_OUTPUT_PATH = "./docs/AUDIT.md";
 const DEFAULT_SRC_DIR = "./src";
-const DEFAULT_EXCLUDED_DIRS = ["*.test.ts", "**/generated/", "*.graphql", "_*.ts"];
+const DEFAULT_EXCLUDED_DIRS = ["**/*.test.ts", "**/generated/", "**/*.graphql", "_*.ts"];
 
 const HELP_TEXT = `Usage: deno run -A scripts/generate-audit.ts [options]
 
@@ -25,7 +25,7 @@ Options:
   --skip <stage>         Skip a stage (repeatable). Stages: compliance, layer-graph,
                          stability, file-stats, unused-exports, c4-diagram
   --exclude-dir <glob>   Exclude files/directories matching glob (repeatable).
-                         Default: *.test.ts generated/ graphql/
+                         Default: **/*.test.ts generated/ graphql/
   --dry-run              Shortcut for --output - (print to stdout)
   --help, -h             Show this help
 

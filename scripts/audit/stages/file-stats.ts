@@ -13,23 +13,7 @@ import type {
   LayerName,
 } from "../types.ts";
 import { classifyModule } from "../layer-classification.ts";
-
-// ── Exclusions ─────────────────────────────────────────────────────────────────
-
-const EXCLUDED_PATTERNS = [
-  "generated/",
-  "graphql/",
-  "__snapshots__/",
-  "generated/__fixtures__/",
-];
-
-const isExcluded = (filePath: string): boolean => {
-  for (const pattern of EXCLUDED_PATTERNS) {
-    if (filePath.includes(pattern)) return true;
-  }
-  if (filePath.endsWith(".test.ts")) return true;
-  return false;
-};
+import { createExclusionFilter } from "../filters.ts";
 
 /** Determine if a file is a TypeScript source file we should count. */
 const isTsFile = (filePath: string): boolean => {
@@ -41,10 +25,11 @@ export const fileStatsStage: AuditStage<FileStatsResult> = {
 
   run: async (config, _deps) => {
     const layerFiles = new Map<LayerName, FileStatEntry[]>();
-    const { srcDir } = config;
+    const { srcDir, excludedDirs } = config;
+    const isExcluded = createExclusionFilter(excludedDirs);
 
     // Walk src/ recursively and collect stats
-    await collectFiles(srcDir, srcDir, layerFiles);
+    await collectFiles(srcDir, srcDir, layerFiles, isExcluded);
 
     const layers: LayerFileStats[] = [...layerFiles.entries()]
       .map(([layer, files]) => {
@@ -71,12 +56,13 @@ const collectFiles = async (
   baseDir: string,
   dirPath: string,
   layerFiles: Map<LayerName, FileStatEntry[]>,
+  isExcluded: (path: string) => boolean,
 ): Promise<void> => {
   for await (const entry of Deno.readDir(dirPath)) {
     const fullPath = `${dirPath}/${entry.name}`;
 
     if (entry.isDirectory) {
-      await collectFiles(baseDir, fullPath, layerFiles);
+      await collectFiles(baseDir, fullPath, layerFiles, isExcluded);
       continue;
     }
 
