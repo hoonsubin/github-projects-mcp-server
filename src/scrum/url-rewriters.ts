@@ -59,7 +59,6 @@ export const URL_REWRITERS: readonly UrlRewriter[] = [
       return tok ? { headers: { Authorization: `Bearer ${tok}` } } : undefined;
     },
   },
-
   // Future: add GitLab, Bitbucket, etc. rewriters here.
   // Each entry follows the same pattern: matches() identifies the host,
   // requestInit() reads the platform-specific env var and returns auth headers.

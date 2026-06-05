@@ -224,7 +224,9 @@ export class FieldValueMutator {
       if (numericValue === null) {
         await this.clearIssueBackedField(issueId, issueBacked.orgFieldId);
       } else {
-        await this.setIssueBackedField(issueId, issueBacked.orgFieldId, { numberValue: numericValue });
+        await this.setIssueBackedField(issueId, issueBacked.orgFieldId, {
+          numberValue: numericValue,
+        });
       }
       return;
     }
