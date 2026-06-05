@@ -35,7 +35,7 @@ import { type AdapterFactory, createBackend } from "./adapters/factory.ts";
 import { loadScrumConfig } from "./scrum/config-boot.ts";
 import { GitHubAdapterFactory } from "./adapters/github/factory.ts";
 import { AdapterError, ConfigError } from "./domain/errors.ts";
-import { log } from "./services/logger.ts";
+import { log, setLogTransport } from "./services/logger.ts";
 import { parseArgs } from "@std/cli/parse-args";
 import { resolve as resolvePath } from "@std/path";
 import { resolveLocation } from "./scrum/resolve-location.ts";
@@ -254,9 +254,22 @@ const createMcpServer = async (): Promise<McpServer> => {
     resolvePath(Deno.cwd()),
   );
 
-  const server = new McpServer({
-    name: "scrum-master-toolkit-server",
-    version: Deno.env.get("RELEASE_VERSION") ?? "dev",
+  const server = new McpServer(
+    {
+      name: "scrum-master-toolkit-server",
+      version: Deno.env.get("RELEASE_VERSION") ?? "dev",
+    },
+    {
+      capabilities: {
+        logging: {},
+      },
+    },
+  );
+
+  // Wire the MCP server as the log transport so all log.* calls also emit
+  // structured MCP logging notifications to the connected client.
+  setLogTransport({
+    sendLoggingMessage: (params) => server.sendLoggingMessage(params),
   });
 
   patchToolLogging(server);
