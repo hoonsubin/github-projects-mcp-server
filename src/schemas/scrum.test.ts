@@ -6,7 +6,7 @@ import { assertEquals } from "@std/assert";
 import { Client, type Tool } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { safeParse, normalizeObjectSchema } from "@modelcontextprotocol/sdk/server/zod-compat.js";
+import { normalizeObjectSchema, safeParse } from "@modelcontextprotocol/sdk/server/zod-compat.js";
 import { z } from "zod";
 import { UpdateStorySchema } from "./scrum.ts";
 import {
