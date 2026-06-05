@@ -12,7 +12,12 @@ import { type SelectFieldOption } from "../types.ts";
 import { LabelResolver } from "./label-resolver.ts";
 import type { GitHubInfraContext } from "./infra-context.ts";
 import type { CreateResult, VocabularyKind } from "../../../scrum/ports.ts";
-import { GET_FIELD_OPTIONS_QUERY, UPDATE_FIELD_MUTATION } from "../queries.ts";
+import {
+  GET_FIELD_OPTIONS_QUERY,
+  GET_ORG_ISSUE_FIELD_OPTIONS_QUERY,
+  UPDATE_FIELD_MUTATION,
+  UPDATE_ORG_ISSUE_FIELD_CATALOG_MUTATION,
+} from "../queries.ts";
 
 // ── Helper types ─────────────────────────────────────────────────────────────
 
@@ -20,6 +25,26 @@ import { GET_FIELD_OPTIONS_QUERY, UPDATE_FIELD_MUTATION } from "../queries.ts";
 interface GetFieldOptionsResponse {
   node?: {
     options: SelectFieldOption[];
+  } | null;
+}
+
+interface OrgIssueFieldOption {
+  id: string;
+  name: string;
+  color?: string;
+}
+
+interface GetOrgIssueFieldOptionsResponse {
+  node?: {
+    options: OrgIssueFieldOption[];
+  } | null;
+}
+
+interface UpdateOrgIssueFieldCatalogResponse {
+  updateIssueField?: {
+    issueField?: {
+      options: OrgIssueFieldOption[];
+    } | null;
   } | null;
 }
 
@@ -62,7 +87,7 @@ export class VocabularyManager {
         },
       );
     }
-    return await this.addSingleSelectOption(fieldId, value);
+    return await this.addSingleSelectOption(fieldId, value, "statusOptions");
   }
 
   private async addPriorityOption(value: string): Promise<CreateResult> {
@@ -78,10 +103,22 @@ export class VocabularyManager {
         },
       );
     }
-    return await this.addSingleSelectOption(fieldId, value);
+    return await this.addSingleSelectOption(fieldId, value, "priorityOptions");
   }
 
   private async addSingleSelectOption(
+    fieldId: string,
+    value: string,
+    optionMapKey: "statusOptions" | "priorityOptions",
+  ): Promise<CreateResult> {
+    const issueBacked = this.ctx.config.live.issueBackedFields[fieldId];
+    if (issueBacked) {
+      return await this.addOrgIssueFieldOption(issueBacked, fieldId, value, optionMapKey);
+    }
+    return await this.addProjectBoardOption(fieldId, value);
+  }
+
+  private async addProjectBoardOption(
     fieldId: string,
     value: string,
   ): Promise<CreateResult> {
@@ -102,5 +139,77 @@ export class VocabularyManager {
       { projectId: this.ctx.config.live.projectId, fieldId, options: updatedOptions },
     );
     return { created: true };
+  }
+
+  private async addOrgIssueFieldOption(
+    issueBacked: { orgFieldId: string; options?: Record<string, string> },
+    projectFieldId: string,
+    value: string,
+    optionMapKey: "statusOptions" | "priorityOptions",
+  ): Promise<CreateResult> {
+    const fieldData = await this.ctx.gh.graphql<GetOrgIssueFieldOptionsResponse>(
+      GET_ORG_ISSUE_FIELD_OPTIONS_QUERY,
+      { fieldId: issueBacked.orgFieldId },
+    );
+    const currentOptions = fieldData.node?.options ?? [];
+    if (currentOptions.some((opt) => opt.name === value)) {
+      this.syncOrgIssueFieldOptionMaps(
+        issueBacked,
+        projectFieldId,
+        currentOptions,
+        optionMapKey,
+      );
+      return { created: false };
+    }
+
+    const updatedOptions = [
+      ...currentOptions.map((opt) => ({
+        name: opt.name,
+        color: opt.color ?? "GRAY",
+        description: "",
+      })),
+      { name: value, color: "GRAY" as const, description: "" },
+    ];
+
+    const result = await this.ctx.gh.graphql<UpdateOrgIssueFieldCatalogResponse>(
+      UPDATE_ORG_ISSUE_FIELD_CATALOG_MUTATION,
+      { id: issueBacked.orgFieldId, options: updatedOptions },
+    );
+
+    const refreshedOptions = result.updateIssueField?.issueField?.options ?? currentOptions;
+    this.syncOrgIssueFieldOptionMaps(
+      issueBacked,
+      projectFieldId,
+      refreshedOptions,
+      optionMapKey,
+    );
+    if (!issueBacked.options?.[value]) {
+      throw new GitHubApiError(
+        `Failed to add "${value}" to the organization issue field catalog.`,
+        {
+          code: "MUTATION_FAILED",
+          statusCode: 500,
+          recovery: "Retry scrum_add_vocabulary or add the option manually in GitHub org settings.",
+          context: { value, orgFieldId: issueBacked.orgFieldId },
+        },
+      );
+    }
+
+    return { created: true };
+  }
+
+  private syncOrgIssueFieldOptionMaps(
+    issueBacked: { orgFieldId: string; options?: Record<string, string> },
+    projectFieldId: string,
+    options: OrgIssueFieldOption[],
+    optionMapKey: "statusOptions" | "priorityOptions",
+  ): void {
+    const optionMap = Object.fromEntries(options.map((o) => [o.name, o.id]));
+    issueBacked.options = optionMap;
+    this.ctx.config.live.issueBackedFields[projectFieldId] = issueBacked;
+    this.ctx.config.live[optionMapKey] = {
+      ...this.ctx.config.live[optionMapKey],
+      ...optionMap,
+    };
   }
 }

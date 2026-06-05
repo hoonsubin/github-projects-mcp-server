@@ -23,9 +23,10 @@ import { GitHubApiError } from "./errors.ts";
 import {
   buildOptionMaps,
   isCanonicalSingleSelectUnavailable,
+  isSingleSelectField,
   type OrgIssueFieldNode,
 } from "./bootstrap-field-sources.ts";
-import { GET_OWNER_BOOTSTRAP_QUERY } from "./queries.ts";
+import { GET_OWNER_BOOTSTRAP_QUERY, RESOLVE_REPOSITORY_OWNER } from "./queries.ts";
 import type { SelectFieldNode } from "./types.ts";
 import { classifyIterations } from "./internal/iteration-classifier.ts";
 // ── Template path resolver (pure, no API call) ────────────────────────────────
@@ -263,6 +264,11 @@ const detectIssueBackedFields = (
     const orgField = orgFieldByName.get(projectField.name);
     if (!orgField) continue;
 
+    // A project board field with its own options uses updateProjectV2ItemFieldValue.
+    if (isSingleSelectField(projectField) && projectField.options.length > 0) {
+      continue;
+    }
+
     const meta: IssueBackedFieldMeta = { orgFieldId: orgField.id };
     if (orgField.options && orgField.options.length > 0) {
       meta.options = Object.fromEntries(orgField.options.map((o) => [o.name, o.id]));
@@ -322,6 +328,34 @@ export const bootstrapGitHub = async (params: BootstrapParams): Promise<GitHubLi
   }
 
   if (!projectNode) {
+    const ownerProbe = await github.graphql<{
+      repositoryOwner?: { __typename: string; login: string } | null;
+    }>(RESOLVE_REPOSITORY_OWNER, { login: owner });
+
+    const actualType = ownerProbe.repositoryOwner?.__typename;
+    if (actualType === "Organization" && ownerType === "user") {
+      throw new GitHubApiError(
+        `Owner '${owner}' is a GitHub Organization, but owner_type is set to "user".`,
+        {
+          code: "OWNER_TYPE_MISMATCH",
+          statusCode: 400,
+          recovery: 'Set backends.github.owner_type to "org" for organization-owned projects.',
+          context: { owner, ownerType, actualType, projectNumber },
+        },
+      );
+    }
+    if (actualType === "User" && ownerType === "org") {
+      throw new GitHubApiError(
+        `Owner '${owner}' is a GitHub User, but owner_type is set to "org".`,
+        {
+          code: "OWNER_TYPE_MISMATCH",
+          statusCode: 400,
+          recovery: 'Set backends.github.owner_type to "user" for user-owned projects.',
+          context: { owner, ownerType, actualType, projectNumber },
+        },
+      );
+    }
+
     throw new GitHubApiError(
       `Project #${projectNumber} not found for ${ownerType} '${owner}'. ` +
         `Ensure the token has Projects: Read access.`,

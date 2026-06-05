@@ -8,13 +8,7 @@
 import type { AuditStage, UnusedExportResult } from "../types.ts";
 import { ParsedModule } from "../../diagram/ParsedModule.ts";
 import { findUnusedExports } from "../../diagram/helpers.ts";
-
-const isExcluded = (filePath: string, excludedDirs: string[]): boolean => {
-  for (const dir of excludedDirs) {
-    if (filePath.includes(dir)) return true;
-  }
-  return false;
-};
+import { createExclusionFilter } from "../filters.ts";
 
 export const unusedExportsStage: AuditStage<UnusedExportResult> = {
   name: "unused-exports",
@@ -22,12 +16,13 @@ export const unusedExportsStage: AuditStage<UnusedExportResult> = {
   run: async (config, _deps) => {
     const modules: ParsedModule[] = [];
     const { srcDir, excludedDirs } = config;
+    const isExcluded = createExclusionFilter(excludedDirs);
 
     for await (const entry of Deno.readDir(srcDir)) {
       if (entry.isDirectory) {
-        await scanDirectory(`${srcDir}/${entry.name}`, modules, excludedDirs);
+        await scanDirectory(`${srcDir}/${entry.name}`, modules, isExcluded);
       } else {
-        if (isExcluded(entry.name, excludedDirs)) continue;
+        if (isExcluded(entry.name)) continue;
         if (!entry.name.endsWith(".ts") || entry.name.endsWith(".d.ts")) continue;
         const content = await Deno.readTextFile(`${srcDir}/${entry.name}`);
         modules.push(new ParsedModule(entry.name, content));
@@ -45,18 +40,18 @@ export const unusedExportsStage: AuditStage<UnusedExportResult> = {
 const scanDirectory = async (
   dirPath: string,
   modules: ParsedModule[],
-  excludedDirs: string[],
+  isExcluded: (path: string) => boolean,
 ): Promise<void> => {
   for await (const entry of Deno.readDir(dirPath)) {
     const fullPath = `${dirPath}/${entry.name}`;
 
     if (entry.isDirectory) {
-      await scanDirectory(fullPath, modules, excludedDirs);
+      await scanDirectory(fullPath, modules, isExcluded);
       continue;
     }
 
     if (!entry.name.endsWith(".ts") || entry.name.endsWith(".d.ts")) continue;
-    if (isExcluded(entry.name, excludedDirs)) continue;
+    if (isExcluded(entry.name)) continue;
 
     // Build path relative to src/ for ParsedModule
     const relativePath = fullPath.replace(/^\.?\/?/, "");

@@ -74,8 +74,6 @@ const RESOLVED_EXISTING = {
   },
 };
 
-const REPO_ID = { repository: { id: "R_repo1" } };
-
 const ADD_COMMENT_OK = { addComment: { commentEdge: { node: { id: "C_1" } } } };
 
 const makeCreateInput = (overrides: Partial<CreateStoryInput> = {}): CreateStoryInput => ({
@@ -257,7 +255,7 @@ Deno.test({
     const { service, gh } = createService({
       configOverrides: { live: { ...baseConfig.live, typeOptions: {} } },
     });
-    gh.enqueue(ADD_DRAFT_SUCCESS);
+    gh.enqueue(ADD_DRAFT_SUCCESS, { deleteProjectV2Item: { deletedItemId: "PVTI_new1" } });
     const input = makeCreateInput({ labels: undefined, epic: undefined, priority: undefined });
 
     await assertRejects(
@@ -265,6 +263,7 @@ Deno.test({
       GitHubApiError,
       "is not a recognized canonical type key",
     );
+    assertStringIncludes(gh.graphqlCalls[1].queryExcerpt, "DeleteProjectItem");
   },
 });
 
@@ -484,13 +483,21 @@ Deno.test({
   name: "createStory - convertDraftToIssue throws MUTATION_FAILED on wrong content type",
   async fn() {
     const { service, gh } = createService();
-    gh.enqueue(ADD_DRAFT_SUCCESS, REPO_ID, CONVERT_WRONG_TYPE);
+    gh.enqueue(
+      ADD_DRAFT_SUCCESS,
+      CONVERT_WRONG_TYPE,
+      { deleteProjectV2Item: { deletedItemId: "PVTI_new1" } },
+    );
     const input = makeCreateInput({ labels: ["bug"], epic: undefined });
 
     await assertRejects(
       () => service.createStory(input),
       GitHubApiError,
       "Failed to auto-convert Draft Issue",
+    );
+    assertStringIncludes(
+      gh.graphqlCalls[gh.graphqlCalls.length - 1].queryExcerpt,
+      "DeleteProjectItem",
     );
   },
 });
@@ -836,7 +843,7 @@ Deno.test({
   name: "setField - auto-converts draft for type when using org issue type resolution",
   async fn() {
     const baseConfig = makeConfig();
-    const { service, gh } = createService({
+    const { service, gh, fieldCalls } = createService({
       configOverrides: {
         live: {
           ...baseConfig.live,
@@ -850,6 +857,8 @@ Deno.test({
 
     assertEquals(gh.graphqlCalls.length, 2);
     assertStringIncludes(gh.graphqlCalls[1].queryExcerpt, "ConvertDraftIssue");
+    const typeCall = fieldCalls.find((c) => c.method === "setFieldType");
+    assertEquals(typeCall?.args[2], "I_issue1");
   },
 });
 

@@ -6,6 +6,7 @@
 // Depends on UserMilestoneResolver for assignee resolution.
 // =============================================================================
 
+import type { IssueBackedFieldMeta } from "../bootstrap.ts";
 import { GitHubApiError } from "../errors.ts";
 import { resolveSprint } from "./resolver.ts";
 import { UserMilestoneResolver } from "./user-milestone-resolver.ts";
@@ -20,6 +21,18 @@ import {
   UPDATE_ITEM_FIELD_MUTATION,
 } from "../queries.ts";
 import { CLEAR_ASSIGNEES_MUTATION, SET_ASSIGNEE_MUTATION } from "../queries.ts";
+
+/** Resolve a single-select option ID for project-board or org issue-backed fields. */
+const resolveSingleSelectOptionId = (
+  value: string,
+  issueBacked: IssueBackedFieldMeta | undefined,
+  projectOptions: Record<string, string>,
+): string | undefined => {
+  if (issueBacked) {
+    return issueBacked.options?.[value];
+  }
+  return projectOptions[value];
+};
 
 // ── FieldValueMutator class ──────────────────────────────────────────────────
 
@@ -96,8 +109,11 @@ export class FieldValueMutator {
     const issueBacked = this.ctx.config.live.issueBackedFields[fieldId];
     if (issueBacked) {
       const issueId = await this.resolveIssueNodeId(itemId);
-      const optionId = (issueBacked.options ?? {})[value] ??
-        this.ctx.config.live.statusOptions[value];
+      const optionId = resolveSingleSelectOptionId(
+        value,
+        issueBacked,
+        this.ctx.config.live.statusOptions,
+      );
       if (!optionId) {
         throw new GitHubApiError(
           `Status option "${value}" is not in the project vocabulary.`,
@@ -109,9 +125,7 @@ export class FieldValueMutator {
             context: {
               field: "status",
               value,
-              knownOptions: Object.keys(
-                issueBacked.options ?? this.ctx.config.live.statusOptions,
-              ),
+              knownOptions: Object.keys(issueBacked.options ?? {}),
             },
           },
         );
@@ -193,17 +207,30 @@ export class FieldValueMutator {
           "then re-run the server so config-loader can pick it up.",
       });
     }
+    // Coerce to a real JS number — the MCP input union (z.string | z.number) can
+    // deliver "1" as a string even when the caller intended a number. GitHub's
+    // GraphQL rejects non-numeric numberValue with "cannot coerce to Float".
+    const numericValue = value !== null ? Number(value) : null;
+    if (numericValue !== null && !Number.isFinite(numericValue)) {
+      throw new GitHubApiError(`Invalid story points value: ${value}`, {
+        code: "MUTATION_FAILED",
+        statusCode: 400,
+        recovery: "Provide a finite number for story_points (e.g. 1, 2, 3, 5, 8).",
+      });
+    }
     const issueBacked = this.ctx.config.live.issueBackedFields[fieldId];
     if (issueBacked) {
       const issueId = await this.resolveIssueNodeId(itemId);
-      if (value === null) {
+      if (numericValue === null) {
         await this.clearIssueBackedField(issueId, issueBacked.orgFieldId);
       } else {
-        await this.setIssueBackedField(issueId, issueBacked.orgFieldId, { numberValue: value });
+        await this.setIssueBackedField(issueId, issueBacked.orgFieldId, {
+          numberValue: numericValue,
+        });
       }
       return;
     }
-    if (value === null) {
+    if (numericValue === null) {
       await this.clearField(itemId, fieldId);
     } else {
       await this.ctx.gh.graphql<
@@ -215,7 +242,7 @@ export class FieldValueMutator {
             projectId: this.ctx.config.live.projectId,
             itemId,
             fieldId,
-            value: { number: value },
+            value: { number: numericValue },
           },
         },
       );
@@ -239,8 +266,11 @@ export class FieldValueMutator {
       if (value === null) {
         await this.clearIssueBackedField(issueId, issueBacked.orgFieldId);
       } else {
-        const optionId = (issueBacked.options ?? {})[value] ??
-          this.ctx.config.live.priorityOptions[value];
+        const optionId = resolveSingleSelectOptionId(
+          value,
+          issueBacked,
+          this.ctx.config.live.priorityOptions,
+        );
         if (!optionId) {
           throw new GitHubApiError(
             `Priority option "${value}" is not in the project vocabulary.`,
@@ -252,9 +282,7 @@ export class FieldValueMutator {
               context: {
                 field: "priority",
                 value,
-                knownOptions: Object.keys(
-                  issueBacked.options ?? this.ctx.config.live.priorityOptions,
-                ),
+                knownOptions: Object.keys(issueBacked.options ?? {}),
               },
             },
           );
@@ -318,7 +346,7 @@ export class FieldValueMutator {
         return;
       }
       throw new GitHubApiError("Type cannot be cleared when using organization issue types.", {
-        code: "NOT_IMPLEMENTED",
+        code: "ORG_ISSUE_TYPE_NOT_CLEARABLE",
         statusCode: 400,
         recovery: "Organization issue types require an explicit type assignment. " +
           "Set a valid type key instead of null.",

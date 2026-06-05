@@ -98,6 +98,18 @@ fragment ItemContent on ProjectV2Item {
       milestone { id title dueOn }
       repository { name nameWithOwner }
       blockedBy(first: 10) { nodes { id number title } }
+      issueFieldValues(first: 25) {
+        nodes {
+          ... on IssueFieldNumberValue {
+            value
+            field { ... on IssueFieldNumber { name } }
+          }
+          ... on IssueFieldSingleSelectValue {
+            name optionId
+            field { ... on IssueFieldSingleSelect { name } }
+          }
+        }
+      }
     }
     ... on PullRequest {
       id number title url state body isDraft
@@ -123,6 +135,18 @@ fragment ItemContentAggregate on ProjectV2Item {
     ... on Issue {
       id number title body state closedAt
       issueType { id name }
+      issueFieldValues(first: 25) {
+        nodes {
+          ... on IssueFieldNumberValue {
+            value
+            field { ... on IssueFieldNumber { name } }
+          }
+          ... on IssueFieldSingleSelectValue {
+            name optionId
+            field { ... on IssueFieldSingleSelect { name } }
+          }
+        }
+      }
     }
     ... on PullRequest {
       id number title state
@@ -182,7 +206,10 @@ fragment ItemFieldValues on ProjectV2Item {
         field { ... on ProjectV2FieldCommon { id name } }
       }
       ... on ProjectV2ItemIssueFieldValue {
-        field { ... on ProjectV2FieldCommon { id name } }
+        field {
+          ... on ProjectV2Field { id name }
+          ... on ProjectV2SingleSelectField { id name }
+        }
         issueFieldValue {
           ... on IssueFieldSingleSelectValue {
             name optionId color
@@ -320,6 +347,26 @@ query GetItemFields($itemId: ID!) {
           ... on ProjectV2ItemFieldIterationValue {
             title iterationId
             field { ... on ProjectV2FieldCommon { id name } }
+          }
+          ... on ProjectV2ItemIssueFieldValue {
+            field {
+              ... on ProjectV2Field { id name }
+              ... on ProjectV2SingleSelectField { id name }
+            }
+            issueFieldValue {
+              ... on IssueFieldSingleSelectValue {
+                name optionId color
+              }
+              ... on IssueFieldTextValue {
+                value
+              }
+              ... on IssueFieldNumberValue {
+                value
+              }
+              ... on IssueFieldDateValue {
+                value
+              }
+            }
           }
         }
       }
@@ -623,6 +670,41 @@ query GetUserNodeId($login: String!) {
   user(login: $login) { id }
 }
 
+# ── ResolveActorNodeId ─────────────────────────────────────────────────────────
+# Resolves User or Organization logins to node IDs for assignee mutations.
+
+query ResolveActorNodeId($login: String!) {
+  user(login: $login) { id }
+  organization(login: $login) { id }
+}
+
+# ── ResolveAssignableActor ─────────────────────────────────────────────────────
+# Fallback for Bot (and other assignable) logins not reachable via user()/organization().
+
+query ResolveAssignableActor($owner: String!, $repo: String!) {
+  repository(owner: $owner, name: $repo) {
+    suggestedActors(capabilities: [CAN_BE_ASSIGNED], first: 100) {
+      nodes {
+        login
+        ... on Bot { id }
+        ... on User { id }
+        ... on Organization { id }
+        ... on Mannequin { id }
+      }
+    }
+  }
+}
+
+# ── ResolveRepositoryOwner ─────────────────────────────────────────────────────
+# Detect owner account type for bootstrap owner_type mismatch diagnostics.
+
+query ResolveRepositoryOwner($login: String!) {
+  repositoryOwner(login: $login) {
+    __typename
+    login
+  }
+}
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # MUTATIONS
@@ -774,6 +856,17 @@ query GetFieldOptions($fieldId: ID!) {
   node(id: $fieldId) {
     ... on ProjectV2SingleSelectField {
       options { id name color description }
+    }
+  }
+}
+
+# ── GetOrgIssueFieldOptions ──────────────────────────────────────────────────
+# Fetch options for an org-level IssueFieldSingleSelect (issue-backed vocabulary).
+
+query GetOrgIssueFieldOptions($fieldId: ID!) {
+  node(id: $fieldId) {
+    ... on IssueFieldSingleSelect {
+      options { id name color }
     }
   }
 }
@@ -1074,6 +1167,17 @@ mutation ConvertDraftIssue($itemId: ID!, $repositoryId: ID!) {
 mutation UpdateIssueField($input: UpdateIssueFieldValueInput!) {
   updateIssueFieldValue(input: $input) {
     issue { id }
+  }
+}
+
+mutation UpdateOrgIssueFieldCatalog($id: ID!, $options: [IssueFieldSingleSelectOptionInput!]!) {
+  updateIssueField(input: { id: $id, options: $options }) {
+    issueField {
+      ... on IssueFieldSingleSelect {
+        id
+        options { id name color }
+      }
+    }
   }
 }
 

@@ -31,6 +31,7 @@ const projectItemToAggregateView = (item: ProjectItem): ProjectItem => {
         state: content.state,
         closedAt: (content as { closedAt?: string | null }).closedAt ?? null,
         issueType: content.issueType,
+        issueFieldValues: content.issueFieldValues,
       },
     } as unknown as ProjectItem;
   }

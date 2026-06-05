@@ -37,6 +37,7 @@ import type {
   LabelNameOnly,
   LinkedPr,
   MilestoneRefNode,
+  OrgIssueFieldValueNode,
   ProjectItem,
   TimelinePrSource,
   UserLogin,
@@ -108,6 +109,29 @@ export interface IssueDetailsInput {
 }
 
 // ── Field extraction ───────────────────────────────────────────────────────────
+
+/**
+ * Fill in null story_points / priority from Issue.issueFieldValues when the
+ * project board fieldValues extraction found nothing (org issue-backed fields).
+ * Matches by field name against field_mapping — mutates `fields` in place.
+ */
+const overlayOrgIssueFieldValues = (
+  fields: BoardFields,
+  nodes: OrgIssueFieldValueNode[],
+  fieldMapping: GitHubBootState["ghConfig"]["field_mapping"],
+): void => {
+  for (const node of nodes) {
+    const fieldName = node.field?.name;
+    if (!fieldName) continue;
+    if (fields.story_points === null && fieldMapping.story_points === fieldName) {
+      const n = Number(node.value);
+      if (Number.isFinite(n)) fields.story_points = n;
+    }
+    if (fields.priority === null && fieldMapping.priority === fieldName) {
+      if (typeof node.name === "string") fields.priority = node.name;
+    }
+  }
+};
 
 // todo: this should be semi-dynamically created from the extended board fields based on the config file
 // rather than exclusively reading from a static set of fields
@@ -194,6 +218,13 @@ export const buildStoryFromRaw = (
     config,
     content.__typename === "Issue" ? content.issueType?.name ?? null : null,
   );
+  if (content.__typename === "Issue" && content.issueFieldValues?.nodes.length) {
+    overlayOrgIssueFieldValues(
+      boardFields,
+      content.issueFieldValues.nodes,
+      config.ghConfig.field_mapping,
+    );
+  }
 
   // ── DraftIssue branch ───────────────────────────────────────────────────────
   if (content.__typename === "DraftIssue") {
@@ -467,6 +498,13 @@ export const buildAggregateFromRaw = (
     config,
     item.content?.__typename === "Issue" ? item.content.issueType?.name ?? null : null,
   );
+  if (item.content?.__typename === "Issue" && item.content.issueFieldValues?.nodes.length) {
+    overlayOrgIssueFieldValues(
+      boardFields,
+      item.content.issueFieldValues.nodes,
+      config.ghConfig.field_mapping,
+    );
+  }
   const { sprintId, sprintTitle } = extractSprintField(
     item.fieldValues.nodes,
     sprintFieldId,
@@ -605,8 +643,11 @@ export const storySnapshotOverridesFromSetField = (
       return {
         sprint: value === null ? null : sprintDisplayTitle(value as SprintRef, config),
       };
-    case "story_points":
-      return { story_points: value as number | null };
+    case "story_points": {
+      if (value === null) return { story_points: null };
+      const n = Number(value);
+      return { story_points: Number.isFinite(n) ? n : null };
+    }
     case "priority":
       return { priority: value as string | null };
     case "type":

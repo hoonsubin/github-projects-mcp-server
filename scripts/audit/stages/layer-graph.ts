@@ -8,16 +8,19 @@
 
 import type { AuditStage, LayerEdge, LayerGraphResult, LayerName } from "../types.ts";
 import { classifyModule } from "../layer-classification.ts";
+import { createExclusionFilter } from "../filters.ts";
 
 export const layerGraphStage: AuditStage<LayerGraphResult> = {
   name: "layer-graph",
 
-  run: (_config, deps) => {
+  run: (config, deps) => {
     const depcruiseJson = deps.depcruiseJson;
 
     if (!depcruiseJson) {
       return { nodes: [], edges: [] };
     }
+
+    const isExcluded = createExclusionFilter(config.excludedDirs);
 
     // Build a set of violation keys: "from→to" pairs with their rule names
     const violationMap = new Map<string, string[]>();
@@ -33,6 +36,7 @@ export const layerGraphStage: AuditStage<LayerGraphResult> = {
     const moduleLayers = new Map<string, LayerName>();
 
     for (const mod of depcruiseJson.modules) {
+      if (isExcluded(mod.source)) continue;
       moduleSources.add(mod.source);
       if (!moduleLayers.has(mod.source)) {
         moduleLayers.set(mod.source, classifyModule(mod.source));
@@ -49,6 +53,7 @@ export const layerGraphStage: AuditStage<LayerGraphResult> = {
     const seenEdges = new Set<string>();
 
     for (const mod of depcruiseJson.modules) {
+      if (isExcluded(mod.source)) continue;
       const fromLayer = moduleLayers.get(mod.source) ?? "framework";
 
       for (const dep of mod.dependencies) {

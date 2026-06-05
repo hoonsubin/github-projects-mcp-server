@@ -70,6 +70,27 @@ export class SearchApiAssembler {
     const projectNumber = this.config.ghConfig.project_number;
     const projectItems = searchIssuesToProjectItems(result.nodes, projectNumber);
 
+    const hadSearchIntent = !!(
+      profile.search ||
+      (profile.labels?.length ?? 0) > 0 ||
+      profile.assignee
+    );
+
+    // GitHub Search can return zero results when the token lacks repository:search
+    // permission for private tracked repos. Fall back to a board scan so project-level
+    // visibility still surfaces matches.
+    if (projectItems.length === 0 && hadSearchIntent && filter) {
+      const boardOutput = await this.projectItemsAssembler.assemble(filter);
+      return {
+        ...boardOutput,
+        warnings: [
+          ...boardOutput.warnings,
+          "GitHub search returned no results; results were loaded via board scan instead. " +
+          "If you expected search hits in private repos, verify the token has repository:search permission.",
+        ],
+      };
+    }
+
     const scopedResult = {
       nodes: projectItems,
       totalCount: projectItems.length,

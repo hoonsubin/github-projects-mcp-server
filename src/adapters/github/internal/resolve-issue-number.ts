@@ -47,6 +47,7 @@ export const fetchProjectItemByIssueNumber = async (
   issueNumber: number,
 ): Promise<ProjectItem | null> => {
   const { owner, tracked_repos, project_number } = ghConfig;
+  const matches: Array<{ repo: string; item: ProjectItem }> = [];
 
   for (const repo of tracked_repos) {
     const response = await gh.graphql<GetIssueProjectItemResponse>(
@@ -56,10 +57,28 @@ export const fetchProjectItemByIssueNumber = async (
 
     const nodes = response.repository?.issue?.projectItems?.nodes ?? [];
     const item = pickProjectItem(nodes, project_number);
-    if (item) return item;
+    if (item) {
+      matches.push({ repo, item });
+    }
   }
 
-  return null;
+  if (matches.length === 0) return null;
+  if (matches.length === 1) return matches[0]!.item;
+
+  throw new GitHubApiError(
+    `Issue #${issueNumber} exists on this project board in multiple tracked repos: ` +
+      matches.map((m) => `${owner}/${m.repo}#${issueNumber}`).join(", ") + ".",
+    {
+      code: "AMBIGUOUS_ISSUE_NUMBER",
+      statusCode: 400,
+      recovery: "Disambiguate by ensuring only one tracked repo has this issue on the board, " +
+        "or use scrum_find_items with search/labels filters instead of keys.",
+      context: {
+        issueNumber,
+        candidates: matches.map((m) => ({ repo: m.repo, itemId: m.item.id })),
+      },
+    },
+  );
 };
 
 export const fetchProjectItemsByIssueNumbers = async (
