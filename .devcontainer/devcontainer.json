@@ -54,7 +54,7 @@
     }
   },
 
-  "forwardPorts": [3000, 6274, 6333, 6334, 8080],
+  "forwardPorts": [3000, 6274, 6277, 6333, 6334, 8080, 9229],
   "portsAttributes": {
     "3000": {
       "label": "MCP Server",
@@ -72,10 +72,9 @@
       "label": "SearXNG",
       "onAutoForward": "silent"
     },
-    "6274": {
-      "label": "MCP Inspector",
-      "onAutoForward": "notify"
-    }
+    "6274": { "label": "MCP Inspector UI", "onAutoForward": "openBrowser" },
+    "6277": { "label": "MCP Inspector Proxy" },
+    "9229": { "label": "Node.js Debugger" }
   },
 
   "remoteEnv": {

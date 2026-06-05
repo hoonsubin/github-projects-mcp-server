@@ -4,7 +4,7 @@
     "start": "deno run --env-file --allow-env --allow-net --allow-read src/server.ts --config .github/scrum/config.yml",
     "audit": "deno run --allow-read --allow-env --allow-write --allow-run scripts/generate-audit.ts",
     "test": "GITHUB_TOKEN=test-token deno test --allow-env=DEBUG,GITHUB_TOKEN,NODE_ENV --allow-net --allow-read src/",
-    "inspector": "deno task bundle:node && npx -y @modelcontextprotocol/inspector -e $GITHUB_TOKEN node dist/server.mjs -- --config /workspace/.github/scrum/config.yml",
+    "inspector": "deno task bundle:node && DANGEROUSLY_OMIT_AUTH=true HOST=0.0.0.0 CLIENT_PORT=6274 SERVER_PORT=6277 npx -y @modelcontextprotocol/inspector node dist/server.mjs",
     "compile": "deno compile --allow-env --allow-net --allow-read --output mcp-server src/server.ts",
     "compile:mac:arm64": "deno compile --target aarch64-apple-darwin   --allow-env --allow-net --allow-read --output dist/mcp-server-mac-arm64   src/server.ts",
     "compile:mac:x64": "deno compile --target x86_64-apple-darwin    --allow-env --allow-net --allow-read --output dist/mcp-server-mac-x64     src/server.ts",
