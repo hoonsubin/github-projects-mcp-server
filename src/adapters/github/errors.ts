@@ -19,9 +19,12 @@ export type GitHubErrorCode =
   | "WRONG_CONTENT_TYPE" // project item is not an Issue (e.g. a PullRequest)
   // Platform capability
   | "NOT_IMPLEMENTED" // feature not supported by this adapter or the underlying API
+  | "ORG_ISSUE_TYPE_NOT_CLEARABLE" // type=null unsupported when org issue types back the field
   // Platform configuration
   | "FIELD_NOT_CONFIGURED" // project field not set up in GitHub Projects
   | "OPTION_NOT_FOUND" // vocabulary value missing from project field options
+  | "OWNER_TYPE_MISMATCH" // config owner_type does not match GitHub account type
+  | "AMBIGUOUS_ISSUE_NUMBER" // same issue number exists in multiple tracked repos
   // API mutations
   | "MUTATION_FAILED" // mutation completed but returned no data
   // GitHub API transport

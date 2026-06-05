@@ -6,6 +6,7 @@
 // Depends on UserMilestoneResolver for assignee resolution.
 // =============================================================================
 
+import type { IssueBackedFieldMeta } from "../bootstrap.ts";
 import { GitHubApiError } from "../errors.ts";
 import { resolveSprint } from "./resolver.ts";
 import { UserMilestoneResolver } from "./user-milestone-resolver.ts";
@@ -20,6 +21,18 @@ import {
   UPDATE_ITEM_FIELD_MUTATION,
 } from "../queries.ts";
 import { CLEAR_ASSIGNEES_MUTATION, SET_ASSIGNEE_MUTATION } from "../queries.ts";
+
+/** Resolve a single-select option ID for project-board or org issue-backed fields. */
+const resolveSingleSelectOptionId = (
+  value: string,
+  issueBacked: IssueBackedFieldMeta | undefined,
+  projectOptions: Record<string, string>,
+): string | undefined => {
+  if (issueBacked) {
+    return issueBacked.options?.[value];
+  }
+  return projectOptions[value];
+};
 
 // ── FieldValueMutator class ──────────────────────────────────────────────────
 
@@ -96,8 +109,11 @@ export class FieldValueMutator {
     const issueBacked = this.ctx.config.live.issueBackedFields[fieldId];
     if (issueBacked) {
       const issueId = await this.resolveIssueNodeId(itemId);
-      const optionId = (issueBacked.options ?? {})[value] ??
-        this.ctx.config.live.statusOptions[value];
+      const optionId = resolveSingleSelectOptionId(
+        value,
+        issueBacked,
+        this.ctx.config.live.statusOptions,
+      );
       if (!optionId) {
         throw new GitHubApiError(
           `Status option "${value}" is not in the project vocabulary.`,
@@ -109,9 +125,7 @@ export class FieldValueMutator {
             context: {
               field: "status",
               value,
-              knownOptions: Object.keys(
-                issueBacked.options ?? this.ctx.config.live.statusOptions,
-              ),
+              knownOptions: Object.keys(issueBacked.options ?? {}),
             },
           },
         );
@@ -239,8 +253,11 @@ export class FieldValueMutator {
       if (value === null) {
         await this.clearIssueBackedField(issueId, issueBacked.orgFieldId);
       } else {
-        const optionId = (issueBacked.options ?? {})[value] ??
-          this.ctx.config.live.priorityOptions[value];
+        const optionId = resolveSingleSelectOptionId(
+          value,
+          issueBacked,
+          this.ctx.config.live.priorityOptions,
+        );
         if (!optionId) {
           throw new GitHubApiError(
             `Priority option "${value}" is not in the project vocabulary.`,
@@ -252,9 +269,7 @@ export class FieldValueMutator {
               context: {
                 field: "priority",
                 value,
-                knownOptions: Object.keys(
-                  issueBacked.options ?? this.ctx.config.live.priorityOptions,
-                ),
+                knownOptions: Object.keys(issueBacked.options ?? {}),
               },
             },
           );
@@ -318,7 +333,7 @@ export class FieldValueMutator {
         return;
       }
       throw new GitHubApiError("Type cannot be cleared when using organization issue types.", {
-        code: "NOT_IMPLEMENTED",
+        code: "ORG_ISSUE_TYPE_NOT_CLEARABLE",
         statusCode: 400,
         recovery: "Organization issue types require an explicit type assignment. " +
           "Set a valid type key instead of null.",

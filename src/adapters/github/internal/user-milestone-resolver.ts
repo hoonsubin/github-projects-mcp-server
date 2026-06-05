@@ -1,24 +1,41 @@
 // =============================================================================
-// src/adapters/github/internal/user-milestone-resolver.ts - User Resolution
+// src/adapters/github/internal/user-milestone-resolver.ts - Actor Resolution
 // =============================================================================
 
 import { GitHubApiError } from "../errors.ts";
-import type * as GH from "../generated/github-types.ts";
-import { GET_USER_NODE_ID } from "../queries.ts";
+import {
+  RESOLVE_ACTOR_NODE_ID,
+  RESOLVE_ASSIGNABLE_ACTOR,
+} from "../queries.ts";
 import { mapWithConcurrency } from "./concurrent.ts";
 import type { GitHubInfraContext } from "./infra-context.ts";
 
-interface GetUserNodeIdResponse {
-  user?: Pick<GH.User, "id"> | null;
+interface ResolveActorNodeIdResponse {
+  user?: { id: string } | null;
+  organization?: { id: string } | null;
+}
+
+interface AssignableActorNode {
+  login: string;
+  id?: string;
+}
+
+interface ResolveAssignableActorResponse {
+  repository?: {
+    suggestedActors?: {
+      nodes: Array<AssignableActorNode | null>;
+    } | null;
+  } | null;
 }
 
 const USER_LOOKUP_CONCURRENCY = 6;
 
 /**
- * Resolves GitHub user logins to node IDs for assignee mutations.
+ * Resolves GitHub actor logins (User, Organization, Bot) to node IDs for assignee mutations.
  */
 export class UserMilestoneResolver {
   private readonly nodeIdByLogin = new Map<string, string>();
+  private suggestedActorsCache: Map<string, string> | null = null;
 
   constructor(private readonly ctx: GitHubInfraContext) {}
 
@@ -26,17 +43,23 @@ export class UserMilestoneResolver {
     const cached = this.nodeIdByLogin.get(login);
     if (cached) return cached;
 
-    const result = await this.ctx.gh.graphql<GetUserNodeIdResponse>(
-      GET_USER_NODE_ID,
+    const result = await this.ctx.gh.graphql<ResolveActorNodeIdResponse>(
+      RESOLVE_ACTOR_NODE_ID,
       { login },
     );
-    const nodeId = result?.user?.id;
+    let nodeId = result?.user?.id ?? result?.organization?.id;
+
     if (!nodeId) {
-      throw new GitHubApiError(`User "${login}" not found.`, {
+      nodeId = await this.resolveAssignableActorNodeId(login);
+    }
+
+    if (!nodeId) {
+      throw new GitHubApiError(`Actor "${login}" not found.`, {
         code: "NOT_FOUND",
         statusCode: 404,
         recovery:
-          `Check that the GitHub username "${login}" is spelled correctly and the account exists.`,
+          `Check that the GitHub login "${login}" is spelled correctly, ` +
+          "the account exists, and it can be assigned to issues in this repository.",
         context: { login },
       });
     }
@@ -52,5 +75,25 @@ export class UserMilestoneResolver {
       (login) => this.resolveUserNodeId(login),
     );
     return Promise.all(logins.map((login) => this.resolveUserNodeId(login)));
+  }
+
+  private async resolveAssignableActorNodeId(login: string): Promise<string | undefined> {
+    const repo = this.ctx.repo;
+    if (!repo) return undefined;
+
+    if (!this.suggestedActorsCache) {
+      const result = await this.ctx.gh.graphql<ResolveAssignableActorResponse>(
+        RESOLVE_ASSIGNABLE_ACTOR,
+        { owner: this.ctx.owner, repo },
+      );
+      this.suggestedActorsCache = new Map();
+      for (const node of result.repository?.suggestedActors?.nodes ?? []) {
+        if (node?.login && node.id) {
+          this.suggestedActorsCache.set(node.login, node.id);
+        }
+      }
+    }
+
+    return this.suggestedActorsCache.get(login);
   }
 }

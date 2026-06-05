@@ -359,7 +359,8 @@ export const SetFieldSchema = z
           'priority → string display name (e.g. "Must", "Should"); ' +
           'assignee → GitHub login string (e.g. "hoonsubin"); ' +
           'type → canonical key string (e.g. "feature", "bug" - see vocabulary.type in scrum_orient). ' +
-          "Pass null for any field to clear the value entirely.",
+          "Pass null to clear a field. Exception: on org-owned projects using organization issue types, " +
+          "type cannot be cleared — set an explicit type key instead.",
       ),
   })
   .strict();

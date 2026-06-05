@@ -115,6 +115,9 @@ export const GET_REPO_LABELS_QUERY = getQuery("GetRepoLabels");
 export const GET_IMPEDIMENT_ISSUES_QUERY = getQuery("GetImpedimentIssues");
 export const LIST_MILESTONES_QUERY = getQuery("ListMilestones");
 export const GET_USER_NODE_ID = getQuery("GetUserNodeId");
+export const RESOLVE_ACTOR_NODE_ID = getQuery("ResolveActorNodeId");
+export const RESOLVE_ASSIGNABLE_ACTOR = getQuery("ResolveAssignableActor");
+export const RESOLVE_REPOSITORY_OWNER = getQuery("ResolveRepositoryOwner");
 export const ADD_PROJECT_ITEM_MUTATION = getQuery("AddProjectItem");
 export const CLEAR_ITEM_FIELD_MUTATION = getQuery("ClearItemField");
 export const UPDATE_ITEM_FIELD_MUTATION = getQuery("UpdateItemField");
@@ -131,6 +134,7 @@ export const GET_REPO_QUERY = getQuery("GetRepo");
 
 // ── Field management queries ───────────────────────────────────────────────────
 export const GET_FIELD_OPTIONS_QUERY = getQuery("GetFieldOptions");
+export const GET_ORG_ISSUE_FIELD_OPTIONS_QUERY = getQuery("GetOrgIssueFieldOptions");
 
 // ── Bootstrap queries (config-loader) ──────────────────────────────────────────
 export const GET_OWNER_BOOTSTRAP_QUERY = getQuery("GetOwnerBootstrap");
@@ -158,6 +162,7 @@ export const ADD_COMMENT_MUTATION = getQuery("AddComment");
 
 // ── Field management mutations ─────────────────────────────────────────────────
 export const UPDATE_FIELD_MUTATION = getQuery("UpdateField");
+export const UPDATE_ORG_ISSUE_FIELD_CATALOG_MUTATION = getQuery("UpdateOrgIssueFieldCatalog");
 export const CONVERT_DRAFT_ISSUE_MUTATION = getQuery("ConvertDraftIssue");
 export const ADD_DRAFT_ISSUE_MUTATION = getQuery("AddDraftIssue");
 export const UPDATE_ISSUE_FIELD_MUTATION = getQuery("UpdateIssueField");

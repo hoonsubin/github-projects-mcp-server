@@ -228,6 +228,31 @@ Deno.test({
 });
 
 Deno.test({
+  name: "setFieldStatus - does not fall back to project statusOptions when issue-backed lookup misses",
+  async fn() {
+    const baseConfig = makeConfig();
+    const { mutator, gh } = createMutator({
+      configOverrides: {
+        live: {
+          ...baseConfig.live,
+          statusOptions: { Done: "opt_done_project" },
+          issueBackedFields: {
+            "PVTF_status": { orgFieldId: "IF_status", options: { "In Progress": "IFSO_ip" } },
+          },
+        },
+      },
+    });
+    gh.enqueue(PROJECT_ITEM_ISSUE_OK);
+
+    const err = await assertRejects(
+      () => mutator.setFieldStatus(TEST_ITEM_ID, "Done"),
+      GitHubApiError,
+    );
+    assertEquals(err.code, "OPTION_NOT_FOUND");
+  },
+});
+
+Deno.test({
   name: "setFieldStatus - prefers issueBacked.options over statusOptions for option id",
   async fn() {
     const baseConfig = makeConfig();
@@ -544,7 +569,7 @@ Deno.test({
       () => mutator.setFieldType(TEST_ITEM_ID, null),
       GitHubApiError,
     );
-    assertEquals(err.code, "NOT_IMPLEMENTED");
+    assertEquals(err.code, "ORG_ISSUE_TYPE_NOT_CLEARABLE");
   },
 });
 
@@ -571,7 +596,7 @@ Deno.test({
     "setFieldAssignee - resolves user via UserMilestoneResolver then sets assignee using real fixture",
   async fn() {
     const { mutator, gh } = createMutator();
-    // First graphql call: real fixture response for GetUserNodeId
+    // First graphql call: real fixture response for ResolveActorNodeId
     gh.enqueue(USER_FOUND_RESPONSE);
     // Second graphql call: SetAssignee mutation response
     gh.enqueue(SET_ASSIGNEE_OK);
@@ -580,8 +605,8 @@ Deno.test({
 
     assertEquals(gh.graphqlCalls.length, 2);
 
-    // First call should be GetUserNodeId via the resolver
-    assertStringIncludes(gh.graphqlCalls[0].queryExcerpt, "GetUserNodeId");
+    // First call should be ResolveActorNodeId via the resolver
+    assertStringIncludes(gh.graphqlCalls[0].queryExcerpt, "ResolveActorNodeId");
     assertEquals(vars(gh, 0).login, REAL_LOGIN);
 
     // Second call should be SetAssignee mutation
@@ -596,6 +621,7 @@ Deno.test({
   async fn() {
     const { mutator, gh } = createMutator();
     gh.enqueue(USER_NULL_RESPONSE);
+    gh.enqueue({ repository: { suggestedActors: { nodes: [] } } });
 
     const err = await assertRejects(
       () => mutator.setFieldAssignee(TEST_ISSUE_ID, "nonexistent-user"),
@@ -604,8 +630,8 @@ Deno.test({
 
     assertEquals(err.code, "NOT_FOUND");
     assertStringIncludes(err.message, "not found");
-    assertEquals(gh.graphqlCalls.length, 1);
-    assertStringIncludes(gh.graphqlCalls[0].queryExcerpt, "GetUserNodeId");
+    assertEquals(gh.graphqlCalls.length, 2);
+    assertStringIncludes(gh.graphqlCalls[0].queryExcerpt, "ResolveActorNodeId");
   },
 });
 

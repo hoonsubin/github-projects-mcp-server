@@ -43,9 +43,11 @@ Deno.test("resolveProjectItemIdByIssueNumber - returns item id from first matchi
     },
   });
 
+  gh.enqueue({ repository: { issue: { projectItems: { nodes: [] } } } });
+
   const id = await resolveProjectItemIdByIssueNumber(gh, GH_CONFIG, 42);
   assertEquals(id, "PVTI_target");
-  assertEquals(gh.graphqlCalls.length, 1);
+  assertEquals(gh.graphqlCalls.length, 2);
 });
 
 Deno.test("fetchProjectItemIdByIssueNumber - tries next repo when first has no match", async () => {
@@ -70,6 +72,35 @@ Deno.test("fetchProjectItemIdByIssueNumber - tries next repo when first has no m
 
   const id = await fetchProjectItemIdByIssueNumber(gh, GH_CONFIG, 7);
   assertEquals(id, "PVTI_from_b");
+  assertEquals(gh.graphqlCalls.length, 2);
+});
+
+Deno.test("fetchProjectItemIdByIssueNumber - throws AMBIGUOUS_ISSUE_NUMBER when multiple repos match", async () => {
+  const gh = createGhSpy();
+  const itemA = {
+    id: "PVTI_a",
+    type: "ISSUE",
+    createdAt: "",
+    updatedAt: "",
+    isArchived: false,
+    project: { number: 1 },
+  };
+  const itemB = {
+    id: "PVTI_b",
+    type: "ISSUE",
+    createdAt: "",
+    updatedAt: "",
+    isArchived: false,
+    project: { number: 1 },
+  };
+  gh.enqueue({ repository: { issue: { projectItems: { nodes: [itemA] } } } });
+  gh.enqueue({ repository: { issue: { projectItems: { nodes: [itemB] } } } });
+
+  const err = await assertRejects(
+    () => fetchProjectItemIdByIssueNumber(gh, GH_CONFIG, 42),
+    GitHubApiError,
+  );
+  assertEquals(err.code, "AMBIGUOUS_ISSUE_NUMBER");
   assertEquals(gh.graphqlCalls.length, 2);
 });
 

@@ -58,8 +58,13 @@ const givenUserExists = (spy: GitHubClientSpy): void => {
   spy.enqueue(USER_FOUND);
 };
 
+const SUGGESTED_ACTORS_EMPTY = {
+  repository: { suggestedActors: { nodes: [] as Array<null> } },
+};
+
 const givenUserNotFound = (spy: GitHubClientSpy): void => {
   spy.enqueue(USER_NULL);
+  spy.enqueue(SUGGESTED_ACTORS_EMPTY);
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -106,6 +111,7 @@ Deno.test({
     assertEquals(result.code, "NOT_FOUND");
     assertEquals(result.statusCode, 404);
     assertStringIncludes(result.message, "not found");
+    assertStringIncludes(result.message, "Actor");
     assertStringIncludes(
       result.recovery,
       "spelled correctly",
@@ -119,6 +125,7 @@ Deno.test({
   async fn() {
     const { resolver, gh } = createResolver();
     gh.enqueue(USER_UNDEF);
+    gh.enqueue(SUGGESTED_ACTORS_EMPTY);
 
     const result = await assertRejects(
       () => resolver.resolveUserNodeId("nonexistent"),
@@ -228,13 +235,49 @@ Deno.test({
       GitHubApiError,
     );
 
-    assertEquals(gh.graphqlCalls.length, 2);
+    assertEquals(gh.graphqlCalls.length, 3);
     assertEquals(result.code, "NOT_FOUND");
     assertStringIncludes(
       result.recovery,
       "spelled correctly",
       "recovery should propagate through resolveUserNodeIds",
     );
+  },
+});
+
+Deno.test({
+  name: "resolveUserNodeId - resolves organization login via organization() root",
+  async fn() {
+    const { resolver, gh } = createResolver();
+    gh.enqueue({ user: null, organization: { id: "O_org1" } });
+
+    const nodeId = await resolver.resolveUserNodeId("my-org");
+
+    assertEquals(nodeId, "O_org1");
+    assertStringIncludes(gh.graphqlCalls[0].queryExcerpt, "ResolveActorNodeId");
+  },
+});
+
+Deno.test({
+  name: "resolveUserNodeId - resolves bot login via suggestedActors fallback",
+  async fn() {
+    const { resolver, gh } = createResolver();
+    gh.enqueue({ user: null, organization: null });
+    gh.enqueue({
+      repository: {
+        suggestedActors: {
+          nodes: [
+            { login: "dependabot[bot]", id: "B_bot1" },
+          ],
+        },
+      },
+    });
+
+    const nodeId = await resolver.resolveUserNodeId("dependabot[bot]");
+
+    assertEquals(nodeId, "B_bot1");
+    assertEquals(gh.graphqlCalls.length, 2);
+    assertStringIncludes(gh.graphqlCalls[1].queryExcerpt, "ResolveAssignableActor");
   },
 });
 
