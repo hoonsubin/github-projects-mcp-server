@@ -43,16 +43,28 @@ export type SupportedMimeType =
  * raw-content equivalents. Each backend contributes one entry to the
  * resolution pipeline — resolution and error-handling code never hard-codes
  * platform-specific URL patterns.
+ *
+ * Backends may also implement `requestInit` to supply per-request options
+ * (e.g. auth headers) when the use-case layer fetches the URL. This keeps
+ * authentication entirely in the adapter layer: a GitLab backend can read
+ * GITLAB_TOKEN, a Bitbucket backend reads its own env var, and so on.
  */
 export interface UrlRewriter {
   /** Which platform/backend this rewriter handles (e.g. "github"). */
   readonly backendName: string;
-  /** True when this rewriter can convert the given URL. */
+  /** True when this rewriter can handle the given URL. */
   readonly matches: (url: URL) => boolean;
-  /** Rewrite the URL to its canonical raw-content form. */
+  /** Rewrite the URL to its canonical raw-content form. Return the URL unchanged if no transformation is needed. */
   readonly rewrite: (url: URL) => URL;
   /** Human-readable hint when content from this platform isn't what was expected. */
   readonly recoveryHint: (url: URL) => string;
+  /**
+   * Optional per-request fetch options (e.g. Authorization headers).
+   * Called by the use-case fetcher immediately before the fetch — the result
+   * is passed directly to `fetch(url, init)`. Return undefined to use the
+   * default unauthenticated fetch.
+   */
+  readonly requestInit?: (url: URL) => RequestInit | undefined;
 }
 
 /** Human-readable representation for error messages and logging. */

@@ -207,17 +207,28 @@ export class FieldValueMutator {
           "then re-run the server so config-loader can pick it up.",
       });
     }
+    // Coerce to a real JS number — the MCP input union (z.string | z.number) can
+    // deliver "1" as a string even when the caller intended a number. GitHub's
+    // GraphQL rejects non-numeric numberValue with "cannot coerce to Float".
+    const numericValue = value !== null ? Number(value) : null;
+    if (numericValue !== null && !Number.isFinite(numericValue)) {
+      throw new GitHubApiError(`Invalid story points value: ${value}`, {
+        code: "MUTATION_FAILED",
+        statusCode: 400,
+        recovery: "Provide a finite number for story_points (e.g. 1, 2, 3, 5, 8).",
+      });
+    }
     const issueBacked = this.ctx.config.live.issueBackedFields[fieldId];
     if (issueBacked) {
       const issueId = await this.resolveIssueNodeId(itemId);
-      if (value === null) {
+      if (numericValue === null) {
         await this.clearIssueBackedField(issueId, issueBacked.orgFieldId);
       } else {
-        await this.setIssueBackedField(issueId, issueBacked.orgFieldId, { numberValue: value });
+        await this.setIssueBackedField(issueId, issueBacked.orgFieldId, { numberValue: numericValue });
       }
       return;
     }
-    if (value === null) {
+    if (numericValue === null) {
       await this.clearField(itemId, fieldId);
     } else {
       await this.ctx.gh.graphql<
@@ -229,7 +240,7 @@ export class FieldValueMutator {
             projectId: this.ctx.config.live.projectId,
             itemId,
             fieldId,
-            value: { number: value },
+            value: { number: numericValue },
           },
         },
       );

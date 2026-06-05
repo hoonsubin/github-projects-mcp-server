@@ -124,7 +124,8 @@ const overlayOrgIssueFieldValues = (
     const fieldName = node.field?.name;
     if (!fieldName) continue;
     if (fields.story_points === null && fieldMapping.story_points === fieldName) {
-      if (typeof node.value === "number") fields.story_points = node.value;
+      const n = Number(node.value);
+      if (Number.isFinite(n)) fields.story_points = n;
     }
     if (fields.priority === null && fieldMapping.priority === fieldName) {
       if (typeof node.name === "string") fields.priority = node.name;
@@ -642,8 +643,11 @@ export const storySnapshotOverridesFromSetField = (
       return {
         sprint: value === null ? null : sprintDisplayTitle(value as SprintRef, config),
       };
-    case "story_points":
-      return { story_points: value as number | null };
+    case "story_points": {
+      if (value === null) return { story_points: null };
+      const n = Number(value);
+      return { story_points: Number.isFinite(n) ? n : null };
+    }
     case "priority":
       return { priority: value as string | null };
     case "type":

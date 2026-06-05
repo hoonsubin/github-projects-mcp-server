@@ -15,6 +15,7 @@
 import type { ContentLocation } from "../domain/content-location.ts";
 import { describeContentLocation } from "../domain/content-location.ts";
 import { assertNever, ConfigError } from "../domain/errors.ts";
+import { findRewriter } from "./url-rewriters.ts";
 
 /**
  * Fetch the string content from wherever a ContentLocation points.
@@ -36,9 +37,15 @@ export const fetchContent = async (
       // fetch follows redirects by default (redirect: "follow"); 3xx responses
       // are not an error case managed by this function — they are resolved to
       // the final response before reaching res.ok.
+      //
+      // Registered UrlRewriters may supply request options (e.g. auth headers)
+      // via requestInit(). This keeps backend-specific auth in the adapter layer.
+      const rewriter = findRewriter(location.url);
+      const init = rewriter?.requestInit?.(location.url);
+
       let res: Response;
       try {
-        res = await fetch(location.url);
+        res = await fetch(location.url, init);
       } catch (fetchErr) {
         throw new ConfigError(
           `Cannot fetch ${describeContentLocation(location)}: ${
