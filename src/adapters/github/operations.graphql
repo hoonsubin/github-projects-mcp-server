@@ -98,6 +98,18 @@ fragment ItemContent on ProjectV2Item {
       milestone { id title dueOn }
       repository { name nameWithOwner }
       blockedBy(first: 10) { nodes { id number title } }
+      issueFieldValues(first: 25) {
+        nodes {
+          ... on IssueFieldNumberValue {
+            value
+            field { ... on IssueFieldNumber { name } }
+          }
+          ... on IssueFieldSingleSelectValue {
+            name optionId
+            field { ... on IssueFieldSingleSelect { name } }
+          }
+        }
+      }
     }
     ... on PullRequest {
       id number title url state body isDraft
@@ -123,6 +135,18 @@ fragment ItemContentAggregate on ProjectV2Item {
     ... on Issue {
       id number title body state closedAt
       issueType { id name }
+      issueFieldValues(first: 25) {
+        nodes {
+          ... on IssueFieldNumberValue {
+            value
+            field { ... on IssueFieldNumber { name } }
+          }
+          ... on IssueFieldSingleSelectValue {
+            name optionId
+            field { ... on IssueFieldSingleSelect { name } }
+          }
+        }
+      }
     }
     ... on PullRequest {
       id number title state
@@ -182,7 +206,10 @@ fragment ItemFieldValues on ProjectV2Item {
         field { ... on ProjectV2FieldCommon { id name } }
       }
       ... on ProjectV2ItemIssueFieldValue {
-        field { ... on ProjectV2FieldCommon { id name } }
+        field {
+          ... on ProjectV2Field { id name }
+          ... on ProjectV2SingleSelectField { id name }
+        }
         issueFieldValue {
           ... on IssueFieldSingleSelectValue {
             name optionId color
@@ -320,6 +347,26 @@ query GetItemFields($itemId: ID!) {
           ... on ProjectV2ItemFieldIterationValue {
             title iterationId
             field { ... on ProjectV2FieldCommon { id name } }
+          }
+          ... on ProjectV2ItemIssueFieldValue {
+            field {
+              ... on ProjectV2Field { id name }
+              ... on ProjectV2SingleSelectField { id name }
+            }
+            issueFieldValue {
+              ... on IssueFieldSingleSelectValue {
+                name optionId color
+              }
+              ... on IssueFieldTextValue {
+                value
+              }
+              ... on IssueFieldNumberValue {
+                value
+              }
+              ... on IssueFieldDateValue {
+                value
+              }
+            }
           }
         }
       }

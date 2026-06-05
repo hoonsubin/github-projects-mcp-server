@@ -223,6 +223,17 @@ export type ProjectV2ItemRef = Required<
 // query-projection shapes - narrower than the full schema types - matching exactly
 // what our GraphQL fragments fetch.
 
+/** Minimal shape of a single org issue field value node from Issue.issueFieldValues. */
+export interface OrgIssueFieldValueNode {
+  /** Number field value (IssueFieldNumberValue.value: Float). */
+  value?: number | null;
+  /** Single-select field display name (IssueFieldSingleSelectValue.name). */
+  name?: string;
+  optionId?: string;
+  /** The org issue field definition — only `name` is selected. */
+  field?: { name?: string } | null;
+}
+
 export interface ProjectItemIssueContent extends IssueIdentity {
   __typename: "Issue";
   state: GH.IssueState;
@@ -232,6 +243,8 @@ export interface ProjectItemIssueContent extends IssueIdentity {
   milestone: MilestoneRefNode | null;
   repository: FieldValueRepository;
   blockedBy?: { nodes: IssueRefNode[] };
+  /** Org-level issue field values — populated when the project is org-owned. */
+  issueFieldValues?: { nodes: OrgIssueFieldValueNode[] } | null;
 }
 
 export interface ProjectItemPRContent extends PrIdentity, PrDiscriminator {
