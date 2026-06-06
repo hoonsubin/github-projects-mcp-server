@@ -1,15 +1,15 @@
 // ── src/services/logger.test.ts ─────────────────────────────────────────────
-// Unit tests for the dual-output logger:
-//   - Transport binding / unbinding
-//   - stderr output (console.error) always happens
-//   - MCP notifications fire when transport is bound
+// Unit tests for the transport-mode-aware logger:
+//   - stdio mode: stderr only, MCP notifications suppressed
+//   - http mode:  stderr + MCP notifications when server is bound
 //   - MCP level mapping (WARN→warning, ERROR→error, INFO→info)
-//   - Transport failure is silently caught
+//   - Transport failure is silently caught (stderr still fires)
 //   - DEBUG gate
+//   - bind / unbind lifecycle
 
 import { assertEquals } from "@std/assert";
 import { assertSpyCalls, spy } from "@std/testing/mock";
-import { log, type LogTransport, setLogTransport } from "./logger.ts";
+import { bindMcpServer, initLogger, log, type McpServerLike } from "./logger.ts";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -18,16 +18,16 @@ interface CapturedCall {
   data: string;
 }
 
-/** A minimal LogTransport that captures calls into an array. */
-const capturingTransport = (): { transport: LogTransport; calls: CapturedCall[] } => {
+/** A minimal McpServerLike that captures calls into an array. */
+const capturingServer = (): { server: McpServerLike; calls: CapturedCall[] } => {
   const calls: CapturedCall[] = [];
-  const transport: LogTransport = {
+  const server: McpServerLike = {
     sendLoggingMessage(params: { level: string; data: string }): Promise<void> {
       calls.push({ level: params.level, data: params.data });
       return Promise.resolve();
     },
   };
-  return { transport, calls };
+  return { server, calls };
 };
 
 // ── Spies for console.error ────────────────────────────────────────────────
@@ -35,40 +35,98 @@ const capturingTransport = (): { transport: LogTransport; calls: CapturedCall[] 
 // Re-spy in each test that needs it to avoid carry-over counts.
 const spyStderr = () => spy(console, "error");
 
+// ── Test setup helpers ──────────────────────────────────────────────────────
+
+/**
+ * Configure the logger for http mode with a capturing mock server.
+ * Returns the calls array so assertions can inspect MCP notification traffic.
+ */
+const initHttp = (): CapturedCall[] => {
+  initLogger({ transport: "http" });
+  const { server, calls } = capturingServer();
+  bindMcpServer(server);
+  return calls;
+};
+
+/**
+ * Configure the logger for stdio mode with a capturing mock server.
+ * Returns the calls array — should always be empty because stdio mode
+ * does not emit MCP notifications.
+ */
+const initStdio = (): CapturedCall[] => {
+  initLogger({ transport: "stdio" });
+  const { server, calls } = capturingServer();
+  bindMcpServer(server);
+  return calls;
+};
+
 // ── Tests ──────────────────────────────────────────────────────────────────
 
-Deno.test("setLogTransport binds transport — MCP notification is sent", () => {
-  const { transport, calls } = capturingTransport();
-  setLogTransport(transport);
+// --- stdio mode — MCP notifications suppressed ---
 
-  log.info("hello");
+Deno.test("stdio mode: log.info writes to stderr only, no MCP notification", () => {
+  using stderrSpy = spyStderr();
+  const calls = initStdio();
+
+  log.info("stdio info");
+  assertSpyCalls(stderrSpy, 1);
+  assertEquals(calls.length, 0);
+});
+
+Deno.test("stdio mode: log.warn writes to stderr only, no MCP notification", () => {
+  using stderrSpy = spyStderr();
+  const calls = initStdio();
+
+  log.warn("stdio warn");
+  assertSpyCalls(stderrSpy, 1);
+  assertEquals(calls.length, 0);
+});
+
+Deno.test("stdio mode: log.error writes to stderr only, no MCP notification", () => {
+  using stderrSpy = spyStderr();
+  const calls = initStdio();
+
+  log.error("stdio error");
+  assertSpyCalls(stderrSpy, 1);
+  assertEquals(calls.length, 0);
+});
+
+// --- http mode — dual output ---
+
+Deno.test("http mode: log.info writes to stderr AND sends MCP notification", () => {
+  using stderrSpy = spyStderr();
+  const calls = initHttp();
+
+  log.info("http info");
+  assertSpyCalls(stderrSpy, 1);
   assertEquals(calls.length, 1);
-  assertEquals(calls[0], { level: "info", data: "hello" });
-
-  // Unbind for subsequent tests
-  setLogTransport(null as unknown as LogTransport);
+  assertEquals(calls[0], { level: "info", data: "http info" });
 });
 
-Deno.test("without transport, log.info writes to stderr only", () => {
+Deno.test("http mode: log.warn writes to stderr AND sends MCP notification", () => {
   using stderrSpy = spyStderr();
-  log.info("stderr test");
+  const calls = initHttp();
+
+  log.warn("http warn");
   assertSpyCalls(stderrSpy, 1);
+  assertEquals(calls.length, 1);
 });
 
-Deno.test("without transport, log.warn writes to stderr only", () => {
+Deno.test("http mode: log.error writes to stderr AND sends MCP notification", () => {
   using stderrSpy = spyStderr();
-  log.warn("warn test");
+  const calls = initHttp();
+
+  log.error("http error");
   assertSpyCalls(stderrSpy, 1);
+  assertEquals(calls.length, 1);
 });
 
-Deno.test("without transport, log.error writes to stderr only", () => {
-  using stderrSpy = spyStderr();
-  log.error("error test");
-  assertSpyCalls(stderrSpy, 1);
-});
+// --- DEBUG gate ---
 
 Deno.test("log.debug is silent when DEBUG is not set", () => {
   using stderrSpy = spyStderr();
+  initLogger({ transport: "stdio" });
+
   log.debug("should be silent");
   assertSpyCalls(stderrSpy, 0);
 });
@@ -77,108 +135,94 @@ Deno.test("log.isDebug is false when DEBUG is not set", () => {
   assertEquals(log.isDebug(), false);
 });
 
-// ── Level mapping ──────────────────────────────────────────────────────────
+// --- MCP level mapping (http mode) ---
 
-Deno.test("WARN maps to MCP level 'warning'", () => {
-  const { transport, calls } = capturingTransport();
-  setLogTransport(transport);
+Deno.test("http mode: WARN maps to MCP level 'warning'", () => {
+  const calls = initHttp();
 
   log.warn("a warning");
   assertEquals(calls.length, 1);
   assertEquals(calls[0].level, "warning");
-
-  setLogTransport(null as unknown as LogTransport);
 });
 
-Deno.test("ERROR maps to MCP level 'error'", () => {
-  const { transport, calls } = capturingTransport();
-  setLogTransport(transport);
+Deno.test("http mode: ERROR maps to MCP level 'error'", () => {
+  const calls = initHttp();
 
   log.error("an error");
   assertEquals(calls.length, 1);
   assertEquals(calls[0].level, "error");
-
-  setLogTransport(null as unknown as LogTransport);
 });
 
-Deno.test("INFO maps to MCP level 'info'", () => {
-  const { transport, calls } = capturingTransport();
-  setLogTransport(transport);
+Deno.test("http mode: INFO maps to MCP level 'info'", () => {
+  const calls = initHttp();
 
   log.info("info level check");
   assertEquals(calls.length, 1);
   assertEquals(calls[0].level, "info");
-
-  setLogTransport(null as unknown as LogTransport);
 });
 
-// ── Transport failure is silent ─────────────────────────────────────────────
+// --- Transport failure is silent ---
 
-Deno.test("transport failure does not throw and does not block stderr", () => {
+Deno.test("http mode: transport failure does not throw and does not block stderr", () => {
   using stderrSpy = spyStderr();
+  initLogger({ transport: "http" });
 
-  const failingTransport: LogTransport = {
+  const failingServer: McpServerLike = {
     sendLoggingMessage: () => Promise.reject(new Error("transport down")),
   };
-  setLogTransport(failingTransport);
+  bindMcpServer(failingServer);
 
   // Should not throw
   log.info("fire and forget");
 
   // stderr should still have fired
   assertSpyCalls(stderrSpy, 1);
-
-  setLogTransport(null as unknown as LogTransport);
 });
 
-// ── Dual output ────────────────────────────────────────────────────────────
+// --- MCP data is the raw message string, not the formatted line ---
 
-Deno.test("when transport is bound, both stderr and MCP notification fire", () => {
-  using stderrSpy = spyStderr();
-  const { transport, calls } = capturingTransport();
-  setLogTransport(transport);
-
-  log.warn("dual test");
-
-  assertSpyCalls(stderrSpy, 1);
-  assertEquals(calls.length, 1);
-
-  setLogTransport(null as unknown as LogTransport);
-});
-
-// ── MCP data is the raw message ────────────────────────────────────────────
-
-Deno.test("MCP notification data is the raw message string, not the formatted line", () => {
-  const { transport, calls } = capturingTransport();
-  setLogTransport(transport);
+Deno.test("http mode: MCP notification data is the raw message, not the formatted line", () => {
+  const calls = initHttp();
 
   log.info("raw message", { extra: "data" });
-
   assertEquals(calls.length, 1);
   assertEquals(calls[0].data, "raw message");
-
-  setLogTransport(null as unknown as LogTransport);
 });
 
-// ── Unbinding ──────────────────────────────────────────────────────────────
+// --- Server rebind ---
 
-Deno.test("unbinding transport stops MCP notifications", () => {
-  const { transport, calls } = capturingTransport();
-  setLogTransport(transport);
+Deno.test("http mode: rebinding server picks up new server, old server ignored", () => {
+  const calls = initHttp();
 
-  // First call should go through
+  // First server captures
   log.info("first");
   assertEquals(calls.length, 1);
 
-  // Unbind
-  setLogTransport(null as unknown as LogTransport);
+  // Bind a different server
+  const calls2: CapturedCall[] = [];
+  bindMcpServer({
+    sendLoggingMessage(params) {
+      calls2.push({ level: params.level, data: params.data });
+      return Promise.resolve();
+    },
+  });
 
-  // Second call should NOT go to transport
   log.info("second");
-  assertEquals(calls.length, 1); // still 1
+  // Old server should NOT have received it
+  assertEquals(calls.length, 1);
+  // New server SHOULD have received it
+  assertEquals(calls2.length, 1);
+  assertEquals(calls2[0].data, "second");
+});
 
-  // Re-bind
-  setLogTransport(transport);
-  log.info("third");
-  assertEquals(calls.length, 2); // now 2
+// --- Default mode is stdio ---
+
+Deno.test("default mode (before initLogger) is stdio — no MCP notifications", () => {
+  // Simulate: mode hasn't been set yet (tests above may have left state)
+  initLogger({ transport: "stdio" });
+  const { server, calls } = capturingServer();
+  bindMcpServer(server);
+
+  log.info("default mode");
+  assertEquals(calls.length, 0);
 });

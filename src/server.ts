@@ -1,33 +1,8 @@
-// =============================================================================
-// src/server.ts - Composition root and transport entry point
-//
-// Responsibilities:
-//   - Select which backend to build via the adapter factory registry
-//   - Wire the backend to tool registration
-//   - Set up MCP transports (stdio and HTTP)
-//   - Install cross-cutting observability (tool logging, transport tracing)
-//
-// This file imports no adapter internals - backend construction is delegated to
-// src/adapters/factory.ts, which selects the correct AdapterFactory by platform key.
-//
-// Error handling strategy:
-//   - All logging goes to stderr (never stdout - MCP protocol).
-//   - Unhandled rejections are logged to stderr only.
-//   - stdio transport wraps the entire lifecycle in a try/catch that emits
-//     a valid JSON-RPC error response on stdout so the MCP client receives
-//     protocol-compliant error instead of raw stack traces.
-// =============================================================================
-
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Variables } from "@modelcontextprotocol/sdk/shared/uriTemplate.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import type {
-  Transport,
-  TransportSendOptions,
-} from "@modelcontextprotocol/sdk/shared/transport.js";
-import type { JSONRPCMessage, MessageExtraInfo } from "@modelcontextprotocol/sdk/types.js";
 import { registerScrumReadTools } from "./tools/scrum-read.ts";
 import { registerScrumWriteTools } from "./tools/scrum-write.ts";
 import { templateResourceUseCase } from "./scrum/template-resource.ts";
@@ -35,7 +10,14 @@ import { type AdapterFactory, createBackend } from "./adapters/factory.ts";
 import { loadScrumConfig } from "./scrum/config-boot.ts";
 import { GitHubAdapterFactory } from "./adapters/github/factory.ts";
 import { AdapterError, ConfigError } from "./domain/errors.ts";
-import { log, setLogTransport } from "./services/logger.ts";
+import {
+  bindMcpServer,
+  initLogger,
+  log,
+  patchToolLogging,
+  type TransportMode,
+  wrapTransportLogging,
+} from "./services/logger.ts";
 import { parseArgs } from "@std/cli/parse-args";
 import { resolve as resolvePath } from "@std/path";
 import { resolveLocation } from "./scrum/resolve-location.ts";
@@ -68,8 +50,7 @@ const _cliArgs = parseArgs(Deno.args, {
 });
 
 if (_cliArgs.help) {
-  // Use console.error so help text never contaminates the MCP stdio stream.
-  console.error(`
+  log.info(`
 scrum-master-toolkit-server
 
 Usage:
@@ -110,15 +91,11 @@ Examples:
   Deno.exit(0);
 }
 
-// Resolve --config (or SCRUM_CONFIG_PATH env fallback) to a ContentLocation.
-// The env fallback allows mcpb installers that only support user_config
-// interpolation in `env` (not `args`) to pass the config path cleanly.
-// --config is mandatory: no default path fallback exists.
 const _rawConfigPath: string | undefined = _cliArgs.config || Deno.env.get("SCRUM_CONFIG_PATH");
 
 if (!_rawConfigPath) {
-  console.error(
-    "Error: no config file specified.\n" +
+  log.error(
+    "No config file specified.\n" +
       "Pass --config <path-or-url> when starting the server, " +
       "or set the SCRUM_CONFIG_PATH environment variable.\n" +
       "Example: mcp-server --config .github/scrum/config.yml",
@@ -126,18 +103,12 @@ if (!_rawConfigPath) {
   Deno.exit(1);
 }
 
-// ── Runtime permission guard ─────────────────────────────────────────────────
-//
-// `deno compile --allow-env ...` bakes permissions into the binary - this
-// guard fires only when someone runs the uncompiled source via `deno run`
-// without the required flags.
-
 try {
   Deno.env.get("MCP_TRANSPORT"); // canary: throws PermissionDenied without --allow-env
 } catch (err) {
   if (err instanceof Deno.errors.PermissionDenied) {
-    console.error(
-      "Error: missing required Deno permissions.\n" +
+    log.error(
+      "Missing required Deno permissions.\n" +
         "Run with: deno run --allow-env --allow-net --allow-read src/server.ts\n" +
         "Or use the compiled binary which has permissions baked in.",
     );
@@ -145,94 +116,6 @@ try {
   }
   throw err;
 }
-
-// ── Tool-call interceptor ────────────────────────────────────────────────────
-//
-// Three verbosity tiers:
-//
-//   always   - tool name, timing, and errors with input params (no env var needed)
-//   DEBUG=1  - GraphQL/REST operation names and params (API-level tracing)
-//   TRACE=1  - raw JSON-RPC wire messages (transport dump, very noisy)
-
-const patchToolLogging = (server: McpServer): void => {
-  // McpServer does not expose registerTool on its public type, but the
-  // runtime object carries it as an own method. We patch it via a local
-  // interface that declares only the shape we need.
-  interface McpServerInternal {
-    registerTool(
-      name: string,
-      config: unknown,
-      handler: (params: unknown, extra: unknown) => Promise<unknown>,
-    ): unknown;
-  }
-  const _server = server as unknown as McpServerInternal;
-  const original = _server["registerTool"].bind(server) as (
-    name: string,
-    config: unknown,
-    handler: (params: unknown, extra: unknown) => Promise<unknown>,
-  ) => unknown;
-
-  _server["registerTool"] = (
-    name: string,
-    config: unknown,
-    handler: (params: unknown, extra: unknown) => Promise<unknown>,
-  ): unknown => {
-    return original(name, config, async (params: unknown, extra: unknown) => {
-      // Always: log which tool fired (no params - keeps the line short)
-      log.info(`→ ${name}`);
-      // DEBUG: also log the full input so you can see what the agent passed
-      log.debug(`  params`, params);
-
-      const t0 = performance.now();
-      try {
-        const result = await handler(params, extra);
-        log.info(`← ${name} OK (${Math.round(performance.now() - t0)}ms)`);
-        return result;
-      } catch (err: unknown) {
-        const ms = Math.round(performance.now() - t0);
-        // Always: log the tool that failed, elapsed time, error message, AND
-        // the input params so you can reproduce or diagnose the call.
-        log.error(`✗ ${name} FAILED (${ms}ms)`, {
-          error: err instanceof Error ? err.message : String(err),
-          params,
-        });
-        throw err;
-      }
-    });
-  };
-};
-
-// ── Transport-level request/response logger (TRACE=1 only) ───────────────────
-//
-// Logs every raw JSON-RPC message - useful for debugging MCP protocol issues
-// but extremely noisy during normal use. Enable with TRACE=1 (not DEBUG=1).
-
-const wrapTransportLogging = (transport: Transport, label: string): void => {
-  const origOnMessage = transport.onmessage?.bind(transport);
-  transport.onmessage = <T extends JSONRPCMessage>(
-    msg: T,
-    extra?: MessageExtraInfo,
-  ): void => {
-    log.debug(`[${label}] ← recv`, msg);
-    origOnMessage?.(msg, extra);
-  };
-
-  const origSend = transport.send.bind(transport);
-  transport.send = (msg: JSONRPCMessage, options?: TransportSendOptions) => {
-    log.debug(`[${label}] → send`, msg);
-    return origSend(msg, options);
-  };
-};
-
-// ── Degraded-mode stub tool registration ─────────────────────────────────────
-//
-// When the config file is missing or unreadable at startup, the server registers
-// stub handlers for every scrum tool. Each stub returns the human-readable
-// error message rather than crashing the MCP session. This allows the MCP client
-// to list tools normally and surface a clear error on every call.
-//
-// SCRUM_READ_TOOL_NAMES and SCRUM_WRITE_TOOL_NAMES are the single source of truth.
-// Never hardcode tool names here.
 
 const ALL_SCRUM_TOOL_NAMES = [...SCRUM_READ_TOOL_NAMES, ...SCRUM_WRITE_TOOL_NAMES];
 
@@ -266,23 +149,14 @@ const createMcpServer = async (): Promise<McpServer> => {
     },
   );
 
-  // Wire the MCP server as the log transport so all log.* calls also emit
+  // Bind the MCP server so log.* calls in http mode also emit
   // structured MCP logging notifications to the connected client.
-  setLogTransport({
-    sendLoggingMessage: (params) => server.sendLoggingMessage(params),
-  });
+  bindMcpServer(server);
 
   patchToolLogging(server);
 
-  // Use the adapter factory registry to construct the backend.
-  // SCRUM_PLATFORM env var controls which platform is selected (default: "github").
   const factories: AdapterFactory[] = [new GitHubAdapterFactory()];
 
-  // Phase 1: Load the ScrumConfig YAML in the use-case layer, before any
-  // adapter construction. This way the adapter never touches the YAML file.
-  // Both config loading and backend creation are wrapped in a single try/catch
-  // so any config parse or fetch failure enters degraded mode (stub tools)
-  // rather than crashing the process.
   let scrumConfig: ScrumConfig;
   let projectRoot: string;
   let backendResult: Awaited<ReturnType<typeof createBackend>>;
@@ -336,19 +210,6 @@ const createMcpServer = async (): Promise<McpServer> => {
   return server;
 };
 
-// ── Stdio transport ──────────────────────────────────────────────────────────
-//
-// Wraps the entire lifecycle in try/catch. If createMcpServer or server.connect
-// throws - due to a module init failure, config crash, or transport error -
-// a valid JSON-RPC error response is emitted on stdout so the MCP client
-// receives protocol-compliant output instead of a raw stack trace.
-
-/**
- * Emit a valid JSON-RPC 2.0 error response on stdout.
- * Used as a last-resort fallback when the server cannot even complete
- * initialization. Without this, the MCP client sees raw error text on stdout
- * and reports "is not valid JSON".
- */
 const emitJsonRpcError = (message: string): void => {
   const response = JSON.stringify({
     jsonrpc: "2.0",
@@ -358,8 +219,6 @@ const emitJsonRpcError = (message: string): void => {
       message: `Server initialization failed: ${message}`,
     },
   });
-  // Write directly to stdout - this is the only place in the codebase that
-  // does so, and only as a catastrophic-fallback.
   const encoder = new TextEncoder();
   Deno.stdout.writeSync(encoder.encode(response + "\n"));
 };
@@ -378,16 +237,6 @@ const runStdio = async (): Promise<void> => {
     Deno.exit(1);
   }
 };
-
-// ── Streamable HTTP transport ────────────────────────────────────────────────
-//
-// Uses Deno.serve() with WebStandardStreamableHTTPServerTransport — the MCP SDK's
-// native Web Standards transport for Deno/Bun/Cloudflare Workers. No express needed.
-//
-// Body-parsing note: Request bodies can only be consumed once. For a new
-// initialization POST (no session ID), we parse the body here to validate it with
-// isInitializeRequest, then forward it to handleRequest via { parsedBody } so the
-// transport doesn't attempt a second read on the already-consumed stream.
 
 const runHttp = (): void => {
   const transports: Record<string, WebStandardStreamableHTTPServerTransport> = {};
@@ -487,7 +336,8 @@ const runHttp = (): void => {
 
 // ── Entry point ──────────────────────────────────────────────────────────────
 
-const transportType = Deno.env.get("MCP_TRANSPORT") ?? "stdio";
+const transportType: TransportMode = (Deno.env.get("MCP_TRANSPORT") ?? "stdio") as TransportMode;
+initLogger({ transport: transportType });
 
 if (transportType === "http") {
   runHttp();
