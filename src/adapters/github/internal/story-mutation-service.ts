@@ -7,6 +7,7 @@
 
 import { GitHubApiError } from "../errors.ts";
 import { assertNever } from "../../../domain/errors.ts";
+import { log } from "../../../services/logger.ts";
 import { resolveStory } from "./resolver.ts";
 import { LabelResolver } from "./label-resolver.ts";
 import { UserMilestoneResolver } from "./user-milestone-resolver.ts";
@@ -265,7 +266,23 @@ export class StoryMutationService {
 
       return storyRef;
     } catch (error) {
-      await this.rollbackDraftItem(itemId);
+      const rolledBack = await this.rollbackDraftItem(itemId);
+      if (!rolledBack) {
+        throw new GitHubApiError(
+          "Draft Issue creation failed and automatic cleanup was not possible. " +
+            "The Draft Issue may still exist on your board and must be removed manually.",
+          {
+            code: "MUTATION_FAILED",
+            recovery: "Delete this Draft Issue manually from your GitHub Projects board. " +
+              `Draft Item ID: ${itemId}. Search for this ID in the project item list to locate it.`,
+            context: {
+              draftItemId: itemId,
+              projectId: this.ctx.config.live.projectId,
+              originalError: error instanceof Error ? error.message : String(error),
+            },
+          },
+        );
+      }
       throw error;
     }
   }
@@ -442,14 +459,18 @@ export class StoryMutationService {
   }
 
   /** Best-effort cleanup when story creation fails after the draft item was added. */
-  private async rollbackDraftItem(itemId: string): Promise<void> {
+  private async rollbackDraftItem(itemId: string): Promise<boolean> {
     try {
       await this.ctx.gh.graphql(
         DELETE_PROJECT_ITEM_MUTATION,
         { input: { projectId: this.ctx.config.live.projectId, itemId } },
       );
+      return true;
     } catch {
-      // Preserve the original failure; rollback is best-effort only.
+      log.warn(
+        `Rollback failed: could not delete Draft Issue ${itemId} from project ${this.ctx.config.live.projectId}`,
+      );
+      return false;
     }
   }
 
