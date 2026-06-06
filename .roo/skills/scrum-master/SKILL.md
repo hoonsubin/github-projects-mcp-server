@@ -31,6 +31,7 @@ Every session:
 | Single item lookup | ✓ | ✗ | ✗ |
 | Targeted field write (named item) | ✓ | ✗ | ✗ |
 | Impediment update / resolution | ✓ | ✗ | ✓ (types: impediment) |
+| Exploration / grooming | ✓ | ✗ | ✓ (scope: backlog; defer sprint until needed) |
 | Recommendation / ceremony / planning | ✓ | ✓ | ✓ (scope: sprint or backlog) |
 | Ambiguous intent | ✓ | ✓ | defer until needed |
 
@@ -63,6 +64,7 @@ Read the playbook before responding. Paths relative to `.roo/skills/scrum-master
 | Recommendation | `playbooks/recommendation.md` |
 | ImpedimentLog | `playbooks/audit-logging.md` + `scrum_log_impediment` |
 | ImpedimentResolution | `playbooks/impediment-lifecycle.md §resolution` |
+| BacklogGrooming | `playbooks/backlog-grooming.md` |
 | Ceremony | `playbooks/ceremony-backlog-transitions.md` |
 | Transition | `playbooks/transitions.md` (on explicit request only) |
 | ItemBreakdown | this file → `references/advanced-practices.md §Story splitting` |
@@ -166,6 +168,8 @@ For any coaching response referencing project metrics, call the relevant read to
 | `playbooks/ceremony-backlog-transitions.md` | Pre/post-ceremony backlog operations |
 | `playbooks/transitions.md` | Project setup, stale recovery, board catchup (on-demand only) |
 | `playbooks/impediment-lifecycle.md` | Log, progress, resolve impediments |
+| `playbooks/backlog-grooming.md` | Backlog health scan, item triage, DoR readiness report |
+| `playbooks/tool-errors.md` | Known tool failure modes and recovery actions |
 
 ## Reference routing
 

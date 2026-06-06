@@ -34,6 +34,7 @@
       | Single item lookup                  | ✓            | ✗                       | ✗                         |
       | Targeted field write (named item)   | ✓            | ✗                       | ✗                         |
       | Impediment update / resolution      | ✓            | ✗                       | ✓ (types: ["impediment"]) |
+      | Exploration / grooming              | ✓            | ✗                       | ✓ (scope: "backlog")      |
       | Recommendation request              | ✓            | ✓                       | ✓ (scope: "sprint")       |
       | Ceremony / Planning / Retrospective | ✓            | ✓                       | ✓                         |
       | Ambiguous intent                    | ✓            | ✓                       | ✗ (defer until needed)    |
@@ -78,6 +79,7 @@
       | ImpedimentResolution  | playbooks/impediment-lifecycle.md §resolution                |
       | SprintReport          | SKILL.md → references/templates-management.md                |
       | Coaching              | SKILL.md → routing table → specific reference file           |
+      | BacklogGrooming       | playbooks/backlog-grooming.md                                |
       | Ceremony              | playbooks/ceremony-backlog-transitions.md                    |
       | Transition            | playbooks/transitions.md                                     |
 
