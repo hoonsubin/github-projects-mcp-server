@@ -1,7 +1,17 @@
-export const snapshot = {};
+// =============================================================================
+// src/scrum/_test_fixtures.ts
+//
+// Single import point for scrum-layer unit test fixture data. Template content
+// strings are extracted from the committed .github/ISSUE_TEMPLATE/ files so
+// tests are stable against the real templates without network or filesystem
+// dependency at test time. The capture script regenerates these constants.
+// =============================================================================
 
-snapshot[`pipeline: user_story config → resolve → fetch → use case 1`] = `
-\`name: 📖 User Story
+import type { ContentLocation } from "../domain/content-location.ts";
+
+// ── Template content strings (from .github/ISSUE_TEMPLATE/) ────────────────────
+
+export const TEMPLATE_USER_STORY = `name: 📖 User Story
 description: A new feature or capability expressed as a Scrum user story.
 title: "[Story]: "
 labels: ["feature"]
@@ -117,14 +127,12 @@ body:
       description: Links, mockups, related issues, or design constraints worth capturing now.
     validations:
       required: false
-\`
 `;
 
-snapshot[`pipeline: bug config → resolve → fetch → use case 1`] = `
-"name: 🐛 Bug Report
+export const TEMPLATE_BUG = `name: 🐛 Bug Report
 description: Something isn't working correctly in the MCP server or agent behaviour.
-title: \\"[Bug]: \\"
-labels: [\\"bug\\"]
+title: "[Bug]: "
+labels: ["bug"]
 body:
   - type: markdown
     attributes:
@@ -147,7 +155,7 @@ body:
     attributes:
       label: Expected behaviour
       description: What should have happened?
-      placeholder: \\"\`scrum_get_story\` should return the impediments array for the given story.\\"
+      placeholder: "\`scrum_get_story\` should return the impediments array for the given story."
     validations:
       required: true
 
@@ -166,7 +174,7 @@ body:
       label: Steps to reproduce
       description: Minimal steps or MCP call sequence needed to trigger the bug.
       placeholder: |
-        1. Call \`scrum_log_impediment\` with \`affects.story = \\"STORY-12\\"\`
+        1. Call \`scrum_log_impediment\` with \`affects.story = "STORY-12"\`
         2. Call \`scrum_get_story\` with the same story ID
         3. Observe \`impediments\` is \`[]\`
     validations:
@@ -208,9 +216,9 @@ body:
     attributes:
       label: Severity
       options:
-        - \\"Blocker – prevents core Scrum workflow\\"
-        - \\"Major – incorrect output, workaround exists\\"
-        - \\"Minor – cosmetic or edge-case issue\\"
+        - "Blocker – prevents core Scrum workflow"
+        - "Major – incorrect output, workaround exists"
+        - "Minor – cosmetic or edge-case issue"
     validations:
       required: true
 
@@ -220,7 +228,7 @@ body:
     id: server-version
     attributes:
       label: Server version / commit SHA
-      placeholder: \\"e.g. main@a1b2c3d or v0.4.0\\"
+      placeholder: "e.g. main@a1b2c3d or v0.4.0"
     validations:
       required: false
 
@@ -228,7 +236,7 @@ body:
     id: deno-version
     attributes:
       label: Deno version
-      placeholder: \\"e.g. 2.3.1 - run \`deno --version\`\\"
+      placeholder: "e.g. 2.3.1 - run \`deno --version\`"
     validations:
       required: false
 
@@ -247,14 +255,12 @@ body:
       label: Additional context
     validations:
       required: false
-"
 `;
 
-snapshot[`pipeline: impediment config → resolve → fetch → use case 1`] = `
-"name: 🚧 Impediment
+export const TEMPLATE_IMPEDIMENT = `name: 🚧 Impediment
 description: Something blocking the team's progress. Maps directly to scrum_log_impediment.
-title: \\"[Impediment]: \\"
-labels: [\\"impediment\\"]
+title: "[Impediment]: "
+labels: ["impediment"]
 body:
   - type: markdown
     attributes:
@@ -284,9 +290,9 @@ body:
     attributes:
       label: Severity
       options:
-        - \\"Blocker – sprint goal is at risk, no workaround\\"
-        - \\"Significant – multiple stories affected, workaround is costly\\"
-        - \\"Minor – single story affected, workaround exists\\"
+        - "Blocker – sprint goal is at risk, no workaround"
+        - "Significant – multiple stories affected, workaround is costly"
+        - "Minor – single story affected, workaround exists"
     validations:
       required: true
 
@@ -300,7 +306,7 @@ body:
       placeholder: |
         - #88 (scrum_set_field write path)
         - #91 (scrum_plan_sprint)
-        - Current sprint goal: \\"Complete write tool surface\\"
+        - Current sprint goal: "Complete write tool surface"
     validations:
       required: true
 
@@ -345,7 +351,7 @@ body:
     attributes:
       label: Raised by
       description: GitHub username of the person raising this impediment.
-      placeholder: \\"@hoonkim\\"
+      placeholder: "@hoonkim"
     validations:
       required: false
 
@@ -355,5 +361,59 @@ body:
       label: Additional context / links
     validations:
       required: false
-"
 `;
+
+// ── ContentLocation constants (for template-resource.test.ts) ──────────────────
+
+export const INLINE_LOCATION = {
+  kind: "inline",
+  content: "# Custom Template\n\nSome content.",
+} as const satisfies ContentLocation;
+
+export const INLINE_YAML_LOCATION = {
+  kind: "inline",
+  content: "name: Test Template\ndescription: A YAML inline template.\n",
+} as const satisfies ContentLocation;
+
+export const INLINE_JSON_LOCATION = {
+  kind: "inline",
+  content: '{"name":"Test Template","description":"A JSON inline template."}',
+} as const satisfies ContentLocation;
+
+export const FILE_YML_LOCATION = {
+  kind: "file",
+  path: "/some/path/template.yml",
+} as const satisfies ContentLocation;
+
+export const FILE_JSON_LOCATION = {
+  kind: "file",
+  path: "/some/path/template.json",
+} as const satisfies ContentLocation;
+
+export const FILE_MD_LOCATION = {
+  kind: "file",
+  path: "/some/path/template.md",
+} as const satisfies ContentLocation;
+
+export const URL_YML_LOCATION = {
+  kind: "url",
+  url: new URL("https://raw.example.com/template.yml"),
+} as const satisfies ContentLocation;
+
+export const URL_JSON_LOCATION = {
+  kind: "url",
+  url: new URL("https://raw.example.com/template.json"),
+} as const satisfies ContentLocation;
+
+export const URL_MD_LOCATION = {
+  kind: "url",
+  url: new URL("https://raw.example.com/template.md"),
+} as const satisfies ContentLocation;
+
+// ── Pre-resolved type → template content map (for template-pipeline.test.ts) ───
+
+export const TYPE_TEMPLATE_CONTENT: Record<string, string> = {
+  user_story: TEMPLATE_USER_STORY,
+  bug: TEMPLATE_BUG,
+  impediment: TEMPLATE_IMPEDIMENT,
+};

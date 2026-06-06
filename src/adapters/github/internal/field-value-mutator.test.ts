@@ -15,17 +15,17 @@ import type { GitHubClientSpy } from "./_test_utils.ts";
 import type { GitHubBootState } from "../bootstrap.ts";
 import { GitHubApiError } from "../errors.ts";
 import type { SprintRef } from "../../../domain/types.ts";
-import userNodeIds from "../generated/__fixtures__/user-node-ids.json" with { type: "json" };
+import { FIXTURE_USER_ID, USERNODE_IDS } from "./_test_fixtures.ts";
 
 // =============================================================================
 // Fixture-derived constants
 // =============================================================================
 
 const REAL_LOGIN = "hoonsubin";
-const USER_FOUND_RESPONSE = userNodeIds[REAL_LOGIN] as { user: { id: string } };
-const USER_NULL_RESPONSE = userNodeIds["_not_found_"] as { user: null };
+const USER_FOUND_RESPONSE = USERNODE_IDS[REAL_LOGIN];
+const USER_NULL_RESPONSE = USERNODE_IDS["_not_found_"];
 
-const REAL_USER_ID = USER_FOUND_RESPONSE.user.id;
+const REAL_USER_ID = FIXTURE_USER_ID;
 
 // =============================================================================
 // Type-safe variable access helper
