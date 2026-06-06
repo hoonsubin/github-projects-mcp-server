@@ -363,7 +363,7 @@ export interface BacklogItemListing {
   };
   readonly epic: EpicRefWithName | null;
   /** Keys of items that block this one (must be Done first). */
-  readonly blocked_by: ReadonlyArray<ItemListingRef>;
+  readonly blocked_by: ReadonlyArray<DependencyEntry>;
   /** Keys of items this one blocks (reverse dependency). Populated by adapter. */
   readonly blocks: ReadonlyArray<ItemListingRef>;
   readonly custom_fields: Record<string, string | number | boolean | null>;

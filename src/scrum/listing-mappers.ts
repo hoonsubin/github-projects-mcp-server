@@ -36,7 +36,7 @@ export const toItemListing = (story: Story): BacklogItemListing => ({
   labels: [...story.labels],
   sprint: { name: story.sprint, ref: EMPTY_SPRINT_REF },
   epic: story.kind === "issue" ? story.epic : null,
-  blocked_by: story.blocked_by.map((dep) => ({ id: dep.ref.id, key: dep.key })),
+  blocked_by: [...story.blocked_by],
   blocks: [],
   custom_fields: {},
 });
