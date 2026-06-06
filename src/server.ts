@@ -24,6 +24,7 @@ import { resolveLocation } from "./scrum/resolve-location.ts";
 import { SCRUM_READ_TOOL_NAMES } from "./tools/scrum-read.ts";
 import { SCRUM_WRITE_TOOL_NAMES } from "./tools/scrum-write.ts";
 import type { ScrumConfig } from "./domain/config.ts";
+import type { EnvGetter } from "./domain/env.ts";
 
 // ── Process-level crash guard ────────────────────────────────────────────────
 //
@@ -91,7 +92,17 @@ Examples:
   Deno.exit(0);
 }
 
-const _rawConfigPath: string | undefined = _cliArgs.config || Deno.env.get("SCRUM_CONFIG_PATH");
+// ── Environment (single gateway — all Deno.env reads live here) ─────────────
+//
+// Every env var the server needs is read once here. Downstream code receives
+// values through function parameters — never by reaching out to Deno.env.
+
+const env: EnvGetter = (name: string) => Deno.env.get(name);
+const platform = env("SCRUM_PLATFORM") ?? "github";
+const debug = !!env("DEBUG");
+const trace = !!env("TRACE");
+
+const _rawConfigPath: string | undefined = _cliArgs.config || env("SCRUM_CONFIG_PATH");
 
 if (!_rawConfigPath) {
   log.error(
@@ -140,7 +151,7 @@ const createMcpServer = async (): Promise<McpServer> => {
   const server = new McpServer(
     {
       name: "scrum-master-toolkit-server",
-      version: Deno.env.get("RELEASE_VERSION") ?? "dev",
+      version: env("RELEASE_VERSION") ?? "dev",
     },
     {
       capabilities: {
@@ -161,8 +172,14 @@ const createMcpServer = async (): Promise<McpServer> => {
   let projectRoot: string;
   let backendResult: Awaited<ReturnType<typeof createBackend>>;
   try {
-    ({ scrumConfig, projectRoot } = await loadScrumConfig(configLocation));
-    backendResult = await createBackend(factories, { configLocation, scrumConfig, projectRoot });
+    ({ scrumConfig, projectRoot } = await loadScrumConfig(configLocation, env));
+    backendResult = await createBackend(factories, {
+      configLocation,
+      scrumConfig,
+      projectRoot,
+      env,
+      platform,
+    });
   } catch (err) {
     let hint: string;
     if (err instanceof AdapterError) {
@@ -228,7 +245,7 @@ const runStdio = async (): Promise<void> => {
     const server = await createMcpServer();
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    if (Deno.env.get("TRACE")) wrapTransportLogging(transport, "stdio");
+    if (trace) wrapTransportLogging(transport, "stdio");
     log.info("scrum-master-toolkit-server running on stdio");
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -240,7 +257,7 @@ const runStdio = async (): Promise<void> => {
 
 const runHttp = (): void => {
   const transports: Record<string, WebStandardStreamableHTTPServerTransport> = {};
-  const port = parseInt(Deno.env.get("PORT") || "3000", 10);
+  const port = parseInt(env("PORT") || "3000", 10);
 
   Deno.serve({ port }, async (req: Request): Promise<Response> => {
     const { pathname } = new URL(req.url);
@@ -300,7 +317,7 @@ const runHttp = (): void => {
 
           const server = await createMcpServer();
           await server.connect(transport);
-          if (Deno.env.get("TRACE")) wrapTransportLogging(transport, `http:${transport.sessionId}`);
+          if (trace) wrapTransportLogging(transport, `http:${transport.sessionId}`);
 
           return await transport.handleRequest(req, { parsedBody: body });
         }
@@ -336,8 +353,8 @@ const runHttp = (): void => {
 
 // ── Entry point ──────────────────────────────────────────────────────────────
 
-const transportType: TransportMode = (Deno.env.get("MCP_TRANSPORT") ?? "stdio") as TransportMode;
-initLogger({ transport: transportType });
+const transportType: TransportMode = (env("MCP_TRANSPORT") ?? "stdio") as TransportMode;
+initLogger({ transport: transportType, debug });
 
 if (transportType === "http") {
   runHttp();

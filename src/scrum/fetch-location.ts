@@ -6,24 +6,30 @@
 // (not through FileReaderPort) because config loading happens before any
 // FileReaderPort implementors exist.
 //
-// Security note: the URL branch issues a plain unauthenticated fetch.
+// Security note: the URL branch issues a plain unauthenticated fetch by default.
 // Callers are responsible for ensuring the URL originates from trusted
 // operator input (CLI or config file), not from user-supplied tool arguments.
-// GitHubFileReader wraps this for github.com URLs with an auth header.
+// Pass an EnvGetter to enable auth via registered UrlRewriters (e.g. GITHUB_TOKEN).
 // =============================================================================
 
 import type { ContentLocation } from "../domain/content-location.ts";
 import { describeContentLocation } from "../domain/content-location.ts";
 import { assertNever, ConfigError } from "../domain/errors.ts";
 import { findRewriter } from "./url-rewriters.ts";
+import type { EnvGetter } from "../domain/env.ts";
+
+const noopEnv: EnvGetter = () => undefined;
 
 /**
  * Fetch the string content from wherever a ContentLocation points.
  *
+ * @param location - the content location to fetch from
+ * @param env - optional environment getter for auth-requiring URL rewriters
  * @throws {Error} for file I/O failures or HTTP non-2xx responses.
  */
 export const fetchContent = async (
   location: ContentLocation,
+  env: EnvGetter = noopEnv,
 ): Promise<string> => {
   // TypeScript narrows ContentLocation to `never` after all three branches are
   // handled. The assertNever guard provides a runtime backstop if a fourth
@@ -41,7 +47,7 @@ export const fetchContent = async (
       // Registered UrlRewriters may supply request options (e.g. auth headers)
       // via requestInit(). This keeps backend-specific auth in the adapter layer.
       const rewriter = findRewriter(location.url);
-      const init = rewriter?.requestInit?.(location.url);
+      const init = rewriter?.requestInit?.(location.url, env);
 
       let res: Response;
       try {

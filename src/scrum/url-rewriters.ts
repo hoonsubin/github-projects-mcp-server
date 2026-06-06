@@ -11,6 +11,7 @@
 // =============================================================================
 
 import type { UrlRewriter } from "../domain/content-location.ts";
+import type { EnvGetter } from "../domain/env.ts";
 
 /** All registered URL rewriters — each backend adds its own entry. */
 export const URL_REWRITERS: readonly UrlRewriter[] = [
@@ -54,8 +55,8 @@ export const URL_REWRITERS: readonly UrlRewriter[] = [
     recoveryHint: (_url: URL): string =>
       "For private GitHub repositories, set the GITHUB_TOKEN environment variable " +
       "so the server can authenticate raw content fetches without a pre-signed URL token.",
-    requestInit: (_url: URL): RequestInit | undefined => {
-      const tok = Deno.env.get("GITHUB_TOKEN");
+    requestInit: (_url: URL, env: EnvGetter): RequestInit | undefined => {
+      const tok = env("GITHUB_TOKEN");
       return tok ? { headers: { Authorization: `Bearer ${tok}` } } : undefined;
     },
   },

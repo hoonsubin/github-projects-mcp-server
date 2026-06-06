@@ -12,6 +12,8 @@
 // coupling to a particular backend.
 // =============================================================================
 
+import type { EnvGetter } from "./env.ts";
+
 export const CONTENT_LOCATION_KINDS = ["file", "url", "inline"] as const;
 export type ContentLocationKind = (typeof CONTENT_LOCATION_KINDS)[number];
 
@@ -45,9 +47,9 @@ export type SupportedMimeType =
  * platform-specific URL patterns.
  *
  * Backends may also implement `requestInit` to supply per-request options
- * (e.g. auth headers) when the use-case layer fetches the URL. This keeps
- * authentication entirely in the adapter layer: a GitLab backend can read
- * GITLAB_TOKEN, a Bitbucket backend reads its own env var, and so on.
+ * (e.g. auth headers) when the use-case layer fetches the URL. The env
+ * getter is provided so backends can resolve platform-specific tokens
+ * without touching Deno.env directly.
  */
 export interface UrlRewriter {
   /** Which platform/backend this rewriter handles (e.g. "github"). */
@@ -63,8 +65,11 @@ export interface UrlRewriter {
    * Called by the use-case fetcher immediately before the fetch — the result
    * is passed directly to `fetch(url, init)`. Return undefined to use the
    * default unauthenticated fetch.
+   *
+   * The env getter is provided by the composition root and resolves platform-
+   * specific environment variables (e.g. GITHUB_TOKEN).
    */
-  readonly requestInit?: (url: URL) => RequestInit | undefined;
+  readonly requestInit?: (url: URL, env: EnvGetter) => RequestInit | undefined;
 }
 
 /** Human-readable representation for error messages and logging. */
