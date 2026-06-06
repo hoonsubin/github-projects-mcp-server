@@ -1,354 +1,394 @@
-# QueryBuilder Architecture Design
+# Refactoring Plan: Align Server to Architecture Vision
 
-**Context:** `scrum-master-toolkit` — Deno/TypeScript MCP server exposing `scrum_*` tools backed by GitHub Projects v2. **Companion spikes:** [#190](https://github.com/hoonsubin/github-projects-mcp-server/issues/190) (call graph audit), [#220](https://github.com/hoonsubin/github-projects-mcp-server/issues/220) (query formation audit). **Source docs:** `docs/AUDIT.md`, `tasks/REFACTORING.md`.
-
----
-
-## 1. Problem diagnosis (mostly resolved)
-
-### 1.1 Two compounding problems
-
-The current implementation suffers from two orthogonal problems that multiply each other:
-
-**Problem A — Redundant call count.** A single agent session calling `orient` → `board_health` → `analytics(both)` burns at minimum **5 full board scans** (`ProjectItems×P`):
-
-- `scrum_orient`: 1 scan (sprint completion)
-- `scrum_get_board_health`: 2 scans (one in `StoryQueryService.fetchAllItems`, one in `ImpedimentService.getSprintImpediments`)
-- `scrum_get_analytics(both)`: 2 scans (`SprintHistoryService` + `BurndownCalculator` independently)
-
-Each scan pages up to 20 × 100 items. No cross-tool or cross-service cache exists.
-
-**Problem B — Maximum payload per call.** `ProjectItemsQueryBuilder` has exactly one query shape: `ItemContent` + `ItemFieldValues` — always, regardless of caller intent. This fetches ~55 field paths per item but aggregation-only callers (`computeSprintCompletion`, burndown, history) consume only ~5–6. Waste: **~80–85% per page** for aggregation callers.
-
-**Compounded:** 5 full board scans × ~80% waste = the server is doing roughly **25× more data transfer work** than necessary for a normal agent session.
-
-### 1.2 The assembler pipeline is narrow
-
-The `classifyFilter → Assembler → ExecutionEngine` pipeline governs only `scrum_find_items`. Every other board-scan caller bypasses it entirely:
-
-| Caller                                      | Bypass method                          |
-| ------------------------------------------- | -------------------------------------- |
-| `StoryQueryService.fetchAllItems`           | `PaginatedProjectItemFetcher` directly |
-| `StoryQueryService.computeSprintCompletion` | Same                                   |
-| `BurndownCalculator`                        | Same                                   |
-| `SprintHistoryService`                      | Same                                   |
-| `ImpedimentService` (board cross-ref)       | Same                                   |
-
-All bypass callers get the same over-fetched `ItemContent` + `ItemFieldValues` payload with no filtering — even when they only need 2–3 field values.
-
-### 1.3 The mapper null-guard is a hidden blocker
-
-`buildStoryFromRaw` in `mappers.ts` returns `null` when `content.labels` or `content.assignees` is missing on Issue/PR nodes. This forces **all callers** — including aggregation-only paths that have no use for label/assignee data — to request the full `ItemContent` fragment. Any attempt to introduce a lean aggregate query profile fails silently (all items map to `null`) without first addressing this guard.
-
-### 1.4 Post-mutation re-reads (write tools)
-
-**Root cause:** Tool handlers call `getStoryDetail` after every mutation to return the updated story as a response payload. This adds 2–3 GraphQL calls per invocation but the mutation result is already confirmed by the adapter — the re-read is purely for response composition.
-
-| ID | Tool / Handler                                       | Redundancy                                             | Extra calls           |
-| -- | ---------------------------------------------------- | ------------------------------------------------------ | --------------------- |
-| R1 | [`scrum_set_field`](src/tools/scrum-write.ts:111)    | `getStoryDetail` after `setField` mutation             | +2–3 GraphQL per call |
-| S1 | [`scrum_update_story`](src/tools/scrum-write.ts:161) | `getStoryDetail` after `updateStory` + `addComment`    | +2–3 GraphQL per call |
-| S2 | [`scrum_create_story`](src/tools/scrum-write.ts:235) | `getStoryDetail` after `createStory` + optional fields | +2–3 GraphQL per call |
-
-**Impact:** Every write tool invocation pays a full detail-read penalty that its return value contract (returning the updated `Story` object) requires. Fixing this requires changing the tool's API contract to return `void` or a lightweight acknowledgment. The three instances share the same surgical fix (Step 7).
-
-### 1.5 Duplicate resolution paths
-
-**Root cause:** The adapter performs the same node-ID or item-resolution query multiple times in a single call chain because intermediate results from the first resolution are not reused.
-
-| ID | Location                                                                                            | Redundancy                                                                                                                                                        | Extra calls                                         |
-| -- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| S6 | [`FieldValueMutator.resolveIssueNodeId()`](src/adapters/github/internal/field-value-mutator.ts:274) | Duplicates `resolveStory()` from [`resolver.ts:152`](src/adapters/github/internal/resolver.ts:152) — fetches `GET_PROJECT_ITEM_BY_ID` again for the same `itemId` | +1 GraphQL per type write                           |
-| S8 | [`getStoryDetail`](src/adapters/github/backend.ts:289)                                              | Second `resolveRef` for `{number}` refs, called after `setField` already resolved the same ref                                                                    | +1 board scan per `scrum_set_field` with `{number}` |
-| R3 | [`resolveRef({number})`](src/adapters/github/backend.ts:103)                                        | Routes through full `findItems` board scan instead of direct `GetIssueProjectItem` lookup                                                                         | +1 board scan per invocation                        |
-
-**Impact:** S6 and R3 are independent surgical fixes. S8's duplicate `resolveRef` is eliminated automatically when R1's `getStoryDetail` removal (Step 7) is implemented, since there will be no second call path to trigger it.
-
-### 1.6 Uncached service lookups
-
-**Root cause:** Several adapter services query the GitHub API every time they need static or slowly-changing data (repo labels, user node IDs, field options). No in-memory cache exists, so repeated calls in the same tool invocation or session re-fetch identical data.
-
-| ID | Service                                                                                                    | Redundancy                                                                                                                                                                                                                     | Extra calls                     |
-| -- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------- |
-| S4 | [`LabelResolver`](src/adapters/github/internal/label-resolver.ts:67)                                       | Re-fetches all repo labels (`GET_REPO_LABELS_QUERY`) on every `resolveExistingLabelNodeIds`, `resolveOrCreateBatch`, `addLabel`, and `auditTypeLabels` call. Can fire twice per `createStory` when labels + type are both set. | +1–2 GraphQL per mutation       |
-| S5 | [`UserMilestoneResolver.resolveUserNodeIds()`](src/adapters/github/internal/user-milestone-resolver.ts:40) | Resolves assignees **sequentially** via individual `GET_USER_NODE_ID` calls instead of in parallel                                                                                                                             | N×RTT wall time for N assignees |
-| S9 | [`VocabularyManager.addSingleSelectOption()`](src/adapters/github/internal/vocabulary-manager.ts:84)       | Fetches all current field options (`GET_FIELD_OPTIONS_QUERY`) before appending a single new one, then writes the full list back via `UPDATE_FIELD_MUTATION`                                                                    | +1 GraphQL per vocabulary add   |
-
-**Impact:** S4 is the highest-impact item here — a single `scrum_create_story` with labels and type can fire 2 label fetches when 1 would suffice. S5 is a performance issue (wall time) rather than call count. S9 is minor but affects an admin tool that may be called rarely.
-
-### 1.7 Inefficient service composition
-
-**Root cause:** Services are composed in ways that trigger redundant or wasted work — either through unnecessary board scans or processing items that are immediately discarded.
-
-| ID | Service                                                                                              | Redundancy                                                                                                                                                                                                                            | Extra calls                                     |
-| -- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| S3 | [`EpicService.getEpics()`](src/adapters/github/internal/epic-service.ts:39)                          | When `sprintIterationId` is provided, fetches the full board (`ProjectItems×P`) just to extract epic ref IDs, then filters milestones against them. **Latent** — currently not triggered from `orient` but a risk for future callers. | +1 board scan per call with `sprintIterationId` |
-| S7 | [`ResultNormalizer.normalize()`](src/adapters/github/internal/result-normalizer.ts:92)               | Maps **every** fetched item to a full `Story` object via `buildStoryFromRaw` before applying the client-side filter. Filtered-out items are mapped and immediately discarded.                                                         | 0 (CPU waste, not API calls)                    |
-| R2 | [`BoardHealthService.getBoardHealth()`](src/adapters/github/internal/board-health-service.ts:40)     | Calls `fetchStoriesForScope` (1 board scan) + `computeImpedimentCounts` calls `ImpedimentService.getSprintImpediments` (1 board scan) — two independent scans for different data from the same board.                                 | 1 redundant board scan                          |
-| R4 | [`AnalyticsService.getAnalytics(view='both')`](src/adapters/github/internal/analytics-service.ts:63) | `buildBurndown()` and `buildHistory()` run independently, each triggering its own full board scan via `BurndownCalculator` and `SprintHistoryService`.                                                                                | 1 redundant board scan                          |
-| R5 | [`orientUseCase`](src/scrum/orient.ts:94)                                                            | Calls `backend.getSprintCompletion()` → `StoryQueryService.computeSprintCompletion()` → `fetchAllItems()` — a full board scan for just 2 field values (completed points, total points).                                               | Pays full payload for 2 fields                  |
-
-**Impact:** R2, R4, and R5 share the same root cause (no unified aggregation path) and are eliminated by `getAggregates(scope)` in the target architecture. S7 is a CPU-efficiency concern, not an API cost concern. S3 is latent and should be audited before any future change to `orientUseCase`.
-
-### 1.8 Immediately fixable redundancies
-
-| ID | Issue                                                                | Category                | Impact                                              | Fix type                     |
-| -- | -------------------------------------------------------------------- | ----------------------- | --------------------------------------------------- | ---------------------------- |
-| R1 | `scrum_set_field` calls `getStoryDetail` after every mutation        | Post-mutation re-read   | +3 GraphQL calls per invocation                     | Surgical (Step 7)            |
-| S1 | `scrum_update_story` calls `getStoryDetail` after every mutation     | Post-mutation re-read   | +3 GraphQL calls per invocation                     | Surgical                     |
-| S2 | `scrum_create_story` calls `getStoryDetail` after setup              | Post-mutation re-read   | +3 GraphQL calls per invocation                     | Surgical                     |
-| R3 | `resolveRef({number})` routes through full `findItems` router        | Duplicate resolution    | +1 board scan per write tool with `{number}` ref    | Surgical (Step 8)            |
-| S6 | `FieldValueMutator.resolveIssueNodeId()` duplicates `resolveStory()` | Duplicate resolution    | +1 GraphQL call per `setField(type)`                | Surgical                     |
-| S4 | `LabelResolver` has no in-memory cache for repo labels               | Uncached lookup         | +1–2 GraphQL calls per mutation                     | Surgical                     |
-| R2 | `BoardHealthService` runs `ProjectItems×P` twice in one tool call    | Inefficient composition | 1 redundant full scan per `board_health` invocation | Architecture (getAggregates) |
-| R4 | `AnalyticsService view=both` fetches full board twice                | Inefficient composition | 1 redundant full scan per `analytics(both)`         | Architecture (getAggregates) |
-| R5 | `orient` sprint completion runs full board scan                      | Inefficient composition | Pays full `ItemContent` payload for 2 field values  | Architecture (getAggregates) |
-
-**Surgical fixes** are self-contained changes within a single file or class. **Architecture fixes** require the unified `getAggregates(scope)` port method from the target architecture. S4 and S6 are newly identified surgical fixes not in the original plan.
-
-### 1.9 BackendPort is leaking adapter internals
-
-The current port interface (`ProjectReader`) has separate methods for `getBoardHealth`, `getAnalytics`, and `getSprintCompletion` that map 1:1 to internal adapter services (`BoardHealthService`, `AnalyticsService`, `StoryQueryService`). This means the port is shaped by the implementation rather than by what use cases need — the wrong dependency direction.
+**Reference:** [`docs/ARCHITECTURE.MD`](../docs/ARCHITECTURE.MD) — the source of truth for the target state.
 
 ---
 
-## 2. GitHub server-side filtering capabilities (live research findings)
+## 1. Problem Statement
 
-As of June 2026, after live schema + community research:
+The architecture defines a clear boundary: **the MCP server is a structured fact retriever** that translates tool calls into platform API calls and normalizes results into stable Scrum-vocabulary types. It never applies Scrum rules, makes readiness judgments, or computes health assessments. **The SM agent is the Scrum intelligence layer** that receives raw facts and applies Scrum domain knowledge.
 
-| Filter mechanism                                  | Status           | Notes                                                  |
-| ------------------------------------------------- | ---------------- | ------------------------------------------------------ |
-| `items(query: "is:unarchived")`                   | ✅ Works         | Eliminates archived items server-side                  |
-| `items(query: "status:\"In Progress\"")`          | ✅ Partial       | Single-value status filter; multi-value not documented |
-| `items(query:)` iteration/sprint filter           | ❌ Not supported | No documented syntax; client-side only                 |
-| `items(query:)` story points / number fields      | ❌ Not supported | Client-side only                                       |
-| `fieldValueFilters` argument on `items()`         | ❌ Not in schema | Feature request #16106 open since May 2022, unresolved |
-| `ProjectV2Item.fieldValueByName(name:)`           | ✅ Available     | Reduces field payload per item, not item count         |
-| `search(query:)` (issues)                         | ✅ Available     | Filters text/label/assignee/repo — not board fields    |
-| Org issue fields (`ProjectV2ItemIssueFieldValue`) | ✅ Readable      | Not filterable server-side                             |
+The current codebase violates this boundary. Scrum judgments — readiness evaluation, risk computation, burndown series construction, velocity calculation — are computed inside the server's adapter layer and returned as pre-digested outputs. This makes agent behavior opaque (the agent cannot explain why a judgment was made) and non-adjustable (changing a threshold requires a server deployment).
 
-**Key conclusion:** Full custom-field server-side filtering is not achievable. The tiered approach (server coarse filter via `query:` arg + client-side fine filter) is the ceiling of what the API supports today. The `query:` arg is worth using for `is:unarchived` (always) and single-status filters where applicable, but it cannot replace client-side iteration/sprint filtering.
-
-**Implication for the architecture:** Client-side pagination + in-memory filtering remains mandatory. The optimization target is therefore **reducing per-page payload** (query profiles) and **eliminating redundant full scans** (session-scoped aggregation), not eliminating pagination.
+The 2025 refactoring plan (previous version of this document) focused on performance: eliminating redundant board scans, reducing payload sizes, and consolidating query paths. Those performance goals are largely achieved. This document addresses the next phase: moving Scrum computation out of the server so the architecture invariant "Server Returns Facts; Agent Applies Judgment" holds end-to-end.
 
 ---
 
-## 3. Target architecture
+## 2. What's Already Aligned
 
-### 3.1 Core principle
+Several architectural invariants are fully satisfied. These must be preserved during the refactoring.
 
-> **`ProjectItemsQueryBuilder` is the single source of truth for all `ProjectItems` board scans.** No service, assembler, or use case calls `PaginatedProjectItemFetcher` or `gh.graphql()` with a board-scan document directly. All board-scan concerns — query shape, server-side `query:` arg, field selection — are owned by `ProjectItemsQueryBuilder`.
+| Invariant                                          | Status                                                                                                                                                                            |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Invariant 1 — Dependency Rule**                  | ✅ `domain/` imports nothing from outer layers; `scrum/` depends only on `domain/` and the port interface; `adapters/` implements the port; `tools/` goes through use cases.      |
+| **Invariant 3 — PBI Boundary**                     | ✅ Only Issues and Draft Issues become domain objects. PRs/MRs return null at the mapper.                                                                                         |
+| **Invariant 4 — StoryKind**                        | ✅ `kind: "issue" \| "draft"` only. No platform content types leak into the discriminant.                                                                                         |
+| **Invariant 5 — Filter Semantic Purity**           | ✅ [`item-filter.ts`](../src/adapters/github/internal/item-filter.ts) predicates on Scrum-semantic fields only.                                                                   |
+| **Invariant 10 — Mapper Is the Platform Boundary** | ✅ [`mappers.ts`](../src/adapters/github/mappers.ts) is the sole translation point from wire types to domain types.                                                               |
+| **Capability System**                              | ✅ Tri-state `NATIVE \| EMULATED \| UNAVAILABLE` — not booleans.                                                                                                                  |
+| **Post-mutation re-reads eliminated**              | ✅ [`composeStorySnapshot`](../src/adapters/github/internal/story-query-service.ts:163) merges mutation-known fields over a single lean fetch — no full `getStoryDetail` re-read. |
+| **`resolveRef({number})` direct lookup**           | ✅ Uses `GetIssueProjectItem` — no board scan for number→ID resolution.                                                                                                           |
+| **Aggregate query profile**                        | ✅ [`ProjectItemsQueryBuilder`](../src/adapters/github/internal/project-items-query-builder.ts:32) supports `ItemContentAggregate` with ~60-80% payload reduction.                |
+| **Session-scoped board cache**                     | ✅ [`BoardScanCoordinator`](../src/adapters/github/internal/board-scan-coordinator.ts) wraps `ProjectItemsCache` for deduplication within a session.                              |
+| **Sprint completion via aggregates**               | ✅ [`sprintCompletionFromAggregates`](../src/adapters/github/mappers.ts:542) uses `ItemAggregate` (not full `Story`) for the completion count.                                    |
+| **Tool Surface Stability** (Invariant 8)           | ✅ `scrum_*` tool names and parameter shapes must not change — and will not during this refactor.                                                                                 |
 
-### 3.2 Layer diagram (target state)
+---
 
-[![](https://img.plantuml.biz/plantuml/dsvg/tLbVRnot4N-_Jy5A3za3l9Bjk8sX06bEqfqZm5PadPoqyFc1jykxstgNt91SNQ-E0J_bEIZo2VhGbtw0FlJD7qMVf3D3BlVFdG4XBG981q7O7SuCPuR3uM-uNnlBjQsAd5rnlHIMZNIoogn8RAK5k_dm2vickYhO2swiqEnAgVnjPWU_iojH25RcF9C3ypQJ9TUyO2LFtlAbcDfDBfW69LmkSz5YICM2LxcTA6cdsTy4U_IeDJZIMgrFLAuqstz2l_xWrIfBtafX37jqyBWrcAYYL598ozuD63i6AvPQLJ9rohv7Xv2kT2gqd-3tz1kytxRUwMZpFgKVKCbkScwkyXI41v-ncry-tCK_iFpvwC_ZI_Q8LXaNbaqhlU29kCDErKkur_Q7CMPqScY1P0xt63UC7jd--EdaoUIKrlkrmJIFjU3fWJKpkU8opOKsXvxo1iM8vn88ZS1QGsvr9MfI8_8zKkv7jZocR7bb13lXHfWxx558bU2CpnDQCfSdbH49ZUoFJoTVZ7sgA9r1gG4nbA9LTXGSMsGoFREYCEtXG4IEkU8w_KRmtAxQF2qoSd79yutDaewUG4GEIZEqa969CnabaAj0-lXlLfMfVpB2JZAHfpEPg-LPKOeqAx1EmX1Fq-zKmkT3qatgNfs0van2fQTziuULLCZqGcaxaqriIdWtbFI_8l0p6S8HBR8SvXhE99myKwlqvbHOdkMH5Wj772sNMYp15nEPH9LYoDZDJpypATOpIUwI53lq7jCRMEgT1ZeuUQ8ATBaVWLgc8T6Ct-eITd9312VhG5Kvfxc0Qrp2Ab2AO2mWQ591l7MsN5cc5aHa-vF9v7Zy1nXahElA4Cv6E3eJOOvezER3Fv3Zk4c1QDWU6DNhtYLFImrh1UwLkR2Padvqck6XotWzNrng1O4MK8ku90wpubgaRBxnYVkWdNqFY0MAMPDkJPOTm20a1BbxFmhQvrJGJbK1I8P5cPH25yfOeah5L6NN41e0BgKPtc5tGxNpdhfIbzABgtNkcRBswVWBL-difXIuqR5S90esxf9slG0ifckwhd9X3jyqAgvGw3ubnpG1i0lkHGWJyrpaW1-yhrz2jSJyY9NCD_SdIMgFwmEHtboQ-9TkdW22hlo9u60HR1jFeKC8QGqYGWKJA4Zt94cUK98yo-mtrPoDKbx2aNQ7tGf9qFN8vm9tR-PmcTbLDNSvuOcG4wUJpoSJo0bC2YT_eTLVe17qI09GIeR75Psih0Kl70YPEmAArm5aT2gobvM0i_SYAqMUIV4R1HVC2D7OQGPZ4HG4vdqaJCCMmaA6cw531pKdz1hZXvE7BZGjjG4B0SckzcgqU04l4Cw7qA6CQ8lXxxM3Ix6n6exrvIQ67XVUQTj5ISwDoHQRYODK54utNakNpieum-bYu1R5F2VnDyxKKKqYYVVEqfxO3nY0U5vbUUfd_Z_6UoRFpeyWE1wlH7bcB82P7mEK0L18lf0L8xtyetztPrC5e8Pm7vv0vxn0KFpjgwiZzWwgTL8LX7IkkSuuE6dOUtARL1qxVtPwd71OJXTZ0406S5PCK1GnGLgLUPPm15ypkTQyD6pyLv5KI1ZB9IoyMmZIuRMBcY4MnE5KbnoUIH7BbIgT6B8wDKwMGEPSMQiAH9bjqpjeCs10eoeDE1vuhQuWenQgpeQjj2K4I12HG1x-pXMq3_ew0mtpJOa90vtpAlFZ0GRwLEbks7WAcjZKYPlVhXXkRTck8NkXrPfU9zZL-Kr9AsEmU_0PxXqFXzOFnl6GRBmYfDndcgyyKm3EBOwPd5TQfcej8QFo17e9cCsTc0JZOmWipTzJoirruhHceIVfg8tSoYLQ6HDZuqHYm6osLkOSaixLCQml06ZSilgr3xKAZpDi0YMc8y-7h1VNdXgAgLJIaVPFJw1idOIO2gwJLSpBh5DnmEmfZPmPKq6nT44coiWKJZJDy0OnXktmjYhxqi-49T5M3ZibJiefwNh_eh9kWuMiZ03WDta__9-oj1sWhPaeH4LbAUbw0Q95Bxn4PsKNMClYQvvNmZ6eKAn92gPnEd8-5pcilL7vDGM8HLHnKgYNrw5pZGl8owKF87HqEYuGX5abHLkMz9D6fv-2-BhWPIdqhsxwFrtnwIYXldsYLN79rz0TKuyBRRwl_vufDD0D8pA5mu4CztQYoG9wzEvEUGxwNjG-6tOvdbxvGWkii3Pt7O-E_tGrlZmVFR_3JgJSyZat3Vny1gVgwkLpDheucqb_Cd_t-83EveXgzH4Kh7y-O7m1MEU89PKsIZlqjLo1rDrUqjFnnVZyT7n-SZQUtc57mFJEZVpDJtzlNIA7UtKMqm7vLNsXkZtGNALkZxMlKBT7cylJvau-3DQtdxli3Eq_TRa08FCifM8zt35BkxlTCKzx6EPghfvn8ko3M6HN0DZmDg5rzSGMKFAQMxZXmCKdgALBoAQLw91RKUaEDDTx7R8FHPUuPMjpOOOsVWbuSiqt1c6bMiEv4mm41UrRePQDlP6EcRqncBrUXDrp-qbRqTsbW-ABHuRlErbeHMav1tHhUu1k7tnLjwBiY7tyLzEoVlmFAghbqPZZBdQAWeV3GQsYZgHhnq3ZrWNuJgKnWf8QWKFwTUwGjxK3H0NLk-xCjrW1gDwM5U7dRNaHStwAj-SWGaYFEX52RZjJGy5sj5ZaoAnkWBTD2EZFsT7wfi0EcGSvbs8HlPDLCHVw_PPXDNJROPA7NA3PVMXndnx2rnPwtPAgWHH8qIFTXn4c8qc3MAKluz48SpxGfmOqiub35wyFV5x5zFa1TsohasyzDmoTnl6eXbbrtqqXsP6069wNRKcw-rXdi6431gjrm5w4TFpKX5li0yp8stDJKjwUdVBozkpWViTDzFi4uJGzzVhxGKTTlOAktwV_pQgscldFMXjWXzBGc7NjwBLbWsQJx9YZsGcx3UXFYMRKDtu0cXhc81_GLDWZFI4MkKdhRoUjrceGTazNMzWUNNBO0TjpEtoFEuS-OCst4zMbdXUi-m5Ai1xDfL6Fw9AbHnny3VkpAlB1Vm40)](https://editor.plantuml.com/uml/tLbVRnot4N-_Jy5A3za3l9Bjk8sX06bEqfqZm5PadPoqyFc1jykxstgNt91SNQ-E0J_bEIZo2VhGbtw0FlJD7qMVf3D3BlVFdG4XBG981q7O7SuCPuR3uM-uNnlBjQsAd5rnlHIMZNIoogn8RAK5k_dm2vickYhO2swiqEnAgVnjPWU_iojH25RcF9C3ypQJ9TUyO2LFtlAbcDfDBfW69LmkSz5YICM2LxcTA6cdsTy4U_IeDJZIMgrFLAuqstz2l_xWrIfBtafX37jqyBWrcAYYL598ozuD63i6AvPQLJ9rohv7Xv2kT2gqd-3tz1kytxRUwMZpFgKVKCbkScwkyXI41v-ncry-tCK_iFpvwC_ZI_Q8LXaNbaqhlU29kCDErKkur_Q7CMPqScY1P0xt63UC7jd--EdaoUIKrlkrmJIFjU3fWJKpkU8opOKsXvxo1iM8vn88ZS1QGsvr9MfI8_8zKkv7jZocR7bb13lXHfWxx558bU2CpnDQCfSdbH49ZUoFJoTVZ7sgA9r1gG4nbA9LTXGSMsGoFREYCEtXG4IEkU8w_KRmtAxQF2qoSd79yutDaewUG4GEIZEqa969CnabaAj0-lXlLfMfVpB2JZAHfpEPg-LPKOeqAx1EmX1Fq-zKmkT3qatgNfs0van2fQTziuULLCZqGcaxaqriIdWtbFI_8l0p6S8HBR8SvXhE99myKwlqvbHOdkMH5Wj772sNMYp15nEPH9LYoDZDJpypATOpIUwI53lq7jCRMEgT1ZeuUQ8ATBaVWLgc8T6Ct-eITd9312VhG5Kvfxc0Qrp2Ab2AO2mWQ591l7MsN5cc5aHa-vF9v7Zy1nXahElA4Cv6E3eJOOvezER3Fv3Zk4c1QDWU6DNhtYLFImrh1UwLkR2Padvqck6XotWzNrng1O4MK8ku90wpubgaRBxnYVkWdNqFY0MAMPDkJPOTm20a1BbxFmhQvrJGJbK1I8P5cPH25yfOeah5L6NN41e0BgKPtc5tGxNpdhfIbzABgtNkcRBswVWBL-difXIuqR5S90esxf9slG0ifckwhd9X3jyqAgvGw3ubnpG1i0lkHGWJyrpaW1-yhrz2jSJyY9NCD_SdIMgFwmEHtboQ-9TkdW22hlo9u60HR1jFeKC8QGqYGWKJA4Zt94cUK98yo-mtrPoDKbx2aNQ7tGf9qFN8vm9tR-PmcTbLDNSvuOcG4wUJpoSJo0bC2YT_eTLVe17qI09GIeR75Psih0Kl70YPEmAArm5aT2gobvM0i_SYAqMUIV4R1HVC2D7OQGPZ4HG4vdqaJCCMmaA6cw531pKdz1hZXvE7BZGjjG4B0SckzcgqU04l4Cw7qA6CQ8lXxxM3Ix6n6exrvIQ67XVUQTj5ISwDoHQRYODK54utNakNpieum-bYu1R5F2VnDyxKKKqYYVVEqfxO3nY0U5vbUUfd_Z_6UoRFpeyWE1wlH7bcB82P7mEK0L18lf0L8xtyetztPrC5e8Pm7vv0vxn0KFpjgwiZzWwgTL8LX7IkkSuuE6dOUtARL1qxVtPwd71OJXTZ0406S5PCK1GnGLgLUPPm15ypkTQyD6pyLv5KI1ZB9IoyMmZIuRMBcY4MnE5KbnoUIH7BbIgT6B8wDKwMGEPSMQiAH9bjqpjeCs10eoeDE1vuhQuWenQgpeQjj2K4I12HG1x-pXMq3_ew0mtpJOa90vtpAlFZ0GRwLEbks7WAcjZKYPlVhXXkRTck8NkXrPfU9zZL-Kr9AsEmU_0PxXqFXzOFnl6GRBmYfDndcgyyKm3EBOwPd5TQfcej8QFo17e9cCsTc0JZOmWipTzJoirruhHceIVfg8tSoYLQ6HDZuqHYm6osLkOSaixLCQml06ZSilgr3xKAZpDi0YMc8y-7h1VNdXgAgLJIaVPFJw1idOIO2gwJLSpBh5DnmEmfZPmPKq6nT44coiWKJZJDy0OnXktmjYhxqi-49T5M3ZibJiefwNh_eh9kWuMiZ03WDta__9-oj1sWhPaeH4LbAUbw0Q95Bxn4PsKNMClYQvvNmZ6eKAn92gPnEd8-5pcilL7vDGM8HLHnKgYNrw5pZGl8owKF87HqEYuGX5abHLkMz9D6fv-2-BhWPIdqhsxwFrtnwIYXldsYLN79rz0TKuyBRRwl_vufDD0D8pA5mu4CztQYoG9wzEvEUGxwNjG-6tOvdbxvGWkii3Pt7O-E_tGrlZmVFR_3JgJSyZat3Vny1gVgwkLpDheucqb_Cd_t-83EveXgzH4Kh7y-O7m1MEU89PKsIZlqjLo1rDrUqjFnnVZyT7n-SZQUtc57mFJEZVpDJtzlNIA7UtKMqm7vLNsXkZtGNALkZxMlKBT7cylJvau-3DQtdxli3Eq_TRa08FCifM8zt35BkxlTCKzx6EPghfvn8ko3M6HN0DZmDg5rzSGMKFAQMxZXmCKdgALBoAQLw91RKUaEDDTx7R8FHPUuPMjpOOOsVWbuSiqt1c6bMiEv4mm41UrRePQDlP6EcRqncBrUXDrp-qbRqTsbW-ABHuRlErbeHMav1tHhUu1k7tnLjwBiY7tyLzEoVlmFAghbqPZZBdQAWeV3GQsYZgHhnq3ZrWNuJgKnWf8QWKFwTUwGjxK3H0NLk-xCjrW1gDwM5U7dRNaHStwAj-SWGaYFEX52RZjJGy5sj5ZaoAnkWBTD2EZFsT7wfi0EcGSvbs8HlPDLCHVw_PPXDNJROPA7NA3PVMXndnx2rnPwtPAgWHH8qIFTXn4c8qc3MAKluz48SpxGfmOqiub35wyFV5x5zFa1TsohasyzDmoTnl6eXbbrtqqXsP6069wNRKcw-rXdi6431gjrm5w4TFpKX5li0yp8stDJKjwUdVBozkpWViTDzFi4uJGzzVhxGKTTlOAktwV_pQgscldFMXjWXzBGc7NjwBLbWsQJx9YZsGcx3UXFYMRKDtu0cXhc81_GLDWZFI4MkKdhRoUjrceGTazNMzWUNNBO0TjpEtoFEuS-OCst4zMbdXUi-m5Ai1xDfL6Fw9AbHnny3VkpAlB1Vm40)
+## 3. Gap Analysis
 
-### 3.3 `ProjectItemsQueryBuilder` interface (blackbox spec)
+### 3.1 Server Computes Scrum Judgments (Invariant 2 violation)
+
+The adapter and domain layers currently produce values that require Scrum knowledge to compute. The ARCHITECTURE.MD explicitly lists these as agent responsibilities.
+
+| What the server currently computes                     | Where                                                                                                               | Why it's a judgment                                                                        | Should move to |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------- |
+| Readiness-by-type breakdown (DoR evaluation)           | Adapter health service calls domain-level readiness rules to score each story                                       | Evaluates story body format, estimates, AC presence, dependencies — Scrum DoR criteria     | Agent skill    |
+| Story-level DoR evaluation (user-story format, AC)     | Domain-level readiness rules module: regex-based detection, AC parsing                                              | Detecting user-story format and AC presence requires Scrum domain knowledge                | Agent skill    |
+| Sprint risk counts (unestimated, blocked, no-assignee) | Adapter health service counts items by risk signals                                                                 | Counts items by Scrum risk signals — requires knowing what "blocked" means                 | Agent skill    |
+| Ungroomed count                                        | Adapter health service identifies stories missing type, estimate, or AC                                             | Judgment call: "missing type OR estimate OR AC"                                            | Agent skill    |
+| Burndown series (actual + ideal line)                  | Adapter analytics service builds day-by-day burndown from completion timestamps                                     | Computes burndown series from timestamps — agent domain per ARCHITECTURE.MD § Design Notes | Agent skill    |
+| Sprint velocity/history snapshots                      | Adapter analytics service aggregates completed sprints into velocity records                                        | Aggregates completed sprints into velocity records — agent domain                          | Agent skill    |
+| Sprint risk stance (normal/monitor/elevated)           | Domain-level function compares time-elapsed % against work % with hardcoded thresholds; called from orient use case | Time vs. work comparison with fixed risk thresholds — Scrum judgment                       | Agent skill    |
+| Overall readiness percentage                           | Adapter health service derives percentage from per-story readiness scores                                           | Percentage of "ready" stories — derived from DoR evaluation                                | Agent skill    |
+
+**Root cause:** The port interface has methods (`getBoardHealth`, `getAnalytics`) that return pre-computed Scrum artifacts. The agent receives ready-made judgments instead of raw facts.
+
+### 3.2 Port Interface Has Computation-Oriented Methods (Invariant 9)
+
+The port interface ([`src/scrum/ports.ts`](../src/scrum/ports.ts)) defines separate `AnalyticsPort`, `BoardHealthPort`, and `ImpedimentPort` interfaces that return derived types:
+
+- `getBoardHealth(sprintScope)` → `BacklogHealth` — derived type with readiness, risk, impediment counts
+- `getAnalytics(query)` → `AnalyticsResult` — derived type with pre-computed burndown series
+- `getSprintCompletion(iterationId)` → `{ completed, total }` — computed count (borderline; could be a raw fact but is currently a derived aggregation)
+
+The ARCHITECTURE.MD § "BackendPort Contract" describes a simpler port: `getSprintData(query)` returns raw sprint items with completion timestamps; `findItems(filter)` returns raw item listings. The architecture diagram shows no `getBoardHealth` or `getAnalytics` on the port — those are agent-level compositions.
+
+### 3.3 Adapter Internal Structure (Five-Subfolder Contract)
+
+The ARCHITECTURE.MD § "Adapter Subfolder Contract" prescribes five subdirectories with enforced import boundaries:
+
+| Subfolder           | Responsibility                                           |
+| ------------------- | -------------------------------------------------------- |
+| `query-pipeline/`   | Board-scan loop: query building, caching, pagination     |
+| `query-strategies/` | Routes `findItems`; normalizes raw pages to domain types |
+| `read-services/`    | Aggregates via coordinator; no direct pagination         |
+| `write-services/`   | Mutations only                                           |
+| `infra/`            | API client, context, ref resolution — no business logic  |
+
+The current structure has all services in a flat [`internal/`](../src/adapters/github/internal/) directory with an [`assemblers/`](../src/adapters/github/internal/assemblers/) subdirectory. There are no dep-cruiser rules enforcing import boundaries between these roles. While the conceptual separation exists (query builder → execution engine is a pipeline; services delegate to the coordinator), the directory structure does not encode the contract.
+
+### 3.4 Domain Types Mix Server and Agent Shapes
+
+`domain/types.ts` exports types that the server currently produces but should be agent-produced:
+
+- `BurndownResponse`, `BurndownDayPoint`, `IdealDayPoint` — used by the server's analytics path
+- `SprintContext` with `riskStance` — computed in the domain layer, called from orient use case
+- `SprintSnapshot`, `SprintTotals` — produced by the adapter's analytics service
+- `BacklogHealth`, `SprintRisk`, `ReadinessBreakdown` — produced by the adapter's health service
+
+These types describe valid Scrum concepts. The issue is not the types themselves but the layer that produces them. After refactoring, they should still exist but be produced by the agent from raw server data, not by the server.
+
+### 3.5 Domain Layer Contains Runtime Scrum Computation
+
+The domain layer's structural contract (ARCHITECTURE.MD § "Source-Code Structure") states that `domain/` exports should be type declarations or vocabulary constants only — no runtime computation. Two violations exist:
+
+- **Readiness evaluation logic.** The domain layer contains functions that evaluate Definition of Ready criteria: user-story format detection, acceptance criteria checkbox parsing, and "story too large for a sprint" heuristics. These are Scrum judgments — they require knowing what a user story looks like and what constitutes readiness. The adapter's health service calls these functions to produce readiness-by-type breakdowns. Both the domain-level rules module and the adapter's call site must be addressed.
+
+- **Risk stance computation.** The domain layer contains a function that compares time-elapsed percentage against work-completion percentage using hardcoded thresholds (110%, 130%) to produce a `normal | monitor | elevated` verdict. This is called from the orient use case to populate `SprintContext.riskStance`. The thresholds are policy decisions, not facts, and the computation is a Scrum judgment.
+
+Both functions violate the Dependency Rule in a subtle way: they are policy code (Scrum rules) living in the innermost layer (entities/domain). Their callers in the use-case and adapter layers also violate Invariant 2 by consuming pre-computed judgment values. The fix for both violations is the same: remove the functions from the server entirely and reimplement the logic in the agent skill.
+
+---
+
+## 4. Target Architecture
+
+### 4.1 Principle
+
+The server returns two categories of data:
+
+1. **Per-item facts** — what `scrum_find_items` already returns: title, status, story points, sprint, assignee, labels, dependencies. One item per row. No aggregation, no counting, no evaluation.
+
+2. **Raw sprint data** — what a new `scrum_get_sprint_data` tool will return: items in a sprint with their completion timestamps (when available from the platform audit log). Timestamps are facts — the platform recorded when something happened. The agent uses these timestamps to compute burndown, velocity, and trends.
+
+The agent applies all aggregation, counting, evaluation, and computation on top of these two data sources.
+
+### 4.2 Clean Port Interface
+
+The port simplifies to the methods declared in ARCHITECTURE.MD § "BackendPort Contract":
+
+**Read methods (unchanged):**
+
+| Method                         | Returns                                    |
+| ------------------------------ | ------------------------------------------ |
+| `getPlatformState(vocabulary)` | Platform state with vocabulary gaps        |
+| `getEpics(sprintRef?)`         | Epic list                                  |
+| `findItems(filter)`            | Item listings                              |
+| `getStoryDetail(ref)`          | Item with body, comments, linked artifacts |
+| `getOrphanImpediments()`       | Impediment listings                        |
+| `fetchContent(location)`       | Template content                           |
+
+**Read methods (new):**
+
+| Method                 | Returns                                                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `getSprintData(query)` | Raw sprint items with completion timestamps — replaces `getAnalytics`, `getBoardHealth`, and `getSprintCompletion` |
+
+**Write methods (unchanged):**
+
+| Method                          | Returns                         |
+| ------------------------------- | ------------------------------- |
+| `createStory(input)`            | Item reference                  |
+| `createImpediment(input)`       | Impediment reference + item ref |
+| `updateStory(ref, updates)`     | void                            |
+| `setField(ref, field, value)`   | void                            |
+| `addComment(ref, body)`         | void                            |
+| `updateImpediment(ref, update)` | Updated impediment listing      |
+| `addVocabulary(kind, value)`    | Create result                   |
+
+`getAnalytics`, `getBoardHealth`, and `getSprintCompletion` are removed from the port. Use cases that need sprint data call `getSprintData()`.
+
+### 4.3 What `getSprintData` Returns
 
 ```typescript
-type QueryProfile = "listing" | "aggregate";
-
-interface BuildQueryOptions {
-  profile: QueryProfile;
-  queryArg?: string; // items(query: "…") server-side coarse filter
-  configuredFieldTypeNames: string[]; // from config.live.fields — trims ItemFieldValues
+interface SprintDataQuery {
+  sprint_ref: "current" | "next" | string; // sprint name
+  history_window?: number; // how many completed sprints to include
 }
 
-// Output passed to ExecutionEngine
-interface BoardScanRequest {
-  document: string;
-  variables: { login: string; number: number; queryArg?: string };
+interface SprintRawData {
+  active_sprint: {
+    info: SprintInfo; // name, dates, duration
+    items: SprintDataItem[]; // per-item facts
+  } | null;
+  completed_sprints: {
+    info: SprintInfo;
+    items: SprintDataItem[];
+  }[];
 }
-```
 
-**`listing` profile:** Full `ItemContent` minus unused fields (`state`, `repository.*`, `labels.color`, `milestone.dueOn`). Conditional `body` (only when `filter.search` is set). Conditional `blockedBy` (only when `include_dependencies`). Used by `scrum_find_items`.
-
-**`aggregate` profile:** No `ItemContent`. Minimal `fieldValues` with only: `ProjectV2ItemFieldIterationValue`, `ProjectV2ItemFieldSingleSelectValue`, `ProjectV2ItemFieldNumberValue`. Plus `assignees { totalCount }` and `blockedBy { totalCount }`. Estimated payload reduction: **60–80%** vs current shape. Used by all non-listing board scans.
-
-**`buildQueryArg(filter)` helper:**
-
-```typescript
-buildQueryArg(filter: ResolvedItemFilter): string {
-  const parts = ['is:unarchived']; // always, unless filter.includeArchived
-  if (filter.statuses?.length === 1) {
-    parts.push(`status:"${filter.statuses[0]}"`);
-  }
-  return parts.join(' ');
+interface SprintDataItem {
+  issue_number: number | null; // null for draft items
+  title: string | null;
+  story_points: number | null;
+  status: string | null; // display name from board
+  completed_at: string | null; // ISO-8601 timestamp from audit log or close proxy
+  sprint_name: string | null;
+  type: string | null;
+  has_assignee: boolean;
+  has_blockers: boolean;
 }
 ```
 
-### 3.4 Clean BackendPort interface
+Key design decisions:
 
-The port is defined by what use cases need, not by adapter internals:
+- **No aggregation.** The server returns a flat item list per sprint. The agent counts, groups, and computes.
+- **Completion timestamps are facts.** The platform records when a status changed. The adapter retrieves this (from audit log, timeline, or issue close date) and returns it raw.
+- **Sprint metadata is facts.** Start date, end date, duration — these come from the platform iteration configuration.
+- **The agent chooses the history window.** The `history_window` parameter controls how many completed sprints to return, but the agent decides what window to request based on its own velocity-calculation policy.
+- **Type design.** The `SprintDataItem` type represents the minimal per-item fact set needed for agent-side analytics. Where existing port types already capture equivalent fields (e.g., `ItemAggregate`), prefer extending them with a `completed_at` field rather than introducing a parallel type family. The principle: one canonical per-item projection, not multiple overlapping shapes.
 
-```typescript
-interface BackendPort {
-  // Bootstrap
-  reload(): Promise<void>;
-  getPlatformState(vocab: VocabularyFilter): Promise<BackendCallResult<PlatformState>>;
+### 4.4 Agent Responsibilities (clear boundary)
 
-  // Read
-  findItems(filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResult>>;
-  getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>>;
-  getAggregates(scope: BoardScope): Promise<BoardAggregates>; // ← replaces getBoardHealth + getAnalytics + getSprintCompletion
+After refactoring, these computations move exclusively to the agent:
 
-  // Mutations
-  createStory(input: CreateStoryInput): Promise<StoryRef>;
-  updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void>;
-  setField(ref: StoryRef, field: ScrumField, value: FieldValue): Promise<void>;
-  addComment(ref: StoryRef, body: string): Promise<void>;
-  logImpediment(input: ImpedimentInput): Promise<ImpedimentRef>;
-  updateImpediment(ref: ImpedimentRef, update: ImpedimentUpdate): Promise<ImpedimentListing>;
-  getOrphanImpediments(): Promise<ImpedimentListing[]>;
-  addVocabulary(kind: VocabularyKind, value: string): Promise<CreateResult>;
+| Computation          | Input from server                                              | Agent logic                                     |
+| -------------------- | -------------------------------------------------------------- | ----------------------------------------------- |
+| Sprint risk stance   | Sprint dates, item status counts                               | Compare time elapsed % vs. completion %         |
+| Burndown series      | Per-item completion timestamps, sprint dates, committed points | Day-by-day remaining-points calculation         |
+| Ideal burndown line  | Sprint duration, committed points                              | Arithmetic line from committed to zero          |
+| Velocity             | Completed sprint history windows                               | Average or weighted average of completed points |
+| Readiness assessment | Per-item body text, estimates, dependency flags                | Evaluate against DoR criteria from config       |
+| Backlog health       | Per-item fields                                                | Count and categorize by readiness, risk signals |
+| Acceptance criteria  | Story body text                                                | Parse checklist from markdown                   |
+| Sprint context       | Sprint dates                                                   | Compute days elapsed, remaining, risk stance    |
 
-  // Epic
-  getEpics(sprintIterationId?: string | null): Promise<EpicListing[]>;
-}
-```
+### 4.5 Adapter Structure (Five-Subfolder Contract)
 
-**Key change:** `getAggregates(scope)` replaces three separate port methods (`getBoardHealth`, `getAnalytics`, `getSprintCompletion`). Use cases call it once and extract what they need. The adapter implements it with a single aggregate-profile board scan.
-
-`getOrphanImpediments` stays separate — it is a label-based issue query (`GetImpedimentIssues`), not a board scan, so it correctly does not go through `ProjectItemsQueryBuilder`.
-
-### 3.5 `BoardAggregates` type spec
-
-`BoardAggregates` is the output of `getAggregates()` — pure facts from a single aggregate board scan. No Scrum judgments; those belong in use cases.
-
-```typescript
-/**
- * Lean per-item projection from the aggregate query profile.
- * No body, label list, assignee list, or repository data.
- * `sprintId` maps from the platform's iteration concept (platform-agnostic term at port boundary).
- */
-interface ItemAggregate {
-  readonly id: string;
-  readonly type: string | null; // board Type field value
-  readonly status: string | null; // board Status field value
-  readonly sprintId: string | null; // null = backlog
-  readonly storyPoints: number | null;
-  readonly hasBlockers: boolean; // blockedBy totalCount > 0
-  readonly hasAssignee: boolean; // assignees totalCount > 0
-  readonly issueNumber: number | null; // null for draft issues; used by burndown REST
-  readonly isArchived: boolean;
-}
-
-/**
- * Pre-grouped per-sprint summary. Adapter computes counts using
- * terminal-status mapping from config — use cases read, don't re-iterate.
- */
-interface SprintSummary {
-  readonly sprintId: string;
-  readonly sprintName: string;
-  readonly items: readonly ItemAggregate[];
-  readonly totalItems: number;
-  readonly totalPoints: number;
-  readonly completedPoints: number; // points in terminal (done) statuses
-  readonly itemsByStatus: Record<string, number>;
-  readonly pointsByStatus: Record<string, number>;
-  readonly unestimatedCount: number;
-  readonly blockedCount: number;
-  readonly unassignedCount: number;
-}
-
-/**
- * Output of a single aggregate board scan.
- * Items live inside SprintSummary.items and backlog[] — not as a flat root array,
- * because no use case needs the full board as an unstructured list.
- *
- * Orphan impediments (label-tracked, off-board) are NOT here.
- * They come from getOrphanImpediments() and are composed by the use case.
- */
-interface BoardAggregates {
-  readonly sprintSummaries: readonly SprintSummary[]; // all sprints, newest-first
-  readonly backlog: readonly ItemAggregate[]; // sprintId === null
-  readonly meta: {
-    readonly totalCount: number;
-    readonly truncated: boolean; // hit pagination ceiling — counts are incomplete
-    readonly fetchedAt: string; // ISO-8601
-  };
-}
-```
-
-**How use cases read it:**
+The adapter internal directory is restructured to match the ARCHITECTURE.MD contract. Files at the adapter root (`backend.ts`, `mappers.ts`, `bootstrap.ts`, `types.ts`) remain as the adapter's shared vocabulary.
 
 ```
-orientUseCase (sprint completion):
-  sprintSummaries.find(s => s.sprintId === activeSprintId)
-  → { completed: s.completedPoints, total: s.totalPoints }
-
-boardHealthUseCase:
-  active = sprintSummaries.find(active sprint)
-  → SprintRisk { unestimated_count: active.unestimatedCount,
-                 blocked_count: active.blockedCount,
-                 no_assignee_count: active.unassignedCount }
-  all items across summaries + backlog → readiness by_type
-
-analyticsUseCase (history):
-  sprintSummaries.filter(completedSprintIds)
-  → map to SprintSnapshot via SprintInfo from PlatformState
-
-analyticsUseCase (burndown):
-  sprintSummaries.find(active).items
-  → BurndownStoryInput[] { issueNumber, storyPoints, status }
-  → then parallel REST timeline per issueNumber
+src/adapters/github/
+├── backend.ts                    # Concrete BackendPort
+├── mappers.ts                    # Wire → domain translation
+├── bootstrap.ts                  # Platform boot state
+├── types.ts                      # Adapter-internal types
+├── queries.ts                    # GraphQL fragments (shared vocabulary)
+├── ...
+├── query-pipeline/               # Board scan loop
+│   ├── project-items-query-builder.ts
+│   ├── project-items-cache.ts
+│   ├── execution-engine.ts
+│   └── pagination.ts
+├── query-strategies/             # findItems routing + normalization
+│   ├── filter-strategy-router.ts
+│   └── result-normalizer.ts
+├── read-services/                # Data aggregation via coordinator
+│   ├── board-scan-coordinator.ts
+│   ├── story-query-service.ts
+│   ├── epic-service.ts
+│   ├── impediment-service.ts
+│   └── sprint-data-service.ts    # NEW: getSprintData implementation
+├── write-services/               # Mutations only
+│   ├── story-mutation-service.ts
+│   ├── field-value-mutator.ts
+│   ├── label-resolver.ts
+│   ├── vocabulary-manager.ts
+│   └── user-milestone-resolver.ts
+├── infra/                        # API client, ref resolution
+│   ├── http-client.ts
+│   ├── infra-context.ts
+│   ├── resolver.ts
+│   ├── resolve-issue-number.ts
+│   ├── config-reloader.ts
+│   ├── concurrent.ts
+│   └── file-reader.ts
+└── assemblers/                   # Assembler pipeline (strategy implementations)
+    ├── project-items-assembler.ts
+    ├── direct-lookup-assembler.ts
+    ├── search-api-assembler.ts
+    ├── mixed-assembler.ts
+    └── assembler-output.ts
 ```
 
-### 3.6 Mapper split (prerequisite)
+Note: `assemblers/` is intentionally kept as a peer to the five subfolders — assemblers are strategy implementations that span query construction and normalization, and they are the only consumers allowed to bridge pipeline ↔ strategy boundaries.
 
-Before the aggregate profile can be used, `buildStoryFromRaw` in `mappers.ts` must be split:
+**Services removed during refactoring:**
 
-```typescript
-// Existing — listing profile; requires full ItemContent; null-guard stays
-buildStoryFromRaw(item, config): Story | null
+- `analytics-service.ts` — burndown + history computation moves to agent
+- `board-health-service.ts` — readiness + risk computation moves to agent
+- `sprint-history-service.ts` — velocity computation moves to agent
+- `burndown-calculator.ts` — burndown series computation moves to agent
 
-// New — aggregate profile; only fieldValues needed; no null-guard on labels/assignees
-buildAggregateFromRaw(item, config): ItemAggregate
-```
+**Domain rules module removed:**
 
-`buildAggregateFromRaw` does not return `null` — aggregate items without labels/assignees are valid and expected.
+- The readiness evaluation functions in the domain layer — user-story format detection, AC checkbox parsing, "too large for sprint" heuristics — are removed. Readiness evaluation is agent-side judgment. This also restores the domain layer's contract of containing only type declarations and vocabulary constants.
+
+### 4.6 Domain Types Cleanup
+
+Types that the server no longer produces are removed from the server's domain output schemas:
+
+| Type                                                    | Action                                                               |
+| ------------------------------------------------------- | -------------------------------------------------------------------- |
+| `BurndownResponse`, `BurndownDayPoint`, `IdealDayPoint` | Remove from server output schemas; agent defines its own             |
+| `SprintSnapshot`, `SprintTotals`                        | Remove from server output schemas                                    |
+| `BacklogHealth`, `SprintRisk`, `ReadinessBreakdown`     | Remove from server output schemas                                    |
+| `AnalyticsResult`                                       | Remove from server output schemas                                    |
+| `SprintContext.riskStance`                              | Remove `riskStance` field; sprint context stays as dates+counts only |
+| `sprintContextFromSprintInfo()`                         | Remove `riskStance` computation; function returns dates only         |
+| `computeRiskStance()`                                   | Move to agent                                                        |
+
+**Pure math utilities.** Functions that perform pure arithmetic on dates and numbers (`buildIdealLine`, `buildDaySeries`, `computeSprintEndDate`) are not Scrum judgments — they are deterministic transformations. After the refactoring, the server no longer calls them. They are marked as deprecated in the server codebase with a comment directing readers to the agent skill where equivalent logic should live. They are removed from the server in a follow-up once agent-side parity is confirmed.
+
+**Listing mapper cleanup.** The `historyEntryToItemListing()` function in `listing-mappers.ts` converts history-specific story shapes to item listings. Its only caller is the adapter's analytics service. After that service is removed in Phase C, this function is dead code and is removed.
 
 ---
 
-## 4. Sequenced implementation plan
+## 5. Implementation Strategy (Phased)
 
-Dependencies flow top to bottom; each step unblocks the next.
+All phases respect Invariant 8 (Tool Surface Stability): `scrum_*` tool names, parameter shapes, and response schemas must not change in a breaking way.
 
-| Step | Change                                                                                                       | Layer                                      | Unblocks                                                                               |
-| ---- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------ | -------------------------------------------------------------------------------------- |
-| 1    | Add `buildAggregateFromRaw` in `mappers.ts`; relax null-guard for aggregate callers                          | Adapter (`mappers.ts`)                     | Everything below                                                                       |
-| 2    | Add `profile` + `buildQueryArg` to `ProjectItemsQueryBuilder`; extend `PlatformRequest` to carry `queryArg?` | Adapter (`project-items-query-builder.ts`) | Steps 3, 4                                                                             |
-| 3    | Wire all bypass callers to the board query pipeline with aggregate profile                                   | Adapter (services)                         | Eliminates R2, R4, R5; `PaginatedProjectItemFetcher` becomes dead code for board scans |
-| 4    | Wire `buildQueryArg` output into `ProjectItemsAssembler.assemble()`                                          | Adapter (assembler)                        | `is:unarchived` + single-status server filter for `findItems`                          |
-| 5    | Add `getAggregates(scope)` to `BackendPort`; implement in `GitHubProjectBackend`                             | Port + Adapter                             | Clean port interface; collapses getBoardHealth + getAnalytics + getSprintCompletion    |
-| 6    | Update use cases to call `getAggregates` + read from `BoardAggregates`                                       | Use case layer                             | Removes platform-specific calls from use cases                                         |
-| 7    | R1: Remove `getStoryDetail` post-mutation re-read in `set_field` handler                                     | Tool handler                               | −3 GraphQL calls per `scrum_set_field`                                                 |
-| 8    | R3: Bypass router for `resolveRef({number})` — direct `GetIssueProjectItem`                                  | Adapter                                    | Removes router overhead on all write tools using issue numbers                         |
+### Phase A — Add `scrum_get_sprint_data` Tool (Non-breaking)
 
-Steps 1–4 are adapter-only (no port or use-case changes). Step 5 requires a port change. Steps 7–8 are independent and can run in parallel with any of the above.
+Add a new MCP tool that returns raw sprint data. The existing `scrum_get_board_health` and `scrum_get_analytics` tools continue to work unchanged.
+
+**A1.** Define `SprintDataQuery` and `SprintRawData` types in the port interface. Prefer extending existing types (e.g., `ItemAggregate`) with a `completed_at` field over introducing fully independent types.
+
+**A2.** Add `getSprintData(query)` to the port interface (`ProjectReader`).
+
+**A3.** Implement `SprintDataService` in the adapter that:
+
+- Fetches sprint items via the aggregate board scan (already cached via the coordinator)
+- Retrieves completion timestamps from the audit log (reusing the existing burndown calculator's timestamp-resolution logic)
+- Returns `SprintRawData` — no aggregation, no series computation
+
+**A4.** Register `scrum_get_sprint_data` as a new MCP tool.
+
+**A5.** Add contract tests for the new tool (schema validation against `SprintRawData` shape).
+
+### Phase B — Agent Skill Update
+
+Update the SM agent skill to use the new tool and compute its own judgments from raw data.
+
+**B1.** Agent calls `scrum_get_sprint_data` instead of `scrum_get_analytics` + `scrum_get_board_health`.
+
+**B2.** Agent implements burndown series computation, velocity calculation, readiness assessment, and sprint risk evaluation in the skill layer.
+
+**B3.** Agent implements `buildIdealLine` and `buildDaySeries` logic (or reuses sprint-math as a skill-internal utility).
+
+This phase validates that the server's raw data is sufficient for the agent to produce equivalent-quality Scrum judgments. Run agent evaluations against both the old tools and the new tool to confirm output parity.
+
+### Phase C — Remove Server-Side Computation (Port Cleanup)
+
+Once the agent is fully migrated to `scrum_get_sprint_data`:
+
+**C1.** Remove `getBoardHealth()`, `getAnalytics()`, and `getSprintCompletion()` from the port interface.
+
+**C2.** Remove `scrum_get_board_health` and `scrum_get_analytics` tool registrations (or deprecate with a stub that returns `{ deprecated: true, use: "scrum_get_sprint_data" }`).
+
+**C3.** Remove adapter services that compute Scrum judgments:
+
+- Health service (readiness-by-type, sprint risk counts, ungroomed count)
+- Analytics service (burndown series, velocity history)
+- Sprint history service (completed sprint aggregation)
+- Burndown calculator (burndown data collection and series computation)
+
+Also remove dead code that was only called by these services:
+
+- `historyEntryToItemListing()` in listing-mappers (only caller was analytics service)
+
+**C4.** Remove `BacklogHealth`, `AnalyticsResult`, `BurndownResponse`, `SprintSnapshot`, and related types from server output schemas.
+
+**C5.** Remove Scrum computation from the domain and use-case layers:
+
+- Remove the domain-level readiness evaluation module entirely. Readiness assessment (user-story format detection, AC parsing, "too large" heuristics) is agent-side judgment. This restores the domain layer's "zero runtime computation" contract.
+- Remove `sprintContextFromSprintInfo()` risk-stance computation; `SprintContext` becomes dates-only metadata.
+- Remove `computeRiskStance()` — thresholds are agent policy, not server facts.
+- Mark pure math functions in sprint-math as deprecated with a comment directing readers to the agent skill. Remove from the server in a follow-up once agent evaluation parity is confirmed.
+
+**C6.** Remove `AnalyticsPort`, `BoardHealthPort` from the port interface; keep only the focused ports that survive (`FindItemsPort`, `StoryPort`, `EpicPort`, `ImpedimentPort`).
+
+### Phase D — Adapter Structure (Subfolder Contract)
+
+Restructure the adapter to match the five-subfolder contract from ARCHITECTURE.MD.
+
+**D1.** Create the five subdirectories under `internal/`: `query-pipeline/`, `query-strategies/`, `read-services/`, `write-services/`, `infra/`.
+
+**D2.** Move files into their contract directories.
+
+**D3.** Add dep-cruiser rules enforcing import boundaries:
+
+- `query-pipeline/` may only be imported by `query-strategies/` and `read-services/` (via the coordinator)
+- `query-strategies/` may not import `read-services/` or `write-services/`
+- `read-services/` may not import the paginator directly or import `write-services/`
+- `write-services/` may not import `query-pipeline/`
+- `infra/` may not import any service folder
+
+**D4.** Remove dead assembler-output references from service imports (assembler types stay with assemblers).
 
 ---
 
-## 5. Unresolved questions
+## 6. Boundaries for Agent-Side Implementation
 
-**Q1 — `getAggregates` scope parameter.** Should it always return all sprints (full board) or accept a `BoardScope` that limits which sprints are loaded? `boardHealth` and `burndown` only need the active sprint; `history` needs completed sprints. A scope parameter could halve the item set for health/burndown but adds a branching code path. Decision needed before implementing Step 5.
+This refactoring plan is scoped to the server. The agent skill must be updated in parallel, but specific agent implementation decisions belong to the agent skill maintainers. The following agent-side design questions are out of server scope:
 
-**Q2 — `items(query:)` iteration syntax.** The research confirms `status:"X"` works but iteration/sprint filtering via `query:` is undocumented and likely unsupported. A live probe with a real token is required before investing in a `buildQueryArg` sprint-filter path. If it works, page count for sprint-scoped queries could drop dramatically. If it doesn't, the `queryArg` benefit is limited to `is:unarchived` + single-status.
+- Exact burndown algorithm (how to handle missing timestamps, partial-day completion)
+- Velocity window policy (last N sprints, weighted average, trim outliers)
+- Risk thresholds (what time-to-completion ratio triggers "elevated")
+- Readiness criteria weights (how many DoR criteria must pass for "ready")
+- Coaching language (how the agent presents findings to the human)
 
-**Q3 — Request-scoped cache.** Even with a single `getAggregates` call per tool invocation, back-to-back tool calls in a session (e.g. `orient` then `board_health`) still each trigger a full board scan. A session-scoped `BoardAggregates` cache keyed by `fetchedAt` TTL would eliminate this. Adds complexity; worth a separate spike.
-
-**Q4 — `BoardScope` definition.** The `getAggregates(scope: BoardScope)` signature was agreed but `BoardScope` not yet defined. Minimum viable: `{ sprint: 'active' | 'all' }`. Needs to be defined before Step 5 is implementable.
-
-**Q5 — `EpicPort` / `getEpics`.** Epics are fetched via `ListMilestones` (REST, per repo), not a board scan. They're currently called in `orientUseCase`. Not affected by this refactor but the port interface consolidation in Step 5 is a good time to audit whether `EpicPort` should remain a separate interface or merge into `BackendPort` directly.
-
-**Q6 — Parallel REST calls in burndown.** `BurndownCalculator` currently calls REST issue timeline **sequentially** per sprint story. With the aggregate profile supplying `issueNumber[]`, these REST calls become parallelizable (`Promise.all`). This is a separate optimization that can be done as part of Step 3 or deferred.
+The server provides raw data. The agent makes policy decisions.
 
 ---
 
-## 6. What this does NOT change
+## 7. Verification
 
-- **Tool names and parameter shapes** — zero changes to the MCP tool surface. Agents using these tools see no difference.
-- **`SearchApiAssembler` and `DirectLookupAssembler`** — not board scans; correctly bypass `ProjectItemsQueryBuilder`.
-- **Mutation paths** — `StoryMutationService`, `FieldValueMutator`, `LabelResolver`, `VocabularyManager` — unaffected.
-- **`getOrphanImpediments`** — label-based issue query; stays separate from board scan pipeline.
-- **`ConfigReloader` / bootstrap** — orient still pays one `GetUserProjectFieldsBootstrap` call per invocation; that's a use-case-layer concern out of scope here.
+After each phase:
+
+- **Phase A:** `deno task test` passes; new `scrum_get_sprint_data` tool returns schema-valid JSON; contract test covers new tool.
+- **Phase B:** Agent evaluation suite produces equivalent (or better) Scrum judgments using raw data vs. pre-computed data.
+- **Phase C:** `deno task depcruise` passes; no references to removed services; port interface is clean; domain layer contains no runtime Scrum computation (verify: no imports of removed readiness functions, no callers of removed risk-stance logic).
+- **Phase D:** `deno task depcruise` with new rules passes; adapter directory structure matches ARCHITECTURE.MD.
+
+No phase introduces breaking changes to existing `scrum_*` tool names or parameter shapes.
