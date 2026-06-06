@@ -24,20 +24,13 @@ import { GitHubApiError } from "../errors.ts";
 // JSON captured from the live API via `deno task capture-fixtures`.
 // Re-run that task after schema changes or when the project board changes significantly.
 
-import p1Fixture from "../generated/__fixtures__/project-items-p1.json" with { type: "json" };
-import p2Fixture from "../generated/__fixtures__/project-items-p2.json" with { type: "json" };
+import { FIXTURE_PAGE_1, FIXTURE_PAGE_2 } from "./_test_fixtures.ts";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-// The fixture data comes from a user account, not an org.
-// makeCtx() deep-merges ghConfig overrides — pass { ghConfig: { owner_type: "user" } }
-// to route to the user response key.
-
-// Derive expected counts directly from fixtures so tests stay valid after re-capture.
-const P1_NODES = (p1Fixture as { user: { projectV2: { items: { nodes: unknown[] } } } })
-  .user.projectV2.items.nodes;
-const P2_NODES = (p2Fixture as { user: { projectV2: { items: { nodes: unknown[] } } } })
-  .user.projectV2.items.nodes;
+// Derived counts from the consolidated fixture module so tests stay valid.
+const P1_NODES = FIXTURE_PAGE_1.user.projectV2.items.nodes;
+const P2_NODES = FIXTURE_PAGE_2.user.projectV2.items.nodes;
 const FIXTURE_TOTAL = P1_NODES.length + P2_NODES.length;
 
 // Pre-built queries matching the fixture owner types.
@@ -69,7 +62,7 @@ Deno.test({
   name: "collect() - returns all items across two fixture pages",
   async fn() {
     const gh = createGhSpy();
-    gh.enqueue(p1Fixture, p2Fixture);
+    gh.enqueue(FIXTURE_PAGE_1, FIXTURE_PAGE_2);
 
     const fetcher = new PaginatedProjectItemFetcher(
       makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
@@ -86,7 +79,7 @@ Deno.test({
   name: "collect() - items are non-empty (regression: collect() previously returned [])",
   async fn() {
     const gh = createGhSpy();
-    gh.enqueue(p1Fixture, p2Fixture);
+    gh.enqueue(FIXTURE_PAGE_1, FIXTURE_PAGE_2);
 
     const fetcher = new PaginatedProjectItemFetcher(
       makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
@@ -103,7 +96,7 @@ Deno.test({
   name: "collect() - every item has a non-empty id",
   async fn() {
     const gh = createGhSpy();
-    gh.enqueue(p1Fixture, p2Fixture);
+    gh.enqueue(FIXTURE_PAGE_1, FIXTURE_PAGE_2);
 
     const fetcher = new PaginatedProjectItemFetcher(
       makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
@@ -125,7 +118,7 @@ Deno.test({
     // on the ProjectV2ItemFieldValue union. GitHub silently dropped the field selection,
     // making every fieldValue.field undefined. The fix uses `... on ProjectV2FieldCommon`.
     const gh = createGhSpy();
-    gh.enqueue(p1Fixture, p2Fixture);
+    gh.enqueue(FIXTURE_PAGE_1, FIXTURE_PAGE_2);
 
     const fetcher = new PaginatedProjectItemFetcher(
       makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
@@ -165,7 +158,7 @@ Deno.test({
   async fn() {
     // Confirms the lazy-init guard: graphql must not be called until collect() runs.
     const gh = createGhSpy();
-    gh.enqueue(p1Fixture, p2Fixture);
+    gh.enqueue(FIXTURE_PAGE_1, FIXTURE_PAGE_2);
 
     const fetcher = new PaginatedProjectItemFetcher(
       makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
@@ -186,19 +179,24 @@ Deno.test({
   name: "collect() - predicate limits returned items without skipping pages",
   async fn() {
     const gh = createGhSpy();
-    gh.enqueue(p1Fixture, p2Fixture);
+    gh.enqueue(FIXTURE_PAGE_1, FIXTURE_PAGE_2);
 
     const fetcher = new PaginatedProjectItemFetcher(
       makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
       USER_QUERY,
     );
-    // p1 has 10 PULL_REQUEST + 1 DRAFT_ISSUE, so ISSUE count < FIXTURE_TOTAL
-    const issues = await fetcher.collect((item) => item.type === "ISSUE");
+    // Filter for items with "feature" label via field values — excludes DONE item (bug only)
+    const filtered = await fetcher.collect(
+      (item) =>
+        item.fieldValues.nodes.some(
+          (fv) => fv.labels?.nodes?.some((l) => l?.name === "feature") ?? false,
+        ),
+    );
 
-    assert(issues.length > 0, "Expected at least one ISSUE item");
+    assert(filtered.length > 0, "Expected at least one adapter-layer item");
     assert(
-      issues.length < FIXTURE_TOTAL,
-      `Predicate should have excluded non-ISSUE items; got ${issues.length} of ${FIXTURE_TOTAL}`,
+      filtered.length < FIXTURE_TOTAL,
+      `Predicate should have excluded non-adapter-layer items; got ${filtered.length} of ${FIXTURE_TOTAL}`,
     );
     // Both pages must still be fetched — predicate must not short-circuit pagination.
     assertEquals(gh.graphqlCalls.length, 2);
@@ -209,7 +207,7 @@ Deno.test({
   name: "collect() - predicate returning false for all items yields []",
   async fn() {
     const gh = createGhSpy();
-    gh.enqueue(p1Fixture, p2Fixture);
+    gh.enqueue(FIXTURE_PAGE_1, FIXTURE_PAGE_2);
 
     const fetcher = new PaginatedProjectItemFetcher(
       makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),

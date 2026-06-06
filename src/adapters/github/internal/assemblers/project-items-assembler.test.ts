@@ -2,19 +2,21 @@
 // src/adapters/github/internal/assemblers/project-items-assembler.test.ts
 // =============================================================================
 
-import { assertEquals, assertExists, assertStrictEquals } from "@std/assert";
+import { assertEquals, assertExists, assertStrictEquals, assertStringIncludes } from "@std/assert";
 import { ProjectItemsAssembler } from "./project-items-assembler.ts";
 import { BoardScanCoordinator } from "../board-scan-coordinator.ts";
 import { ResultNormalizer } from "../result-normalizer.ts";
 import { createGhSpy, makeConfig } from "../_test_utils.ts";
 import type { ResolvedItemFilter } from "../../../../scrum/ports.ts";
-import p1Fixture from "../../generated/__fixtures__/project-items-p1.json" with { type: "json" };
-import p2Fixture from "../../generated/__fixtures__/project-items-p2.json" with { type: "json" };
+import {
+  FIXTURE_ITEM_WITH_CUSTOM_FIELDS,
+  FIXTURE_PAGE_1,
+  FIXTURE_PAGE_2,
+  makePageEnvelope,
+} from "../_test_fixtures.ts";
 
-const P1_NODES = (p1Fixture as { user: { projectV2: { items: { nodes: unknown[] } } } })
-  .user.projectV2.items.nodes;
-const P2_NODES = (p2Fixture as { user: { projectV2: { items: { nodes: unknown[] } } } })
-  .user.projectV2.items.nodes;
+const P1_NODES = FIXTURE_PAGE_1.user.projectV2.items.nodes;
+const P2_NODES = FIXTURE_PAGE_2.user.projectV2.items.nodes;
 const FIXTURE_TOTAL = P1_NODES.length + P2_NODES.length;
 
 const config = makeConfig({
@@ -75,7 +77,7 @@ const makeAssembler = (gh: ReturnType<typeof createGhSpy>, cfg = config) => {
 
 Deno.test("ProjectItemsAssembler - fixture pages produce enriched listings", async () => {
   const gh = createGhSpy();
-  gh.enqueue(p1Fixture, p2Fixture);
+  gh.enqueue(FIXTURE_PAGE_1, FIXTURE_PAGE_2);
   const output = await makeAssembler(gh).assemble(baseFilter());
   assertEquals(output.totalCount, FIXTURE_TOTAL);
   assertEquals(output.items.length, Math.min(FIXTURE_TOTAL, 50));
@@ -86,7 +88,7 @@ Deno.test("ProjectItemsAssembler - fixture pages produce enriched listings", asy
 
 Deno.test("ProjectItemsAssembler - second assemble reuses board cache", async () => {
   const gh = createGhSpy();
-  gh.enqueue(p1Fixture, p2Fixture);
+  gh.enqueue(FIXTURE_PAGE_1, FIXTURE_PAGE_2);
   const assembler = makeAssembler(gh);
   await assembler.assemble(baseFilter());
   await assembler.assemble(baseFilter());
@@ -94,23 +96,51 @@ Deno.test("ProjectItemsAssembler - second assemble reuses board cache", async ()
 });
 
 Deno.test("ProjectItemsAssembler - scope=sprint uses full board scan (server-side iteration filter not supported)", async () => {
-  // GitHub Projects v2 does not support iteration filtering via the query: argument.
-  // scope=sprint always uses the full board scan; sprintItemIds filters client-side.
   const gh = createGhSpy();
-  gh.enqueue(p1Fixture, p2Fixture);
+  gh.enqueue(FIXTURE_PAGE_1, FIXTURE_PAGE_2);
   const output = await makeAssembler(gh, sprintConfig).assemble({
     ...baseFilter(),
     scope: "sprint",
   });
-  assertEquals(gh.graphqlCalls.length, 2); // full board = two pages
+  assertEquals(gh.graphqlCalls.length, 2);
   assertEquals(output.items.length <= 50, true);
 });
 
 Deno.test("ProjectItemsAssembler - scope=sprint reuses full board cache on second call", async () => {
   const gh = createGhSpy();
-  gh.enqueue(p1Fixture, p2Fixture);
+  gh.enqueue(FIXTURE_PAGE_1, FIXTURE_PAGE_2);
   const assembler = makeAssembler(gh, sprintConfig);
   await assembler.assemble({ ...baseFilter(), scope: "sprint" });
-  await assembler.assemble({ ...baseFilter(), scope: "sprint" }); // second call — cache hit
-  assertEquals(gh.graphqlCalls.length, 2); // still 2, not 4
+  await assembler.assemble({ ...baseFilter(), scope: "sprint" });
+  assertEquals(gh.graphqlCalls.length, 2);
+});
+
+Deno.test("ProjectItemsAssembler — non-canonical fields appear in custom_fields", async () => {
+  const gh = createGhSpy();
+  // Single page with the augmented fixture node (issue #187)
+  gh.enqueue(makePageEnvelope([FIXTURE_ITEM_WITH_CUSTOM_FIELDS]));
+  const output = await makeAssembler(gh).assemble(baseFilter());
+
+  assertEquals(output.totalCount, 1);
+  const item = output.items[0];
+  assertEquals(item.ref.key, "187");
+
+  // Canonical fields absent
+  assertEquals(item.custom_fields["Status"], undefined);
+  assertEquals(item.custom_fields["Story Points"], undefined);
+  assertEquals(item.custom_fields["Type"], undefined);
+  assertEquals(item.custom_fields["Priority"], undefined);
+
+  // Non-canonical fields present (as JSON strings)
+  assertExists(item.custom_fields["Deadline"], "Deadline should be in custom_fields");
+  assertStringIncludes(item.custom_fields["Deadline"] as string, "2026-08-15");
+
+  assertExists(
+    item.custom_fields["Target Quarter"],
+    "Target Quarter should be in custom_fields",
+  );
+  assertStringIncludes(item.custom_fields["Target Quarter"] as string, "Q3");
+
+  // __typename always present
+  assertEquals(item.custom_fields["__typename"], "Issue");
 });

@@ -15,8 +15,7 @@ import { ResultNormalizer } from "../result-normalizer.ts";
 import { BoardScanCoordinator } from "../board-scan-coordinator.ts";
 import { createGhSpy, makeConfig } from "../_test_utils.ts";
 import type { ResolvedItemFilter } from "../../../../scrum/ports.ts";
-import p1Fixture from "../../generated/__fixtures__/project-items-p1.json" with { type: "json" };
-import p2Fixture from "../../generated/__fixtures__/project-items-p2.json" with { type: "json" };
+import { FIXTURE_ITEM_222, FIXTURE_PAGE_1, FIXTURE_PAGE_2 } from "../_test_fixtures.ts";
 
 const config = makeConfig({
   ghConfig: { ...makeConfig().ghConfig, owner_type: "user" as const, project_number: 6 },
@@ -68,7 +67,7 @@ Deno.test({
     assertEquals(profile.kind, "project_items");
 
     const gh = createGhSpy();
-    gh.enqueue(p1Fixture, p2Fixture);
+    gh.enqueue(FIXTURE_PAGE_1, FIXTURE_PAGE_2);
     const { projectItems } = buildPipeline(gh);
 
     if (profile.kind !== "project_items") throw new Error("unexpected profile");
@@ -90,7 +89,7 @@ Deno.test({
     assertEquals(profile.kind, "project_items");
 
     const gh = createGhSpy();
-    gh.enqueue(p1Fixture, p2Fixture);
+    gh.enqueue(FIXTURE_PAGE_1, FIXTURE_PAGE_2);
     const { projectItems } = buildPipeline(gh);
 
     if (profile.kind !== "project_items") throw new Error("unexpected profile");
@@ -139,7 +138,7 @@ Deno.test({
     assertEquals(profile.kind, "project_items");
 
     const gh = createGhSpy();
-    gh.enqueue(p1Fixture, p2Fixture);
+    gh.enqueue(FIXTURE_PAGE_1, FIXTURE_PAGE_2);
     const { projectItems } = buildPipeline(gh);
 
     if (profile.kind !== "project_items") throw new Error("unexpected profile");
@@ -153,23 +152,19 @@ Deno.test({
 Deno.test({
   name: "pipeline - direct_lookup avoids multi-page board scan",
   async fn() {
-    const filter = { ...baseFilter(), keys: ["202"], scope: "all" as const };
+    const filter = { ...baseFilter(), keys: ["222"], scope: "all" as const };
     const profile = classifyFilter(filter);
     assertEquals(profile.kind, "direct_lookup");
 
-    const sample =
-      (p1Fixture as { user: { projectV2: { items: { nodes: Array<Record<string, unknown>> } } } })
-        .user.projectV2.items.nodes.find(
-          (n) => (n.content as { number?: number })?.number === 202,
-        );
-    if (!sample) return;
+    // Use FIXTURE_ITEM_222 (#222) wrapped in a GetIssueProjectItem response envelope
+    const sample = FIXTURE_ITEM_222;
 
     const gh = createGhSpy();
     gh.enqueue({
       repository: {
         issue: {
           projectItems: {
-            nodes: [{ project: { number: 6 }, ...sample }],
+            nodes: [{ project: { number: 6 }, ...sample as unknown as Record<string, unknown> }],
           },
         },
       },
@@ -181,6 +176,6 @@ Deno.test({
 
     assertEquals(gh.graphqlCalls.length, 1);
     assertEquals(output.items.length, 1);
-    assertEquals(output.items[0].ref.key, "202");
+    assertEquals(output.items[0].ref.key, "222");
   },
 });
