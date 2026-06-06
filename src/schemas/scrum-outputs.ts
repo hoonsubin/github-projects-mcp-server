@@ -39,7 +39,7 @@ export const BacklogItemListingSchema = z.object({
     ref: EntityRefSchema,
   }).strict(),
   epic: EpicRefWithNameSchema.nullable(),
-  blocked_by: z.array(ItemListingRefSchema),
+  blocked_by: z.array(DependencyEntrySchema),
   blocks: z.array(ItemListingRefSchema),
   custom_fields: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])),
 }).strict();
