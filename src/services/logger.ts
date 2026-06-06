@@ -1,49 +1,89 @@
 // =============================================================================
 // src/services/logger.ts
-// Structured logger with dual output: stderr (for host-app log capture) and
-// MCP logging notifications (for connected MCP clients).
+// Structured logger with transport-mode-aware dual output:
+//   stderr     — always used (host-app log capture), safe for both stdio & HTTP
+//   MCP notifications/message — only used in HTTP mode (SSE transport)
 //
-// When an McpServer is bound via setLogTransport(), every log.* call writes to
-// BOTH console.error() AND the server as a structured notifications/message.
-// When no transport is bound (pre-bootstrap or adapter code), output is stderr-only.
+// In stdio mode, stdout carries the JSON-RPC wire protocol and MUST NOT contain
+// anything else. Logging goes to stderr only. Per the MCP spec (2024-11-05):
+//   "The server MAY write UTF-8 strings to stderr for logging purposes."
+//   "The server MUST NOT write anything to stdout that is not a valid MCP message."
+//
+// In HTTP/SSE mode, the structured MCP Logging utility is the contract:
+//   Server declares "logging" capability → client sets level via logging/setLevel
+//   → server emits notifications/message over the SSE channel.
+//   We additionally write to stderr so host-app logs (Docker, journald) capture output.
 //
 // Usage:
-//   DEBUG=1 deno task dev        - enable debug + info + warn + error
-//   (no DEBUG env)               - info + warn + error only
+//   // server.ts calls once at startup:
+//   initLogger({ transport: Deno.env.get("MCP_TRANSPORT") ?? "stdio" });
+//   // after McpServer is created:
+//   bindMcpServer(server);
+//
+//   // every other module simply imports { log }:
+//   log.debug("trace details", { some: "context" });   // only when DEBUG=1
+//   log.info("milestone");
+//   log.warn("non-fatal issue", err);
+//   log.error("fatal condition", { error: err.message });
 //
 // Levels:  debug < info < warn < error
 // MCP mapping: debug→debug  info→info  warn→warning  error→error
 // =============================================================================
 
-const isDebug = (): boolean => !!Deno.env.get("DEBUG");
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type {
+  Transport,
+  TransportSendOptions,
+} from "@modelcontextprotocol/sdk/shared/transport.js";
+import type { JSONRPCMessage, MessageExtraInfo } from "@modelcontextprotocol/sdk/types.js";
 
-// ── MCP Logging Transport ──────────────────────────────────────────────────
-//
-// Declared here (Services layer) to avoid a dependency inversion violation.
-// The composition root (src/server.ts) satisfies this interface with McpServer.
-// Logger never imports server code — the interface lives with the consumer.
+// ── Types ───────────────────────────────────────────────────────────────────
 
-/** Contract for sending structured log messages to the MCP client. */
-export interface LogTransport {
+/** Transport mode — determines output routing. */
+export type TransportMode = "stdio" | "http";
+
+/**
+ * Minimal interface for the MCP server's logging notification method.
+ * Exported so tests can supply a mock without importing McpServer.
+ */
+export interface McpServerLike {
   sendLoggingMessage(
     params: { level: "debug" | "info" | "warning" | "error"; data: string },
   ): Promise<void>;
 }
 
-let _transport: LogTransport | null = null;
+// ── Module-level state ──────────────────────────────────────────────────────
+
+let _mode: TransportMode = "stdio";
+let _mcpServer: McpServerLike | null = null;
+
+const isDebug = (): boolean => !!Deno.env.get("DEBUG");
+
+// ── Initialization ──────────────────────────────────────────────────────────
 
 /**
- * Bind the MCP server as the log transport.
- * Called once during server bootstrap inside createMcpServer().
- * Idempotent — subsequent calls overwrite the previous binding.
+ * Initialise the logger with the active transport mode.
+ * MUST be called once at server startup before any log.* calls.
+ *
+ * transport="stdio" → stderr only (stdout carries JSON-RPC protocol messages)
+ * transport="http"  → stderr + MCP notifications/message over SSE
  */
-export const setLogTransport = (transport: LogTransport): void => {
-  _transport = transport;
+export const initLogger = (opts: { transport: TransportMode }): void => {
+  _mode = opts.transport;
 };
 
-// ---------------------------------------------------------------------------
-// Formatting helpers
-// ---------------------------------------------------------------------------
+/**
+ * Bind an MCP server for structured log notifications.
+ * Called after McpServer is created (async bootstrap path).
+ * Only meaningful in http mode; a no-op in stdio mode.
+ *
+ * The server parameter satisfies McpServerLike so tests can pass mocks.
+ */
+export const bindMcpServer = (server: McpServerLike): void => {
+  _mcpServer = server;
+};
+
+// ── Formatting helpers ──────────────────────────────────────────────────────
 
 const pad = (s: string, width: number): string => s.padEnd(width);
 
@@ -67,12 +107,13 @@ const formatExtra = (extra: unknown): string => {
   }
 };
 
-// ── MCP level mapping ──────────────────────────────────────────────────────
-//
-// Maps internal log levels to MCP-compliant severity strings.
-// MCP spec levels: debug, info, notice, warning, error, critical, alert, emergency.
-// We only use the four that map to our internal levels.
+// ── MCP level mapping ───────────────────────────────────────────────────────
 
+/**
+ * Maps internal log levels to MCP-compliant severity strings.
+ * MCP spec levels: debug, info, notice, warning, error, critical, alert, emergency.
+ * We only use the four that map to our internal levels.
+ */
 const toMcpLevel = (level: string): "debug" | "info" | "warning" | "error" => {
   switch (level) {
     case "DEBUG":
@@ -87,27 +128,129 @@ const toMcpLevel = (level: string): "debug" | "info" | "warning" | "error" => {
   }
 };
 
+// ── Core write ──────────────────────────────────────────────────────────────
+
+/**
+ * Central output function. All log messages flow through here.
+ *
+ * - stderr: ALWAYS written (safe for both transports)
+ * - MCP notification: only in http mode with a bound server
+ *
+ * In stdio mode we deliberately skip MCP notifications:
+ * per the spec, stdout carries JSON-RPC protocol messages only.
+ * MCP notifications/message on stdout in stdio mode are technically
+ * valid JSON-RPC but may confuse clients that don't declare logging
+ * capability or consume stderr for log capture.
+ */
 const write = (level: string, msg: string, extra?: unknown): void => {
   const line = `[${timestamp()}] [${pad(level, 5)}] ${msg}${formatExtra(extra)}`;
 
-  // Always write to stderr for host-app log capture (Claude Desktop, etc.)
+  // Always write to stderr for host-app log capture (Claude Desktop, Docker, etc.)
   console.error(line);
 
-  // Also send as MCP log notification when a transport is bound.
-  // Fire-and-forget — MCP transport failure must never crash the logger.
-  if (_transport) {
-    _transport.sendLoggingMessage({ level: toMcpLevel(level), data: msg }).catch(() => {
+  // In HTTP mode, also send structured MCP log notification.
+  // Fire-and-forget — transport failure must never crash the logger.
+  if (_mode === "http" && _mcpServer) {
+    _mcpServer.sendLoggingMessage({ level: toMcpLevel(level), data: msg }).catch(() => {
       // Silently ignore — stderr already captured the message.
     });
   }
 };
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
+// ── Tool invocation logging ─────────────────────────────────────────────────
+
+/**
+ * Interface for the internal `registerTool` method not exposed on McpServer's
+ * public type. Used by patchToolLogging to intercept all tool registrations.
+ */
+interface McpServerInternal {
+  registerTool(
+    name: string,
+    config: unknown,
+    handler: (params: unknown, extra: unknown) => Promise<unknown>,
+  ): unknown;
+}
+
+/**
+ * Monkey-patch McpServer.registerTool so every tool handler gets automatic
+ * before/after logging with timing. The public log.* API is used internally.
+ *
+ * Each invocation produces:
+ *   log.info(`→ toolName`)      — on entry
+ *   log.debug(`  params`, ...)  — input params (DEBUG=1 only)
+ *   log.info(`← toolName OK`)   — on success, with elapsed ms
+ *   log.error(`✗ toolName FAILED`) — on throw, with error + params
+ *
+ * Errors are re-thrown so the MCP SDK can return a JSON-RPC error response.
+ */
+export const patchToolLogging = (server: McpServer): void => {
+  const _server = server as unknown as McpServerInternal;
+  const original = _server["registerTool"].bind(server) as (
+    name: string,
+    config: unknown,
+    handler: (params: unknown, extra: unknown) => Promise<unknown>,
+  ) => unknown;
+
+  _server["registerTool"] = (
+    name: string,
+    config: unknown,
+    handler: (params: unknown, extra: unknown) => Promise<unknown>,
+  ): unknown => {
+    return original(name, config, async (params: unknown, extra: unknown) => {
+      // Always: log which tool fired (no params — keeps the line short)
+      log.info(`→ ${name}`);
+      // DEBUG: also log the full input so you can see what the agent passed
+      log.debug(`  params`, params);
+
+      const t0 = performance.now();
+      try {
+        const result = await handler(params, extra);
+        log.info(`← ${name} OK (${Math.round(performance.now() - t0)}ms)`);
+        return result;
+      } catch (err: unknown) {
+        const ms = Math.round(performance.now() - t0);
+        // Always: log the tool that failed, elapsed time, error message, AND
+        // the input params so you can reproduce or diagnose the call.
+        log.error(`✗ ${name} FAILED (${ms}ms)`, {
+          error: err instanceof Error ? err.message : String(err),
+          params,
+        });
+        throw err;
+      }
+    });
+  };
+};
+
+// ── Wire tracing ────────────────────────────────────────────────────────────
+
+/**
+ * Wrap a transport to log all JSON-RPC messages at debug level.
+ * Only active when DEBUG=1 is set.
+ *
+ * Usage:
+ *   if (Deno.env.get("TRACE")) wrapTransportLogging(transport, "stdio");
+ */
+export const wrapTransportLogging = (transport: Transport, label: string): void => {
+  const origOnMessage = transport.onmessage?.bind(transport);
+  transport.onmessage = <T extends JSONRPCMessage>(
+    msg: T,
+    extra?: MessageExtraInfo,
+  ): void => {
+    log.debug(`[${label}] ← recv`, msg);
+    origOnMessage?.(msg, extra);
+  };
+
+  const origSend = transport.send.bind(transport);
+  transport.send = (msg: JSONRPCMessage, options?: TransportSendOptions) => {
+    log.debug(`[${label}] → send`, msg);
+    return origSend(msg, options);
+  };
+};
+
+// ── Public API ──────────────────────────────────────────────────────────────
 
 export const log = {
-  /** True when DEBUG=1 is set - useful for conditional debug work outside this module. */
+  /** True when DEBUG=1 is set — useful for conditional debug work outside this module. */
   isDebug,
 
   /** Low-level tracing: tool calls, GraphQL operations, timing. Only emitted when DEBUG=1. */
@@ -126,7 +269,10 @@ export const log = {
     write("WARN", msg, extra);
   },
 
-  /** Errors - thrown exceptions, API failures, etc. Always emitted. */
+  /**
+   * Errors — thrown exceptions, API failures, startup failures, etc.
+   * Always emitted. This is the single output path for ALL errors in the project.
+   */
   error(msg: string, extra?: unknown): void {
     write("ERROR", msg, extra);
   },

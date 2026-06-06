@@ -25,7 +25,9 @@ import type { DocumentNode, FragmentDefinitionNode } from "graphql";
 import _graphqlSource from "./operations.graphql" with { type: "text" };
 
 const _source: string = _graphqlSource;
-const _doc: DocumentNode = parse(_source);
+// noLocation: true — fragment collection only needs the AST shape; skipping
+// source-location tokens avoids ~4k-frame recursion through prev/next chains.
+const _doc: DocumentNode = parse(_source, { noLocation: true });
 
 // Index all fragment definitions by name
 const _fragments = new Map<string, FragmentDefinitionNode>();
