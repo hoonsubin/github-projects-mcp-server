@@ -133,8 +133,6 @@ module.exports = {
     exclude: {
       path: [
         "node_modules",
-        "src/adapters/github/generated/",
-        "src/test/tools/__snapshots__/",
         "dist/",
       ],
     },

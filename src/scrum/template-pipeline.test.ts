@@ -4,35 +4,42 @@
 // Full pipeline integration: config.yml → resolveLocation → fetchContent →
 // templateResourceUseCase. Reads the committed .github/scrum/config.yml and
 // .github/ISSUE_TEMPLATE/ files directly. No GitHub client or network needed.
+// Uses fixture constants for expected output, replacing assertSnapshot so
+// src/scrum/__snapshots__/ is no longer required.
 // =============================================================================
 
-import { assertSnapshot } from "@std/testing/snapshot";
 import { assertEquals } from "@std/assert";
 import { templateResourceUseCase } from "./template-resource.ts";
 import { realFileReader, typeTemplatePathsPromise } from "../test/support/scrum-test-utils.ts";
 import type { SupportedMimeType } from "../domain/content-location.ts";
+import {
+  TEMPLATE_BUG,
+  TEMPLATE_IMPEDIMENT,
+  TEMPLATE_USER_STORY,
+  TYPE_TEMPLATE_CONTENT,
+} from "./_test_fixtures.ts";
 
 // ── Per-type pipeline tests ───────────────────────────────────────────────────
 
-Deno.test("pipeline: user_story config → resolve → fetch → use case", async (t) => {
+Deno.test("pipeline: user_story config → resolve → fetch → use case", async () => {
   const paths = await typeTemplatePathsPromise;
   const result = await templateResourceUseCase("user_story", realFileReader, paths);
   assertEquals(result.mimeType, "application/x-yaml" as SupportedMimeType);
-  await assertSnapshot(t, result.content);
+  assertEquals(result.content, TEMPLATE_USER_STORY);
 });
 
-Deno.test("pipeline: bug config → resolve → fetch → use case", async (t) => {
+Deno.test("pipeline: bug config → resolve → fetch → use case", async () => {
   const paths = await typeTemplatePathsPromise;
   const result = await templateResourceUseCase("bug", realFileReader, paths);
   assertEquals(result.mimeType, "application/x-yaml" as SupportedMimeType);
-  await assertSnapshot(t, result.content);
+  assertEquals(result.content, TEMPLATE_BUG);
 });
 
-Deno.test("pipeline: impediment config → resolve → fetch → use case", async (t) => {
+Deno.test("pipeline: impediment config → resolve → fetch → use case", async () => {
   const paths = await typeTemplatePathsPromise;
   const result = await templateResourceUseCase("impediment", realFileReader, paths);
   assertEquals(result.mimeType, "application/x-yaml" as SupportedMimeType);
-  await assertSnapshot(t, result.content);
+  assertEquals(result.content, TEMPLATE_IMPEDIMENT);
 });
 
 // ── Structural correctness ────────────────────────────────────────────────────
@@ -60,5 +67,20 @@ Deno.test("pipeline: types without template field are absent from map", async ()
   // relative file paths only. url/inline would indicate a bug in buildTypeTemplatePaths.
   for (const loc of Object.values(paths)) {
     assertEquals(loc.kind, "file");
+  }
+});
+
+Deno.test("pipeline: pipeline content matches committed fixture constants", () => {
+  for (const [type, expectedContent] of Object.entries(TYPE_TEMPLATE_CONTENT)) {
+    assertEquals(
+      typeof expectedContent,
+      "string",
+      `TYPE_TEMPLATE_CONTENT["${type}"] must be a string`,
+    );
+    assertEquals(
+      expectedContent.length > 0,
+      true,
+      `TYPE_TEMPLATE_CONTENT["${type}"] must be non-empty`,
+    );
   }
 });

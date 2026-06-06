@@ -598,3 +598,24 @@ export const FIXTURE_PAGE_2 = makePageEnvelope([
   FIXTURE_ITEM_WITH_CUSTOM_FIELDS,
   FIXTURE_ITEM_DONE,
 ]);
+
+// ── User node ID fixtures (formerly user-node-ids.json) ─────────────────────
+
+/**
+ * Captured GraphQL responses for ResolveActorNodeId queries.
+ * Keyed by GitHub login. "_not_found_" is a synthetic entry where the API
+ * returns { user: null } — used for NOT_FOUND error path tests.
+ */
+export const USERNODE_IDS: Record<string, { user: { id: string } | null }> = {
+  "hoonsubin": {
+    user: {
+      id: "U_kgDOAmfLjQ",
+    },
+  },
+  "_not_found_": {
+    user: null,
+  },
+};
+
+/** Convenience: the resolved user node ID for the "hoonsubin" login. */
+export const FIXTURE_USER_ID = "U_kgDOAmfLjQ";

@@ -11,7 +11,7 @@ import { assert, assertEquals, assertRejects, assertStringIncludes } from "@std/
 import { UserMilestoneResolver } from "./user-milestone-resolver.ts";
 import { createGhSpy, type GitHubClientSpy, makeCtx } from "./_test_utils.ts";
 import { GitHubApiError } from "../errors.ts";
-import userNodeIds from "../generated/__fixtures__/user-node-ids.json" with { type: "json" };
+import { FIXTURE_USER_ID, USERNODE_IDS } from "./_test_fixtures.ts";
 
 // =============================================================================
 // Fixture-derived constants
@@ -21,10 +21,10 @@ import userNodeIds from "../generated/__fixtures__/user-node-ids.json" with { ty
 const REAL_LOGIN = "hoonsubin";
 
 /** Real API response for a valid assignee user. */
-const USER_FOUND = userNodeIds[REAL_LOGIN] as { user: { id: string } };
+const USER_FOUND = USERNODE_IDS[REAL_LOGIN];
 
 /** Synthesized NOT_FOUND response — API returns { user: null } for unknown logins. */
-const USER_NULL = userNodeIds["_not_found_"] as { user: null };
+const USER_NULL = USERNODE_IDS["_not_found_"];
 
 /** Malformed response — no user key at all (edge case). */
 const USER_UNDEF = {};
@@ -32,10 +32,10 @@ const USER_UNDEF = {};
 // Assert fixture integrity at module-load time
 assertEquals(typeof USER_FOUND, "object", "USER_FOUND fixture must be an object");
 assertEquals(typeof USER_FOUND.user, "object", "USER_FOUND.user must be an object");
-assertEquals(typeof USER_FOUND.user.id, "string", "USER_FOUND.user.id must be a string");
+assertEquals(typeof FIXTURE_USER_ID, "string", "FIXTURE_USER_ID must be a string");
 assert(
-  USER_FOUND.user.id.startsWith("U_") || USER_FOUND.user.id.startsWith("MDQ6VXNlcj"),
-  `GitHub user node ID should start with "U_" or "MDQ6VXNlcj", got: ${USER_FOUND.user.id}`,
+  FIXTURE_USER_ID.startsWith("U_") || FIXTURE_USER_ID.startsWith("MDQ6VXNlcj"),
+  `GitHub user node ID should start with "U_" or "MDQ6VXNlcj", got: ${FIXTURE_USER_ID}`,
 );
 assertEquals(USER_NULL.user, null, "USER_NULL fixture must have user: null");
 
@@ -79,7 +79,7 @@ Deno.test({
 
     const nodeId = await resolver.resolveUserNodeId(REAL_LOGIN);
 
-    assertEquals(nodeId, USER_FOUND.user.id);
+    assertEquals(nodeId, FIXTURE_USER_ID);
     assertEquals(gh.graphqlCalls.length, 1);
     assertEquals(gh.remaining(), 0);
   },
@@ -201,9 +201,9 @@ Deno.test({
     ]);
 
     assertEquals(nodeIds, [
-      USER_FOUND.user.id,
-      USER_FOUND.user.id,
-      USER_FOUND.user.id,
+      FIXTURE_USER_ID,
+      FIXTURE_USER_ID,
+      FIXTURE_USER_ID,
     ]);
     assertEquals(gh.graphqlCalls.length, 1);
     assertEquals(gh.remaining(), 0);
@@ -289,7 +289,7 @@ Deno.test({
 
     const nodeIds = await resolver.resolveUserNodeIds([REAL_LOGIN]);
 
-    assertEquals(nodeIds, [USER_FOUND.user.id]);
+    assertEquals(nodeIds, [FIXTURE_USER_ID]);
     assertEquals(gh.graphqlCalls.length, 1);
   },
 });

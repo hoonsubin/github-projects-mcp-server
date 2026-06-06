@@ -79,12 +79,6 @@ export const committedConfigProfilePromise: Promise<ConfigProfile> = committedSc
 export const committedFakeBackendPromise: Promise<ConfigShapedFakeBackend> =
   committedScrumConfigPromise.then((boot) => ConfigShapedFakeBackend.fromBoot(boot));
 
-/** Fixture-replay backend (requires manifest v2 under generated/__fixtures__). */
-export const committedFixtureBackendPromise = committedScrumConfigPromise.then(async (boot) => {
-  const { buildFixtureBackend } = await import("./fixture-backend.ts");
-  return buildFixtureBackend({ boot, configDesc: "contract-test" });
-});
-
 // ── FileReaderPort stubs ──────────────────────────────────────────────────────
 
 /**

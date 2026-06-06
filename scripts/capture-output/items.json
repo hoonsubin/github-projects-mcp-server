@@ -1,0 +1,1876 @@
+{
+  "items": [
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgt_Oro",
+        "key": "187"
+      },
+      "title": "[Bug]: Non-canonical project fields (deadlines, custom scores, flags) silently dropped in scrum_find_items — custom_fields sparsely populated",
+      "type": "user_story",
+      "status": "Done",
+      "story_points": 3,
+      "priority": "Must",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "feature",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9dd1"
+        },
+        "name": "Adapter Layer Assembly Pattern"
+      },
+      "blocked_by": [
+        {
+          "key": "185",
+          "title": "[Tech Debt]: Extract fragment library — catalog recurring field selections into named, composable fragments",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgt_OHU"
+          }
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgugP7E",
+        "key": "230"
+      },
+      "title": "[Bug]: Org-level GitHub Issue Fields silently dropped from all read paths",
+      "type": "bug",
+      "status": "Ready",
+      "story_points": 3,
+      "priority": "Must",
+      "assignees": [],
+      "labels": [],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": null,
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgui3BA",
+        "key": "237"
+      },
+      "title": "[Bug]: scrum_find_items blocked_by entries omit title — agents cannot identify blockers without extra round-trips",
+      "type": "bug",
+      "status": "Done",
+      "story_points": 1,
+      "priority": "Should",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "tool bug",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": null,
+        "ref": {
+          "id": ""
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9dd1"
+        },
+        "name": "Adapter Layer Assembly Pattern"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgu2soQ",
+        "key": "256"
+      },
+      "title": "[Tech Debt]: Server logs use stderr only — not delivered as MCP logging notifications",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Should",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": null,
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSudU",
+        "key": "214"
+      },
+      "title": "[Bug]: estimated:false filter returns Pull Requests and Done items as unestimated backlog",
+      "type": "bug",
+      "status": "In Progress",
+      "story_points": 1,
+      "priority": "Should",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "tool bug",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgupeYE",
+        "key": "247"
+      },
+      "title": "[Bug]: scrum_update_story blocked_by parameter fails with \"expected array, received string\"",
+      "type": "bug",
+      "status": "Done",
+      "story_points": 1,
+      "priority": "Must",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "framework layer",
+        "tool bug"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguvF1g",
+        "key": "250"
+      },
+      "title": "[Bug]: User identifier resolution and bootstrap both ignore Organization/Bot account types",
+      "type": "bug",
+      "status": "Done",
+      "story_points": 3,
+      "priority": "Must",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "tool bug",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguvUqk",
+        "key": "251"
+      },
+      "title": "[Bug]: Org issue-backed field mutations, vocabulary additions, and cross-repo issue lookups produce incorrect or silent failures",
+      "type": "bug",
+      "status": "Done",
+      "story_points": 3,
+      "priority": "Must",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "tool bug",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgup4II",
+        "key": "248"
+      },
+      "title": "[Bug]: setFieldStatus skips org issue-backed routing, causing mutation failure on org projects",
+      "type": "bug",
+      "status": "Done",
+      "story_points": 1,
+      "priority": "Must",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "tool bug",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSug0",
+        "key": "218"
+      },
+      "title": "[Bug]: scrum_find_items serializes two structurally misleading empty fields — dependency_map: null and sprint.ref.id: \"\"",
+      "type": "tech_debt",
+      "status": "In Progress",
+      "story_points": 2,
+      "priority": "Could",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "refactor",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgt_T0w",
+        "key": "209"
+      },
+      "title": "Impediment: Epic CRUD operations are incomplete",
+      "type": "impediment",
+      "status": "Backlog",
+      "story_points": 5,
+      "priority": "Must",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "invalid"
+      ],
+      "sprint": {
+        "name": null,
+        "ref": {
+          "id": ""
+        }
+      },
+      "epic": null,
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSvrg",
+        "key": "222"
+      },
+      "title": "[Story]: Agent can mark two items as \"related\" without implying a hard blocking dependency",
+      "type": "user_story",
+      "status": "Ready",
+      "story_points": 3,
+      "priority": "Could",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "feature",
+        "use case layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgt_P2U",
+        "key": "192"
+      },
+      "title": "[User Story]: Developer has PlatformVocabularyMap interface + GitHub implementation — all Scrum concepts mapped to/from GitHub primitives",
+      "type": "user_story",
+      "status": "Ready",
+      "story_points": 2,
+      "priority": "Could",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "feature",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9dd1"
+        },
+        "name": "Adapter Layer Assembly Pattern"
+      },
+      "blocked_by": [
+        {
+          "key": "195",
+          "title": "[User Story]: Agent receives factual capability statements — NATIVE/EMULATED/UNAVAILABLE for every operation",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgt_QOc"
+          }
+        },
+        {
+          "key": "191",
+          "title": "[User Story]: Developer adding a new backend has AbstractAssembler with port method defaults — only implements assembly and normalization",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgt_PuI"
+          }
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgugQBg",
+        "key": "231"
+      },
+      "title": "[Bug]: Org-level GitHub Issue Fields silently dropped from all read paths",
+      "type": "bug",
+      "status": "Done",
+      "story_points": 5,
+      "priority": "Must",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "tool bug",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgt_QOc",
+        "key": "195"
+      },
+      "title": "[User Story]: Agent receives factual capability statements — NATIVE/EMULATED/UNAVAILABLE for every operation",
+      "type": "user_story",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Should",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "feature",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9dd1"
+        },
+        "name": "Adapter Layer Assembly Pattern"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSuew",
+        "key": "216"
+      },
+      "title": "[Bug]: scrum_find_items custom_fields duplicates top-level fields as JSON-stringified GitHub API noise — 40–50% per-item payload waste",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Must",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "refactor",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgs12Yo",
+        "key": "55"
+      },
+      "title": "[Story]: SprintSnapshot.impediments — sprint-level enrichment",
+      "type": "user_story",
+      "status": "Ready",
+      "story_points": 3,
+      "priority": "Could",
+      "assignees": [],
+      "labels": [
+        "feature"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBe"
+        },
+        "name": "Scrum Process & Agent Rule Hardening"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSuiQ",
+        "key": "220"
+      },
+      "title": "[Spike]: Audit adapter-layer query formation pipeline — trace use case requests to GraphQL payloads and identify urgent query-level optimization opportunities",
+      "type": "spike",
+      "status": "Done",
+      "story_points": 8,
+      "priority": "Should",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9dd1"
+        },
+        "name": "Adapter Layer Assembly Pattern"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgt_Pc4",
+        "key": "190"
+      },
+      "title": "[Spike]: Audit tool surface → GitHub API call graph — map every MCP tool invocation to its full wire-level call sequence",
+      "type": "spike",
+      "status": "Done",
+      "story_points": 8,
+      "priority": "Must",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "feature",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9dd1"
+        },
+        "name": "Adapter Layer Assembly Pattern"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgt-tUY",
+        "key": "182"
+      },
+      "title": "Have `ItemDetailResult` extend `PartialResult` for per-field warning metadata",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Should",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "refactor"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": null,
+      "blocked_by": [
+        {
+          "key": "184",
+          "title": "[Tech Debt]: Separate query building from pagination infrastructure — extract `buildItemsQuery()` from `PaginatedProjectItemFetcher`",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgt_ODQ"
+          }
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgs12Q8",
+        "key": "54"
+      },
+      "title": "[Story]: getOrphanImpediments() — implement in backend",
+      "type": "user_story",
+      "status": "Ready",
+      "story_points": 2,
+      "priority": "Should",
+      "assignees": [],
+      "labels": [
+        "feature"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBe"
+        },
+        "name": "Scrum Process & Agent Rule Hardening"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSuho",
+        "key": "219"
+      },
+      "title": "[Story]: Agent can request a minimal listing projection from scrum_find_items for bulk-scan use cases",
+      "type": "user_story",
+      "status": "Ready",
+      "story_points": 3,
+      "priority": "Should",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "feature",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [
+        {
+          "key": "184",
+          "title": "[Tech Debt]: Separate query building from pagination infrastructure — extract `buildItemsQuery()` from `PaginatedProjectItemFetcher`",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgt_ODQ"
+          }
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgt_OHU",
+        "key": "185"
+      },
+      "title": "[Tech Debt]: Extract fragment library — catalog recurring field selections into named, composable fragments",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Should",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "refactor",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9dd1"
+        },
+        "name": "Adapter Layer Assembly Pattern"
+      },
+      "blocked_by": [
+        {
+          "key": "184",
+          "title": "[Tech Debt]: Separate query building from pagination infrastructure — extract `buildItemsQuery()` from `PaginatedProjectItemFetcher`",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgt_ODQ"
+          }
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgt_ODQ",
+        "key": "184"
+      },
+      "title": "[Tech Debt]: Separate query building from pagination infrastructure — extract `buildItemsQuery()` from `PaginatedProjectItemFetcher`",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Must",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "refactor",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9dd1"
+        },
+        "name": "Adapter Layer Assembly Pattern"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSufw",
+        "key": "217"
+      },
+      "title": "[Tech Debt]: Replace readiness.by_type in scrum_get_board_health with flat active-item risk counts",
+      "type": "tech_debt",
+      "status": "Ready",
+      "story_points": 3,
+      "priority": "Should",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "refactor",
+        "use case layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgu54pw",
+        "key": "261"
+      },
+      "title": "[Tech Debt]: SKILL.md missing ref-resolution preference rule and post-write title verification rule",
+      "type": "tech_debt",
+      "status": "Ready",
+      "story_points": 1,
+      "priority": "Should",
+      "assignees": [],
+      "labels": [
+        "agent bug",
+        "documentation"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBe"
+        },
+        "name": "Scrum Process & Agent Rule Hardening"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgu5694",
+        "key": "262"
+      },
+      "title": "[Bug]: scrum_set_field response nulls org-issue-backed fields and emits spurious FIELD_NOT_CONFIGURED warning after successful write",
+      "type": "bug",
+      "status": "Ready",
+      "story_points": 2,
+      "priority": "Should",
+      "assignees": [],
+      "labels": [
+        "tool bug",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguvhe4",
+        "key": "252"
+      },
+      "title": "[Bug]: Draft Issue promotion failure leaves dangling items on the board when labels, epic, or org issue type are set",
+      "type": "bug",
+      "status": "Done",
+      "story_points": 3,
+      "priority": "Should",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "tool bug",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgs10ts",
+        "key": "50"
+      },
+      "title": "[Bug]: scrum_orient — response shape correctness",
+      "type": "bug",
+      "status": "Done",
+      "story_points": 1,
+      "priority": "Should",
+      "assignees": [],
+      "labels": [
+        "tool bug"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSucQ",
+        "key": "213"
+      },
+      "title": "[Bug]: scope:\"sprint\" returns items from past sprints — checks sprint existence, not current sprint identity",
+      "type": "bug",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Must",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "tool bug",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSubM",
+        "key": "212"
+      },
+      "title": "[Bug]: keys-based direct lookup crashes — $projectNumber declared but unused in GetIssueProjectItem query",
+      "type": "bug",
+      "status": "Done",
+      "story_points": 1,
+      "priority": "Must",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "tool bug",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSv4s",
+        "key": "223"
+      },
+      "title": "[Bug]: scrum_update_story rejects epic field — EpicRefSchema.or(z.null()) union causes object-to-string serialization failure",
+      "type": "bug",
+      "status": "Done",
+      "story_points": 1,
+      "priority": "Should",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "framework layer",
+        "tool bug"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSud8",
+        "key": "215"
+      },
+      "title": "[Bug]: scope:\"backlog\" returns Done items — backlog scope should exclude terminal-status items by default",
+      "type": "bug",
+      "status": "Done",
+      "story_points": 1,
+      "priority": "Should",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "tool bug",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSvqE",
+        "key": "221"
+      },
+      "title": "[Bug]: scrum_orient omits open epics with no sprint-assigned items — total_count mismatches returned list",
+      "type": "bug",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Should",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "tool bug",
+        "use case layer"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguPKyI",
+        "key": "201"
+      },
+      "title": "[Tech Debt]: Remove silent config fallback — make --config mandatory",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Should",
+      "assignees": [],
+      "labels": [],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": null,
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSlUs",
+        "key": "210"
+      },
+      "title": "[Bug]: Server crashes when --config is a remote GitHub blob URL",
+      "type": "bug",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Must",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "tool bug"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguPKzM",
+        "key": "202"
+      },
+      "title": "[Tech Debt]: Remove silent config fallback — make --config mandatory",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 3,
+      "priority": "Should",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "refactor",
+        "config"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A88i4"
+        },
+        "name": "Streamable HTTP Transport Mode with Per-Connection Config Override"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtTiVk",
+        "key": "114"
+      },
+      "title": "[Tech Debt]: Consolidate sprint date math and remove dead functions in `sprint-math.ts`",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 3,
+      "priority": "Should",
+      "assignees": [],
+      "labels": [],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBd"
+        },
+        "name": "Clean Architecture Remediation"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtL7Y4",
+        "key": "94"
+      },
+      "title": "Per-connection config override in Streamable HTTP mode",
+      "type": "user_story",
+      "status": "Backlog",
+      "story_points": 3,
+      "priority": "Could",
+      "assignees": [],
+      "labels": [
+        "feature"
+      ],
+      "sprint": {
+        "name": null,
+        "ref": {
+          "id": ""
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A88i4"
+        },
+        "name": "Streamable HTTP Transport Mode with Per-Connection Config Override"
+      },
+      "blocked_by": [
+        {
+          "key": "93",
+          "title": "Run the server in Streamable HTTP mode",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgtL7OI"
+          }
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgt8NQI",
+        "key": "176"
+      },
+      "title": "[Tech Debt]: Remove dead code and stale comments in GitHub adapter layer after EpicRef migration",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 1,
+      "priority": "Should",
+      "assignees": [],
+      "labels": [
+        "refactor",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBd"
+        },
+        "name": "Clean Architecture Remediation"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtd_tE",
+        "key": "151"
+      },
+      "title": "[Tech Debt]: Update agent behavioral rules for the redesigned tool surface",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 5,
+      "priority": "Must",
+      "assignees": [],
+      "labels": [
+        "documentation"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [
+        {
+          "key": "156",
+          "title": "[Tech Debt]: Remove old scrum_get_burndown and scrum_get_history tool registrations",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgteMfI"
+          }
+        },
+        {
+          "key": "155",
+          "title": "[Tech Debt]: Remove old scrum_get_story tool registration",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgteMMQ"
+          }
+        },
+        {
+          "key": "154",
+          "title": "[Story]: Add human-readable item lookup to scrum_get_item_detail",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgteMJ8"
+          }
+        },
+        {
+          "key": "150",
+          "title": "[Tech Debt]: Remove scrum_get_sprint from the tool surface",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgtd_jY"
+          }
+        },
+        {
+          "key": "148",
+          "title": "[Story]: Ask a single question about sprint performance and get burndown and velocity together",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgtd-1c"
+          }
+        },
+        {
+          "key": "147",
+          "title": "[Story]: Replace scrum_get_backlog with a dedicated board health view",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgtd-jg"
+          }
+        },
+        {
+          "key": "144",
+          "title": "[Story]: Implement scrum_find_items — unified backlog item search",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgtd8UE"
+          }
+        },
+        {
+          "key": "143",
+          "title": "[Story]: Add template URI map to scrum_orient vocabulary",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgtd72A"
+          }
+        },
+        {
+          "key": "142",
+          "title": "[Story]: Add active epic summary to scrum_orient",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgtd7Ec"
+          }
+        },
+        {
+          "key": "141",
+          "title": "[Story]: Enhance scrum_orient with sprint time-progress fields",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgtd65I"
+          }
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtd-1c",
+        "key": "148"
+      },
+      "title": "[Story]: Ask a single question about sprint performance and get burndown and velocity together",
+      "type": "user_story",
+      "status": "Done",
+      "story_points": 3,
+      "priority": "Could",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "framework layer",
+        "feature",
+        "use case layer"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [
+        {
+          "key": "140",
+          "title": "[Tech Debt]: Add new domain types for tool surface redesign",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgtd6oc"
+          }
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtd_jY",
+        "key": "150"
+      },
+      "title": "[Tech Debt]: Remove scrum_get_sprint from the tool surface",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 1,
+      "priority": "Could",
+      "assignees": [],
+      "labels": [
+        "framework layer",
+        "refactor"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [
+        {
+          "key": "144",
+          "title": "[Story]: Implement scrum_find_items — unified backlog item search",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgtd8UE"
+          }
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgteMMQ",
+        "key": "155"
+      },
+      "title": "[Tech Debt]: Remove old scrum_get_story tool registration",
+      "type": "tech_debt",
+      "status": "Done",
+      "story_points": 1,
+      "priority": "Should",
+      "assignees": [],
+      "labels": [
+        "framework layer",
+        "refactor"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [
+        {
+          "key": "154",
+          "title": "[Story]: Add human-readable item lookup to scrum_get_item_detail",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgteMJ8"
+          }
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtE0xo",
+        "key": "73"
+      },
+      "title": "[Story]: Package MCP server as a standalone executable binary",
+      "type": "user_story",
+      "status": "Done",
+      "story_points": 3,
+      "priority": "Must",
+      "assignees": [],
+      "labels": [
+        "feature"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A88iW"
+        },
+        "name": "Portable Server Bootstrap"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtE1FI",
+        "key": "74"
+      },
+      "title": "Accept --config as a CLI argument",
+      "type": "user_story",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Must",
+      "assignees": [],
+      "labels": [
+        "feature"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A88iW"
+        },
+        "name": "Portable Server Bootstrap"
+      },
+      "blocked_by": [
+        {
+          "key": "83",
+          "title": "[Tech Debt]: Introduce FileReader Port and Service",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgtGA-s"
+          }
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtd-jg",
+        "key": "147"
+      },
+      "title": "[Story]: Replace scrum_get_backlog with a dedicated board health view",
+      "type": "user_story",
+      "status": "Done",
+      "story_points": 5,
+      "priority": "Must",
+      "assignees": [],
+      "labels": [
+        "framework layer",
+        "feature",
+        "refactor",
+        "use case layer"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [
+        {
+          "key": "144",
+          "title": "[Story]: Implement scrum_find_items — unified backlog item search",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgtd8UE"
+          }
+        },
+        {
+          "key": "140",
+          "title": "[Tech Debt]: Add new domain types for tool surface redesign",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgtd6oc"
+          }
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtd7Ec",
+        "key": "142"
+      },
+      "title": "[Story]: Add active epic summary to scrum_orient",
+      "type": "user_story",
+      "status": "Done",
+      "story_points": 3,
+      "priority": "Must",
+      "assignees": [],
+      "labels": [
+        "feature",
+        "use case layer"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [
+        {
+          "key": "140",
+          "title": "[Tech Debt]: Add new domain types for tool surface redesign",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgtd6oc"
+          }
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtd72A",
+        "key": "143"
+      },
+      "title": "[Story]: Add template URI map to scrum_orient vocabulary",
+      "type": "user_story",
+      "status": "Done",
+      "story_points": 2,
+      "priority": "Must",
+      "assignees": [],
+      "labels": [
+        "feature",
+        "use case layer",
+        "template"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [
+        {
+          "key": "86",
+          "title": "Add templates.items to ScrumConfig and config.yml",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgtGCF0"
+          }
+        },
+        {
+          "key": "140",
+          "title": "[Tech Debt]: Add new domain types for tool surface redesign",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgtd6oc"
+          }
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgtw-go",
+        "key": "165"
+      },
+      "title": "[Story]: Replace type_display with type_mapping and add local-first template file resolution",
+      "type": "user_story",
+      "status": "Done",
+      "story_points": 5,
+      "priority": "Should",
+      "assignees": [],
+      "labels": [
+        "adapter layer",
+        "use case layer",
+        "template",
+        "config"
+      ],
+      "sprint": {
+        "name": "Sprint 3",
+        "ref": {
+          "id": "ecba33e9"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A88if"
+        },
+        "name": "Flexible Item Template System"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    }
+  ],
+  "total_count": 179,
+  "scope_summary": {
+    "sprint_count": 130,
+    "backlog_count": 49
+  },
+  "dependency_map": null
+}
