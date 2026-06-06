@@ -502,6 +502,40 @@ Deno.test({
   },
 });
 
+Deno.test({
+  name: "createStory - when rollback fails, error includes draftItemId for manual cleanup",
+  async fn() {
+    const { service, gh } = createService();
+    // Queue: draft success → convert fails → DELETE fails (rollback failure)
+    gh.enqueue(
+      ADD_DRAFT_SUCCESS,
+      CONVERT_WRONG_TYPE,
+      new Error("Could not resolve item"),
+    );
+    const input = makeCreateInput({ labels: ["bug"], epic: undefined });
+
+    let caught: GitHubApiError | undefined;
+    try {
+      await service.createStory(input);
+    } catch (error) {
+      caught = error as GitHubApiError;
+    }
+    assert(caught instanceof GitHubApiError);
+    const ctx = caught.context as Record<string, unknown> | undefined;
+    assert(ctx);
+    assertEquals(ctx.draftItemId, "PVTI_new1");
+    assertEquals(ctx.projectId, makeConfig().live.projectId);
+    assertStringIncludes(caught.message, "Draft Issue creation failed");
+    assertStringIncludes(caught.recovery, "Draft Item ID: PVTI_new1");
+
+    // The last call should be the failed DELETE attempt
+    assertStringIncludes(
+      gh.graphqlCalls[gh.graphqlCalls.length - 1].queryExcerpt,
+      "DeleteProjectItem",
+    );
+  },
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // Group B - updateStory
 // ═══════════════════════════════════════════════════════════════════════════════
