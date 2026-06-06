@@ -787,44 +787,45 @@ The port interface is the only coupling between the use-case layer and the adapt
 
 **Read path — item listing (`scrum_find_items`):**
 
-```
-Agent calls scrum_find_items
-  → framework validates input against Zod schema
-  → findItemsUseCase calls findItems(filter) on port
-    → adapter QueryStrategyRouter selects strategy
-    → strategy paginates and produces raw items
-    → ResultNormalizer maps to domain item types
-      non-PBI content types (PRs) return null here — excluded at the boundary
-    → ItemFilter applies Scrum-semantic predicates
-    → optional: dependency map built from blocked_by fields
-  → ItemSearchResult returned to agent
-  Agent computes: DoR status, health signals, risk assessment
+```mermaid
+flowchart TD
+    A[Agent calls scrum_find_items] --> B[Framework validates input<br />against Zod schema]
+    B --> C[findItemsUseCase calls<br />findItems filter on port]
+    C --> D[adapter QueryStrategyRouter<br />selects strategy]
+    D --> E[strategy paginates and<br />produces raw items]
+    E --> F[ResultNormalizer maps<br />to domain item types]
+    F --> G{PBI content?}
+    G -- No PR, issue, etc. --> H[return null — excluded at boundary]
+    G -- Yes PBI --> I[ItemFilter applies<br />Scrum-semantic predicates]
+    I --> J[optional: dependency map<br />built from blocked_by fields]
+    J --> K[ItemSearchResult returned<br />to agent]
+    K --> L[Agent computes:<br />DoR status, health signals,<br />risk assessment]
 ```
 
 **Read path — sprint analytics (`scrum_get_sprint_data`):**
 
-```
-Agent calls scrum_get_sprint_data
-  → framework validates query
-  → getSprintDataUseCase calls getSprintData(query) on port
-    → adapter fetches sprint items at aggregate profile
-    → adapter fetches completion timestamps from audit log or timeline
-    → SprintRawData assembled: sprint timing + per-item { points, status, closed_at }
-  → SprintRawData returned to agent
-  Agent computes: burndown series, ideal line, velocity, history analysis
+```mermaid
+flowchart TD
+    A[Agent calls scrum_get_sprint_data] --> B[Framework validates query]
+    B --> C[getSprintDataUseCase calls<br />getSprintData query on port]
+    C --> D[adapter fetches sprint items<br />at aggregate profile]
+    D --> E[adapter fetches completion<br />timestamps from audit log or timeline]
+    E --> F["SprintRawData assembled:<br />sprint timing + per-item<br />{ points, status, closed_at }"]
+    F --> G[SprintRawData returned to agent]
+    G --> H[Agent computes:<br />burndown series, ideal line,<br />velocity, history analysis]
 ```
 
 **Write path (`scrum_set_field`, `scrum_update_story`, `scrum_create_story`):**
 
-```
-Agent calls write tool
-  → framework validates input
-  → use case calls port mutation method
-    → write-services handle platform API call (no board scan ever in write path)
-    → returns void or StoryRef
-  → use case calls composeStorySnapshot for lightweight confirmation
-    (one lean fetch merged with known mutation inputs — not a full detail re-read)
-  → StoryRef or brief snapshot returned to agent
+```mermaid
+flowchart TD
+    A[Agent calls write tool] --> B[Framework validates input]
+    B --> C[use case calls port<br />mutation method]
+    C --> D[write-services handle<br />platform API call<br />no board scan in write path]
+    D --> E{returns void or StoryRef}
+    E --> F[use case calls composeStorySnapshot<br />for lightweight confirmation]
+    F --> G[one lean fetch merged with known<br />mutation inputs — not a full detail re-read]
+    G --> H[StoryRef or brief snapshot returned<br />to agent]
 ```
 
 ---
