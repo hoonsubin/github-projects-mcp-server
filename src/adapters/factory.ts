@@ -2,12 +2,13 @@
 //
 // The factory contract every platform adapter must implement, and the
 // composition-root entry point that selects the correct adapter at startup.
-// Platform selection is driven by the SCRUM_PLATFORM env var (default "github").
+// Platform selection is passed in from the composition root (src/server.ts).
 
 import type { FileReaderPort, ProjectReader, ProjectWriter } from "../scrum/ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 import type { PlatformCapabilities } from "./capabilities.ts";
 import type { ContentLocation } from "../domain/content-location.ts";
+import type { EnvGetter } from "../domain/env.ts";
 import { ConfigError } from "../domain/errors.ts";
 
 // ── AdapterStartupOptions ───────────────────────────────────────────────────
@@ -16,6 +17,7 @@ import { ConfigError } from "../domain/errors.ts";
  * Startup options passed from the composition root to every adapter factory.
  * scrumConfig and projectRoot come from loadScrumConfig() in the use-case layer
  * — the adapter never touches the YAML file directly.
+ * env comes from the composition root — adapters never read Deno.env directly.
  */
 export interface AdapterStartupOptions {
   /**
@@ -29,6 +31,9 @@ export interface AdapterStartupOptions {
 
   /** Resolved project root from loadScrumConfig(). */
   readonly projectRoot: string;
+
+  /** Environment variable resolver provided by the composition root. */
+  readonly env: EnvGetter;
 }
 
 // ── AdapterFactory ──────────────────────────────────────────────────────────
@@ -86,7 +91,7 @@ export interface BackendResult {
 /**
  * Select and construct a backend from the registered adapter factories.
  *
- * 1. Reads SCRUM_PLATFORM env var (defaults to "github").
+ * 1. Uses the provided platform parameter (defaults to "github").
  * 2. Finds the AdapterFactory whose platform matches.
  * 3. Throws if no match is found (lists registered platforms in the error).
  * 4. Calls factory.create() and returns the BackendResult.
@@ -96,13 +101,14 @@ export interface BackendResult {
  * selects.
  *
  * @param factories - one or more AdapterFactory instances registered by the composition root
- * @throws {Error} when SCRUM_PLATFORM does not match any registered factory
+ * @param options - AdapterStartupOptions extended with an optional platform override
+ * @throws {Error} when the platform does not match any registered factory
  */
 export const createBackend = async (
   factories: AdapterFactory[],
-  options?: AdapterStartupOptions,
+  options?: AdapterStartupOptions & { platform?: string },
 ): Promise<BackendResult> => {
-  const target = Deno.env.get("SCRUM_PLATFORM") ?? "github";
+  const target = options?.platform ?? "github";
 
   const factory = factories.find((f) => f.platform === target);
   if (!factory) {

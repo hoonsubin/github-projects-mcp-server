@@ -1,4 +1,3 @@
-// =============================================================================
 // src/adapters/github/factory.ts - GitHub adapter factory
 // =============================================================================
 
@@ -14,11 +13,11 @@ export class GitHubAdapterFactory implements AdapterFactory {
 
   // deno-lint-ignore require-await
   async create(options?: AdapterStartupOptions): Promise<BackendResult> {
-    const { configLocation, scrumConfig, projectRoot } = options!;
+    const { configLocation, scrumConfig, projectRoot, env } = options!;
     const configDesc = describeContentLocation(configLocation);
 
     const ghConfig = scrumConfig.backends.github as GitHubBackendConfig;
-    const resolvedToken = resolveToken(ghConfig.auth.token, configDesc);
+    const resolvedToken = resolveToken(ghConfig.auth.token, configDesc, env);
     validateToken(resolvedToken, configDesc);
 
     const resolvedGhConfig: GitHubBackendConfig = {

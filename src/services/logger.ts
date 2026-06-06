@@ -16,12 +16,12 @@
 //
 // Usage:
 //   // server.ts calls once at startup:
-//   initLogger({ transport: Deno.env.get("MCP_TRANSPORT") ?? "stdio" });
+//   initLogger({ transport: "stdio", debug: false });
 //   // after McpServer is created:
 //   bindMcpServer(server);
 //
 //   // every other module simply imports { log }:
-//   log.debug("trace details", { some: "context" });   // only when DEBUG=1
+//   log.debug("trace details", { some: "context" });   // only when debug=true
 //   log.info("milestone");
 //   log.warn("non-fatal issue", err);
 //   log.error("fatal condition", { error: err.message });
@@ -56,20 +56,23 @@ export interface McpServerLike {
 
 let _mode: TransportMode = "stdio";
 let _mcpServer: McpServerLike | null = null;
+let _debug = false;
 
-const isDebug = (): boolean => !!Deno.env.get("DEBUG");
+const isDebug = (): boolean => _debug;
 
 // ── Initialization ──────────────────────────────────────────────────────────
 
 /**
- * Initialise the logger with the active transport mode.
+ * Initialise the logger with the active transport mode and debug flag.
  * MUST be called once at server startup before any log.* calls.
  *
  * transport="stdio" → stderr only (stdout carries JSON-RPC protocol messages)
  * transport="http"  → stderr + MCP notifications/message over SSE
+ * debug=true        → enables log.debug() and wire tracing output
  */
-export const initLogger = (opts: { transport: TransportMode }): void => {
+export const initLogger = (opts: { transport: TransportMode; debug: boolean }): void => {
   _mode = opts.transport;
+  _debug = opts.debug;
 };
 
 /**
@@ -177,7 +180,7 @@ interface McpServerInternal {
  *
  * Each invocation produces:
  *   log.info(`→ toolName`)      — on entry
- *   log.debug(`  params`, ...)  — input params (DEBUG=1 only)
+ *   log.debug(`  params`, ...)  — input params (debug=true only)
  *   log.info(`← toolName OK`)   — on success, with elapsed ms
  *   log.error(`✗ toolName FAILED`) — on throw, with error + params
  *
@@ -225,10 +228,10 @@ export const patchToolLogging = (server: McpServer): void => {
 
 /**
  * Wrap a transport to log all JSON-RPC messages at debug level.
- * Only active when DEBUG=1 is set.
+ * Only active when debug is enabled.
  *
  * Usage:
- *   if (Deno.env.get("TRACE")) wrapTransportLogging(transport, "stdio");
+ *   if (trace) wrapTransportLogging(transport, "stdio");
  */
 export const wrapTransportLogging = (transport: Transport, label: string): void => {
   const origOnMessage = transport.onmessage?.bind(transport);
@@ -250,10 +253,10 @@ export const wrapTransportLogging = (transport: Transport, label: string): void 
 // ── Public API ──────────────────────────────────────────────────────────────
 
 export const log = {
-  /** True when DEBUG=1 is set — useful for conditional debug work outside this module. */
+  /** True when debug is enabled — useful for conditional debug work outside this module. */
   isDebug,
 
-  /** Low-level tracing: tool calls, GraphQL operations, timing. Only emitted when DEBUG=1. */
+  /** Low-level tracing: tool calls, GraphQL operations, timing. Only emitted when debug=true. */
   debug(msg: string, extra?: unknown): void {
     if (!isDebug()) return;
     write("DEBUG", msg, extra);

@@ -42,7 +42,7 @@ const spyStderr = () => spy(console, "error");
  * Returns the calls array so assertions can inspect MCP notification traffic.
  */
 const initHttp = (): CapturedCall[] => {
-  initLogger({ transport: "http" });
+  initLogger({ transport: "http", debug: false });
   const { server, calls } = capturingServer();
   bindMcpServer(server);
   return calls;
@@ -54,7 +54,7 @@ const initHttp = (): CapturedCall[] => {
  * does not emit MCP notifications.
  */
 const initStdio = (): CapturedCall[] => {
-  initLogger({ transport: "stdio" });
+  initLogger({ transport: "stdio", debug: false });
   const { server, calls } = capturingServer();
   bindMcpServer(server);
   return calls;
@@ -123,16 +123,30 @@ Deno.test("http mode: log.error writes to stderr AND sends MCP notification", ()
 
 // --- DEBUG gate ---
 
-Deno.test("log.debug is silent when DEBUG is not set", () => {
+Deno.test("log.debug is silent when debug is false", () => {
   using stderrSpy = spyStderr();
-  initLogger({ transport: "stdio" });
+  initLogger({ transport: "stdio", debug: false });
 
   log.debug("should be silent");
   assertSpyCalls(stderrSpy, 0);
 });
 
-Deno.test("log.isDebug is false when DEBUG is not set", () => {
+Deno.test("log.debug emits when debug is true", () => {
+  using stderrSpy = spyStderr();
+  initLogger({ transport: "stdio", debug: true });
+
+  log.debug("should fire");
+  assertSpyCalls(stderrSpy, 1);
+});
+
+Deno.test("log.isDebug is false when debug is false", () => {
+  initLogger({ transport: "stdio", debug: false });
   assertEquals(log.isDebug(), false);
+});
+
+Deno.test("log.isDebug is true when debug is true", () => {
+  initLogger({ transport: "stdio", debug: true });
+  assertEquals(log.isDebug(), true);
 });
 
 // --- MCP level mapping (http mode) ---
@@ -165,7 +179,7 @@ Deno.test("http mode: INFO maps to MCP level 'info'", () => {
 
 Deno.test("http mode: transport failure does not throw and does not block stderr", () => {
   using stderrSpy = spyStderr();
-  initLogger({ transport: "http" });
+  initLogger({ transport: "http", debug: false });
 
   const failingServer: McpServerLike = {
     sendLoggingMessage: () => Promise.reject(new Error("transport down")),
@@ -219,7 +233,7 @@ Deno.test("http mode: rebinding server picks up new server, old server ignored",
 
 Deno.test("default mode (before initLogger) is stdio — no MCP notifications", () => {
   // Simulate: mode hasn't been set yet (tests above may have left state)
-  initLogger({ transport: "stdio" });
+  initLogger({ transport: "stdio", debug: false });
   const { server, calls } = capturingServer();
   bindMcpServer(server);
 

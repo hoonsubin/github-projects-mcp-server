@@ -26,6 +26,7 @@ import type {
   StoryBase,
 } from "../../domain/types.ts";
 import { GitHubApiError } from "./errors.ts";
+import type { EnvGetter } from "../../domain/env.ts";
 
 // ── Adapter-internal branded node ID types ───────────────────────────────────
 //
@@ -438,10 +439,10 @@ export type ResolvedToken = string & { readonly _brand: "ResolvedToken" };
  * Throws GitHubApiError (not Error) so auth failures follow the same structured
  * error-handling path as all other adapter errors.
  */
-export const resolveToken = (raw: string, configDesc: string): ResolvedToken => {
+export const resolveToken = (raw: string, configDesc: string, env: EnvGetter): ResolvedToken => {
   if (!raw.startsWith("$")) return raw as ResolvedToken;
   const varName = raw.slice(1);
-  const resolved = Deno.env.get(varName);
+  const resolved = env(varName);
   if (!resolved) {
     throw new GitHubApiError(
       `Config error in ${configDesc}: backends.github.auth.token references ` +

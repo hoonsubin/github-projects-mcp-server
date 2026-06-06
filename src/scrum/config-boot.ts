@@ -15,6 +15,7 @@ import { fetchContent } from "./fetch-location.ts";
 import { describeContentLocation } from "../domain/content-location.ts";
 import type { ContentLocation } from "../domain/content-location.ts";
 import type { ScrumConfig } from "../domain/config.ts";
+import type { EnvGetter } from "../domain/env.ts";
 import { ConfigError } from "../domain/errors.ts";
 import { findRewriter } from "./url-rewriters.ts";
 
@@ -28,15 +29,19 @@ export interface BootConfig {
  *
  * Validates required top-level sections. Does NOT resolve $ENV_VAR references
  * or make any network calls — that is the adapter's responsibility.
+ *
+ * @param configLocation - where to load the config from
+ * @param env - optional environment getter for auth-requiring config URLs
  */
 export const loadScrumConfig = async (
   configLocation: ContentLocation,
+  env?: EnvGetter,
 ): Promise<BootConfig> => {
   const configDesc = describeContentLocation(configLocation);
 
   let rawYml: string;
   try {
-    rawYml = await fetchContent(configLocation);
+    rawYml = await fetchContent(configLocation, env);
   } catch (err) {
     const errMessage = err instanceof Error ? err.message : String(err);
     const recovery = configLocation.kind === "file"
