@@ -88,6 +88,48 @@ manifest and present again before creating.
 4. If landed in backlog, offer DoR check:
    > "Item is now in the backlog. Want me to run a DoR check before your next refinement?"
 
+## §finding_disposition - Before drafting from a finding
+
+Before entering Phase 1, confirm the finding is actionable by this team in this codebase:
+
+- **Platform limitation** with no workaround path → add a comment to the most relevant existing item; do not create a new one.
+- **Symptom of an architectural decision** already tracked at epic level → note the finding in the epic description or a comment on the epic's first child story.
+- **Requires a breaking API change** with no current migration path → create a `spike` scoped to "determine migration path" rather than the fix itself.
+
+If none of these apply, proceed to Phase 1.
+
+## §amend_vs_create - Overlapping finding on an existing item
+
+After Phase 1 duplicate scan, if a finding touches the **same file or function** as an in-progress item, apply this decision rule before drafting a new item:
+
+**Amend the existing item when all three hold:**
+1. Same file/function scope — the fix would be in the same PR
+2. The existing item is In Progress or Backlog (not Done/closed)
+3. Adding the finding narrows or clarifies the existing item's scope (not additive)
+
+→ `scrum_update_story` the existing item body + add audit comment noting the addition. Do not create.
+
+**Create a new item when any of these hold:**
+- The finding adds distinct new behavior (additive, not corrective within the same change)
+- The existing item is already Done
+- The finding's fix could ship independently without waiting for the existing item
+
+→ Proceed to Phase 2. If sequencing dependency exists, set `blocked_by` in Phase 3.
+
+## §batch_mode - Sessions producing 3 or more items
+
+When a grooming or analysis session yields multiple findings before any item is created:
+
+1. **Collect all findings first** — do not enter Phase 1 for any individual finding until the full set is known.
+2. **Run duplicate scan once across all findings** — compare the full set against the backlog in a single pass.
+3. **Apply §finding_disposition and §amend_vs_create** to each finding; set aside amendments and non-actionable findings.
+4. **Draft all remaining items** and present as a numbered manifest with type, title, and one-line rationale per item.
+5. **Single Phase 3 block per item** — present all five fields for each item sequentially in one message block. Human may respond to all at once.
+6. **Single Phase 4 confirmation** for the full manifest. Adjust and re-present if any field changes.
+7. **Create in sequence** — `scrum_create_story` one at a time; apply fields and add audit comment before moving to the next.
+
+Do not exceed the `require_confirmation_above_n_items` threshold without explicit approval (from `scrum_orient`).
+
 ## §field_mutation - Confirming field changes on existing items
 
 Before calling `scrum_set_field` or `scrum_update_story` to mutate any field on an existing item:
