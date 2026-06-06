@@ -12,12 +12,9 @@ import { buildStoryFromRaw } from "../mappers.ts";
 import type { ItemFieldValue, ProjectItem } from "../types.ts";
 import type { ResolvedItemFilter } from "../../../scrum/ports.ts";
 import type { Story } from "../../../domain/types.ts";
-import projectItemsP1 from "../generated/__fixtures__/project-items-p1.json" with { type: "json" };
-import projectItemsP2 from "../generated/__fixtures__/project-items-p2.json" with { type: "json" };
+import { FIXTURE_NODES } from "./_test_fixtures.ts";
 
-const allItems: ProjectItem[] =
-  (projectItemsP1 as { user: { projectV2: { items: { nodes: unknown[] } } } })
-    .user.projectV2.items.nodes as ProjectItem[];
+const allItems: ProjectItem[] = [...FIXTURE_NODES];
 
 const config = makeConfig({
   live: {
@@ -426,12 +423,7 @@ const fixtureTerminalConfig = makeConfig({
   },
 });
 
-const allFixtureItems: ProjectItem[] = [
-  ...(projectItemsP1 as { user: { projectV2: { items: { nodes: unknown[] } } } })
-    .user.projectV2.items.nodes as ProjectItem[],
-  ...(projectItemsP2 as { user: { projectV2: { items: { nodes: unknown[] } } } })
-    .user.projectV2.items.nodes as ProjectItem[],
-];
+const allFixtureItems: ProjectItem[] = [...FIXTURE_NODES];
 
 const allFixtureStories: Story[] = allFixtureItems
   .map((item) => buildStoryFromRaw(item, fixtureTerminalConfig))

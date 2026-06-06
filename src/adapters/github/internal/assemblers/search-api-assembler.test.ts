@@ -5,8 +5,7 @@ import { ExecutionEngine } from "../execution-engine.ts";
 import { ResultNormalizer } from "../result-normalizer.ts";
 import { BoardScanCoordinator } from "../board-scan-coordinator.ts";
 import { createGhSpy, makeConfig } from "../_test_utils.ts";
-import p1Fixture from "../../generated/__fixtures__/project-items-p1.json" with { type: "json" };
-import p2Fixture from "../../generated/__fixtures__/project-items-p2.json" with { type: "json" };
+import { FIXTURE_PAGE_1, FIXTURE_PAGE_2 } from "../_test_fixtures.ts";
 
 const config = makeConfig({
   ghConfig: { ...makeConfig().ghConfig, owner_type: "user" as const, project_number: 5 },
@@ -36,7 +35,7 @@ const buildAssembler = (gh: ReturnType<typeof createGhSpy>) => {
 Deno.test("SearchApiAssembler - falls back to board scan when search returns no results", async () => {
   const gh = createGhSpy();
   gh.enqueue({ search: { nodes: [] } });
-  gh.enqueue(p1Fixture, p2Fixture);
+  gh.enqueue(FIXTURE_PAGE_1, FIXTURE_PAGE_2);
 
   const assembler = buildAssembler(gh);
   const filter = {

@@ -12,8 +12,7 @@ import { makeConfig } from "./_test_utils.ts";
 import { toIssueKey } from "../../../domain/types.ts";
 import type { DependencyEntry, EntityRef, ItemType, Story } from "../../../domain/types.ts";
 import type { IssueStory, ProjectItem } from "../types.ts";
-import projectItemsP1 from "../generated/__fixtures__/project-items-p1.json" with { type: "json" };
-import projectItemsP2 from "../generated/__fixtures__/project-items-p2.json" with { type: "json" };
+import { FIXTURE_NODES } from "./_test_fixtures.ts";
 import { buildStoryFromRaw } from "../mappers.ts";
 
 // =============================================================================
@@ -103,10 +102,7 @@ const makeProjectItem = (opts: { id: string; key: string; title: string }): Proj
 // =============================================================================
 
 // JSON imports produce loose types; cast through unknown for ProjectV2ItemType
-const allRealItems: ProjectItem[] = [
-  ...(projectItemsP1.user?.projectV2?.items?.nodes ?? []),
-  ...(projectItemsP2.user?.projectV2?.items?.nodes ?? []),
-] as unknown as ProjectItem[];
+const allRealItems: ProjectItem[] = [...FIXTURE_NODES];
 
 // Pre-build stories from real items using the same production mapper
 const config = makeConfig();

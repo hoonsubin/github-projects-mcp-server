@@ -11,8 +11,9 @@ import type { PaginationResult } from "./execution-engine.ts";
 import type { AssemblerOutput } from "./assemblers/types.ts";
 import { buildStoryFromRaw, resolveDependencyRefs } from "../mappers.ts";
 import { toItemListing } from "../../../scrum/listing-mappers.ts";
-import type { ProjectItem } from "../types.ts";
+import type { ItemFieldValue, ProjectItem } from "../types.ts";
 import type { BacklogItemListing, DependencyMap, Story } from "../../../domain/types.ts";
+import { log } from "../../../services/logger.ts";
 
 // Field names that map to canonical top-level properties and must never appear
 // in custom_fields. Covers both GH built-ins and the standard configurable set.
@@ -30,6 +31,68 @@ const CANONICAL_FIELD_NAMES = new Set([
   "Type",
 ]);
 
+/**
+ * Build a predicate that returns true for field values that are NOT canonical
+ * (i.e., should be included in custom_fields passthrough).
+ *
+ * A field is canonical when its field.id matches one of the configured canonical
+ * IDs OR its field.name is in the hardcoded CANONICAL_FIELD_NAMES set.
+ */
+export const buildNonCanonicalFieldPredicate = (
+  config: GitHubBootState,
+): (fv: ItemFieldValue) => boolean => {
+  const { fields, typeResolution } = config.live;
+  const canonicalIds = new Set<string>(
+    [
+      fields.statusFieldId,
+      fields.sprintFieldId,
+      fields.storyPointsFieldId,
+      fields.priorityFieldId,
+      fields.epicFieldId,
+      fields.assigneeFieldId,
+      typeResolution.source === "board_field" ? typeResolution.fieldId : null,
+    ].filter((id): id is string => id !== null && id !== ""),
+  );
+
+  return (fv: ItemFieldValue): boolean => {
+    if (!fv.field?.name) return false;
+    if (canonicalIds.has(fv.field.id)) return false;
+    if (CANONICAL_FIELD_NAMES.has(fv.field.name)) return false;
+    return true;
+  };
+};
+
+/**
+ * Serialize an ItemFieldValue's payload into a plain Record.
+ * Only populated keys are included — undefined values are excluded via spread.
+ * __typename, color, and optionId are intentionally omitted (GitHub API noise).
+ */
+export const serializeFieldValuePayload = (
+  fv: ItemFieldValue,
+): Record<string, unknown> => {
+  const ifv = fv.issueFieldValue;
+  return {
+    ...(fv.iterationId !== undefined ? { iterationId: fv.iterationId } : {}),
+    ...(fv.title !== undefined ? { title: fv.title } : {}),
+    ...(fv.startDate !== undefined ? { startDate: fv.startDate } : {}),
+    ...(fv.duration !== undefined ? { duration: fv.duration } : {}),
+    ...(fv.text !== undefined ? { text: fv.text } : {}),
+    ...(fv.number !== undefined ? { number: fv.number } : {}),
+    ...(fv.date !== undefined ? { date: fv.date } : {}),
+    ...(fv.name !== undefined ? { name: fv.name } : {}),
+    ...(fv.users ? { users: fv.users.nodes.map((u) => u?.login ?? null) } : {}),
+    ...(fv.labels ? { labels: fv.labels.nodes.map((l) => ({ name: l?.name ?? "" })) } : {}),
+    ...(fv.milestone ? { milestone: { id: fv.milestone.id, title: fv.milestone.title } } : {}),
+    ...(fv.repository
+      ? { repository: { name: fv.repository.name, nameWithOwner: fv.repository.nameWithOwner } }
+      : {}),
+    // Unwrap org-level issue field value (ProjectV2ItemIssueFieldValue).
+    // Single-select: name is the display label; text/date/number: value holds the scalar.
+    ...(ifv?.name !== undefined ? { name: ifv.name } : {}),
+    ...(ifv?.value !== undefined ? { value: ifv.value } : {}),
+  };
+};
+
 /** Populate custom_fields passthrough for non-canonical board field values only. */
 const enrichListingCustomFields = (
   listing: BacklogItemListing,
@@ -44,46 +107,18 @@ const enrichListingCustomFields = (
     customFields["__typename"] = item.content.__typename;
   }
 
-  const { fields, typeResolution } = config.live;
-  const canonicalIds = new Set<string>(
-    [
-      fields.statusFieldId,
-      fields.sprintFieldId,
-      fields.storyPointsFieldId,
-      fields.priorityFieldId,
-      fields.epicFieldId,
-      fields.assigneeFieldId,
-      typeResolution.source === "board_field" ? typeResolution.fieldId : null,
-    ].filter((id): id is string => id !== null && id !== ""),
-  );
+  const isNonCanonical = buildNonCanonicalFieldPredicate(config);
 
   for (const fv of item.fieldValues.nodes) {
-    if (!fv.field?.name) continue;
-    if (canonicalIds.has(fv.field.id)) continue;
-    if (CANONICAL_FIELD_NAMES.has(fv.field.name)) continue;
-
-    const ifv = fv.issueFieldValue;
-    customFields[fv.field.name] = JSON.stringify({
-      // __typename, color, optionId intentionally omitted — GitHub API noise
-      ...(fv.iterationId !== undefined ? { iterationId: fv.iterationId } : {}),
-      ...(fv.title !== undefined ? { title: fv.title } : {}),
-      ...(fv.startDate !== undefined ? { startDate: fv.startDate } : {}),
-      ...(fv.duration !== undefined ? { duration: fv.duration } : {}),
-      ...(fv.text !== undefined ? { text: fv.text } : {}),
-      ...(fv.number !== undefined ? { number: fv.number } : {}),
-      ...(fv.date !== undefined ? { date: fv.date } : {}),
-      ...(fv.name !== undefined ? { name: fv.name } : {}),
-      ...(fv.users ? { users: fv.users.nodes.map((u) => u?.login ?? null) } : {}),
-      ...(fv.labels ? { labels: fv.labels.nodes.map((l) => ({ name: l?.name ?? "" })) } : {}),
-      ...(fv.milestone ? { milestone: { id: fv.milestone.id, title: fv.milestone.title } } : {}),
-      ...(fv.repository
-        ? { repository: { name: fv.repository.name, nameWithOwner: fv.repository.nameWithOwner } }
-        : {}),
-      // Unwrap org-level issue field value (ProjectV2ItemIssueFieldValue).
-      // Single-select: name is the display label; text/date/number: value holds the scalar.
-      ...(ifv?.name !== undefined ? { name: ifv.name } : {}),
-      ...(ifv?.value !== undefined ? { value: ifv.value } : {}),
-    });
+    if (!fv.field?.name) {
+      log.debug("result-normalizer: unresolvable field name", {
+        itemId: item.id,
+        fieldTypename: fv.__typename,
+      });
+      continue;
+    }
+    if (!isNonCanonical(fv)) continue;
+    customFields[fv.field.name] = JSON.stringify(serializeFieldValuePayload(fv));
   }
 
   return { ...listing, custom_fields: customFields };
