@@ -179,7 +179,17 @@ export class StoryQueryService {
       )
     );
 
-    const node = data?.node;
+    // GraphQL call failed entirely — warnings carry the real error
+    if (!data) {
+      throw new GitHubApiError(`Failed to fetch project item ${ref.id}.`, {
+        code: "FETCH_FAILED",
+        recovery: "Check upstream warnings for details.",
+        context: { itemId: ref.id, upstreamWarnings: warnings },
+      });
+    }
+
+    // GraphQL succeeded but node is missing (legitimate NOT_FOUND)
+    const node = data.node;
     if (!node) {
       throw new GitHubApiError(`Project item ${ref.id} could not be fetched.`, {
         code: "NOT_FOUND",
@@ -220,13 +230,18 @@ export class StoryQueryService {
   }
 
   async getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>> {
-    const resolved = await resolveStory(ref, this.ctx.gh);
+    const { value: resolved, warnings: resolveWarnings } = await catchBackend(() =>
+      resolveStory(ref, this.ctx.gh)
+    );
+    const warnings: string[] = [...resolveWarnings];
+
+    if (!resolved) {
+      return { value: null, warnings };
+    }
 
     if (!resolved.issueId) {
       return this._getDraftIssueDetail(resolved.itemId);
     }
-
-    const warnings: string[] = [];
 
     const { value: issueData, warnings: issueWarnings } = await catchBackend(() =>
       this.ctx.gh.graphql<GetIssueDetailsResponse>(GET_ISSUE_DETAILS_QUERY, {
@@ -277,10 +292,20 @@ export class StoryQueryService {
       node?: GetDraftIssueDetailsQueryNode | null;
     }
 
-    const data = await this.ctx.gh.graphql<GetDraftIssueDetailsResponse>(
-      GET_DRAFT_ISSUE_DETAILS_QUERY,
-      { itemId },
+    const { value: data, warnings } = await catchBackend(() =>
+      this.ctx.gh.graphql<GetDraftIssueDetailsResponse>(
+        GET_DRAFT_ISSUE_DETAILS_QUERY,
+        { itemId },
+      )
     );
+
+    if (!data) {
+      throw new GitHubApiError(`Failed to fetch draft issue ${itemId}.`, {
+        code: "FETCH_FAILED",
+        recovery: "Check upstream warnings for details.",
+        context: { itemId, upstreamWarnings: warnings },
+      });
+    }
 
     const node = data.node;
     if (!node) {
@@ -316,7 +341,7 @@ export class StoryQueryService {
       );
     }
 
-    return { value: { story, comments: null, linked_artifacts: null }, warnings: [] };
+    return { value: { story, comments: null, linked_artifacts: null }, warnings };
   }
 
   /** Lean aggregate board scan (shared cache). */

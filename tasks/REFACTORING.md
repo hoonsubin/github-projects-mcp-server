@@ -361,13 +361,13 @@ Restructure the adapter to match the five-subfolder contract from ARCHITECTURE.M
 
 **D2.** Move files into their contract directories. Before moving, classify every file currently in the flat `internal/` directory by its primary responsibility using these rules:
 
-| Responsibility | Destination |
-|---|---|
-| GraphQL query construction, pagination state, cache management | `query-pipeline/` |
-| Filter routing, result normalization from raw wire pages to domain types | `query-strategies/` |
-| Data aggregation via the coordinator; read orchestration | `read-services/` |
-| Mutations only (no reads) | `write-services/` |
-| API client, request plumbing, ref resolution, config, concurrency helpers — no business logic | `infra/` |
+| Responsibility                                                                                | Destination         |
+| --------------------------------------------------------------------------------------------- | ------------------- |
+| GraphQL query construction, pagination state, cache management                                | `query-pipeline/`   |
+| Filter routing, result normalization from raw wire pages to domain types                      | `query-strategies/` |
+| Data aggregation via the coordinator; read orchestration                                      | `read-services/`    |
+| Mutations only (no reads)                                                                     | `write-services/`   |
+| API client, request plumbing, ref resolution, config, concurrency helpers — no business logic | `infra/`            |
 
 Any file that does not fit cleanly into one subfolder likely has mixed responsibilities and should be split at the function boundary before moving. Document the classification decisions in a short comment at the top of each moved file (e.g., `// read-services: aggregates sprint data via board coordinator`).
 

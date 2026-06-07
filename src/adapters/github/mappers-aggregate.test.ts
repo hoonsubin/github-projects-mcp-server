@@ -132,3 +132,28 @@ Deno.test("buildAggregateFromRaw - reads story points from ProjectV2ItemIssueFie
   const agg = buildAggregateFromRaw(itemWithIssuePts, configWithPts);
   assertEquals(agg.storyPoints, 8);
 });
+
+Deno.test("buildAggregateFromRaw - reads sprint title from issueFieldValue.value fallback", () => {
+  const itemWithNestedSprintTitle = {
+    ...issueItem,
+    fieldValues: {
+      nodes: [
+        // Sprint field whose title is nested under issueFieldValue.value, not at top level
+        {
+          __typename: "ProjectV2ItemIssueFieldValue",
+          field: { id: "SPRINT_F" },
+          iterationId: "iter-1",
+          issueFieldValue: { value: "Sprint 1" },
+        },
+        {
+          field: { id: "STATUS_F" },
+          name: "Todo",
+        },
+      ],
+    },
+  } as unknown as ProjectItem;
+
+  const agg = buildAggregateFromRaw(itemWithNestedSprintTitle, config);
+  assertEquals(agg.sprintId, "iter-1");
+  assertEquals(agg.sprintTitle, "Sprint 1");
+});

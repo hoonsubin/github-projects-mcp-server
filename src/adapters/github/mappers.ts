@@ -162,11 +162,13 @@ const extractBoardFields = (
       (typeof fv.issueFieldValue?.name === "string" ? fv.issueFieldValue.name : undefined);
     const effectiveNumber: number | undefined = fv.number ??
       (typeof fv.issueFieldValue?.value === "number" ? fv.issueFieldValue.value : undefined);
+    const effectiveTitle: string | undefined = fv.title ??
+      (typeof fv.issueFieldValue?.value === "string" ? fv.issueFieldValue.value : undefined);
 
     if (id === fields.statusFieldId && effectiveName) {
       status = effectiveName;
-    } else if (id === fields.sprintFieldId && fv.title) {
-      sprint = fv.title;
+    } else if (id === fields.sprintFieldId && effectiveTitle) {
+      sprint = effectiveTitle ?? null;
     } else if (
       fields.storyPointsFieldId &&
       id === fields.storyPointsFieldId &&
@@ -447,9 +449,11 @@ const extractSprintField = (
   const iterationId = "iterationId" in fv && typeof fv.iterationId === "string"
     ? fv.iterationId
     : null;
+  const effectiveTitle: string | undefined = fv.title ??
+    (typeof fv.issueFieldValue?.value === "string" ? fv.issueFieldValue.value : undefined);
   return {
     sprintId: iterationId,
-    sprintTitle: "title" in fv && typeof fv.title === "string" ? fv.title : null,
+    sprintTitle: effectiveTitle ?? null,
   };
 };
 
