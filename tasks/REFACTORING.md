@@ -299,7 +299,7 @@ Add a new MCP tool that returns raw sprint data. The existing `scrum_get_board_h
 **A3.** Implement `SprintDataService` in the adapter that:
 
 - Fetches sprint items via the aggregate board scan (already cached via the coordinator)
-- Retrieves completion timestamps from the audit log (reusing the existing burndown calculator's timestamp-resolution logic)
+- Retrieves completion timestamps from the audit log. The timestamp-extraction logic — deriving a `completed_at` from platform events (audit log, issue close date, or status-change proxy) — already exists in the adapter layer, likely split across the burndown calculator and a dedicated completion-extraction utility. Locate these utilities and reuse them; do not duplicate the derivation logic in the new service.
 - Returns `SprintRawData` — no aggregation, no series computation
 
 **A4.** Register `scrum_get_sprint_data` as a new MCP tool.
@@ -318,13 +318,17 @@ Update the SM agent skill to use the new tool and compute its own judgments from
 
 This phase validates that the server's raw data is sufficient for the agent to produce equivalent-quality Scrum judgments. Run agent evaluations against both the old tools and the new tool to confirm output parity.
 
+**Phase B exit gate:** Phase C must not begin until Phase B's evaluation suite confirms output parity. Phase C removes the server's computation paths with no rollback — if the agent work is incomplete or producing subtly wrong results, starting Phase C eliminates the fallback. Treat the Phase B evaluation sign-off as a hard prerequisite.
+
 ### Phase C — Remove Server-Side Computation (Port Cleanup)
+
+**Prerequisite:** Phase B evaluation parity confirmed (see above). Do not begin Phase C until that gate is cleared.
 
 Once the agent is fully migrated to `scrum_get_sprint_data`:
 
-**C1.** Remove `getBoardHealth()`, `getAnalytics()`, and `getSprintCompletion()` from the port interface.
+**C1.** Remove `getBoardHealth()`, `getAnalytics()`, and `getSprintCompletion()` from the port interface. Before removing `getSprintCompletion`, trace all its call sites in the use-case layer and replace each with an equivalent `getSprintData()` call scoped to the relevant sprint reference. Do not remove the port method until all call sites are redirected.
 
-**C2.** Remove `scrum_get_board_health` and `scrum_get_analytics` tool registrations (or deprecate with a stub that returns `{ deprecated: true, use: "scrum_get_sprint_data" }`).
+**C2.** Deprecate `scrum_get_board_health` and `scrum_get_analytics` by replacing their implementations with a stub that returns `{ deprecated: true, use: "scrum_get_sprint_data" }`. Do not remove the tool registrations outright — removing a named tool is a breaking change that violates Invariant 8. Stubs preserve the tool surface while signaling migration. Schedule hard removal only after confirming no active agent sessions reference the old tool names.
 
 **C3.** Remove adapter services that compute Scrum judgments:
 
@@ -332,6 +336,7 @@ Once the agent is fully migrated to `scrum_get_sprint_data`:
 - Analytics service (burndown series, velocity history)
 - Sprint history service (completed sprint aggregation)
 - Burndown calculator (burndown data collection and series computation)
+- Timestamp-extraction utilities that were only called by the removed services (e.g., any module whose sole purpose is deriving completion timestamps for burndown input — if it is no longer called by `SprintDataService`, it is dead code). If a timestamp-extraction utility is shared with `SprintDataService` (Phase A3), keep it; otherwise remove it.
 
 Also remove dead code that was only called by these services:
 
@@ -354,7 +359,17 @@ Restructure the adapter to match the five-subfolder contract from ARCHITECTURE.M
 
 **D1.** Create the five subdirectories under `internal/`: `query-pipeline/`, `query-strategies/`, `read-services/`, `write-services/`, `infra/`.
 
-**D2.** Move files into their contract directories.
+**D2.** Move files into their contract directories. Before moving, classify every file currently in the flat `internal/` directory by its primary responsibility using these rules:
+
+| Responsibility | Destination |
+|---|---|
+| GraphQL query construction, pagination state, cache management | `query-pipeline/` |
+| Filter routing, result normalization from raw wire pages to domain types | `query-strategies/` |
+| Data aggregation via the coordinator; read orchestration | `read-services/` |
+| Mutations only (no reads) | `write-services/` |
+| API client, request plumbing, ref resolution, config, concurrency helpers — no business logic | `infra/` |
+
+Any file that does not fit cleanly into one subfolder likely has mixed responsibilities and should be split at the function boundary before moving. Document the classification decisions in a short comment at the top of each moved file (e.g., `// read-services: aggregates sprint data via board coordinator`).
 
 **D3.** Add dep-cruiser rules enforcing import boundaries:
 
@@ -388,7 +403,7 @@ After each phase:
 
 - **Phase A:** `deno task test` passes; new `scrum_get_sprint_data` tool returns schema-valid JSON; contract test covers new tool.
 - **Phase B:** Agent evaluation suite produces equivalent (or better) Scrum judgments using raw data vs. pre-computed data.
-- **Phase C:** `deno task depcruise` passes; no references to removed services; port interface is clean; domain layer contains no runtime Scrum computation (verify: no imports of removed readiness functions, no callers of removed risk-stance logic).
+- **Phase C:** Phase B gate was cleared before this phase began. `deno task depcruise` passes; no references to removed services; port interface is clean; domain layer contains no runtime Scrum computation (verify: no imports of removed readiness functions, no callers of removed risk-stance logic). `scrum_get_board_health` and `scrum_get_analytics` respond with a deprecation stub, not a 404 or missing-tool error.
 - **Phase D:** `deno task depcruise` with new rules passes; adapter directory structure matches ARCHITECTURE.MD.
 
 No phase introduces breaking changes to existing `scrum_*` tool names or parameter shapes.

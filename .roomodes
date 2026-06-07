@@ -22,6 +22,7 @@ customModes:
     description: Investigate and analyze codebase structure
     groups:
       - read
+      - mcp
     source: project
     customInstructions: |
       Your role is to deeply investigate and summarize the structure and implementation details of the project codebase. To achieve this effectively, you must:

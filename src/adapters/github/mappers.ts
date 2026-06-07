@@ -133,7 +133,6 @@ const overlayOrgIssueFieldValues = (
   }
 };
 
-// todo: this should be semi-dynamically created from the extended board fields based on the config file
 // rather than exclusively reading from a static set of fields
 /** Extract board fields from a field-value node array. */
 const extractBoardFields = (

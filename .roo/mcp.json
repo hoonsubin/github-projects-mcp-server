@@ -1,72 +1,76 @@
 {
-	"mcpServers": {
-		"scrum-master": {
-			"command": "deno",
-			"args": [
-				"task",
-				"start"
-			],
-			"env": {
-				"MCP_TRANSPORT": "stdio"
-			},
-			"timeout": 300,
-			"alwaysAllow": [
-				"scrum_orient",
-				"scrum_get_board_health",
-				"scrum_find_items",
-				"scrum_get_item_detail"
-			]
-		},
-		"memory": {
-			"command": "npx",
-			"args": [
-				"-y",
-				"@modelcontextprotocol/server-memory"
-			],
-			"alwaysAllow": [
-				"create_entities",
-				"create_relations",
-				"add_observations",
-				"read_graph",
-				"search_nodes",
-				"open_nodes"
-			],
-			"disabled": false
-		},
-		"mempalace": {
-			"command": "mempalace-mcp",
-			"args": [],
-			"disabled": true,
-			"alwaysAllow": [
-				"mempalace_search",
-				"mempalace_kg_add",
-				"mempalace_diary_write"
-			]
-		},
-		"sequentialthinking": {
-			"command": "npx",
-			"args": [
-				"-y",
-				"@modelcontextprotocol/server-sequential-thinking"
-			],
-			"alwaysAllow": [
-				"sequentialthinking"
-			]
-		},
-		"searxng": {
-			"command": "npx",
-			"args": [
-				"-y",
-				"mcp-searxng"
-			],
-			"env": {
-				"SEARXNG_URL": "http://searxng:8080"
-			},
-			"alwaysAllow": [
-				"searxng_web_search",
-				"web_url_read"
-			],
-			"disabled": false
-		}
-	}
+  "mcpServers": {
+    "scrum-master": {
+      "command": "deno",
+      "args": [
+        "task",
+        "start"
+      ],
+      "env": {
+        "MCP_TRANSPORT": "stdio"
+      },
+      "timeout": 300,
+      "alwaysAllow": [
+        "scrum_orient",
+        "scrum_get_board_health",
+        "scrum_find_items",
+        "scrum_get_item_detail"
+      ]
+    },
+    "memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ],
+      "alwaysAllow": [
+        "create_entities",
+        "create_relations",
+        "add_observations",
+        "read_graph",
+        "search_nodes",
+        "open_nodes"
+      ],
+      "disabled": false
+    },
+    "mempalace": {
+      "command": "mempalace-mcp",
+      "args": [],
+      "disabled": true,
+      "alwaysAllow": [
+        "mempalace_search",
+        "mempalace_kg_add",
+        "mempalace_diary_write"
+      ]
+    },
+    "sequentialthinking": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ],
+      "alwaysAllow": [
+        "sequentialthinking"
+      ]
+    },
+    "searxng": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-searxng"
+      ],
+      "env": {
+        "SEARXNG_URL": "http://searxng:8080"
+      },
+      "alwaysAllow": [
+        "searxng_web_search",
+        "web_url_read"
+      ],
+      "disabled": false
+    },
+    "git-mcp": {
+      "type": "streamable-http",
+      "url": "https://gitmcp.io/github/github-mcp-server"
+    }
+  }
 }
