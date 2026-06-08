@@ -14,7 +14,7 @@ Guard: never mark Done without verifying AC.
    Ask for a per-criterion pass/fail result with evidence (file path + line, or test output).
 
 4. Review subtask results:
-   - All criteria met → update status to Done via `scrum_move_story`; add comment recording
+   - All criteria met → transition the item to Done status; add comment recording
      AC was verified, method used, evidence summary.
    - Any criteria not met → surface the specific failures with evidence; add comment recording
      the attempt, what passed, and what did not. Do not mark Done. Ask human how to proceed.

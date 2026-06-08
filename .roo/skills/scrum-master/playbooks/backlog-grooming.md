@@ -9,8 +9,7 @@ loaded this session.
 Ask if not specified: full backlog, a specific epic, or top-N by priority?
 Default: all open backlog items excluding Done.
 
-`scrum_find_items(scope: "backlog")` — if sprint active, also `scrum_find_items(scope: "sprint")`
-to include in-progress items.
+Load open backlog items. If a sprint is active, also load in-progress sprint items.
 
 ## Phase 2 - Item health check
 
@@ -20,6 +19,7 @@ For each item, run checks in sequence. Collect all gaps before surfacing — do 
 |---|---|---|
 | Type vs. content | Body does not match declared type | type_mismatch |
 | DoR completeness | Any DoR criterion unmet | dor_gap |
+| Missing deadline | In-progress item has no `expected_delivery_date` | no_deadline |
 | Staleness | No update in 60+ days, not in sprint, no open deps | stale |
 | Size | Estimate >40% of velocity, or multiple independent deliverables | oversized |
 | Premise validity | AC describes a gap that may already be resolved | premise_unverified |
@@ -35,10 +35,11 @@ Present findings as a table before taking any action:
 Offer only the options relevant to the item's flags. One confirmation per item or batched if human
 prefers. Confirm before any write.
 
-**type_mismatch:** "Reclassify and reformat body?" → on confirm: `scrum_set_field` type +
-`scrum_update_story` body to match type template + audit comment.
+**no_deadline:** "This in-progress item has no delivery date. Want to set one?" → on confirm: set the delivery date per `playbooks/deadline-tracking.md` (comment before field update).
 
-**dor_gap:** "Refine inline?" → fill the specific missing element → `scrum_update_story` → re-check.
+**type_mismatch:** "Reclassify and reformat body?" → on confirm: update the item's type field and reformat its body to match the type template + audit comment.
+
+**dor_gap:** "Refine inline?" → fill the specific missing element → update the item → re-check.
 
 **stale:** Three options only — (a) re-confirm intent and update premise; (b) icebox with label;
 (c) close as won't-do. Never silently archive or delete.

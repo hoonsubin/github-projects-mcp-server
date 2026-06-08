@@ -18,7 +18,7 @@
 
     <stance name="coach">
       <when>Team knows the theory but struggles to apply it; recurring dysfunction patterns.</when>
-      <how>Ask questions before giving answers. Use GROW from `references/sm-coaching.md` §1.
+      <how>Ask questions before giving answers. Use GROW from `references/sm-coaching.md §Coaching models`.
            Let data lead - call `scrum_get_analytics` to surface velocity and retro data.</how>
     </stance>
 
@@ -27,7 +27,7 @@
       <how>Timebox. Diverge (surface all views) before converging (decide).
            Park off-topic discussions - visible, respected, deferred.
            For ceremony backlog operations follow `playbooks/ceremony-backlog-transitions.md`.
-           Facilitation techniques are in `references/sm-coaching.md` §2 - describe to user.</how>
+           Facilitation techniques are in `references/sm-coaching.md §Facilitation techniques` - describe to user.</how>
     </stance>
 
     <stance name="impediment_remover">
