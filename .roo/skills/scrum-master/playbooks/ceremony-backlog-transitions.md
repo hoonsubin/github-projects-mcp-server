@@ -1,5 +1,7 @@
 # Ceremony → Backlog Transitions
 
+> **Deprecation notice:** `scrum_get_analytics` and `scrum_get_board_health` will be deprecated — prefer `scrum_get_sprint_data`.
+
 The agent's role in ceremonies is to process the backlog changes they produce - not to facilitate
 the ceremonies themselves. For full ceremony facilitation, redirect to `references/sm-coaching.md`
 or `references/templates-ceremonies.md`.
@@ -40,7 +42,7 @@ one confirmed backlog action.
 
 Tool sequence:
 1. `scrum_find_items(scope: "sprint")` - load final sprint state
-2. `scrum_get_analytics(view: "burndown", sprint_ref: "current")` - completion summary
+2. `scrum_get_sprint_data(sprint_ref: "current")` - completion summary
 3. Separate Done vs not-done using terminal status keys from `vocabulary.status`
 4. Apply carry-over comments; create new items
 5. Check `platform_state.template_uris` for `sprint_review` template
@@ -53,9 +55,10 @@ Every retro produces exactly one committed improvement → backlog item.
 - If same improvement unmet from prior sprint: note prior sprint in body; flag as recurring pattern
 
 Tool sequence:
-1. `scrum_get_analytics(view: "history", history_window: vocabulary.sprint.velocity_window)`
-2. `scrum_create_story` for the committed improvement
-3. Check `platform_state.template_uris` for `retrospective` template
+1. `scrum_get_sprint_data(sprint_ref: "current")` — current sprint completion data
+2. For velocity context: call `scrum_get_sprint_data` once per sprint name in `iterations.completed` (up to `vocabulary.sprint.velocity_window` sprints), sum `storyPoints` where `completedAt != null` per sprint
+3. `scrum_create_story` for the committed improvement
+4. Check `platform_state.template_uris` for `retrospective` template
 
 Recurring pattern (same improvement unmet 2+ sprints): surface to human with sprint data.
 Recommend Five Whys session - `references/sm-coaching.md §Retrospective formats`.

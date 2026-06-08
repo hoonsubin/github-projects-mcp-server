@@ -137,15 +137,15 @@
 
 ### SC4 — Remove Dead Code
 
-| File                                                                       | Line(s)     | Function(s)                           | Action                                                                                 |
-| -------------------------------------------------------------------------- | ----------- | ------------------------------------- | -------------------------------------------------------------------------------------- |
-| [`src/scrum/listing-mappers.ts`](src/scrum/listing-mappers.ts:51-69)       | 51–69       | `historyEntryToItemListing()`         | 🗑️ DELETE (only caller was analytics-service)                                          |
-| [`src/adapters/github/mappers.ts`](src/adapters/github/mappers.ts:533-543) | 533–543     | `aggregateToBurndownInput()`          | 🗑️ DELETE (only called by sprint-history-service)                                      |
-| [`src/adapters/github/mappers.ts`](src/adapters/github/mappers.ts:581-584) | 581–584     | `buildBurndownStoryInput()`           | 🗑️ DELETE (only called by burndown-calculator)                                         |
-| [`src/scrum/sprint-math.ts`](src/scrum/sprint-math.ts:111-126)             | 111–126     | `buildIdealLine()`                    | ⚠️ MARK deprecated with comment (called by analytics-service, which is deleted in SC3) |
-| [`src/scrum/sprint-math.ts`](src/scrum/sprint-math.ts:131-167)             | 131–167     | `buildDaySeries()`                    | ⚠️ MARK deprecated with comment (called by analytics-service, which is deleted in SC3) |
-| [`src/domain/rules/readiness.ts`](src/domain/rules/readiness.ts)           | entire file | `computeReadinessSummary()` + helpers | 🗑️ DELETE — already zero imports; dead code                                            |
-| [`src/domain/types.ts`](src/domain/types.ts:312-316)                       | 312–316     | `SprintRisk` interface                | 🗑️ DELETE — only used by BacklogHealth                                                 |
+| File                                                                       | Line(s)     | Function(s)                           | Action                                                                                     |
+| -------------------------------------------------------------------------- | ----------- | ------------------------------------- | ------------------------------------------------------------------------------------------ |
+| [`src/scrum/listing-mappers.ts`](src/scrum/listing-mappers.ts:51-69)       | 51–69       | `historyEntryToItemListing()`         | 🗑️ DELETE (only caller was analytics-service)                                              |
+| [`src/adapters/github/mappers.ts`](src/adapters/github/mappers.ts:533-543) | 533–543     | `aggregateToBurndownInput()`          | 🗑️ DELETE (only called by sprint-history-service)                                          |
+| [`src/adapters/github/mappers.ts`](src/adapters/github/mappers.ts:581-584) | 581–584     | `buildBurndownStoryInput()`           | 🗑️ DELETE (only called by burndown-calculator)                                             |
+| [`src/scrum/sprint-math.ts`](src/scrum/sprint-math.ts:111-126)             | 111–126     | `buildIdealLine()`                    | ⚠️ MARK deprecated with comment (called by analytics-service, which is deleted in SC3)     |
+| [`src/scrum/sprint-math.ts`](src/scrum/sprint-math.ts:131-167)             | 131–167     | `buildDaySeries()`                    | ⚠️ MARK deprecated with comment (called by analytics-service, which is deleted in SC3)     |
+| [`src/domain/rules/readiness.ts`](src/domain/rules/readiness.ts)           | entire file | `computeReadinessSummary()` + helpers | 🗑️ DELETE — imported by board-health-service.ts; removed as part of SC3, not independently |
+| [`src/domain/types.ts`](src/domain/types.ts:312-316)                       | 312–316     | `SprintRisk` interface                | 🗑️ DELETE — only used by BacklogHealth                                                     |
 
 **Files to KEEP despite being in scope:**
 
@@ -156,13 +156,13 @@
 
 ### SC5 — Remove Domain Readiness + Risk-Stance
 
-| File                                                             | Line(s)     | Changes Needed                                                    |
-| ---------------------------------------------------------------- | ----------- | ----------------------------------------------------------------- |
-| [`src/domain/rules/readiness.ts`](src/domain/rules/readiness.ts) | entire file | 🗑️ DELETE — zero existing imports (confirmed by investigation)    |
-| [`src/domain/types.ts`](src/domain/types.ts:224)                 | 224         | Remove `SprintRiskStance` type                                    |
-| [`src/domain/types.ts`](src/domain/types.ts:236)                 | 236         | Remove `riskStance` from `SprintContext`                          |
-| [`src/domain/types.ts`](src/domain/types.ts:245-254)             | 245–254     | Remove `computeRiskStance()`                                      |
-| [`src/domain/types.ts`](src/domain/types.ts:260-289)             | 260–289     | Simplify `sprintContextFromSprintInfo()` — remove `workPct` param |
+| File                                                             | Line(s)     | Changes Needed                                                                          |
+| ---------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------- |
+| [`src/domain/rules/readiness.ts`](src/domain/rules/readiness.ts) | entire file | 🗑️ DELETE — previously thought dead; actually imported by board-health-service.ts (SC3) |
+| [`src/domain/types.ts`](src/domain/types.ts:224)                 | 224         | Remove `SprintRiskStance` type                                                          |
+| [`src/domain/types.ts`](src/domain/types.ts:236)                 | 236         | Remove `riskStance` from `SprintContext`                                                |
+| [`src/domain/types.ts`](src/domain/types.ts:245-254)             | 245–254     | Remove `computeRiskStance()`                                                            |
+| [`src/domain/types.ts`](src/domain/types.ts:260-289)             | 260–289     | Simplify `sprintContextFromSprintInfo()` — remove `workPct` param                       |
 
 ### SC6 — Remove Output Schema Types
 
@@ -289,25 +289,25 @@ Every file listed above must have its relative import paths updated when moved. 
 
 ### Critical Risks
 
-| #  | Risk                                                                                                              | Impact                                                                                                                 | Likelihood | Mitigation                                                                                                                                  | Status                |
-| -- | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
-| R1 | `readiness.ts` is already **dead code** — zero imports across entire `src/`                                       | Phase C SC5 is safe to execute anytime                                                                                 | Certain    | Can be deleted **immediately** without waiting for Phase B gate                                                                             | ✅ Zero risk          |
-| R2 | `CapturedDataBackend` missing `getSprintData()` — will throw `UnsupportedCapabilityError`                         | Contract tests for `scrum_get_sprint_data` will fail against captured backend                                          | High       | Must add `getSprintData()` override to [`CapturedDataBackend`](src/test/support/captured-backend.ts) before TA1 can pass                    | ⚠️ Needs fix          |
-| R3 | `riskStance` coupled to `orient.ts` via `sprintContextFromSprintInfo()`                                           | Phase C SC1/SC5 must coordinate: remove `workPct` computation in orient.ts and `riskStance` in types.ts simultaneously | High       | Trace: orient.ts:108 → sprintContextFromSprintInfo(info, daysSince, workPct) → SprintContext.riskStance. Must strip at both ends in one PR. | ⚠️ Needs planning     |
-| R4 | `computeSprintEndDate()` called from `mappers.ts:378` AND `SprintDataService`                                     | Marking it deprecated too early breaks live adapter code                                                               | Medium     | **KEEP** `computeSprintEndDate()` — the plan explicitly avoids removing it. Only deprecate `buildIdealLine`/`buildDaySeries`.               | ✅ Known              |
-| R5 | `buildSprintWindow()` in sprint-math.ts — is it called by SprintDataService?                                      | Premature removal breaks Phase A                                                                                       | Low        | SprintDataService imports `computeSprintEndDate` (line 13) but NOT `buildSprintWindow`. No risk, but verify before deprecating.             | ✅ Safe               |
-| R6 | `aggregateToBurndownInput()` called via `buildBurndownStoryInput()` at mappers.ts:583 → burndown-calculator.ts:68 | Incorrect removal order                                                                                                | Medium     | Remove only after burndown-calculator.ts is deleted (SC3 → SC4)                                                                             | ⚠️ Sequencing         |
-| R7 | Phase C SC2 stubs must import `SprintDataQuery` — ensure no Zod schema mismatch                                   | Stub response shape must be valid for existing tool registrations                                                      | Low        | Keep tool registrations active; replace handler body only                                                                                   | ✅ Low risk           |
-| R8 | Phase C SC6 — domain type removal may cascade to other imports (`scrum-outputs.ts`, `filters.ts`, etc.)           | Breaking compilation of unrelated files                                                                                | Medium     | Run `deno check src/` after each removal to catch cascading imports                                                                         | ⚠️ Needs verification |
+| #  | Risk                                                                                                                                                                   | Impact                                                                                                                 | Likelihood | Mitigation                                                                                                                                  | Status                |
+| -- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| R1 | `readiness.ts` is NOT dead code — it IS imported by [`board-health-service.ts`](src/adapters/github/internal/board-health-service.ts:12) via `computeReadinessSummary` | Must wait for Phase C SC3 (board-health-service.ts deletion). Cannot be deleted independently.                         | High       | Delete only as part of SC3 when `board-health-service.ts` is removed. Earlier zero-imports finding was incorrect (insufficient grep).       | ⚠️ Needs SC3 first    |
+| R2 | `CapturedDataBackend` missing `getSprintData()` — will throw `UnsupportedCapabilityError`                                                                              | Contract tests for `scrum_get_sprint_data` will fail against captured backend                                          | High       | Must add `getSprintData()` override to [`CapturedDataBackend`](src/test/support/captured-backend.ts) before TA1 can pass                    | ⚠️ Needs fix          |
+| R3 | `riskStance` coupled to `orient.ts` via `sprintContextFromSprintInfo()`                                                                                                | Phase C SC1/SC5 must coordinate: remove `workPct` computation in orient.ts and `riskStance` in types.ts simultaneously | High       | Trace: orient.ts:108 → sprintContextFromSprintInfo(info, daysSince, workPct) → SprintContext.riskStance. Must strip at both ends in one PR. | ⚠️ Needs planning     |
+| R4 | `computeSprintEndDate()` called from `mappers.ts:378` AND `SprintDataService`                                                                                          | Marking it deprecated too early breaks live adapter code                                                               | Medium     | **KEEP** `computeSprintEndDate()` — the plan explicitly avoids removing it. Only deprecate `buildIdealLine`/`buildDaySeries`.               | ✅ Known              |
+| R5 | `buildSprintWindow()` in sprint-math.ts — is it called by SprintDataService?                                                                                           | Premature removal breaks Phase A                                                                                       | Low        | SprintDataService imports `computeSprintEndDate` (line 13) but NOT `buildSprintWindow`. No risk, but verify before deprecating.             | ✅ Safe               |
+| R6 | `aggregateToBurndownInput()` called via `buildBurndownStoryInput()` at mappers.ts:583 → burndown-calculator.ts:68                                                      | Incorrect removal order                                                                                                | Medium     | Remove only after burndown-calculator.ts is deleted (SC3 → SC4)                                                                             | ⚠️ Sequencing         |
+| R7 | Phase C SC2 stubs must import `SprintDataQuery` — ensure no Zod schema mismatch                                                                                        | Stub response shape must be valid for existing tool registrations                                                      | Low        | Keep tool registrations active; replace handler body only                                                                                   | ✅ Low risk           |
+| R8 | Phase C SC6 — domain type removal may cascade to other imports (`scrum-outputs.ts`, `filters.ts`, etc.)                                                                | Breaking compilation of unrelated files                                                                                | Medium     | Run `deno check src/` after each removal to catch cascading imports                                                                         | ⚠️ Needs verification |
 
 ### Confirmed Dead Code (zero imports)
 
-| File                                                                               | Function                                               | Evidence                                                              |
-| ---------------------------------------------------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------- |
-| [`src/domain/rules/readiness.ts`](src/domain/rules/readiness.ts)                   | `computeReadinessSummary()`, `computeStoryReadiness()` | Zero imports across `src/` — confirmed by grep                        |
-| [`src/scrum/listing-mappers.ts:51-69`](src/scrum/listing-mappers.ts:51-69)         | `historyEntryToItemListing()`                          | Only caller is analytics-service (deleted in SC3)                     |
-| [`src/adapters/github/mappers.ts:533-543`](src/adapters/github/mappers.ts:533-543) | `aggregateToBurndownInput()`                           | Only called by sprint-history-service and `buildBurndownStoryInput()` |
-| [`src/adapters/github/mappers.ts:581-584`](src/adapters/github/mappers.ts:581-584) | `buildBurndownStoryInput()`                            | Only called by burndown-calculator                                    |
+| File                                                                               | Function                                                                                                                     | Evidence                                                              |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `src/domain/rules/readiness.ts` (moved — NOT dead code)                            | `computeReadinessSummary()` imported by [`board-health-service.ts`](src/adapters/github/internal/board-health-service.ts:12) | Will be removed as part of Phase C SC3, not independently             |
+| [`src/scrum/listing-mappers.ts:51-69`](src/scrum/listing-mappers.ts:51-69)         | `historyEntryToItemListing()`                                                                                                | Only caller is analytics-service (deleted in SC3)                     |
+| [`src/adapters/github/mappers.ts:533-543`](src/adapters/github/mappers.ts:533-543) | `aggregateToBurndownInput()`                                                                                                 | Only called by sprint-history-service and `buildBurndownStoryInput()` |
+| [`src/adapters/github/mappers.ts:581-584`](src/adapters/github/mappers.ts:581-584) | `buildBurndownStoryInput()`                                                                                                  | Only called by burndown-calculator                                    |
 
 ### Functions to KEEP (confirmed non-dead)
 
@@ -330,41 +330,47 @@ The evaluation suite (SB4) must prove that agent-side burndown/velocity/risk/rea
 
 ## Dependency Graph
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Phase A: scrum_get_sprint_data Tool (100% Complete)        │
-│  ┌─────────┐  ┌──────────┐  ┌───────────┐  ┌──────────┐    │
-│  │ SA1/SA2 │→│ SA3/EA31 │→│ SA4/SA5   │→│ TA1      │    │
-│  │ Types   │  │ Service  │  │ Tool+UC   │  │ Tests    │    │
-│  └─────────┘  └──────────┘  └───────────┘  └──────────┘    │
-└─────────────────────┬───────────────────────────────────────┘
-                      │ unblocks
-                      ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Phase B: Agent Skill Update (0%)                           │
-│  ┌─────────┐  ┌──────────────┐  ┌───────────┐               │
-│  │ SB1     │→│ SB2/SB3      │→│ SB4       │               │
-│  │ SKILL.md│  │ Computations │  │ Eval Suite│               │
-│  └─────────┘  └──────────────┘  └─────┬─────┘               │
-└─────────────────────────────────────────┬───────────────────┘
-                                          │ HARD GATE
-                                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Phase C: Remove Server-Side Computation (0%)               │
-│  ┌──────────┐  ┌──────────┐  ┌───────────┐  ┌──────────┐    │
-│  │ SC1/SC5  │→│ SC3      │→│ SC4/SC6   │→│ TC1/TC2  │    │
-│  │ Port+Dom │  │ Services │  │ Dead Code │  │ Tests    │    │
-│  └──────────┘  └──────────┘  └───────────┘  └──────────┘    │
-└─────────────────────┬───────────────────────────────────────┘
-                      │ simplifies (fewer files to move)
-                      ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Phase D: Adapter Restructure (dirs ~10% exist)             │
-│  ┌──────────┐  ┌──────────┐  ┌───────────┐  ┌──────────┐    │
-│  │ SD1      │→│ SD2      │→│ SD3       │→│ TD1      │    │
-│  │ Dirs     │  │ Moves    │  │ DepCruise │  │ Tests    │    │
-│  └──────────┘  └──────────┘  └───────────┘  └──────────┘    │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph PhaseA["Phase A: scrum_get_sprint_data Tool ✅ 100%"]
+        direction LR
+        SA1(["SA1/SA2<br/>Types"]) --> SA3["SA3/EA31<br/>Service"]
+        SA3 --> SA4["SA4/SA5<br/>Tool + Use-case"]
+        SA4 --> TA1["TA1<br/>Tests"]
+    end
+
+    PhaseA -- "unblocks" --> PhaseB
+
+    subgraph PhaseB["Phase B: Agent Skill Update ⬜ 0%"]
+        direction LR
+        SB1(["SB1<br/>SKILL.md"]) --> SB2["SB2/SB3<br/>Computations"]
+        SB2 --> SB4["SB4<br/>Eval Suite"]
+    end
+
+    PhaseB -- "HARD GATE" --> PhaseC
+
+    subgraph PhaseC["Phase C: Remove Server-Side Computation ⬜ 0%"]
+        direction LR
+        SC1(["SC1/SC5<br/>Port + Domain"]) --> SC3["SC3<br/>Services"]
+        SC3 --> SC4["SC4/SC6<br/>Dead Code"]
+        SC4 --> TC1["TC1/TC2<br/>Tests"]
+    end
+
+    PhaseC -- "simplifies (fewer files to move)" --> PhaseD
+
+    subgraph PhaseD["Phase D: Adapter Restructure ⬜ ~10% dirs exist"]
+        direction LR
+        SD1(["SD1<br/>Dirs"]) --> SD2["SD2<br/>Moves"]
+        SD2 --> SD3["SD3<br/>DepCruise"]
+        SD3 --> TD1["TD1<br/>Tests"]
+    end
+
+    classDef phase fill:#e8f4fd,stroke:#0366d6,stroke-width:2px;
+    classDef completed fill:#dafbe1,stroke:#1a7f37,stroke-width:2px;
+    classDef gate stroke:#b91c1c,stroke-width:3px,stroke-dasharray: 5 5;
+
+    class PhaseA completed;
+    class PhaseB,PhaseC,PhaseD phase;
 ```
 
 ### Internal Sub-dependencies (Phase C)

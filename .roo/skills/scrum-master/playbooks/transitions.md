@@ -1,5 +1,7 @@
 # Transitions Playbook
 
+> **Deprecation notice:** `scrum_get_analytics` and `scrum_get_board_health` will be deprecated — prefer `scrum_get_sprint_data`.
+
 On-demand only. Load on explicit human request for project setup, restart, or board reconciliation.
 
 **Trigger phrases:** "set up Scrum", "first sprint", "bootstrap", "we paused", "picking this back up",
@@ -47,7 +49,7 @@ Write `project.name` and `project.team` to `.github/scrum/config.yml`. Note mile
 
 **Phase 2 - Board audit**
 1. `scrum_orient` + read `.github/scrum/config.yml` - assess configuration completeness
-2. `scrum_get_board_health` then `scrum_find_items` - load all existing items
+2. `scrum_get_sprint_data(sprint_ref: "current")` then `scrum_find_items` - load all existing items
 3. Present inventory: "I found [N] items. [X] in-progress, [Y] in backlog, [Z] with no status."
 4. Ask: "Do any reflect work already done, or work no longer relevant?"
    - Done: `scrum_set_field(field: "status", value: vocabulary.status["done"])` - never hardcode "Done"
@@ -85,7 +87,7 @@ Check `platform_state.template_uris`; if `sprint_planning` present, access `scru
 
 **Phase 1 - Understand the pause**
 Ask: when did work stop; what caused it and is it resolved; have team members joined or left?
-`scrum_get_analytics` - find last active sprint and velocity.
+`scrum_get_sprint_data(sprint_ref: "current")` then call `scrum_get_sprint_data` once per sprint name in `iterations.completed` (up to 3 most recent) to reconstruct velocity.
 If root cause not resolved: name it before planning. Do not commit to re-planning without a credible
 answer to "what changes between now and sprint start?"
 
@@ -109,7 +111,7 @@ Sprint Goal: "Prove the team can deliver a working increment in one sprint."
 
 **Phase 1 - Assess the gap**
 Ask: how far behind is the board; was development consistent or in bursts; any record of what got done?
-`scrum_get_board_health` then `scrum_find_items(scope: "sprint")` and full backlog.
+`scrum_get_sprint_data(sprint_ref: "current")` then `scrum_find_items(scope: "sprint")` and full backlog.
 Present inventory with date range of last activity.
 Solo/small team: reduce ceremony overhead; focus is board accuracy and forward visibility.
 Large gap with no records: "We're building a working board, not an audit trail. Approximate is fine."

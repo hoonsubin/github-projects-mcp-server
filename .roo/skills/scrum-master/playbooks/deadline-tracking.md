@@ -1,6 +1,8 @@
 # Deadline Tracking Playbook
 
-Load items via `scrum_find_items(scope: "sprint")` or `scrum_get_board_health` as needed.
+> **Deprecation notice:** `scrum_get_analytics` and `scrum_get_board_health` will be deprecated — prefer `scrum_get_sprint_data`.
+
+Load items via `scrum_find_items(scope: "sprint")` or `scrum_get_sprint_data(sprint_ref: "current")` as needed.
 
 ## §overdue_item
 

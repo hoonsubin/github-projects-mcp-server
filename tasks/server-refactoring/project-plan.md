@@ -2,6 +2,11 @@
 
 **Epic:** Server Refactoring — Align MCP Scrum Server to Architecture Vision **Reference:** [`tasks/REFACTORING.md`](/tasks/REFACTORING.md) — Refactoring Plan (source document) **Reference:** [`docs/ARCHITECTURE.MD`](/docs/ARCHITECTURE.MD) — Architecture Vision (target state) **Principle:** _Server Returns Facts; Agent Applies Judgment_
 
+ALWAYS read the following documents to check the active state:
+
+- tasks/server-refactoring/context-map.md
+- tasks/server-refactoring/issues-checklist.md
+
 ---
 
 ## 1. Project Overview

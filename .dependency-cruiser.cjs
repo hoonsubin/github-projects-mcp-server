@@ -102,6 +102,69 @@ module.exports = {
       to: { path: "^src/adapters/github/internal/assemblers/" },
     },
 
+    // ── Rule 7c: Phase D Internal Adapter Boundary Rules ─────────────────
+    // query-pipeline may only be imported by query-strategies/ and read-services/
+    {
+      name: "query-pipeline-import-boundary",
+      comment: "query-pipeline/ is a low-level query execution layer. " +
+        "Only query-strategies/ and read-services/ may import from it.",
+      severity: "error",
+      from: {
+        path: "^src/adapters/github/internal/",
+        pathNot: "(query-pipeline|query-strategies|read-services)/",
+      },
+      to: { path: "^src/adapters/github/internal/query-pipeline/" },
+    },
+
+    // query-strategies must not import read-services/ or write-services/
+    {
+      name: "query-strategies-not-import-services",
+      comment: "query-strategies/ lives at the same architectural level as " +
+        "read-services/ and write-services/ — it must not depend on either.",
+      severity: "error",
+      from: { path: "^src/adapters/github/internal/query-strategies/" },
+      to: {
+        path: "^src/adapters/github/internal/(read-services|write-services)/",
+      },
+    },
+
+    // read-services must not import paginator or write-services
+    {
+      name: "read-services-not-import-write-or-paginator",
+      comment: "read-services/ must not depend on write-services/ or the raw " +
+        "pagination engine (pagination.ts, execution-engine.ts, rate-limiter.ts, " +
+        "retry-handler.ts, query-runner.ts).",
+      severity: "error",
+      from: { path: "^src/adapters/github/internal/read-services/" },
+      to: {
+        path:
+          "^src/adapters/github/internal/(write-services/|pagination\\.ts|execution-engine\\.ts|rate-limiter\\.ts|retry-handler\\.ts|query-runner\\.ts)",
+      },
+    },
+
+    // write-services must not import query-pipeline
+    {
+      name: "write-services-not-import-query-pipeline",
+      comment: "write-services/ must not depend on query-pipeline/.",
+      severity: "error",
+      from: { path: "^src/adapters/github/internal/write-services/" },
+      to: { path: "^src/adapters/github/internal/query-pipeline/" },
+    },
+
+    // infra must not import any service or pipeline folder
+    {
+      name: "infra-not-import-services",
+      comment: "infra/ is a utility layer; it must not import from any service " +
+        "or pipeline folder (query-pipeline, query-strategies, read-services, " +
+        "write-services).",
+      severity: "error",
+      from: { path: "^src/adapters/github/internal/infra/" },
+      to: {
+        path:
+          "^src/adapters/github/internal/(query-pipeline|query-strategies|read-services|write-services)/",
+      },
+    },
+
     // ── Rule 8: No console.log in src/ ───────────────────────────────────
     {
       name: "no-console-log",
