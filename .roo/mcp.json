@@ -67,6 +67,21 @@
 				"web_url_read"
 			],
 			"disabled": false
+		},
+		"git-mcp": {
+			"type": "streamable-http",
+			"url": "https://gitmcp.io/github/github-mcp-server",
+			"alwaysAllow": [
+				"fetch_github_mcp_server_docs",
+				"search_github_mcp_server_docs"
+			]
+		},
+		"excalidraw-mcp": {
+			"type": "streamable-http",
+			"url": "https://mcp.excalidraw.com",
+			"alwaysAllow": [
+				"read_me"
+			]
 		}
 	}
 }

@@ -28,6 +28,7 @@ export type GitHubErrorCode =
   // API mutations
   | "MUTATION_FAILED" // mutation completed but returned no data
   // GitHub API transport
+  | "FETCH_FAILED" // graphql call failed entirely (warnings carry the real error)
   | "AUTH_FAILED" // 401 - token invalid or expired
   | "RATE_LIMITED" // 403 + x-ratelimit-reset header present
   | "PERMISSION_DENIED" // 403 without rate-limit header

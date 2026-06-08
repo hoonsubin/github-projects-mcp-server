@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/audit/stages/stability.ts — Instability (I) metrics from depcruise JSON
+// scripts/audit/stages/stability.ts - Instability (I) metrics from depcruise JSON
 //
 // Uses depcruise output with --metrics flag to get instability per module.
 // Abstractness (A) requires additional source analysis not available from

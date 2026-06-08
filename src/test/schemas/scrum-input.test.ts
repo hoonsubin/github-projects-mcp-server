@@ -1,5 +1,5 @@
 // =============================================================================
-// Input schema contract checks — pure Zod / MCP SDK validation (no tools layer)
+// Input schema contract checks - pure Zod / MCP SDK validation (no tools layer)
 // =============================================================================
 
 import { assertEquals } from "@std/assert";

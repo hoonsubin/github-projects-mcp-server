@@ -63,7 +63,7 @@ Deno.test("pipeline: types without template field are absent from map", async ()
   const paths = await typeTemplatePathsPromise;
   // Map must be non-empty (config has at least one type with a template).
   assertEquals(Object.keys(paths).length > 0, true, "expected at least one template in config");
-  // Every resolved location must be kind:file — the committed config uses
+  // Every resolved location must be kind:file - the committed config uses
   // relative file paths only. url/inline would indicate a bug in buildTypeTemplatePaths.
   for (const loc of Object.values(paths)) {
     assertEquals(loc.kind, "file");

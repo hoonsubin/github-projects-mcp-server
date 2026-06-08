@@ -1,7 +1,7 @@
 // =============================================================================
 // src/adapters/github/internal/filter-strategy-router.test.ts
 //
-// Gate C — routing determinism: every filter shape resolves to exactly one profile.
+// Gate C - routing determinism: every filter shape resolves to exactly one profile.
 // =============================================================================
 
 import { assertEquals } from "@std/assert";

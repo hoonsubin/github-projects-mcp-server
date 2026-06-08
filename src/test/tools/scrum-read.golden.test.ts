@@ -1,5 +1,5 @@
 // =============================================================================
-// Golden snapshot tests — stable agent-visible JSON from config-shaped fake backend
+// Golden snapshot tests - stable agent-visible JSON from config-shaped fake backend
 // =============================================================================
 
 import { assertSnapshot } from "@std/testing/snapshot";

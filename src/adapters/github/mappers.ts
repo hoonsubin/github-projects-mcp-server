@@ -113,7 +113,7 @@ export interface IssueDetailsInput {
 /**
  * Fill in null story_points / priority from Issue.issueFieldValues when the
  * project board fieldValues extraction found nothing (org issue-backed fields).
- * Matches by field name against field_mapping — mutates `fields` in place.
+ * Matches by field name against field_mapping - mutates `fields` in place.
  */
 const overlayOrgIssueFieldValues = (
   fields: BoardFields,
@@ -133,7 +133,6 @@ const overlayOrgIssueFieldValues = (
   }
 };
 
-// todo: this should be semi-dynamically created from the extended board fields based on the config file
 // rather than exclusively reading from a static set of fields
 /** Extract board fields from a field-value node array. */
 const extractBoardFields = (
@@ -163,11 +162,13 @@ const extractBoardFields = (
       (typeof fv.issueFieldValue?.name === "string" ? fv.issueFieldValue.name : undefined);
     const effectiveNumber: number | undefined = fv.number ??
       (typeof fv.issueFieldValue?.value === "number" ? fv.issueFieldValue.value : undefined);
+    const effectiveTitle: string | undefined = fv.title ??
+      (typeof fv.issueFieldValue?.value === "string" ? fv.issueFieldValue.value : undefined);
 
     if (id === fields.statusFieldId && effectiveName) {
       status = effectiveName;
-    } else if (id === fields.sprintFieldId && fv.title) {
-      sprint = fv.title;
+    } else if (id === fields.sprintFieldId && effectiveTitle) {
+      sprint = effectiveTitle ?? null;
     } else if (
       fields.storyPointsFieldId &&
       id === fields.storyPointsFieldId &&
@@ -396,7 +397,7 @@ export const resolveSprintGoal = (_iter: IterationEntry): never =>
  * issue node IDs or issue numbers against in-memory project items.
  *
  * Called after mapping stories from project items when the full item set is
- * available in memory. Not called from getStoryDetail() — ref.id stays as
+ * available in memory. Not called from getStoryDetail() - ref.id stays as
  * issue node ID in that context.
  */
 export const resolveDependencyRefs = (
@@ -448,9 +449,11 @@ const extractSprintField = (
   const iterationId = "iterationId" in fv && typeof fv.iterationId === "string"
     ? fv.iterationId
     : null;
+  const effectiveTitle: string | undefined = fv.title ??
+    (typeof fv.issueFieldValue?.value === "string" ? fv.issueFieldValue.value : undefined);
   return {
     sprintId: iterationId,
-    sprintTitle: "title" in fv && typeof fv.title === "string" ? fv.title : null,
+    sprintTitle: effectiveTitle ?? null,
   };
 };
 

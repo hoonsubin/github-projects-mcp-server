@@ -92,10 +92,10 @@ Examples:
   Deno.exit(0);
 }
 
-// ── Environment (single gateway — all Deno.env reads live here) ─────────────
+// ── Environment (single gateway - all Deno.env reads live here) ─────────────
 //
 // Every env var the server needs is read once here. Downstream code receives
-// values through function parameters — never by reaching out to Deno.env.
+// values through function parameters - never by reaching out to Deno.env.
 
 const env: EnvGetter = (name: string) => Deno.env.get(name);
 const platform = env("SCRUM_PLATFORM") ?? "github";
@@ -274,7 +274,7 @@ const runHttp = (): void => {
 
       if (req.method === "POST") {
         if (!sessionId) {
-          // No session yet — must be an initialization request.
+          // No session yet - must be an initialization request.
           // Parse body once here so we can validate and hand it off via parsedBody.
           let body: unknown;
           try {

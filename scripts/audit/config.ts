@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/audit/config.ts — AuditConfig type + CLI argument parsing
+// scripts/audit/config.ts - AuditConfig type + CLI argument parsing
 // =============================================================================
 
 import type { AuditConfig } from "./types.ts";
@@ -8,7 +8,13 @@ import type { AuditConfig } from "./types.ts";
 
 const DEFAULT_OUTPUT_PATH = "./docs/AUDIT.md";
 const DEFAULT_SRC_DIR = "./src";
-const DEFAULT_EXCLUDED_DIRS = ["**/*.test.ts", "**/generated/", "**/*.graphql", "_*.ts"];
+const DEFAULT_EXCLUDED_DIRS = [
+  "**/*.test.ts",
+  "**/test/*.ts",
+  "**/generated/",
+  "**/*.graphql",
+  "_test*.ts",
+];
 
 const HELP_TEXT = `Usage: deno run -A scripts/generate-audit.ts [options]
 

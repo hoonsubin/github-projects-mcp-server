@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/audit/layer-classification.ts — Shared layer classification logic
+// scripts/audit/layer-classification.ts - Shared layer classification logic
 //
 // Used by layer-graph, stability, and file-stats stages.
 // Handles both "src/tools/foo.ts" and "tools/foo.ts" path formats.

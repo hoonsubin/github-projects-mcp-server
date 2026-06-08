@@ -6,7 +6,7 @@
 // to it immediately see the updated iterations, field IDs, and option maps.
 //
 // After the config-loader refactor: reload() calls bootstrapGitHub() directly
-// — no more YAML parsing or file I/O on every reload.
+// - no more YAML parsing or file I/O on every reload.
 // =============================================================================
 
 import type { GitHubClient } from "./http-client.ts";
@@ -31,7 +31,7 @@ export class ConfigReloader {
       iterationAsOf: this.bootState.iterationAsOf,
     });
 
-    // Patch everything in one atomic operation — replaces all live fields.
+    // Patch everything in one atomic operation - replaces all live fields.
     Object.assign(this.bootState.live, freshLive);
   }
 }

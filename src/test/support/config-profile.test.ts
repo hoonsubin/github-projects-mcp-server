@@ -1,5 +1,5 @@
 // =============================================================================
-// src/test/support/config-profile.test.ts — committed config boot smoke test
+// src/test/support/config-profile.test.ts - committed config boot smoke test
 // =============================================================================
 
 import { assertEquals, assertExists } from "@std/assert";

@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/audit/renderers/plantuml-file.ts — Write C4 diagram to .puml file
+// scripts/audit/renderers/plantuml-file.ts - Write C4 diagram to .puml file
 // =============================================================================
 
 import type { C4DiagramResult } from "../types.ts";

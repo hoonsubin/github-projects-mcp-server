@@ -24,7 +24,7 @@ const makeCap = (status: CapabilityStatus): PlatformCapabilities => ({
 
 // ── getCapabilities ───────────────────────────────────────────────────────────
 
-Deno.test("getCapabilities returns the supports map directly — no separate sync needed", () => {
+Deno.test("getCapabilities returns the supports map directly - no separate sync needed", () => {
   const cap = makeCap(CapabilityStatus.NATIVE);
   assertEquals(getCapabilities(cap), cap.supports);
 });
@@ -46,7 +46,7 @@ Deno.test("getCapabilities reflects status updates immediately", () => {
   assertEquals(map.dependencies, CapabilityStatus.UNAVAILABLE);
 });
 
-// ── checkCapability — NATIVE ──────────────────────────────────────────────────
+// ── checkCapability - NATIVE ──────────────────────────────────────────────────
 
 Deno.test("checkCapability NATIVE: no warning, no throw", () => {
   const cap = makeCap(CapabilityStatus.NATIVE);
@@ -57,7 +57,7 @@ Deno.test("checkCapability NATIVE: no warning, no throw", () => {
   assertEquals(warnings.length, 0);
 });
 
-// ── checkCapability — EMULATED ────────────────────────────────────────────────
+// ── checkCapability - EMULATED ────────────────────────────────────────────────
 
 Deno.test("checkCapability EMULATED: appends a warning, does not throw", () => {
   const cap = makeCap(CapabilityStatus.EMULATED);
@@ -83,7 +83,7 @@ Deno.test("checkCapability EMULATED: each call appends its own warning", () => {
   assertEquals(warnings.length, 2);
 });
 
-// ── checkCapability — UNAVAILABLE ─────────────────────────────────────────────
+// ── checkCapability - UNAVAILABLE ─────────────────────────────────────────────
 
 Deno.test("checkCapability UNAVAILABLE: throws CapabilityUnavailableError", () => {
   const cap = makeCap(CapabilityStatus.UNAVAILABLE);

@@ -3,7 +3,7 @@
 //
 // Single responsibility: fetch + parse the scrum config YAML from a
 // ContentLocation. Validates required top-level sections but does NOT resolve
-// $ENV_VAR references or make any network calls — those are adapter concerns.
+// $ENV_VAR references or make any network calls - those are adapter concerns.
 //
 // Extracted from src/adapters/github/config-loader.ts per the config-loader
 // refactoring plan (plans/config-loader-refactor.md Phase 1).
@@ -28,7 +28,7 @@ export interface BootConfig {
  * Fetch and parse the scrum config YAML from wherever `configLocation` points.
  *
  * Validates required top-level sections. Does NOT resolve $ENV_VAR references
- * or make any network calls — that is the adapter's responsibility.
+ * or make any network calls - that is the adapter's responsibility.
  *
  * @param configLocation - where to load the config from
  * @param env - optional environment getter for auth-requiring config URLs

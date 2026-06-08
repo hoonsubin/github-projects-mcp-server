@@ -3,15 +3,15 @@
 //
 // Tests for PaginatedProjectItemFetcher and isBacklogItem.
 //
-// Group A — Fixture-based tests (real API response shapes)
+// Group A - Fixture-based tests (real API response shapes)
 //   Fixture data is captured from the live GitHub API via `deno task capture-fixtures`.
 //   These tests catch two categories of runtime error that unit-only tests miss:
 //     1. Silent empty-return bugs (collect() returns [] without throwing)
 //     2. GraphQL schema drift (field selections that GitHub silently drops or errors)
 //
-// Group B — Predicate + backlog filtering
+// Group B - Predicate + backlog filtering
 //
-// Group C — Synthetic edge cases (empty project, not-found, org owner)
+// Group C - Synthetic edge cases (empty project, not-found, org owner)
 // =============================================================================
 
 import { assert, assertEquals, assertRejects } from "@std/assert";
@@ -55,7 +55,7 @@ const makeNotFoundPage = (ownerType: "user" | "org" = "user") => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Group A — Fixture-based tests
+// Group A - Fixture-based tests
 // ═══════════════════════════════════════════════════════════════════════════════
 
 Deno.test({
@@ -88,7 +88,7 @@ Deno.test({
     const items = await fetcher.collect(() => true);
 
     // The core regression: before the fix, this was always 0.
-    assert(items.length > 0, `Expected items, got 0 — fetchFirstPage() was not called`);
+    assert(items.length > 0, `Expected items, got 0 - fetchFirstPage() was not called`);
   },
 });
 
@@ -140,7 +140,7 @@ Deno.test({
       }
     }
 
-    // At least one fieldValue must have a resolved field.id — if this is 0 the
+    // At least one fieldValue must have a resolved field.id - if this is 0 the
     // union selection is broken and items would silently have no field metadata.
     const resolvedFieldCount = itemsWithFields
       .flatMap((item) => item.fieldValues.nodes)
@@ -148,7 +148,7 @@ Deno.test({
 
     assert(
       resolvedFieldCount > 0,
-      `No fieldValues had a resolved field.id — GraphQL union fragment may be broken`,
+      `No fieldValues had a resolved field.id - GraphQL union fragment may be broken`,
     );
   },
 });
@@ -172,7 +172,7 @@ Deno.test({
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Group B — Predicate filtering and isBacklogItem
+// Group B - Predicate filtering and isBacklogItem
 // ═══════════════════════════════════════════════════════════════════════════════
 
 Deno.test({
@@ -185,7 +185,7 @@ Deno.test({
       makeCtx(gh, { ghConfig: { owner_type: "user" as const } }),
       USER_QUERY,
     );
-    // Filter for items with "feature" label via field values — excludes DONE item (bug only)
+    // Filter for items with "feature" label via field values - excludes DONE item (bug only)
     const filtered = await fetcher.collect(
       (item) =>
         item.fieldValues.nodes.some(
@@ -198,7 +198,7 @@ Deno.test({
       filtered.length < FIXTURE_TOTAL,
       `Predicate should have excluded non-adapter-layer items; got ${filtered.length} of ${FIXTURE_TOTAL}`,
     );
-    // Both pages must still be fetched — predicate must not short-circuit pagination.
+    // Both pages must still be fetched - predicate must not short-circuit pagination.
     assertEquals(gh.graphqlCalls.length, 2);
   },
 });
@@ -268,7 +268,7 @@ Deno.test({
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Group C — Synthetic edge cases
+// Group C - Synthetic edge cases
 // ═══════════════════════════════════════════════════════════════════════════════
 
 Deno.test({

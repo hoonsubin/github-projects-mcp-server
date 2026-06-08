@@ -64,7 +64,7 @@ export const buildNonCanonicalFieldPredicate = (
 
 /**
  * Serialize an ItemFieldValue's payload into a plain Record.
- * Only populated keys are included — undefined values are excluded via spread.
+ * Only populated keys are included - undefined values are excluded via spread.
  * __typename, color, and optionId are intentionally omitted (GitHub API noise).
  */
 export const serializeFieldValuePayload = (

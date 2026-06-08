@@ -1,7 +1,7 @@
 // =============================================================================
 // src/scrum/fetch-location.ts - fetchContent() use-case utility
 //
-// Converts a ContentLocation to its string content. Pure dispatch — no adapter
+// Converts a ContentLocation to its string content. Pure dispatch - no adapter
 // dependencies, no authentication. config-loader.ts imports this directly
 // (not through FileReaderPort) because config loading happens before any
 // FileReaderPort implementors exist.
@@ -41,7 +41,7 @@ export const fetchContent = async (
       return location.content;
     case "url": {
       // fetch follows redirects by default (redirect: "follow"); 3xx responses
-      // are not an error case managed by this function — they are resolved to
+      // are not an error case managed by this function - they are resolved to
       // the final response before reaching res.ok.
       //
       // Registered UrlRewriters may supply request options (e.g. auth headers)

@@ -2,7 +2,7 @@
 // src/adapters/github/internal/search-query-builder.ts
 //
 // Builds GitHub search query strings from ResolvedItemFilter searchable fields.
-// Board fields (status, sprint, type, priority) are excluded — they are not
+// Board fields (status, sprint, type, priority) are excluded - they are not
 // indexed by the GitHub search engine.
 // =============================================================================
 
@@ -18,7 +18,7 @@ export interface SearchQueryParts {
 /**
  * Compose a GitHub issue search query from filter parts and backend config.
  *
- * Parity note: does NOT add `is:open` — board scans include closed issues on
+ * Parity note: does NOT add `is:open` - board scans include closed issues on
  * the project. Project-membership filtering happens post-search.
  */
 export const buildSearchQueryString = (

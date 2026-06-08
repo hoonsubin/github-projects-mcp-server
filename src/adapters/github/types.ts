@@ -231,7 +231,7 @@ export interface OrgIssueFieldValueNode {
   /** Single-select field display name (IssueFieldSingleSelectValue.name). */
   name?: string;
   optionId?: string;
-  /** The org issue field definition — only `name` is selected. */
+  /** The org issue field definition - only `name` is selected. */
   field?: { name?: string } | null;
 }
 
@@ -244,7 +244,7 @@ export interface ProjectItemIssueContent extends IssueIdentity {
   milestone: MilestoneRefNode | null;
   repository: FieldValueRepository;
   blockedBy?: { nodes: IssueRefNode[] };
-  /** Org-level issue field values — populated when the project is org-owned. */
+  /** Org-level issue field values - populated when the project is org-owned. */
   issueFieldValues?: { nodes: OrgIssueFieldValueNode[] } | null;
 }
 
@@ -365,7 +365,7 @@ export interface ItemFieldValue {
   milestone?: FieldValueMilestone;
   // Repository (GH.ProjectV2ItemFieldRepositoryValue)
   repository?: FieldValueRepository;
-  // Issue field (GH.ProjectV2ItemIssueFieldValue) — wraps org-level issue field values
+  // Issue field (GH.ProjectV2ItemIssueFieldValue) - wraps org-level issue field values
   issueFieldValue?: ItemIssueFieldValue | null;
 }
 
@@ -428,12 +428,12 @@ export interface IssueStory extends StoryBase {
 
 /**
  * A token value that has been resolved from its environment variable.
- * Never a "$VAR" reference — always a literal bearer token.
+ * Never a "$VAR" reference - always a literal bearer token.
  */
 export type ResolvedToken = string & { readonly _brand: "ResolvedToken" };
 
 /**
- * Resolve a raw auth.token value — resolves "$VAR" refs, passes literals through.
+ * Resolve a raw auth.token value - resolves "$VAR" refs, passes literals through.
  * Called exactly once in the adapter factory.
  *
  * Throws GitHubApiError (not Error) so auth failures follow the same structured
@@ -461,16 +461,16 @@ export const resolveToken = (raw: string, configDesc: string, env: EnvGetter): R
 
 /**
  * GitHub token prefixes as of 2024:
- *   ghp_       — classic personal access tokens
- *   github_pat_ — fine-grained personal access tokens
- *   ghs_       — GitHub Apps installation tokens
+ *   ghp_       - classic personal access tokens
+ *   github_pat_ - fine-grained personal access tokens
+ *   ghs_       - GitHub Apps installation tokens
  */
 const TOKEN_SYNTAX = /^(ghp_|github_pat_|ghs_)[A-Za-z0-9_]+$/;
 
 /**
  * Validate a resolved token's syntax before any API call is made.
  *
- * The empty-string check is safety-critical — prevents sending an empty
+ * The empty-string check is safety-critical - prevents sending an empty
  * bearer token to GitHub. The prefix check is a best-effort early warning;
  * if GitHub introduces new token formats, widen the regex rather than
  * working around it.

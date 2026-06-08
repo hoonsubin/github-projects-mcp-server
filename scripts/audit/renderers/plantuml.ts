@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/audit/renderers/plantuml.ts — C4 diagram → PlantUML source
+// scripts/audit/renderers/plantuml.ts - C4 diagram → PlantUML source
 //
 // Transforms a C4DiagramResult into PlantUML C4 stencil syntax.
 // Each C4 level (context/container/component/code) produces a separate diagram.
@@ -85,7 +85,7 @@ const renderDiagram = (
   lines.push("@startuml");
   lines.push(`!include <c4/${include}>`);
   lines.push("");
-  lines.push(`title ${category} — ${level} diagram`);
+  lines.push(`title ${category} - ${level} diagram`);
   lines.push("");
 
   for (const elem of slice.elements) {

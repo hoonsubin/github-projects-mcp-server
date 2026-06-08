@@ -1,0 +1,217 @@
+# Two audiences read this file:
+#
+#   AGENT  - reads project, scrum, definition_of_ready/done, templates, and
+#            ceremony_records on every tool call via scrum_orient. Uses these
+#            to ground Scrum reasoning in platform-neutral terms.
+#
+#   SERVER - reads backends.* at startup to instantiate adapters and resolve
+#            credentials. Never exposes platform credentials to the agent.
+#
+# What lives here:
+#   project          - identity, agent behavior, team roster
+#   scrum            - platform-neutral Scrum taxonomy (sprint, priority, status)
+#   definition_of_*  - quality gates (agent-facing only)
+#   templates        - ceremony artifact template paths or null for agent defaults
+#   ceremony_records - where the agent writes ceremony artifacts
+#   backends         - one section per PM platform; credentials as $ENV_VAR refs
+#
+# What does NOT live here:
+#   GitHub node IDs, field IDs, option IDs - fetched live by the adapter
+#   Sprint goals, capacity plans, standup notes - written by the agent directly
+#   Derived metrics (velocity, burndown) - computed by the agent from raw data
+
+# ── PROJECT ───────────────────────────────────────────────────────────────────
+#
+# Platform-agnostic identity. The `agent` block controls AI behavior for this
+# project. `team` is the canonical roster - platform-specific identity (e.g.
+# GitHub login, Notion user ID) is declared under the relevant backend below.
+
+project:
+  name: "Meltdown"
+
+  agent:
+    name: "Scrum Master Bot"
+    autonomy:
+      level: standard # conservative | standard | full
+      require_confirmation_above_n_items: 5
+
+  team:
+    - name: Hoon Kim
+      role: scrum_master # scrum_master | product_owner | developer
+      contact: hoon@example.com
+    - name: Michael Tuzzolino
+      role: product_owner
+    - name: Thilina Madhusanka
+      role: developer
+    - name: Jean Oliveira
+      role: developer
+
+# ── SCRUM TAXONOMY ────────────────────────────────────────────────────────────
+#
+# Platform-neutral Scrum concepts. The agent always speaks in these terms.
+# Each backend declares how its platform expresses these concepts under
+# backends.<name>.status_display and backends.<name>.priority_display.
+
+scrum:
+  sprint:
+    length_weeks: 2
+    start_day: monday # monday | tuesday | wednesday | thursday | friday
+    story_point_scale: fibonacci # fibonacci | linear | tshirt (informational)
+    story_point_values: [1, 2, 3, 5, 8]
+    velocity_window: 4 # sprints to include when agent computes velocity
+    carry_over_threshold_days: 2 # days remaining before agent flags carry-over risk
+
+  # Ordered from highest to lowest priority.
+  # The agent reasons in these keys (p0 = most urgent).
+  # Display labels for each platform are declared under backends.<name>.priority_display.
+  priority:
+    - key: p0
+    - key: p1
+    - key: p2
+    - key: p3
+
+  # Canonical workflow states with semantic metadata.
+  # The agent always receives canonical keys, never platform display names.
+  #
+  # terminal: true  - this state counts as "done" for velocity and burndown.
+  #                   Only one state should be terminal; the adapter uses it
+  #                   to determine completion timestamps.
+  # blocking: true  - this state indicates the story is impeding sprint flow.
+  #                   The agent uses it to surface impediments and infer
+  #                   dependency risk when explicit link data is unavailable.
+  #
+  # Platform display names are declared under backends.<name>.status_display.
+  # Every key declared here MUST have a corresponding entry in status_display
+  # for each configured backend, or the adapter will refuse to start.
+  status:
+    backlog:
+      terminal: false
+      blocking: false
+    ready:
+      terminal: false
+      blocking: false
+    in_progress:
+      terminal: false
+      blocking: false
+    in_review:
+      terminal: false
+      blocking: false
+    blocked:
+      terminal: false
+      blocking: true
+    done:
+      terminal: true
+      blocking: false
+
+# ── QUALITY GATES ─────────────────────────────────────────────────────────────
+#
+# Agent-facing only. The server never enforces these - the agent references
+# them when coaching the team during refinement and sprint planning.
+
+definition_of_ready:
+  - Written as a user story (who / what / why)
+  - Acceptance criteria defined and agreed by the team
+  - Estimated in story points
+  - Dependencies identified and de-risked
+  - Completable within one sprint
+
+definition_of_done:
+  - Code or output reviewed and approved by the team
+  - All acceptance criteria met and verified
+  - Documentation updated for the shared knowledge space
+
+# ── CEREMONY ARTIFACTS ────────────────────────────────────────────────────────
+#
+# `ceremony_records` declares where the agent writes ceremony documents.
+# The agent writes directly to this backend using its own platform capabilities
+# - ceremony records are outside the MCP server's scope.
+#
+# `templates` maps each artifact type to a repo-relative path for a custom
+# template, or null to use the agent skill's built-in default.
+
+ceremony_records:
+  backend: github_discussions
+  discussion_category: Ceremonies
+
+# ── BACKENDS ──────────────────────────────────────────────────────────────────
+#
+# One section per PM platform. The agent identifies backends by their key name
+# (e.g. "github", "notion") when making cross-platform requests.
+#
+# Auth values prefixed with $ are resolved as environment variables at startup.
+# The server never exposes credentials to the agent or tool responses.
+#
+# `team` cross-references project.team[].name via the `ref` field and declares
+# the platform-specific identity for that member. The server validates that
+# every `ref` matches a name in project.team.
+#
+# `status_display` maps every canonical status key (from scrum.status) to the
+# exact option name used on this platform's board. Case-sensitive.
+#
+# `priority_display` maps every canonical priority key (from scrum.priority)
+# to the exact option name used on this platform's board. Case-sensitive.
+
+backends:
+  github:
+    auth:
+      token: $GITHUB_TOKEN
+
+    owner: TeamSTEP
+    owner_type: org # user | org
+    project_number: 6
+    tracked_repos:
+      - Meltdown
+
+    team:
+      - ref: Hoon Kim # matches project.team[].name
+        login: hoonsubin
+      - ref: Jean Oliveira
+        login: jeancaoliveira
+      - ref: Michael Tuzzolino
+        login: grapefruit509
+      - ref: Thilina Madhusanka
+        login: thilina27
+
+    # Maps canonical Scrum field names to exact GitHub project field names.
+    # sprint and status are required; others degrade gracefully if absent.
+    field_mapping:
+      sprint: "Sprint" # REQUIRED - ITERATION type field
+      status: "Status" # REQUIRED - SINGLE_SELECT type field
+      item_type: "Type" # REQUIRED - SINGLE_SELECT type field
+      story_points: "Story Points" # optional - NUMBER type field
+      priority: "Priority" # optional - SINGLE_SELECT type field
+
+    type_mapping:
+      user_story: # REQUIRED
+        display: "User Story"
+        template: ".github/ISSUE_TEMPLATE/user_story.yml"
+      bug:
+        display: "Bug"
+        template: ".github/ISSUE_TEMPLATE/bug_report.yml"
+      tech_debt:
+        display: "Tech Debt"
+        template: ".github/ISSUE_TEMPLATE/tech_debt.yml"
+      spike:
+        display: "Spike"
+        template: ".github/ISSUE_TEMPLATE/spike.yml"
+      impediment: # REQUIRED
+        display: "Impediment"
+        template: ".github/ISSUE_TEMPLATE/impediment.yml"
+
+    # Maps canonical status keys → exact GitHub single-select option names.
+    # Every key in scrum.status must appear here.
+    status_display:
+      backlog: "Backlog"
+      ready: "Ready"
+      in_progress: "In Progress"
+      in_review: "In Review"
+      blocked: "Blocked"
+      done: "Done"
+
+    # Maps canonical priority keys → exact GitHub single-select option names.
+    # Order must match scrum.priority (p0 = highest).
+    priority_display:
+      p0: "Must"
+      p1: "Should"
+      p2: "Could"
+      p3: "Won't"

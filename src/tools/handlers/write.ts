@@ -61,12 +61,12 @@ export const handleSetField = async (
   const { warnings } = await catchBackend(
     () => backend.setField(params.ref, params.field, params.value),
   );
-  const { value: story, warnings: readWarnings } = await backend.composeStoryAfterSetField(
-    params.ref,
-    params.field,
-    params.value,
+  const { value: composeResult, warnings: composeWarnings } = await catchBackend(
+    () => backend.composeStoryAfterSetField(params.ref, params.field, params.value),
   );
-  const allWarnings = [...warnings, ...readWarnings];
+  const story = composeResult?.value ?? null;
+  const innerWarnings = composeResult?.warnings ?? [];
+  const allWarnings = [...warnings, ...composeWarnings, ...innerWarnings];
   const response = allWarnings.length > 0 ? { ...story, warnings: allWarnings } : story;
   return toMcpTextResult(response);
 };
@@ -83,26 +83,48 @@ export const handleUpdateStory = async (
     "epic",
     "blocked_by",
   ]);
+  const allWarnings: string[] = [];
 
-  await backend.updateStory(params.ref, updates as StoryUpdates);
+  const { warnings: w1 } = await catchBackend(
+    () => backend.updateStory(params.ref, updates as StoryUpdates),
+  );
+  allWarnings.push(...w1);
 
   if (params.comment !== undefined) {
-    await backend.addComment(params.ref, params.comment);
+    const comment = params.comment;
+    const { warnings: w2 } = await catchBackend(
+      () => backend.addComment(params.ref, comment),
+    );
+    allWarnings.push(...w2);
   }
 
-  const { value: story } = await backend.composeStoryAfterStoryUpdate(
-    params.ref,
-    updates as StoryUpdates,
+  const { value: composeResult, warnings: w3 } = await catchBackend(
+    () => backend.composeStoryAfterStoryUpdate(params.ref, updates as StoryUpdates),
   );
-  return toMcpTextResult(story);
+  allWarnings.push(...w3);
+  const innerWarnings = composeResult?.warnings ?? [];
+  allWarnings.push(...innerWarnings);
+  const story = composeResult?.value ?? null;
+  const response = allWarnings.length > 0 ? { ...story, warnings: allWarnings } : story;
+  return toMcpTextResult(response);
 };
 
 export const handleCreateStory = async (
   backend: ProjectBackend,
   params: z.infer<typeof CreateStorySchema>,
 ): Promise<McpTextResult> => {
-  const storyRef = await backend.createStory(toCreateStoryInput(params));
   const failedFields: PartialFailureFields = [];
+
+  const { value: storyRef, warnings: createWarnings } = await catchBackend(
+    () => backend.createStory(toCreateStoryInput(params)),
+  );
+
+  if (!storyRef) {
+    return toMcpTextResult({
+      partialFailure: true,
+      failedFields: [{ field: "create", reason: createWarnings.join("; ") }],
+    });
+  }
 
   if (params.sprint !== undefined) {
     const sprintVal = params.sprint;
@@ -112,10 +134,13 @@ export const handleCreateStory = async (
     for (const reason of w) failedFields.push({ field: "sprint", reason });
   }
 
-  const { value: storyDetail, warnings: readWarnings } = await backend.composeStorySnapshot(
-    storyRef,
+  const { value: composeResult, warnings: readWarnings } = await catchBackend(
+    () => backend.composeStorySnapshot(storyRef),
   );
   for (const reason of readWarnings) failedFields.push({ field: "read", reason });
+  const innerWarnings = composeResult?.warnings ?? [];
+  for (const reason of innerWarnings) failedFields.push({ field: "read", reason });
+  const storyDetail = composeResult?.value ?? null;
 
   if (failedFields.length > 0) {
     return toMcpTextResult({

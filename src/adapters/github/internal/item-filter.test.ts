@@ -1,7 +1,7 @@
 // =============================================================================
 // src/adapters/github/internal/item-filter.test.ts
 //
-// Unit tests for buildItemFilterFn — client-side filter parity with
+// Unit tests for buildItemFilterFn - client-side filter parity with
 // StoryQueryService.findItems() filter chain.
 // =============================================================================
 
@@ -373,7 +373,7 @@ Deno.test("buildItemFilterFn - scope=sprint with null sprint_ref excludes past-s
   assertEquals(results[0].ref.id, "current1");
 });
 
-// ── Terminal-status exclusion for scope=sprint — fixture-based ────────────────
+// ── Terminal-status exclusion for scope=sprint - fixture-based ────────────────
 //
 // Field IDs and iteration IDs are taken directly from the captured fixtures so
 // buildStoryFromRaw produces populated sprint/status fields.  Sprint 4 is used

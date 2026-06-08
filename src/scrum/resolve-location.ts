@@ -3,12 +3,12 @@
 //
 // Converts a raw string (from config YAML or a CLI arg) to a self-describing
 // ContentLocation. This is the single source of truth for resolution rules
-// and extension validation — callers never re-implement this logic.
+// and extension validation - callers never re-implement this logic.
 //
 // URL rewriting: when a URL matches a registered UrlRewriter (e.g. GitHub
 // blob URLs → raw.githubusercontent.com), it is transparently converted
 // before extension validation. The rewriter registry lives in url-rewriters.ts
-// — each backend contributes its own entry; no platform-specific patterns
+// - each backend contributes its own entry; no platform-specific patterns
 // are hard-coded here.
 // =============================================================================
 
@@ -47,7 +47,7 @@ export const resolveLocation = (
   if (input.startsWith("https://") || input.startsWith("http://")) {
     let url = new URL(input);
 
-    // Transparent URL rewriting — each backend can register patterns that
+    // Transparent URL rewriting - each backend can register patterns that
     // convert platform-specific UI URLs to canonical raw-content equivalents.
     const rewriter = findRewriter(url);
     if (rewriter) {

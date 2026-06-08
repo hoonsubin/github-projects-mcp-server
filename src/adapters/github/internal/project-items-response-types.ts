@@ -1,5 +1,5 @@
 // =============================================================================
-// project-items-response-types.ts — GraphQL response shapes for projectV2.items
+// project-items-response-types.ts - GraphQL response shapes for projectV2.items
 //
 // Leaf module: no imports from query builders, owner helpers, or execution.
 // =============================================================================

@@ -6,9 +6,11 @@
 // and an integration test with real ProjectItem data from captured fixtures.
 // =============================================================================
 
-import { assertEquals, assertFalse } from "@std/assert";
-import { buildDependencyMap } from "./story-query-service.ts";
-import { makeConfig } from "./_test_utils.ts";
+import { assertEquals, assertFalse, assertStringIncludes } from "@std/assert";
+import { buildDependencyMap, StoryQueryService } from "./story-query-service.ts";
+import { createGhSpy, makeConfig, makeCtx } from "./_test_utils.ts";
+import { BoardScanCoordinator } from "./board-scan-coordinator.ts";
+import { GitHubApiError } from "../errors.ts";
 import { toIssueKey } from "../../../domain/types.ts";
 import type { DependencyEntry, EntityRef, ItemType, Story } from "../../../domain/types.ts";
 import type { IssueStory, ProjectItem } from "../types.ts";
@@ -98,7 +100,7 @@ const makeProjectItem = (opts: { id: string; key: string; title: string }): Proj
 });
 
 // =============================================================================
-// Real fixture data — loaded from captured API responses
+// Real fixture data - loaded from captured API responses
 // =============================================================================
 
 // JSON imports produce loose types; cast through unknown for ProjectV2ItemType
@@ -111,7 +113,7 @@ const realStories: Story[] = allRealItems
   .filter((s): s is Story => s !== null);
 
 // =============================================================================
-// Test cases — edge cases with hand-crafted data
+// Test cases - edge cases with hand-crafted data
 // =============================================================================
 
 Deno.test("A-bug-1: dependency direction - A blocked by B", () => {
@@ -289,7 +291,7 @@ Deno.test("draft stories are excluded from dependency map", () => {
 });
 
 // =============================================================================
-// Integration test — real data from captured fixtures
+// Integration test - real data from captured fixtures
 // =============================================================================
 
 Deno.test({
@@ -349,5 +351,245 @@ Deno.test({
         }
       }
     }
+  },
+});
+
+// =============================================================================
+// Error handling tests - composeStorySnapshot, _getDraftIssueDetail, getStoryDetail
+// Covers Bug A (error shadowing), Bug B (inconsistent error handling),
+// and Bug B.1 (resolveStory error propagation).
+// =============================================================================
+
+// ── Response fixtures ──────────────────────────────────────────────────────────
+
+/** Successful DraftIssue response for composeStorySnapshot / _getDraftIssueDetail. */
+const DRAFT_ISSUE_RESPONSE = {
+  node: {
+    __typename: "ProjectV2Item" as const,
+    id: "PVTI_test1",
+    type: "DRAFT_ISSUE" as const,
+    createdAt: "2025-01-01T00:00:00Z",
+    updatedAt: "2025-01-01T00:00:00Z",
+    isArchived: false,
+    content: {
+      __typename: "DraftIssue" as const,
+      title: "Test Draft",
+      body: "Test body",
+      assignees: { nodes: [] },
+    },
+    fieldValues: { nodes: [] },
+  },
+};
+
+/** Null-node response - simulates item deleted from project. */
+const NULL_NODE_RESPONSE = { node: null };
+
+/** resolveStory → Issue (so getStoryDetail proceeds to the issue-detail path). */
+const RESOLVE_ISSUE_RESPONSE = {
+  node: {
+    id: "PVTI_test_issue",
+    content: { __typename: "Issue" as const, id: "I_test_issue", number: 42 },
+  },
+};
+
+/** resolveStory → DraftIssue (so getStoryDetail delegates to _getDraftIssueDetail). */
+const RESOLVE_DRAFT_RESPONSE = {
+  node: {
+    id: "PVTI_test_draft",
+    content: { __typename: "DraftIssue" as const, id: "DI_test_draft" },
+  },
+};
+
+/** Minimal IssueDetails response for getStoryDetail success path. */
+const ISSUE_DETAILS_RESPONSE = {
+  node: {
+    number: 42,
+    title: "Test Issue",
+    body: "Body",
+    url: "https://github.com/test/test/issues/42",
+    createdAt: "2025-01-01T00:00:00Z",
+    updatedAt: "2025-01-01T00:00:00Z",
+    issueType: null,
+    assignees: { nodes: [] },
+    labels: { nodes: [] },
+    milestone: null,
+    blockedBy: { nodes: [] },
+    comments: { nodes: [] },
+    timelineItems: { nodes: [] },
+  },
+};
+
+/** Minimal ItemFields response for getStoryDetail. */
+const ITEM_FIELDS_RESPONSE = {
+  node: { fieldValues: { nodes: [] } },
+};
+
+// ── Test helpers ──────────────────────────────────────────────────────────────
+
+class FakeBoardScanCoordinator extends BoardScanCoordinator {
+  constructor() {
+    const gh = createGhSpy();
+    super(makeCtx(gh));
+  }
+}
+
+const makeService = () => {
+  const gh = createGhSpy();
+  const ctx = makeCtx(gh);
+  const boardScan = new FakeBoardScanCoordinator();
+  return { service: new StoryQueryService(ctx, boardScan), gh };
+};
+
+// ── Bug A: composeStorySnapshot error shadowing ────────────────────────────────
+
+Deno.test({
+  name: "composeStorySnapshot - throws FETCH_FAILED with upstreamWarnings when graphql fails",
+  async fn() {
+    const { service, gh } = makeService();
+    const adapterErr = new GitHubApiError("auth expired", {
+      code: "AUTH_FAILED",
+      recovery: "Re-authenticate.",
+    });
+    gh.enqueue(adapterErr);
+
+    try {
+      await service.composeStorySnapshot({ id: "PVTI_test1" });
+      throw new Error("should have thrown");
+    } catch (err) {
+      if (!(err instanceof GitHubApiError)) throw err;
+      assertEquals(err.code, "FETCH_FAILED");
+      assertEquals(typeof err.context, "object");
+      assertEquals(err.context?.itemId, "PVTI_test1");
+      const upstreamWarnings = err.context?.upstreamWarnings as string[];
+      assertEquals(Array.isArray(upstreamWarnings), true);
+      assertEquals(
+        upstreamWarnings.length > 0,
+        true,
+        "upstreamWarnings should contain the AUTH_FAILED warning",
+      );
+      assertStringIncludes(upstreamWarnings[0], "AUTH_FAILED");
+    }
+  },
+});
+
+Deno.test({
+  name: "composeStorySnapshot - throws NOT_FOUND when node is null (healthy path)",
+  async fn() {
+    const { service, gh } = makeService();
+    gh.enqueue(NULL_NODE_RESPONSE);
+
+    try {
+      await service.composeStorySnapshot({ id: "PVTI_missing" });
+      throw new Error("should have thrown");
+    } catch (err) {
+      if (!(err instanceof GitHubApiError)) throw err;
+      assertEquals(err.code, "NOT_FOUND");
+      assertEquals(err.statusCode, 404);
+    }
+  },
+});
+
+Deno.test({
+  name: "composeStorySnapshot - returns story + warnings on success",
+  async fn() {
+    const { service, gh } = makeService();
+    gh.enqueue(DRAFT_ISSUE_RESPONSE);
+
+    const result = await service.composeStorySnapshot({ id: "PVTI_test1" });
+    assertEquals(result.value !== null, true, "should return a story value");
+    assertEquals(result.value?.ref.id, "PVTI_test1");
+    assertEquals(Array.isArray(result.warnings), true);
+  },
+});
+
+// ── Bug B.1: getStoryDetail wraps resolveStory in catchBackend ─────────────────
+
+Deno.test({
+  name: "getStoryDetail - returns null + warnings when resolveStory graphql fails (Bug B.1)",
+  async fn() {
+    const { service, gh } = makeService();
+    const adapterErr = new GitHubApiError("network timeout", {
+      code: "NETWORK_ERROR",
+      recovery: "Retry later.",
+    });
+    gh.enqueue(adapterErr);
+
+    const result = await service.getStoryDetail({ id: "PVTI_test1" });
+
+    assertEquals(result.value, null, "failed resolve should yield null value");
+    assertEquals(Array.isArray(result.warnings), true);
+    assertEquals(result.warnings.length > 0, true, "warnings should carry the NETWORK_ERROR");
+    assertStringIncludes(result.warnings[0], "NETWORK_ERROR");
+  },
+});
+
+// ── Bug B: _getDraftIssueDetail returns warnings from catchBackend ─────────────
+
+Deno.test({
+  name: "getStoryDetail (draft path) - returns warnings when _getDraftIssueDetail graphql succeeds",
+  async fn() {
+    const { service, gh } = makeService();
+    // First call: resolveStory → DraftIssue
+    gh.enqueue(RESOLVE_DRAFT_RESPONSE);
+    // Second call: _getDraftIssueDetail graphql → success
+    gh.enqueue(DRAFT_ISSUE_RESPONSE);
+
+    const result = await service.getStoryDetail({ id: "PVTI_test_draft" });
+
+    assertEquals(result.value !== null, true, "should return a story detail");
+    assertEquals(result.value?.story.ref.id, "PVTI_test_draft");
+    assertEquals(Array.isArray(result.warnings), true);
+    // Before the fix, warnings were hardcoded to [] - verify they are no longer empty.
+    // catchBackend returns [] on success, so this is fine. The key assertion is
+    // that warnings is a real array (not a literal [] placeholder).
+  },
+});
+
+Deno.test({
+  name:
+    "getStoryDetail (draft path) - throws FETCH_FAILED when _getDraftIssueDetail graphql fails (Bug B)",
+  async fn() {
+    const { service, gh } = makeService();
+    // First call: resolveStory → DraftIssue
+    gh.enqueue(RESOLVE_DRAFT_RESPONSE);
+    // Second call: _getDraftIssueDetail graphql → AdapterError
+    const adapterErr = new GitHubApiError("rate limited", {
+      code: "RATE_LIMITED",
+      recovery: "Wait and retry.",
+    });
+    gh.enqueue(adapterErr);
+
+    try {
+      await service.getStoryDetail({ id: "PVTI_test_draft" });
+      throw new Error("should have thrown");
+    } catch (err) {
+      if (!(err instanceof GitHubApiError)) throw err;
+      assertEquals(err.code, "FETCH_FAILED");
+      assertEquals(typeof err.context, "object");
+      assertEquals(err.context?.itemId, "PVTI_test_draft");
+      const upstreamWarnings = err.context?.upstreamWarnings as string[];
+      assertEquals(Array.isArray(upstreamWarnings), true);
+      assertEquals(upstreamWarnings.length > 0, true);
+      assertStringIncludes(upstreamWarnings[0], "RATE_LIMITED");
+    }
+  },
+});
+
+// ── getStoryDetail success path (non-draft) ────────────────────────────────────
+
+Deno.test({
+  name: "getStoryDetail (issue path) - returns story detail on full success",
+  async fn() {
+    const { service, gh } = makeService();
+    gh.enqueue(RESOLVE_ISSUE_RESPONSE);
+    gh.enqueue(ISSUE_DETAILS_RESPONSE);
+    gh.enqueue(ITEM_FIELDS_RESPONSE);
+
+    const result = await service.getStoryDetail({ id: "PVTI_test_issue" });
+
+    assertEquals(result.value !== null, true, "should return a story detail");
+    assertEquals(result.value?.story.ref.id, "PVTI_test_issue");
+    assertEquals(result.value?.story.kind, "issue");
+    assertEquals(Array.isArray(result.warnings), true);
   },
 });

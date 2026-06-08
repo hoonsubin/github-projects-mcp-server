@@ -2,7 +2,7 @@
 // src/adapters/github/internal/http-client.ts - GitHub HTTP transport layer
 //
 // Provides GraphQL and REST transport to the GitHub API.
-// Token is injected as a parameter — the adapter factory resolves it once
+// Token is injected as a parameter - the adapter factory resolves it once
 // from the env var declared in the config file, never from a hardcoded name.
 // =============================================================================
 
@@ -171,11 +171,22 @@ export const graphql = async <T>(
 
   const json = (await response.json()) as GraphQLResponse<T>;
 
-  if (json.errors && json.errors.length > 0) {
+  // Partial success: data + errors → return data, log errors as warnings
+  if (json.data !== undefined) {
+    if (json.errors?.length) {
+      log.debug(
+        `⚠ graphql:${op} returned data with ${json.errors.length} error(s) (${ms}ms)`,
+        json.errors.map((e) => e.message),
+      );
+    } else {
+      log.debug(`← graphql:${op} OK (${ms}ms)`);
+    }
+    return json.data;
+  }
+
+  // No data, but errors present → throw structured error
+  if (json.errors?.length) {
     const messages = json.errors.map((e) => e.message);
-    // Log at debug - the tool-level interceptor always re-logs errors with full
-    // context (tool name + params). Keeping the API detail at debug avoids
-    // printing the same failure twice at ERROR level.
     log.debug(`✗ graphql:${op} GraphQL errors (${ms}ms)`, messages);
     throw new GitHubApiError(
       `GraphQL errors: ${messages.join("; ")}`,
@@ -189,19 +200,15 @@ export const graphql = async <T>(
     );
   }
 
-  if (json.data === undefined) {
-    log.debug(`✗ graphql:${op} no data returned (${ms}ms)`);
-    throw new GitHubApiError(
-      "GitHub GraphQL API returned no data and no errors.",
-      {
-        code: "HTTP_ERROR",
-        recovery: "This is an unexpected GitHub API response. Retry the request.",
-      },
-    );
-  }
-
-  log.debug(`← graphql:${op} OK (${ms}ms)`);
-  return json.data;
+  // Neither data nor errors → throw
+  log.debug(`✗ graphql:${op} no data returned (${ms}ms)`);
+  throw new GitHubApiError(
+    "GitHub GraphQL API returned no data and no errors.",
+    {
+      code: "HTTP_ERROR",
+      recovery: "This is an unexpected GitHub API response. Retry the request.",
+    },
+  );
 };
 
 // ── REST API helper ─────────────────────────────────────────────────────────────

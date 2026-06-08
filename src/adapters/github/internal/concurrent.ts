@@ -1,5 +1,5 @@
 // =============================================================================
-// concurrent.ts — Small concurrency helpers for batched GitHub writes/lookups
+// concurrent.ts - Small concurrency helpers for batched GitHub writes/lookups
 // =============================================================================
 
 /** Run async work over items with at most `limit` in flight. */

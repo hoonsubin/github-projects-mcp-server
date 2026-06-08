@@ -47,7 +47,7 @@ export class ParsedModule {
 
   /**
    * Set of names that are imported into this module from other modules.
-   * Used to avoid false positives when checking internal usage —
+   * Used to avoid false positives when checking internal usage -
    * an identifier that is both imported and has the same name as a local export
    * should not be counted as an internal usage of that export.
    */
@@ -55,7 +55,7 @@ export class ParsedModule {
 
   /**
    * Set of names declared at the top level of this module (non-exported).
-   * Helps disambiguate shadowed identifiers — if a name matches a local
+   * Helps disambiguate shadowed identifiers - if a name matches a local
    * non-exported declaration, usages of that name are not counted as usages
    * of the exported symbol with the same name.
    */
@@ -172,9 +172,9 @@ export class ParsedModule {
     }
 
     // Arrow or function expression assigned to a variable:
-    // `const foo = () => {}` — the VariableDeclaration name is handled above,
+    // `const foo = () => {}` - the VariableDeclaration name is handled above,
     // but the identifier could also appear as a parameter name inside the function.
-    // Parameters are not a declaration site for the export — only the binding name is.
+    // Parameters are not a declaration site for the export - only the binding name is.
     if (ts.isParameter(parent)) {
       return false;
     }
@@ -184,7 +184,7 @@ export class ParsedModule {
 
   /**
    * Returns true if `identifier` appears inside an export clause or assignment,
-   * meaning it is not a real "usage" of the symbol — just a re-declaration of its
+   * meaning it is not a real "usage" of the symbol - just a re-declaration of its
    * public surface.
    *
    * Covers:
@@ -203,11 +203,11 @@ export class ParsedModule {
     // export default foo
     if (ts.isExportAssignment(parent)) return true;
 
-    // export * as foo from '...' — the alias is a NamespaceExport child
+    // export * as foo from '...' - the alias is a NamespaceExport child
     if (ts.isNamespaceExport(parent)) return true;
 
     // Also guard against inline export keyword on the declaration node itself.
-    // e.g. the `foo` in `export function foo() {}` — already caught by isDeclarationSite,
+    // e.g. the `foo` in `export function foo() {}` - already caught by isDeclarationSite,
     // but also has an ExportKeyword modifier on the FunctionDeclaration parent.
     // This is handled by isDeclarationSite above; no double-counting occurs.
 
@@ -224,7 +224,7 @@ export class ParsedModule {
    * Example false positive without this guard:
    *   import { helper } from './utils';  // imported
    *   export function helper() {}        // local export (different binding)
-   *   const x = helper();               // usage — but of which `helper`?
+   *   const x = helper();               // usage - but of which `helper`?
    *
    * Without the guard, `helper` would appear as "used internally".
    * With the guard, we skip the check entirely because `helper` is also imported,
@@ -247,7 +247,7 @@ export class ParsedModule {
    *
    * Example:
    *   export function format() { ... }  // export
-   *   function format(x: string) { ... } // non-exported shadow — ambiguous usages
+   *   function format(x: string) { ... } // non-exported shadow - ambiguous usages
    */
   private collectTopLevelLocalNames(): void {
     ts.forEachChild(this.moduleSourceFile, (node) => {

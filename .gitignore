@@ -51,3 +51,6 @@ entities.json
 .mcp.json
 
 .pi/
+
+# Old capture output (replaced by src/test/__fixtures__/captured.json)
+scripts/capture-output/

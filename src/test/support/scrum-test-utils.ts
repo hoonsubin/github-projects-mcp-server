@@ -1,6 +1,6 @@
 // =============================================================================
 // src/test/support/scrum-test-utils.ts
-// Internal test utility — not part of the public module surface.
+// Internal test utility - not part of the public module surface.
 // Underscore prefix signals: do not re-export from index files.
 // =============================================================================
 
@@ -47,7 +47,7 @@ export const buildTypeTemplatePaths = async (): Promise<Record<string, ContentLo
 };
 
 /**
- * Module-level lazy promise — disk read and YAML parse happen once per test
+ * Module-level lazy promise - disk read and YAML parse happen once per test
  * file import, not once per test case. All tests that need the paths should
  * await this instead of calling buildTypeTemplatePaths() directly.
  */
@@ -59,7 +59,7 @@ export const typeTemplatePathsPromise: Promise<Record<string, ContentLocation>> 
 const COMMITTED_CONFIG_PATH = ".github/scrum/config.yml";
 
 /**
- * Loads the committed `.github/scrum/config.yml` once per test module —
+ * Loads the committed `.github/scrum/config.yml` once per test module -
  * the same file the server uses when started with default --config.
  */
 export const committedScrumConfigPromise: Promise<BootConfig> = loadScrumConfig(

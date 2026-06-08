@@ -1,13 +1,13 @@
 // =============================================================================
-// scripts/audit/renderers/mermaid.ts — Layer dependency graph → mermaid flowchart
+// scripts/audit/renderers/mermaid.ts - Layer dependency graph → mermaid flowchart
 //
 // Transforms a LayerGraphResult into a flowchart LR string. Each layer is a
 // subgraph with colored nodes; violation edges are red, valid edges are green.
 //
 // Exports two variants:
-//   renderMermaidSource   — raw mermaid source (no code fence)
-//   renderMermaidFenced   — wrapped in markdown ```mermaid fence (for embedding)
-//   renderMermaid         — (deprecated) alias for renderMermaidFenced
+//   renderMermaidSource   - raw mermaid source (no code fence)
+//   renderMermaidFenced   - wrapped in markdown ```mermaid fence (for embedding)
+//   renderMermaid         - (deprecated) alias for renderMermaidFenced
 // =============================================================================
 
 import type { LayerGraphResult, LayerName } from "../types.ts";

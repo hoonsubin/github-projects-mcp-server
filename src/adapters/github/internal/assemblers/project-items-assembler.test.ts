@@ -27,7 +27,7 @@ const config = makeConfig({
   },
 });
 
-// Config with an active sprint — triggers the sprint-filtered fetch branch.
+// Config with an active sprint - triggers the sprint-filtered fetch branch.
 const sprintConfig = makeConfig({
   ghConfig: { ...makeConfig().ghConfig, owner_type: "user" as const },
   live: {
@@ -115,7 +115,7 @@ Deno.test("ProjectItemsAssembler - scope=sprint reuses full board cache on secon
   assertEquals(gh.graphqlCalls.length, 2);
 });
 
-Deno.test("ProjectItemsAssembler — non-canonical fields appear in custom_fields", async () => {
+Deno.test("ProjectItemsAssembler - non-canonical fields appear in custom_fields", async () => {
   const gh = createGhSpy();
   // Single page with the augmented fixture node (issue #187)
   gh.enqueue(makePageEnvelope([FIXTURE_ITEM_WITH_CUSTOM_FIELDS]));

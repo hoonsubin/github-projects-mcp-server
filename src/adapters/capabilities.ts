@@ -9,10 +9,10 @@
 /**
  * Three-value capability status that replaces boolean flags.
  *
- * NATIVE    — operation maps directly to a platform API call; full fidelity.
- * EMULATED  — supported by encoding scrum semantics onto available primitives;
+ * NATIVE    - operation maps directly to a platform API call; full fidelity.
+ * EMULATED  - supported by encoding scrum semantics onto available primitives;
  *             constraints apply and a warning is appended to warnings[].
- * UNAVAILABLE — cannot be expressed on this platform; throws
+ * UNAVAILABLE - cannot be expressed on this platform; throws
  *             CapabilityUnavailableError with a recoverySuggestion.
  */
 export const CapabilityStatus = {
@@ -100,7 +100,7 @@ export interface PlatformCapabilities {
 
 /**
  * Returns the CapabilityMap for a platform. The map is derived directly from
- * supports — no separate sync needed; updating a status field is reflected
+ * supports - no separate sync needed; updating a status field is reflected
  * immediately in the returned map.
  */
 export const getCapabilities = (cap: PlatformCapabilities): CapabilityMap => cap.supports;
@@ -129,7 +129,7 @@ export const checkCapability = (
   }
   if (status === CapabilityStatus.EMULATED) {
     warnings.push(
-      `[${cap.platform}] "${operation}" is emulated — results may have limited fidelity.`,
+      `[${cap.platform}] "${operation}" is emulated - results may have limited fidelity.`,
     );
   }
 };

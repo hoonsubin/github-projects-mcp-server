@@ -1,5 +1,5 @@
 // =============================================================================
-// platform-request.ts — Executable GraphQL request payload (document + variables)
+// platform-request.ts - Executable GraphQL request payload (document + variables)
 //
 // Leaf module used by ExecutionEngine and pagination without depending on
 // assembler pipeline types (FilterProfile, AssemblerOutput).

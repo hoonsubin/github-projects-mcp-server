@@ -1,7 +1,7 @@
 // =============================================================================
 // src/domain/content-location.test.ts - Unit tests for mimeTypeForPath()
 //
-// Pure function — no file I/O, no network. permissions: "none" on every test
+// Pure function - no file I/O, no network. permissions: "none" on every test
 // makes the constraint machine-enforced.
 // =============================================================================
 

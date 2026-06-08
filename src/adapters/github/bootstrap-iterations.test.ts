@@ -10,7 +10,7 @@ const completedIterations: IterationEntry[] = [
   { id: "ecba33e9", title: "Sprint 3", startDate: "2026-05-24", duration: 8 },
 ];
 
-Deno.test("classifyIterations — UTC sprint start day is active regardless of local TZ", () => {
+Deno.test("classifyIterations - UTC sprint start day is active regardless of local TZ", () => {
   const result = classifyIterations(
     activeIterations,
     completedIterations,
@@ -19,7 +19,7 @@ Deno.test("classifyIterations — UTC sprint start day is active regardless of l
   assertEquals(result.active?.title, "Sprint 4");
 });
 
-Deno.test("classifyIterations — gap day between sprints has no active", () => {
+Deno.test("classifyIterations - gap day between sprints has no active", () => {
   const result = classifyIterations(
     activeIterations,
     completedIterations,
@@ -28,7 +28,7 @@ Deno.test("classifyIterations — gap day between sprints has no active", () => 
   assertEquals(result.active, null);
 });
 
-Deno.test("classifyIterations — pins active sprint from capture timestamp", () => {
+Deno.test("classifyIterations - pins active sprint from capture timestamp", () => {
   const result = classifyIterations(
     activeIterations,
     completedIterations,

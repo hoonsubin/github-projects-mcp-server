@@ -15,18 +15,18 @@ export type { ProjectItemsResponse, ProjectV2ItemsPage } from "./project-items-r
 
 /**
  * Builds the GraphQL query document for fetching project items.
- * Pure query construction — no network, no context dependency.
+ * Pure query construction - no network, no context dependency.
  */
 export class ProjectItemsQueryBuilder {
   constructor(private readonly ownerType: OwnerType) {}
 
-  /** Full content + field values — for board health and other Story-shaped consumers. */
+  /** Full content + field values - for board health and other Story-shaped consumers. */
   buildQuery(): string {
     return this.buildProjectItemsQuery("ItemContent");
   }
 
   /**
-   * Lean content + field values — for aggregation scans that only need board
+   * Lean content + field values - for aggregation scans that only need board
    * fields and minimal issue identity (number, title, type, state).
    */
   buildAggregateQuery(): string {

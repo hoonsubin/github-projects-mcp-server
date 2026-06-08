@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/audit/pipeline.ts — Stage orchestration and depcruise runner
+// scripts/audit/pipeline.ts - Stage orchestration and depcruise runner
 //
 // 1. Spawn depcruise once (with --metrics) and cache the JSON results.
 // 2. Run each enabled stage in order.
@@ -88,7 +88,7 @@ export const runPipeline = async (config: AuditConfig): Promise<AuditResults> =>
     depcruiseJson = await runDepcruise(depcruiseArgs);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`Warning: depcruise failed — ${message}`);
+    console.error(`Warning: depcruise failed - ${message}`);
     console.error("Compliance, layer-graph, and stability stages will be skipped.");
   }
 

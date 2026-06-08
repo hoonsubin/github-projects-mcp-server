@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/audit/filters.ts — Shared exclusion filter from AuditConfig.excludedDirs
+// scripts/audit/filters.ts - Shared exclusion filter from AuditConfig.excludedDirs
 //
 // Converts glob patterns (e.g. "**/*.test.ts", "**/generated/") to a reusable
 // predicate. All audit stages use this single function so config.excludedDirs
@@ -12,7 +12,7 @@ import { globToRegExp } from "@std/path/glob-to-regexp";
  * Create a predicate that returns `true` when a file path matches any of the
  * `excludedDirs` glob patterns.
  *
- * Use `config.excludedDirs` as the input — it is the single source of truth
+ * Use `config.excludedDirs` as the input - it is the single source of truth
  * for all audit-pipeline file exclusions.
  */
 export const createExclusionFilter = (

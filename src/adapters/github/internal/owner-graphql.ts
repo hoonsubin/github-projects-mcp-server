@@ -1,5 +1,5 @@
 // =============================================================================
-// owner-graphql.ts — Shared helpers for user vs organization GraphQL roots
+// owner-graphql.ts - Shared helpers for user vs organization GraphQL roots
 // =============================================================================
 
 import type { OwnerType } from "../types.ts";

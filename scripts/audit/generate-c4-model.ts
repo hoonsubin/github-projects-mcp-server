@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/audit/generate-c4-model.ts — TypeScript AST parser for C4 diagrams
+// scripts/audit/generate-c4-model.ts - TypeScript AST parser for C4 diagrams
 //
 // Extracts four C4 levels for read and write tool surfaces by tracing:
 //   1. server.registerTool(name, meta, () => handler()) → tool name, call shape,
@@ -78,7 +78,7 @@ interface BackendInfo {
 
 export const generateC4Diagram = async (srcDir: string): Promise<C4DiagramResult> => {
   const root = resolveRoot(srcDir);
-  // Discover backends once — shared across both slices.
+  // Discover backends once - shared across both slices.
   const backends = await discoverBackends(root);
   const readSlice = await buildSlice("read", root, backends);
   const writeSlice = await buildSlice("write", root, backends);
@@ -135,7 +135,7 @@ const buildContextLevel = (
       id: toolId,
       name: meta.toolName,
       type: "system",
-      technology: `MCP — ${callShape(meta)}`,
+      technology: `MCP - ${callShape(meta)}`,
       layer: "context",
     });
     relationships.push({
@@ -204,7 +204,7 @@ const buildContainerLevel = (
       id: toolId,
       name: meta.toolName,
       type: "container",
-      technology: `MCP Tool — ${callShape(meta)}`,
+      technology: `MCP Tool - ${callShape(meta)}`,
       toolName: meta.toolName,
       layer: "container",
     });
@@ -268,7 +268,7 @@ const buildContainerLevel = (
       id: adapterId,
       name: backend.className,
       type: "container",
-      technology: `TypeScript — ${backend.adapterName}`,
+      technology: `TypeScript - ${backend.adapterName}`,
       description: backend.filePath,
       layer: "container",
     });
@@ -586,7 +586,7 @@ const discoverBackends = async (root: string): Promise<BackendInfo[]> => {
       }
     }
   } catch {
-    // adapters directory missing or unreadable — return empty
+    // adapters directory missing or unreadable - return empty
   }
 
   return backends;
