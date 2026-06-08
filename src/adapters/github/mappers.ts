@@ -526,6 +526,7 @@ export const buildAggregateFromRaw = (
     issueNumber,
     isArchived: item.isArchived ?? false,
     title,
+    completed_at: null,
   };
 };
 

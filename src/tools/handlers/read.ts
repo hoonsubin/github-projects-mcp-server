@@ -8,14 +8,17 @@ import {
   FindItemsSchema,
   GetAnalyticsSchema,
   GetBoardHealthSchema,
+  GetSprintDataSchema,
   GetStorySchema,
 } from "../../schemas/scrum.ts";
+import type { SprintRef } from "../../domain/types.ts";
 import type { z } from "zod";
 import { orientUseCase } from "../../scrum/orient.ts";
 import { getStoryUseCase } from "../../scrum/get-story.ts";
 import { findItemsUseCase } from "../../scrum/find-items.ts";
 import { getAnalyticsUseCase } from "../../scrum/get-analytics.ts";
 import { getBoardHealthUseCase } from "../../scrum/get-board-health.ts";
+import { getSprintDataUseCase } from "../../scrum/get-sprint-data.ts";
 import { type McpTextResult, toMcpTextResult } from "../_mcp_result.ts";
 
 const mergeWarnings = <T extends object>(
@@ -64,5 +67,16 @@ export const handleGetBoardHealth = async (
   params: z.infer<typeof GetBoardHealthSchema>,
 ): Promise<McpTextResult> => {
   const { data, warnings } = await getBoardHealthUseCase(backend, params.sprint_scope);
+  return toMcpTextResult(mergeWarnings(data, warnings));
+};
+
+export const handleGetSprintData = async (
+  backend: ProjectBackend,
+  params: z.infer<typeof GetSprintDataSchema>,
+): Promise<McpTextResult> => {
+  // "all" is only meaningful for scrum_find_items — resolve to null here.
+  const { data, warnings } = await getSprintDataUseCase(backend, {
+    sprint_ref: (params.sprint_ref === "all" ? null : params.sprint_ref) as SprintRef,
+  });
   return toMcpTextResult(mergeWarnings(data, warnings));
 };

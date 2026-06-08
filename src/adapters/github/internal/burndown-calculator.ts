@@ -7,7 +7,7 @@ import { BoardScanCoordinator } from "./board-scan-coordinator.ts";
 import { buildBurndownStoryInput } from "../mappers.ts";
 import { resolveSprint } from "./resolver.ts";
 import { computeSprintEndDate } from "../../../scrum/sprint-math.ts";
-import { completionsFromBoardItems } from "./burndown-completion.ts";
+import { completionsFromBoardItems } from "./infra/burndown-completion.ts";
 import { mapWithConcurrency } from "./concurrent.ts";
 import type { GitHubInfraContext } from "./infra-context.ts";
 import type { ProjectItem } from "../types.ts";

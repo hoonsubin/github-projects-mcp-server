@@ -249,6 +249,18 @@ export const GetBoardHealthSchema = z
   })
   .strict();
 
+// scrum_get_sprint_data - raw sprint items with completion timestamps
+export const GetSprintDataSchema = z
+  .object({
+    sprint_ref: SprintRefSchema.describe(
+      'Sprint to fetch raw data for. "current" = active sprint; "next" = upcoming sprint; ' +
+        'null = returns empty result; or an explicit sprint name string (e.g. "Sprint 5"). ' +
+        'Note: "all" is accepted but resolves to null (empty result) — this tool returns data for one sprint at a time. ' +
+        'Defaults to "current".',
+    ).default("current"),
+  })
+  .strict();
+
 // ── Write tool schemas ────────────────────────────────────────────────────────
 
 // scrum_create_story - create and optionally place on board in one call

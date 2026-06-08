@@ -16,6 +16,8 @@ import type {
   ProjectWriter,
   ResolvedItemFilter,
   ScrumField,
+  SprintDataQuery,
+  SprintRawData,
   StoryDetail,
   StorySnapshotOverrides,
   StoryUpdates,
@@ -160,6 +162,20 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
    * Board health dashboard - aggregated metrics without item lists.
    */
   abstract getBoardHealth(sprintScope: string): Promise<BacklogHealth>;
+
+  // ── ProjectReader - sprint data ──────────────────────────────────────────
+
+  /**
+   * Return raw sprint items with completion timestamps.
+   * No aggregation, no burndown series — flat per-item facts.
+   *
+   * Default: throws {@link UnsupportedCapabilityError}.
+   * Override in adapters that support the sprint data pipeline
+   * (board scan coordinator + completionsFromBoardItems).
+   */
+  getSprintData(_query: SprintDataQuery): Promise<SprintRawData> {
+    throw new UnsupportedCapabilityError(this.capabilities.platform, "getSprintData");
+  }
 
   // ── ProjectReader - impediments ──────────────────────────────────────────
 

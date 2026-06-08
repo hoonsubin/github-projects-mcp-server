@@ -11,6 +11,7 @@ import {
   FindItemsSchema,
   GetAnalyticsSchema,
   GetBoardHealthSchema,
+  GetSprintDataSchema,
   GetStorySchema,
 } from "../schemas/scrum.ts";
 import { z } from "zod";
@@ -20,12 +21,14 @@ import {
   ItemDetailResultSchema,
   ItemSearchResultSchema,
   OrientResultSchema,
+  SprintRawDataSchema,
 } from "../schemas/scrum-outputs.ts";
 import {
   handleFindItems,
   handleGetAnalytics,
   handleGetBoardHealth,
   handleGetItemDetail,
+  handleGetSprintData,
   handleOrient,
 } from "./handlers/read.ts";
 
@@ -40,6 +43,7 @@ export const SCRUM_READ_TOOL_NAMES = [
   "scrum_get_item_detail",
   "scrum_get_board_health",
   "scrum_get_analytics",
+  "scrum_get_sprint_data",
 ] as const;
 
 // ── Tool registration ──────────────────────────────────────────────────────────
@@ -243,6 +247,28 @@ export const registerScrumReadTools = (
     },
     (params: z.infer<typeof GetBoardHealthSchema>) => handleGetBoardHealth(backend, params),
   );
+
+  // ── scrum_get_sprint_data ──────────────────────────────────────────────────
+
+  server.registerTool(
+    "scrum_get_sprint_data",
+    {
+      title: "Get Sprint Data",
+      description: `Returns raw sprint items with completion timestamps — flat per-item facts, ` +
+        `no aggregation, no burndown series, no health computation. ` +
+        `Use this tool when you need sprint-level raw data to compute your own ` +
+        `burndown, velocity, readiness, or risk metrics.`,
+      inputSchema: GetSprintDataSchema.shape,
+      outputSchema: SprintRawDataSchema.shape,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    (params: z.infer<typeof GetSprintDataSchema>) => handleGetSprintData(backend, params),
+  );
 };
 
 // Re-export handlers for contract tests
@@ -251,5 +277,6 @@ export {
   handleGetAnalytics,
   handleGetBoardHealth,
   handleGetItemDetail,
+  handleGetSprintData,
   handleOrient,
 } from "./handlers/read.ts";

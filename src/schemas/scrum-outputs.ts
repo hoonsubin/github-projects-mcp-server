@@ -352,3 +352,32 @@ export const SetFieldResponseSchema = StorySchema;
 export const UpdateStoryResponseSchema = StorySchema;
 
 export const UpdateImpedimentResponseSchema = ImpedimentListingSchema;
+
+// scrum_get_sprint_data output schemas
+
+const SprintInfoSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  goal: z.string().nullable(),
+  startDate: z.string(),
+  durationDays: z.number(),
+  endDate: z.string(),
+}).strict();
+
+export const SprintRawItemSchema = z.object({
+  id: z.string(),
+  number: z.number(),
+  title: z.string(),
+  type: z.string().nullable(),
+  status: z.string().nullable(),
+  storyPoints: z.number().nullable(),
+  hasAssignee: z.boolean(),
+  hasBlockers: z.boolean(),
+  completedAt: z.string().nullable(),
+}).strict();
+
+export const SprintRawDataSchema = z.object({
+  sprint: SprintInfoSchema,
+  items: z.array(SprintRawItemSchema),
+  warnings: z.array(z.string()).optional(),
+}).strict();

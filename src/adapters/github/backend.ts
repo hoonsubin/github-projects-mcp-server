@@ -29,6 +29,7 @@ import { ProjectItemsAssembler } from "./internal/assemblers/project-items-assem
 import { SearchApiAssembler } from "./internal/assemblers/search-api-assembler.ts";
 import { MixedAssembler } from "./internal/assemblers/mixed-assembler.ts";
 import { BoardScanCoordinator } from "./internal/board-scan-coordinator.ts";
+import { SprintDataService } from "./internal/read-services/sprint-data-service.ts";
 import {
   storySnapshotOverridesFromCreateStory,
   storySnapshotOverridesFromSetField,
@@ -45,7 +46,9 @@ import type {
   PlatformState,
   ResolvedItemFilter,
   ScrumField,
+  SprintDataQuery,
   SprintInfo,
+  SprintRawData,
   StoryDetail,
   StorySnapshotOverrides,
   StoryUpdates,
@@ -94,6 +97,7 @@ export interface GitHubBackendDependencies {
   readonly directLookupAssembler: DirectLookupAssembler;
   readonly projectItemsAssembler: ProjectItemsAssembler;
   readonly searchApiAssembler: SearchApiAssembler;
+  readonly sprintDataService: SprintDataService;
   readonly mixedAssembler: MixedAssembler;
 }
 
@@ -272,6 +276,10 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
 
   getAnalytics(query: AnalyticsQuery): Promise<AnalyticsResult> {
     return this.deps.analyticsService.getAnalytics(query);
+  }
+
+  override getSprintData(query: SprintDataQuery): Promise<SprintRawData> {
+    return this.deps.sprintDataService.getSprintData(query);
   }
 
   getBoardHealth(sprintScope: string): Promise<BacklogHealth> {

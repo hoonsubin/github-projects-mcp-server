@@ -21,6 +21,7 @@ import { ConfigReloader } from "./internal/config-reloader.ts";
 import { FieldValueMutator } from "./internal/field-value-mutator.ts";
 import { ImpedimentService } from "./internal/impediment-service.ts";
 import { LabelResolver } from "./internal/label-resolver.ts";
+import { SprintDataService } from "./internal/read-services/sprint-data-service.ts";
 import { SprintHistoryService } from "./internal/sprint-history-service.ts";
 import { StoryMutationService } from "./internal/story-mutation-service.ts";
 import { StoryQueryService } from "./internal/story-query-service.ts";
@@ -163,6 +164,8 @@ export const createGitHubBackend = (
     configDesc,
   );
 
+  const sprintDataService = new SprintDataService(ctx, boardScan);
+
   const analyticsService = new AnalyticsService(
     bootState,
     boardScan,
@@ -194,6 +197,7 @@ export const createGitHubBackend = (
     owner,
     repo: primaryRepo,
     configReloader,
+    sprintDataService,
     analyticsService,
     boardHealthService,
     directLookupAssembler,

@@ -182,6 +182,41 @@ export interface ItemAggregate {
   readonly isArchived: boolean;
   readonly sprintTitle: string | null;
   readonly title: string | null;
+  readonly completed_at: string | null; // ISO-8601 timestamp from completionsFromBoardItems, null if not completed
+}
+
+/**
+ * Input query for SprintDataPort.getSprintData().
+ * Carries a SprintRef to identify which sprint to fetch raw data for.
+ */
+export interface SprintDataQuery {
+  readonly sprint_ref: SprintRef;
+}
+
+/**
+ * A single raw item in a sprint's data, with completion timestamp.
+ * No aggregation — flat per-item facts for the agent to process.
+ */
+export interface SprintRawItem {
+  readonly id: string;
+  readonly number: number;
+  readonly title: string;
+  readonly type: string | null;
+  readonly status: string | null;
+  readonly storyPoints: number | null;
+  readonly hasAssignee: boolean;
+  readonly hasBlockers: boolean;
+  readonly completedAt: string | null; // ISO-8601 from completionsFromBoardItems
+}
+
+/**
+ * Raw sprint data returned by SprintDataPort.getSprintData().
+ * Contains sprint metadata and a flat array of items with completion timestamps.
+ * No burndown series, no health metrics — the agent computes those.
+ */
+export interface SprintRawData {
+  readonly sprint: SprintInfo;
+  readonly items: SprintRawItem[];
 }
 
 /** Fields known from a just-completed mutation (merged over a snapshot fetch). */
@@ -353,6 +388,14 @@ export interface ImpedimentPort {
 }
 
 /**
+ * Sprint data port - returns raw sprint items with completion timestamps.
+ * Used by: scrum_get_sprint_data handler
+ */
+export interface SprintDataPort {
+  getSprintData(query: SprintDataQuery): Promise<SprintRawData>;
+}
+
+/**
  * File reader port - fetches content from any location the platform supports.
  * Used by: templateResourceUseCase
  */
@@ -366,7 +409,14 @@ export interface FileReaderPort {
  * Used by: orientUseCase (via getPlatformState), scrum-read tools
  */
 export interface ProjectReader
-  extends StoryPort, EpicPort, FindItemsPort, AnalyticsPort, BoardHealthPort, ImpedimentPort {
+  extends
+    StoryPort,
+    EpicPort,
+    FindItemsPort,
+    AnalyticsPort,
+    BoardHealthPort,
+    ImpedimentPort,
+    SprintDataPort {
   getPlatformState(declaredVocabulary: {
     canonicalStatusKeys: string[];
     canonicalPriorityKeys: string[];

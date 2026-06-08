@@ -31,7 +31,9 @@ import type {
   PlatformState,
   ResolvedItemFilter,
   ScrumField,
+  SprintDataQuery,
   SprintInfo,
+  SprintRawData,
   StoryDetail,
   StorySnapshotOverrides,
   StoryUpdates,
@@ -371,6 +373,24 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
   getBoardHealth(sprintScope: string): Promise<BacklogHealth> {
     this.log("getBoardHealth", sprintScope);
     return Promise.resolve(this.boardHealth);
+  }
+
+  override getSprintData(_query: SprintDataQuery): Promise<SprintRawData> {
+    this.log("getSprintData", _query);
+    return Promise.resolve({
+      sprint: DEFAULT_SPRINT,
+      items: [{
+        id: "PVTI_fake_1",
+        number: 101,
+        title: "Config-shaped fixture story",
+        type: (Object.keys(this.profile.typeDisplay)[0] ?? "user_story") as string,
+        status: Object.values(this.profile.statusDisplay)[0] ?? "In Progress",
+        storyPoints: 3,
+        hasAssignee: true,
+        hasBlockers: false,
+        completedAt: null,
+      }],
+    });
   }
 
   getSprintImpediments(_sprint: SprintRef): Promise<ImpedimentListing[]> {

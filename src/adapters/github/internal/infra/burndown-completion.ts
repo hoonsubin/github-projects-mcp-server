@@ -2,7 +2,7 @@
 // burndown-completion.ts - Derive burndown completion times from board items
 // =============================================================================
 
-import type { ProjectItem } from "../types.ts";
+import type { ProjectItem } from "../../types.ts";
 
 /** Extract issue closedAt when present on board item content. */
 export const issueClosedAtFromItem = (item: ProjectItem): string | null => {
