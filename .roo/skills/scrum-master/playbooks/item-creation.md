@@ -103,11 +103,11 @@ If none of these apply, proceed to Phase 1.
 After Phase 1 duplicate scan, if a finding touches the **same file or function** as an in-progress item, apply this decision rule before drafting a new item:
 
 **Amend the existing item when all three hold:**
-1. Same file/function scope — the fix would be in the same PR
+1. Same file/function scope — fixing both touches the same code
 2. The existing item is In Progress or Backlog (not Done/closed)
 3. Adding the finding narrows or clarifies the existing item's scope (not additive)
 
-→ `scrum_update_story` the existing item body + add audit comment noting the addition. Do not create.
+→ Update the existing item's body and add an audit comment noting the addition. Do not create.
 
 **Create a new item when any of these hold:**
 - The finding adds distinct new behavior (additive, not corrective within the same change)
@@ -126,7 +126,7 @@ When a grooming or analysis session yields multiple findings before any item is 
 4. **Draft all remaining items** and present as a numbered manifest with type, title, and one-line rationale per item.
 5. **Single Phase 3 block per item** — present all five fields for each item sequentially in one message block. Human may respond to all at once.
 6. **Single Phase 4 confirmation** for the full manifest. Adjust and re-present if any field changes.
-7. **Create in sequence** — `scrum_create_story` one at a time; apply fields and add audit comment before moving to the next.
+7. **Create in sequence** — create each item individually; apply confirmed fields and add audit comment before moving to the next.
 
 Do not exceed the `require_confirmation_above_n_items` threshold without explicit approval (from `scrum_orient`).
 

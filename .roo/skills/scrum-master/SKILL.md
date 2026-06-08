@@ -169,7 +169,6 @@ For any coaching response referencing project metrics, call the relevant read to
 | `playbooks/transitions.md` | Project setup, stale recovery, board catchup (on-demand only) |
 | `playbooks/impediment-lifecycle.md` | Log, progress, resolve impediments |
 | `playbooks/backlog-grooming.md` | Backlog health scan, item triage, DoR readiness report |
-| `playbooks/tool-errors.md` | Known tool failure modes and recovery actions |
 
 ## Reference routing
 
@@ -190,7 +189,7 @@ Read only the file and section the request requires. Do not load speculatively.
 | Remote / distributed team or onboarding | `references/sm-coaching.md §Remote, §Onboarding` |
 | Introducing Scrum, Sprint 0 vs 1, first sprint, v1 DoD | `references/sm-coaching.md §Bootstrap` |
 | Resuming a paused project, re-baseline velocity | `references/sm-coaching.md §Stale recovery` |
-| Board outdated, reconciling board with actual progress | `references/sm-coaching.md §Board catchup` |
+| Board outdated, reconciling board with actual progress | `playbooks/transitions.md §board_catchup` |
 | Anti-pattern or dysfunction diagnosis | `references/dysfunctions.md` |
 | Velocity calculation, capacity formula | `references/advanced-practices.md §Velocity` |
 | Story splitting or mapping | `references/advanced-practices.md §Story splitting` |
