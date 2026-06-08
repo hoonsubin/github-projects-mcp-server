@@ -1,5 +1,5 @@
 // =============================================================================
-// src/adapters/github/internal/fixtures/pages.ts
+// src/adapters/github/fixtures/pages.ts
 //
 // Page envelope builder and pre-built paginated response fixtures.
 // =============================================================================

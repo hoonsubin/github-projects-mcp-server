@@ -14,7 +14,7 @@ import {
 import type { SprintRef } from "../../domain/types.ts";
 import type { z } from "zod";
 import { orientUseCase } from "../../scrum/orient.ts";
-import { getStoryUseCase } from "../../scrum/get-story.ts";
+import { getItemDetailUseCase } from "../../scrum/get-item-detail.ts";
 import { findItemsUseCase } from "../../scrum/find-items.ts";
 import { getSprintDataUseCase } from "../../scrum/get-sprint-data.ts";
 import { type McpTextResult, toMcpTextResult } from "../_mcp_result.ts";
@@ -41,7 +41,7 @@ export const handleGetItemDetail = async (
   backend: ProjectBackend,
   params: z.infer<typeof GetStorySchema>,
 ): Promise<McpTextResult> => {
-  const { data, warnings } = await getStoryUseCase(backend, params.ref);
+  const { data, warnings } = await getItemDetailUseCase(backend, params.ref);
   return toMcpTextResult(mergeWarnings(data, warnings));
 };
 

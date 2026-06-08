@@ -6,9 +6,12 @@
 
 import { parse } from "@std/yaml";
 import { dirname, resolve } from "@std/path";
-import { fetchContent } from "../../scrum/fetch-location.ts";
+import { fetchContent } from "../../scrum/utils/fetch-location.ts";
 import { type BootConfig, loadScrumConfig } from "../../scrum/config-boot.ts";
-import { resolveLocation, SUPPORTED_TEMPLATE_EXTENSIONS } from "../../scrum/resolve-location.ts";
+import {
+  resolveLocation,
+  SUPPORTED_TEMPLATE_EXTENSIONS,
+} from "../../scrum/utils/resolve-location.ts";
 import type { ContentLocation } from "../../domain/content-location.ts";
 import type { FileReaderPort } from "../../scrum/ports.ts";
 import { CAPTURED } from "@test/fixtures/port/index.ts";

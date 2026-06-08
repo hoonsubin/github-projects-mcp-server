@@ -8,7 +8,8 @@
 import type { ProjectReader, SprintInfo } from "./ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 import type { EpicSummary, OrientResult, TemplateUriMap, UseCaseResult } from "../domain/types.ts";
-import { ITEM_TYPES, sprintContextFromSprintInfo } from "../domain/types.ts";
+import { ITEM_TYPES } from "../domain/types.ts";
+import { sprintContextFromSprintInfo } from "./utils/sprint-context.ts";
 import { catchBackend } from "../services/error-enrichment.ts";
 import type { ContentLocation } from "../domain/content-location.ts";
 

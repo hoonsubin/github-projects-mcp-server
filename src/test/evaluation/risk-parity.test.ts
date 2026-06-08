@@ -39,7 +39,7 @@ function agentCountSprintRisks(
 ): SprintRiskCounts {
   const active = items.filter((i) => i.status !== doneStatusDisplayName);
   return {
-    unestimated_count: active.filter((i) => i.storyPoints == null || i.storyPoints === 0).length,
+    unestimated_count: active.filter((i) => i.storyPoints === null || i.storyPoints === 0).length,
     blocked_count: active.filter((i) => i.hasBlockers).length,
     no_assignee_count: active.filter((i) => !i.hasAssignee).length,
   };
@@ -92,7 +92,7 @@ function agentAssessReadiness(items: readonly BacklogItemListing[]): ReadinessRe
   let notReadyCount = 0;
 
   for (const item of items) {
-    const hasType = item.type != null && item.type !== "";
+    const hasType = item.type !== null && item.type !== "";
     const hasEstimate = (item.story_points ?? 0) > 0;
     if (hasType && hasEstimate) {
       readyCount++;

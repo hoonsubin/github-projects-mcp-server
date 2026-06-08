@@ -12,7 +12,6 @@
 import { z } from "zod";
 import type { EpicRef, StoryRef } from "../domain/types.ts";
 import {
-  ANALYTICS_VIEWS,
   IMPEDIMENT_STATUSES,
   SCRUM_FIELDS,
   SEARCH_SCOPES,
@@ -209,21 +208,17 @@ export const FindItemsSchema = z
   })
   .strict();
 
-// scrum_get_analytics - unified sprint analytics (burndown + history)
+// Deprecated tools — schemas accept legacy params; handlers return a migration stub.
+const DEPRECATED_ANALYTICS_VIEWS = ["burndown", "history", "both"] as const;
+
 export const GetAnalyticsSchema = z
   .object({
     view: z
-      .enum(ANALYTICS_VIEWS)
+      .enum(DEPRECATED_ANALYTICS_VIEWS)
       .optional()
       .default("both")
-      .describe(
-        'Which analytics view to return. "burndown" = burndown chart data; ' +
-          '"history" = completed sprint history; ' +
-          '"both" = burndown + history (default).',
-      ),
-    sprint_ref: SprintRefSchema.optional().describe(
-      'Target sprint for burndown. Defaults to "current" if omitted.',
-    ),
+      .describe("Ignored — tool is deprecated."),
+    sprint_ref: SprintRefSchema.optional().describe("Ignored — tool is deprecated."),
     history_window: z
       .number()
       .int()
@@ -231,21 +226,17 @@ export const GetAnalyticsSchema = z
       .max(10)
       .optional()
       .default(5)
-      .describe("Number of completed sprints to include in history (1–10, default 5)."),
+      .describe("Ignored — tool is deprecated."),
   })
   .strict();
 
-// scrum_get_board_health - board health dashboard (no item lists)
 export const GetBoardHealthSchema = z
   .object({
     sprint_scope: z
       .string()
       .optional()
       .default("current")
-      .describe(
-        'Which sprint to assess. "current" = active sprint; "next" = upcoming; ' +
-          'or an explicit sprint name (e.g. "Sprint 5"). Defaults to "current".',
-      ),
+      .describe("Ignored — tool is deprecated."),
   })
   .strict();
 

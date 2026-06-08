@@ -2,9 +2,9 @@
 // GitHub adapter test utilities — queue-based GraphQL spy and config factories.
 // =============================================================================
 
-import type { GitHubClient, RestResponse } from "../../adapters/github/internal/infra/http-client.ts";
+import type { GitHubClient, RestResponse } from "../../adapters/github/infra/http-client.ts";
 import type { GitHubBootState } from "../../adapters/github/bootstrap.ts";
-import type { GitHubInfraContext } from "../../adapters/github/internal/infra/infra-context.ts";
+import type { GitHubInfraContext } from "../../adapters/github/infra/infra-context.ts";
 import type { GitHubBackendConfig } from "../../adapters/github/types.ts";
 
 // ── GitHubClient spy ──────────────────────────────────────────────────────────

@@ -84,12 +84,6 @@ export const SCRUM_FIELDS = [
 /** Board field to update via setField. */
 export type ScrumField = (typeof SCRUM_FIELDS)[number];
 
-/** Which analytics view to return. */
-export const ANALYTICS_VIEWS = ["burndown", "history", "both"] as const;
-
-/** Analytics view selector. */
-export type AnalyticsView = (typeof ANALYTICS_VIEWS)[number];
-
 export const VOCABULARY_KINDS = ["status_option", "priority_option", "label"] as const;
 
 export type VocabularyKind = (typeof VOCABULARY_KINDS)[number];
@@ -217,7 +211,7 @@ export type TemplateUriMap = Partial<Record<ItemType, ScrumTemplateUri>>;
 
 /**
  * Sprint with time-progress fields.
- * Built by `sprintContextFromSprintInfo()` at the port boundary.
+ * Built by `sprintContextFromSprintInfo()` in scrum/utils/sprint-context.ts.
  * Risk and readiness judgments are agent-side concerns (see scrum-master skill).
  */
 export interface SprintContext extends SprintWindowMeta {
@@ -227,39 +221,6 @@ export interface SprintContext extends SprintWindowMeta {
   days_elapsed: number;
   time_elapsed_pct: number; // 0-100
 }
-
-/**
- * Build a SprintContext from sprint metadata.
- * Called by orientUseCase to populate platform_state.iterations.active/next.
- */
-export const sprintContextFromSprintInfo = (
-  info: {
-    id: string;
-    name: string;
-    goal: string | null;
-    start_date: string;
-    end_date: string;
-    duration_days: number;
-  },
-  daysElapsed: number,
-): SprintContext => {
-  const daysRemaining = Math.max(0, info.duration_days - daysElapsed);
-  const timeElapsedPct = info.duration_days > 0
-    ? Math.round((daysElapsed / info.duration_days) * 100)
-    : 0;
-
-  return {
-    id: info.id,
-    name: info.name,
-    goal: info.goal,
-    start_date: info.start_date,
-    end_date: info.end_date,
-    duration_days: info.duration_days,
-    days_elapsed: daysElapsed,
-    days_remaining: daysRemaining,
-    time_elapsed_pct: timeElapsedPct,
-  };
-};
 
 // ── Epic summary (orient) ──────────────────────────────────────────────────────
 

@@ -70,7 +70,6 @@ export const registerScrumReadTools = (
           platform_state.deadline_field - null when the project does not track deadlines via a
             custom field. When non-null, it is the exact key to use when reading deadline values
             from item.custom_fields[deadline_field]. Do not re-orient just to retrieve this value.
-          vocabulary.sprint.velocity_window - preferred history window for scrum_get_analytics calls.
           vocabulary.status - canonical key → display label map; always resolve status values from
             here before passing to scrum_set_field. Never hardcode strings like "Done" or "In Progress".
 

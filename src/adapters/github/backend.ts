@@ -12,29 +12,29 @@ import { GITHUB_CAPABILITIES } from "../capabilities.ts";
 import { AbstractProjectBackend } from "../abstract-backend.ts";
 import { assertNever } from "../../domain/errors.ts";
 import { type GitHubBootState } from "./bootstrap.ts";
-import { LabelResolver } from "./internal/write-services/label-resolver.ts";
-import { FieldValueMutator } from "./internal/write-services/field-value-mutator.ts";
-import { VocabularyManager } from "./internal/write-services/vocabulary-manager.ts";
-import { StoryQueryService } from "./internal/read-services/story-query-service.ts";
-import { StoryMutationService } from "./internal/write-services/story-mutation-service.ts";
-import { ImpedimentService } from "./internal/read-services/impediment-service.ts";
-import { EpicService } from "./internal/read-services/epic-service.ts";
-import { ConfigReloader } from "./internal/infra/config-reloader.ts";
+import { LabelResolver } from "./write-services/label-resolver.ts";
+import { FieldValueMutator } from "./write-services/field-value-mutator.ts";
+import { VocabularyManager } from "./write-services/vocabulary-manager.ts";
+import { StoryQueryService } from "./read-services/story-query-service.ts";
+import { StoryMutationService } from "./write-services/story-mutation-service.ts";
+import { ImpedimentService } from "./read-services/impediment-service.ts";
+import { EpicService } from "./read-services/epic-service.ts";
+import { ConfigReloader } from "./infra/config-reloader.ts";
 import { resolveSprintGoal } from "./mappers.ts";
-import { classifyFilter } from "./internal/query-strategies/filter-strategy-router.ts";
-import { DirectLookupAssembler } from "./internal/assemblers/direct-lookup-assembler.ts";
-import { ProjectItemsAssembler } from "./internal/assemblers/project-items-assembler.ts";
-import { SearchApiAssembler } from "./internal/assemblers/search-api-assembler.ts";
-import { MixedAssembler } from "./internal/assemblers/mixed-assembler.ts";
-import { BoardScanCoordinator } from "./internal/read-services/board-scan-coordinator.ts";
-import { SprintDataService } from "./internal/read-services/sprint-data-service.ts";
+import { classifyFilter } from "./query-strategies/filter-strategy-router.ts";
+import { DirectLookupAssembler } from "./assemblers/direct-lookup-assembler.ts";
+import { ProjectItemsAssembler } from "./assemblers/project-items-assembler.ts";
+import { SearchApiAssembler } from "./assemblers/search-api-assembler.ts";
+import { MixedAssembler } from "./assemblers/mixed-assembler.ts";
+import { BoardScanCoordinator } from "./read-services/board-scan-coordinator.ts";
+import { SprintDataService } from "./read-services/sprint-data-service.ts";
 import {
   storySnapshotOverridesFromCreateStory,
   storySnapshotOverridesFromSetField,
   storySnapshotOverridesFromStoryUpdates,
 } from "./mappers.ts";
-import { resolveProjectItemIdByIssueNumber } from "./internal/query-strategies/resolve-issue-number.ts";
-import type { GitHubClient } from "./internal/infra/http-client.ts";
+import { resolveProjectItemIdByIssueNumber } from "./query-strategies/resolve-issue-number.ts";
+import type { GitHubClient } from "./infra/http-client.ts";
 import type { GitHubBackendConfig } from "./types.ts";
 import type {
   CreateResult,

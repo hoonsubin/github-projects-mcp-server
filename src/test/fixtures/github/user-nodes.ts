@@ -1,5 +1,5 @@
 // =============================================================================
-// src/adapters/github/internal/fixtures/user-nodes.ts
+// src/adapters/github/fixtures/user-nodes.ts
 //
 // User node ID fixtures for ResolveActorNodeId query tests.
 // =============================================================================

@@ -1,5 +1,5 @@
 // =============================================================================
-// src/adapters/github/internal/fixtures/items-synthetic.ts
+// src/adapters/github/fixtures/items-synthetic.ts
 //
 // Synthetic fixture items and convenience aggregates.
 // =============================================================================

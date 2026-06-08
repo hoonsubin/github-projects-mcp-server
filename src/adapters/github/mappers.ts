@@ -15,12 +15,12 @@ import type {
   StoryBase,
   StoryComment,
 } from "../../domain/types.ts";
-import { computeSprintEndDate } from "../../scrum/sprint-math.ts";
+import { computeSprintEndDate } from "../../scrum/utils/sprint-math.ts";
 import type { ItemAggregate, SprintInfo, StorySnapshotOverrides } from "../../scrum/ports.ts";
 import type { Story } from "../../domain/types.ts";
 import type { CreateStoryInput, ScrumField, StoryUpdates } from "../../scrum/ports.ts";
 import type { SprintRef } from "../../domain/types.ts";
-import { resolveSprint } from "./internal/infra/resolver.ts";
+import { resolveSprint } from "./infra/resolver.ts";
 import type {
   AssigneeNodes,
   BoardFields,

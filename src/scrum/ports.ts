@@ -25,15 +25,15 @@ import type {
   StoryRef,
   TemplateUriMap,
 } from "../domain/types.ts";
-import { ANALYTICS_VIEWS, SCRUM_FIELDS, SEARCH_SCOPES, VOCABULARY_KINDS } from "../domain/types.ts";
-import type { AnalyticsView, ScrumField, SearchScope, VocabularyKind } from "../domain/types.ts";
+import { SCRUM_FIELDS, SEARCH_SCOPES, VOCABULARY_KINDS } from "../domain/types.ts";
+import type { ScrumField, SearchScope, VocabularyKind } from "../domain/types.ts";
 import type { BackendCallResult } from "../services/error-enrichment.ts";
 import type { ContentLocation } from "../domain/content-location.ts";
 
 // ── Re-exports (domain vocabulary - single source of truth) ─────────────────
 
-export { ANALYTICS_VIEWS, SCRUM_FIELDS, SEARCH_SCOPES, VOCABULARY_KINDS };
-export type { AnalyticsView, ScrumField, SearchScope, VocabularyKind };
+export { SCRUM_FIELDS, SEARCH_SCOPES, VOCABULARY_KINDS };
+export type { ScrumField, SearchScope, VocabularyKind };
 
 // ── Input types (cross the port boundary) ─────────────────────────────────────
 
@@ -273,7 +273,7 @@ export interface EpicPort {
 
 /**
  * Story port - returns full detail for a single story.
- * Used by: getStoryUseCase
+ * Used by: getItemDetailUseCase
  */
 export interface StoryPort {
   getStoryDetail(ref: StoryRef): Promise<BackendCallResult<StoryDetail>>;
@@ -393,6 +393,6 @@ export interface ProjectWriter {
 /**
  * ProjectBackend - the full interface combining all ports.
  * Tool handlers use this for convenience; new use-case code should
- * import specific ports (FindItemsPort, AnalyticsPort, etc.).
+ * import specific ports (FindItemsPort, SprintDataPort, etc.).
  */
 export interface ProjectBackend extends ProjectReader, ProjectWriter {}

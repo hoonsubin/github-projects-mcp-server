@@ -36,7 +36,7 @@ import type {
 import type { BackendCallResult } from "../../services/error-enrichment.ts";
 import type { BootConfig } from "../../scrum/config-boot.ts";
 import { type ConfigProfile, deriveConfigProfile } from "./config-profile.ts";
-import { computeSprintEndDate } from "../../scrum/sprint-math.ts";
+import { computeSprintEndDate } from "../../scrum/utils/sprint-math.ts";
 
 const FAKE_CAPABILITIES: PlatformCapabilities = {
   platform: "fake",
