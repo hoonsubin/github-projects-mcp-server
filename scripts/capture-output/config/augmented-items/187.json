@@ -1,0 +1,149 @@
+{
+  "normalized": {
+    "story": {
+      "kind": "issue",
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgt_Oro"
+      },
+      "key": "187",
+      "title": "[Bug]: Non-canonical project fields (deadlines, custom scores, flags) silently dropped in scrum_find_items — custom_fields sparsely populated",
+      "body": "## Problem\n\n`scrum_find_items` responses include a `custom_fields` field in `BacklogItemListing` but it is sparsely populated. Non-canonical project fields — deadlines, custom numeric scores, non-standard flags, and any board field outside the Scrum vocabulary — are silently dropped in the mapping layer.\n\nThe query and mapper are coupled to a fixed set of canonical field types (iteration, single-select, number, and a small named set). Any ProjectV2 field a team configures outside that set is invisible in `scrum_find_items` output, even when it contains decision-relevant data. There is no error or warning — the fields are simply absent.\n\n## Impact\n\nAgents cannot filter, sort, or act on project-specific metadata that teams commonly use: due dates, custom priority scores, effort estimates in non-standard fields. The data exists in GitHub Projects but never reaches the agent.\n\n## Context — relationship to #216\n\nBoth issues affect `custom_fields` but in opposite directions:\n\n| Issue | Problem |\n|---|---|\n| #216 | Canonical fields *incorrectly included* in `custom_fields` (duplication, noise) |\n| This issue | Non-canonical fields *incorrectly excluded* from `custom_fields` (missing signal) |\n\nThe correct end state: `custom_fields` contains *only* non-canonical fields, and *all* of them. These two issues should be resolved together or in immediate sequence.\n\n## Affected file\n\n`src/adapters/github/internal/result-normalizer.ts` — field value mapping in `enrichListingCustomFields()`\n\n## Acceptance Criteria\n- [ ] All non-canonical field value types from the GraphQL response appear in `custom_fields`\n- [ ] No non-canonical field type is silently dropped in the mapping layer\n- [ ] Canonical fields (Title, Status, Type, Priority, Story Points, Sprint, Assignees, Labels, Milestone, Repository) are not present in `custom_fields` (handled by #216)\n- [ ] Existing tests pass; new tests cover passthrough of non-canonical field types\n- [ ] No changes to domain types, port interfaces, or use-case functions",
+      "type": "user_story",
+      "status": "Done",
+      "sprint": null,
+      "story_points": 3,
+      "priority": "Must",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "feature",
+        "adapter layer"
+      ],
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9dd1"
+        },
+        "name": "Adapter Layer Assembly Pattern"
+      },
+      "created_at": "2026-05-27T21:33:52Z",
+      "updated_at": "2026-06-06T19:24:19Z",
+      "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/187",
+      "blocked_by": [
+        {
+          "key": "185",
+          "title": "[Tech Debt]: Extract fragment library — catalog recurring field selections into named, composable fragments",
+          "ref": {
+            "id": "I_kwDOSJo3Ms8AAAABDlwG0A"
+          }
+        }
+      ]
+    },
+    "comments": [
+      {
+        "author": "hoonsubin",
+        "body": "Tool insight from live grooming session (2026-06-03): confirmed that `custom_fields` in live `scrum_find_items` responses contains only canonical fields — all of them serialized as noisy JSON strings (per #216), none of the project-specific non-canonical fields. The `custom_fields` passthrough is effectively inverted: it includes what it should not (canonical duplicates) and excludes what it should (non-canonical signals). Strongly recommend implementing #216 and this issue together — they are two halves of the same fix in `enrichListingCustomFields()`.",
+        "created_at": "2026-06-02T22:32:24Z",
+        "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/187#issuecomment-4607520521"
+      },
+      {
+        "author": "hoonsubin",
+        "body": "**Scrum Master audit — Moved to backlog; needs rescoping per refactoring plan.**\n\nPer [`tasks/REFACTORING.md §Phase A`](tasks/REFACTORING.md:291), a new `scrum_get_sprint_data` tool is being added that returns `SprintDataItem` ([§4.3](tasks/REFACTORING.md:153)) with its own field set — notably no `custom_fields`. If the primary use case for fixing `custom_fields` gaps in `scrum_find_items` is analytic/aggregation context, `scrum_get_sprint_data` + agent-side aggregation may be the better fix path. The scope boundary between these two tools must be clarified before work resumes.\n\n**Actions taken:**\n- Sprint cleared (moved to backlog)\n- Priority, SP, and status preserved as-is\n\n**Next step:** Groom at next backlog refinement — determine whether the fix should target `scrum_find_items.custom_fields` or whether `scrum_get_sprint_data` covers the use case.",
+        "created_at": "2026-06-06T19:24:19Z",
+        "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/187#issuecomment-4640116006"
+      }
+    ],
+    "linked_artifacts": [
+      {
+        "number": 271,
+        "title": "handle non-canon field pass through",
+        "url": "https://github.com/hoonsubin/github-projects-mcp-server/pull/271",
+        "state": "MERGED",
+        "is_draft": false
+      }
+    ]
+  },
+  "raw": {
+    "story": {
+      "kind": "issue",
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgt_Oro"
+      },
+      "key": "187",
+      "title": "[Bug]: Non-canonical project fields (deadlines, custom scores, flags) silently dropped in scrum_find_items — custom_fields sparsely populated",
+      "body": "## Problem\n\n`scrum_find_items` responses include a `custom_fields` field in `BacklogItemListing` but it is sparsely populated. Non-canonical project fields — deadlines, custom numeric scores, non-standard flags, and any board field outside the Scrum vocabulary — are silently dropped in the mapping layer.\n\nThe query and mapper are coupled to a fixed set of canonical field types (iteration, single-select, number, and a small named set). Any ProjectV2 field a team configures outside that set is invisible in `scrum_find_items` output, even when it contains decision-relevant data. There is no error or warning — the fields are simply absent.\n\n## Impact\n\nAgents cannot filter, sort, or act on project-specific metadata that teams commonly use: due dates, custom priority scores, effort estimates in non-standard fields. The data exists in GitHub Projects but never reaches the agent.\n\n## Context — relationship to #216\n\nBoth issues affect `custom_fields` but in opposite directions:\n\n| Issue | Problem |\n|---|---|\n| #216 | Canonical fields *incorrectly included* in `custom_fields` (duplication, noise) |\n| This issue | Non-canonical fields *incorrectly excluded* from `custom_fields` (missing signal) |\n\nThe correct end state: `custom_fields` contains *only* non-canonical fields, and *all* of them. These two issues should be resolved together or in immediate sequence.\n\n## Affected file\n\n`src/adapters/github/internal/result-normalizer.ts` — field value mapping in `enrichListingCustomFields()`\n\n## Acceptance Criteria\n- [ ] All non-canonical field value types from the GraphQL response appear in `custom_fields`\n- [ ] No non-canonical field type is silently dropped in the mapping layer\n- [ ] Canonical fields (Title, Status, Type, Priority, Story Points, Sprint, Assignees, Labels, Milestone, Repository) are not present in `custom_fields` (handled by #216)\n- [ ] Existing tests pass; new tests cover passthrough of non-canonical field types\n- [ ] No changes to domain types, port interfaces, or use-case functions",
+      "type": "user_story",
+      "status": "Done",
+      "sprint": null,
+      "story_points": 3,
+      "priority": "Must",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "feature",
+        "adapter layer"
+      ],
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9dd1"
+        },
+        "name": "Adapter Layer Assembly Pattern"
+      },
+      "created_at": "2026-05-27T21:33:52Z",
+      "updated_at": "2026-06-06T19:24:19Z",
+      "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/187",
+      "blocked_by": [
+        {
+          "key": "185",
+          "title": "[Tech Debt]: Extract fragment library — catalog recurring field selections into named, composable fragments",
+          "ref": {
+            "id": "I_kwDOSJo3Ms8AAAABDlwG0A"
+          }
+        }
+      ]
+    },
+    "comments": [
+      {
+        "author": "hoonsubin",
+        "body": "Tool insight from live grooming session (2026-06-03): confirmed that `custom_fields` in live `scrum_find_items` responses contains only canonical fields — all of them serialized as noisy JSON strings (per #216), none of the project-specific non-canonical fields. The `custom_fields` passthrough is effectively inverted: it includes what it should not (canonical duplicates) and excludes what it should (non-canonical signals). Strongly recommend implementing #216 and this issue together — they are two halves of the same fix in `enrichListingCustomFields()`.",
+        "created_at": "2026-06-02T22:32:24Z",
+        "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/187#issuecomment-4607520521"
+      },
+      {
+        "author": "hoonsubin",
+        "body": "**Scrum Master audit — Moved to backlog; needs rescoping per refactoring plan.**\n\nPer [`tasks/REFACTORING.md §Phase A`](tasks/REFACTORING.md:291), a new `scrum_get_sprint_data` tool is being added that returns `SprintDataItem` ([§4.3](tasks/REFACTORING.md:153)) with its own field set — notably no `custom_fields`. If the primary use case for fixing `custom_fields` gaps in `scrum_find_items` is analytic/aggregation context, `scrum_get_sprint_data` + agent-side aggregation may be the better fix path. The scope boundary between these two tools must be clarified before work resumes.\n\n**Actions taken:**\n- Sprint cleared (moved to backlog)\n- Priority, SP, and status preserved as-is\n\n**Next step:** Groom at next backlog refinement — determine whether the fix should target `scrum_find_items.custom_fields` or whether `scrum_get_sprint_data` covers the use case.",
+        "created_at": "2026-06-06T19:24:19Z",
+        "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/187#issuecomment-4640116006"
+      }
+    ],
+    "linked_artifacts": [
+      {
+        "number": 271,
+        "title": "handle non-canon field pass through",
+        "url": "https://github.com/hoonsubin/github-projects-mcp-server/pull/271",
+        "state": "MERGED",
+        "is_draft": false
+      }
+    ],
+    "_augmented_fields": [
+      {
+        "__typename": "ProjectV2ItemFieldDateValue",
+        "date": "2026-08-15",
+        "field": {
+          "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seC",
+          "name": "Deadline"
+        }
+      },
+      {
+        "__typename": "ProjectV2ItemFieldTextValue",
+        "text": "Q3",
+        "field": {
+          "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seD",
+          "name": "Target Quarter"
+        }
+      }
+    ]
+  },
+  "captured_at": "2026-06-08T13:02:20.032Z"
+}

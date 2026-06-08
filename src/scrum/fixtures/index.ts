@@ -1,7 +1,8 @@
 // =============================================================================
-// src/adapters/github/internal/_test_fixtures.ts
+// src/scrum/fixtures/index.ts
 //
-// Barrel re-export. Fixture data is organized under fixtures/.
+// Barrel re-export for all scrum fixture modules.
 // =============================================================================
 
-export * from "./fixtures/index.ts";
+export * from "./templates.ts";
+export * from "./locations.ts";

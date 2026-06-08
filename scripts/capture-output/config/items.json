@@ -2,6 +2,186 @@
   "items": [
     {
       "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSudU",
+        "key": "214"
+      },
+      "title": "[Bug]: estimated:false filter returns Pull Requests and Done items as unestimated backlog",
+      "type": "bug",
+      "status": "Ready",
+      "story_points": 1,
+      "priority": "Should",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "tool bug",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzguSug0",
+        "key": "218"
+      },
+      "title": "[Bug]: scrum_find_items serializes two structurally misleading empty fields — dependency_map: null and sprint.ref.id: \"\"",
+      "type": "tech_debt",
+      "status": "Ready",
+      "story_points": 2,
+      "priority": "Could",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "refactor",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9J0x"
+        },
+        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgt_OZU",
+        "key": "186"
+      },
+      "title": "[Tech Debt]: Introduce query assembler + strategy router — replace monolithic `StoryQueryService` delegation with composable assembly",
+      "type": "tech_debt",
+      "status": "Ready",
+      "story_points": 5,
+      "priority": "Must",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "refactor",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9dd1"
+        },
+        "name": "Adapter Layer Assembly Pattern"
+      },
+      "blocked_by": [
+        {
+          "key": "251",
+          "title": "[Bug]: Org issue-backed field mutations, vocabulary additions, and cross-repo issue lookups produce incorrect or silent failures",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzguvUqk"
+          }
+        },
+        {
+          "key": "185",
+          "title": "[Tech Debt]: Extract fragment library — catalog recurring field selections into named, composable fragments",
+          "ref": {
+            "id": "PVTI_lAHOAmfLjc4BWiTtzgt_OHU"
+          }
+        }
+      ],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgu5694",
+        "key": "262"
+      },
+      "title": "[Bug]: scrum_set_field response nulls org-issue-backed fields and emits spurious FIELD_NOT_CONFIGURED warning after successful write",
+      "type": "bug",
+      "status": "In Progress",
+      "story_points": 2,
+      "priority": "Should",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [
+        "tool bug",
+        "adapter layer"
+      ],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": {
+        "ref": {
+          "id": "MI_kwDOSJo3Ms4A9EBk"
+        },
+        "name": "Bug Fixes & Diagnostics"
+      },
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgugP7E",
+        "key": "230"
+      },
+      "title": "[Bug]: Org-level GitHub Issue Fields silently dropped from all read paths",
+      "type": "bug",
+      "status": "Done",
+      "story_points": 3,
+      "priority": "Must",
+      "assignees": [],
+      "labels": [],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": null,
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "Issue"
+      }
+    },
+    {
+      "ref": {
         "id": "PVTI_lAHOAmfLjc4BWiTtzgt_Oro",
         "key": "187"
       },
@@ -18,9 +198,9 @@
         "adapter layer"
       ],
       "sprint": {
-        "name": "Sprint 4",
+        "name": null,
         "ref": {
-          "id": "07155ad6"
+          "id": ""
         }
       },
       "epic": {
@@ -38,31 +218,6 @@
           }
         }
       ],
-      "blocks": [],
-      "custom_fields": {
-        "__typename": "Issue"
-      }
-    },
-    {
-      "ref": {
-        "id": "PVTI_lAHOAmfLjc4BWiTtzgugP7E",
-        "key": "230"
-      },
-      "title": "[Bug]: Org-level GitHub Issue Fields silently dropped from all read paths",
-      "type": "bug",
-      "status": "Ready",
-      "story_points": 3,
-      "priority": "Must",
-      "assignees": [],
-      "labels": [],
-      "sprint": {
-        "name": "Sprint 4",
-        "ref": {
-          "id": "07155ad6"
-        }
-      },
-      "epic": null,
-      "blocked_by": [],
       "blocks": [],
       "custom_fields": {
         "__typename": "Issue"
@@ -124,41 +279,6 @@
         }
       },
       "epic": null,
-      "blocked_by": [],
-      "blocks": [],
-      "custom_fields": {
-        "__typename": "Issue"
-      }
-    },
-    {
-      "ref": {
-        "id": "PVTI_lAHOAmfLjc4BWiTtzguSudU",
-        "key": "214"
-      },
-      "title": "[Bug]: estimated:false filter returns Pull Requests and Done items as unestimated backlog",
-      "type": "bug",
-      "status": "In Progress",
-      "story_points": 1,
-      "priority": "Should",
-      "assignees": [
-        "hoonsubin"
-      ],
-      "labels": [
-        "tool bug",
-        "adapter layer"
-      ],
-      "sprint": {
-        "name": "Sprint 4",
-        "ref": {
-          "id": "07155ad6"
-        }
-      },
-      "epic": {
-        "ref": {
-          "id": "MI_kwDOSJo3Ms4A9EBk"
-        },
-        "name": "Bug Fixes & Diagnostics"
-      },
       "blocked_by": [],
       "blocks": [],
       "custom_fields": {
@@ -298,41 +418,6 @@
           "id": "MI_kwDOSJo3Ms4A9EBk"
         },
         "name": "Bug Fixes & Diagnostics"
-      },
-      "blocked_by": [],
-      "blocks": [],
-      "custom_fields": {
-        "__typename": "Issue"
-      }
-    },
-    {
-      "ref": {
-        "id": "PVTI_lAHOAmfLjc4BWiTtzguSug0",
-        "key": "218"
-      },
-      "title": "[Bug]: scrum_find_items serializes two structurally misleading empty fields — dependency_map: null and sprint.ref.id: \"\"",
-      "type": "tech_debt",
-      "status": "In Progress",
-      "story_points": 2,
-      "priority": "Could",
-      "assignees": [
-        "hoonsubin"
-      ],
-      "labels": [
-        "refactor",
-        "adapter layer"
-      ],
-      "sprint": {
-        "name": "Sprint 4",
-        "ref": {
-          "id": "07155ad6"
-        }
-      },
-      "epic": {
-        "ref": {
-          "id": "MI_kwDOSJo3Ms4A9J0x"
-        },
-        "name": "MCP Tool Surface Modernization for Scrum Theory Alignment"
       },
       "blocked_by": [],
       "blocks": [],
@@ -566,9 +651,9 @@
       },
       "title": "[Story]: SprintSnapshot.impediments — sprint-level enrichment",
       "type": "user_story",
-      "status": "Ready",
-      "story_points": 3,
-      "priority": "Could",
+      "status": "Done",
+      "story_points": 0,
+      "priority": "Won't",
       "assignees": [],
       "labels": [
         "feature"
@@ -699,38 +784,6 @@
     },
     {
       "ref": {
-        "id": "PVTI_lAHOAmfLjc4BWiTtzgs12Q8",
-        "key": "54"
-      },
-      "title": "[Story]: getOrphanImpediments() — implement in backend",
-      "type": "user_story",
-      "status": "Ready",
-      "story_points": 2,
-      "priority": "Should",
-      "assignees": [],
-      "labels": [
-        "feature"
-      ],
-      "sprint": {
-        "name": "Sprint 4",
-        "ref": {
-          "id": "07155ad6"
-        }
-      },
-      "epic": {
-        "ref": {
-          "id": "MI_kwDOSJo3Ms4A9EBe"
-        },
-        "name": "Scrum Process & Agent Rule Hardening"
-      },
-      "blocked_by": [],
-      "blocks": [],
-      "custom_fields": {
-        "__typename": "Issue"
-      }
-    },
-    {
-      "ref": {
         "id": "PVTI_lAHOAmfLjc4BWiTtzguSuho",
         "key": "219"
       },
@@ -747,9 +800,9 @@
         "adapter layer"
       ],
       "sprint": {
-        "name": "Sprint 4",
+        "name": null,
         "ref": {
-          "id": "07155ad6"
+          "id": ""
         }
       },
       "epic": {
@@ -857,9 +910,9 @@
       },
       "title": "[Tech Debt]: Replace readiness.by_type in scrum_get_board_health with flat active-item risk counts",
       "type": "tech_debt",
-      "status": "Ready",
-      "story_points": 3,
-      "priority": "Should",
+      "status": "Done",
+      "story_points": 0,
+      "priority": "Won't",
       "assignees": [
         "hoonsubin"
       ],
@@ -911,39 +964,6 @@
           "id": "MI_kwDOSJo3Ms4A9EBe"
         },
         "name": "Scrum Process & Agent Rule Hardening"
-      },
-      "blocked_by": [],
-      "blocks": [],
-      "custom_fields": {
-        "__typename": "Issue"
-      }
-    },
-    {
-      "ref": {
-        "id": "PVTI_lAHOAmfLjc4BWiTtzgu5694",
-        "key": "262"
-      },
-      "title": "[Bug]: scrum_set_field response nulls org-issue-backed fields and emits spurious FIELD_NOT_CONFIGURED warning after successful write",
-      "type": "bug",
-      "status": "Ready",
-      "story_points": 2,
-      "priority": "Should",
-      "assignees": [],
-      "labels": [
-        "tool bug",
-        "adapter layer"
-      ],
-      "sprint": {
-        "name": "Sprint 4",
-        "ref": {
-          "id": "07155ad6"
-        }
-      },
-      "epic": {
-        "ref": {
-          "id": "MI_kwDOSJo3Ms4A9EBk"
-        },
-        "name": "Bug Fixes & Diagnostics"
       },
       "blocked_by": [],
       "blocks": [],
@@ -1869,8 +1889,8 @@
   ],
   "total_count": 179,
   "scope_summary": {
-    "sprint_count": 130,
-    "backlog_count": 49
+    "sprint_count": 128,
+    "backlog_count": 51
   },
   "dependency_map": null
 }
