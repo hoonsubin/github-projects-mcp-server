@@ -7,7 +7,6 @@
 
 import type { PlatformCapabilities } from "./capabilities.ts";
 import type {
-  AnalyticsQuery,
   CreateResult,
   CreateStoryInput,
   ImpedimentListing,
@@ -25,8 +24,6 @@ import type {
 } from "../scrum/ports.ts";
 import type { BackendCallResult } from "../services/error-enrichment.ts";
 import type {
-  AnalyticsResult,
-  BacklogHealth,
   EpicListing,
   ImpedimentRef,
   ImpedimentStatus,
@@ -136,32 +133,13 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
 
   abstract getEpics(sprintIterationId?: string | null): Promise<EpicListing[]>;
 
-  /**
-   * Compute work completion for a sprint.
-   * Returns completed points and total committed points.
-   * { completed: 0, total: 0 } when no items have story points.
-   */
-  abstract getSprintCompletion(iterationId: string): Promise<{ completed: number; total: number }>;
-
-  // ── ProjectReader - unified search & analytics ───────────────────────────
+  // ── ProjectReader - unified search ───────────────────────────────────────
 
   /**
    * Unified item search across all PBIs.
    * Replaces getSprintStories() and getBacklogStories().
    */
   abstract findItems(filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResult>>;
-
-  /**
-   * Unified sprint analytics (burndown + history).
-   * Replaces getCompletedSprintHistory(), getBurndownInput(), and
-   * resolveCompletionTimestamps().
-   */
-  abstract getAnalytics(query: AnalyticsQuery): Promise<AnalyticsResult>;
-
-  /**
-   * Board health dashboard - aggregated metrics without item lists.
-   */
-  abstract getBoardHealth(sprintScope: string): Promise<BacklogHealth>;
 
   // ── ProjectReader - sprint data ──────────────────────────────────────────
 

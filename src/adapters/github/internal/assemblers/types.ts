@@ -5,7 +5,7 @@
 import type { ResolvedItemFilter } from "../../../../scrum/ports.ts";
 import type { BacklogItemListing, DependencyMap } from "../../../../domain/types.ts";
 
-export type { PlatformRequest } from "../platform-request.ts";
+export type { PlatformRequest } from "../infra/platform-request.ts";
 
 /** Discriminated union - one execution strategy per findItems request. */
 export type FilterProfile =

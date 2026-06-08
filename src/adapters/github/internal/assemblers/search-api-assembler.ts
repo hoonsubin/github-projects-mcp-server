@@ -9,12 +9,12 @@
 import type { GitHubBootState } from "../../bootstrap.ts";
 import type { ResolvedItemFilter } from "../../../../scrum/ports.ts";
 import type { AssemblerOutput, PlatformRequest } from "./types.ts";
-import { ExecutionEngine } from "../execution-engine.ts";
-import { ResultNormalizer } from "../result-normalizer.ts";
-import { buildSearchQueryString } from "../search-query-builder.ts";
-import { searchIssuesToProjectItems } from "../search-result-normalizer.ts";
-import { buildItemFilterFn } from "../item-filter.ts";
-import { buildDependencyMap } from "../story-query-service.ts";
+import { ExecutionEngine } from "../query-pipeline/execution-engine.ts";
+import { ResultNormalizer } from "../query-strategies/result-normalizer.ts";
+import { buildSearchQueryString } from "../query-strategies/search-query-builder.ts";
+import { searchIssuesToProjectItems } from "../query-strategies/search-result-normalizer.ts";
+import { buildItemFilterFn } from "../query-strategies/item-filter.ts";
+import { buildDependencyMap } from "../read-services/story-query-service.ts";
 import { finalizeAssemblerOutput } from "./assembler-output.ts";
 import { SEARCH_ISSUES_QUERY } from "../../queries.ts";
 import { searchIssuesExtractor, type SearchIssuesResponse } from "./extractors.ts";

@@ -10,8 +10,6 @@ import {
 import { AdapterError } from "../../domain/errors.ts";
 import { CapabilityStatus, type PlatformCapabilities } from "../../adapters/capabilities.ts";
 import type {
-  AnalyticsResult,
-  BacklogHealth,
   BacklogItemListing,
   EpicListing,
   ImpedimentRef,
@@ -24,7 +22,6 @@ import type {
   SupportedBackend,
 } from "../../domain/types.ts";
 import type {
-  AnalyticsQuery,
   CreateResult,
   CreateStoryInput,
   ImpedimentListing,
@@ -63,9 +60,6 @@ export type FakeBackendCall = {
 export interface ConfigShapedFakeBackendOptions {
   items?: readonly BacklogItemListing[];
   epics?: readonly EpicListing[];
-  sprintCompletion?: { completed: number; total: number };
-  boardHealth?: BacklogHealth;
-  analytics?: AnalyticsResult;
   storyDetail?: StoryDetail;
   /** When set, setField throws for this field (partial-failure contract tests). */
   setFieldFailureOn?: ScrumField;
@@ -136,26 +130,6 @@ const buildDefaultStory = (profile: ConfigProfile): Story => {
   };
 };
 
-const buildDefaultBoardHealth = (): BacklogHealth => ({
-  readiness: {
-    by_type: { feature: { ready: 1, not_ready: 0, total: 1 } },
-    overall_pct: 100,
-  },
-  sprint_risk: {
-    unestimated_count: 0,
-    blocked_count: 0,
-    no_assignee_count: 0,
-  },
-  impediments: { orphan_count: 0, open_count: 0 },
-  ungroomed_count: 0,
-});
-
-const buildDefaultAnalytics = (profile: ConfigProfile): AnalyticsResult => ({
-  burndown: null,
-  history: null,
-  window: profile.expectedVelocityWindow,
-});
-
 class FakeAdapterError extends AdapterError {
   readonly backendName: SupportedBackend = "github";
   readonly code = "NOT_FOUND";
@@ -173,9 +147,6 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
 
   private items: readonly BacklogItemListing[];
   private epics: readonly EpicListing[];
-  private sprintCompletion: { completed: number; total: number };
-  private boardHealth: BacklogHealth;
-  private analytics: AnalyticsResult;
   private storyDetail: StoryDetail;
   private setFieldFailureOn?: ScrumField;
 
@@ -192,9 +163,6 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
       story_count: 1,
       open_item_count: 1,
     }];
-    this.sprintCompletion = options.sprintCompletion ?? { completed: 3, total: 10 };
-    this.boardHealth = options.boardHealth ?? buildDefaultBoardHealth();
-    this.analytics = options.analytics ?? buildDefaultAnalytics(profile);
     this.storyDetail = options.storyDetail ?? {
       story: buildDefaultStory(profile),
       comments: [],
@@ -214,9 +182,6 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
     return new ConfigShapedFakeBackend(this.profile, {
       items,
       epics: this.epics,
-      sprintCompletion: this.sprintCompletion,
-      boardHealth: this.boardHealth,
-      analytics: this.analytics,
       storyDetail: this.storyDetail,
       setFieldFailureOn: this.setFieldFailureOn,
     });
@@ -226,23 +191,8 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
     return new ConfigShapedFakeBackend(this.profile, {
       items: this.items,
       epics: this.epics,
-      sprintCompletion: this.sprintCompletion,
-      boardHealth: this.boardHealth,
-      analytics: this.analytics,
       storyDetail: this.storyDetail,
       setFieldFailureOn: field,
-    });
-  }
-
-  withAnalytics(analytics: AnalyticsResult): ConfigShapedFakeBackend {
-    return new ConfigShapedFakeBackend(this.profile, {
-      items: this.items,
-      epics: this.epics,
-      sprintCompletion: this.sprintCompletion,
-      boardHealth: this.boardHealth,
-      analytics,
-      storyDetail: this.storyDetail,
-      setFieldFailureOn: this.setFieldFailureOn,
     });
   }
 
@@ -296,11 +246,6 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
   getEpics(_sprintIterationId?: string | null): Promise<EpicListing[]> {
     this.log("getEpics", _sprintIterationId);
     return Promise.resolve([...this.epics]);
-  }
-
-  getSprintCompletion(_iterationId: string): Promise<{ completed: number; total: number }> {
-    this.log("getSprintCompletion", _iterationId);
-    return Promise.resolve(this.sprintCompletion);
   }
 
   findItems(filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResult>> {
@@ -363,16 +308,6 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
   ): Promise<BackendCallResult<Story>> {
     this.log("composeStoryAfterCreateStory", ref, input);
     return Promise.resolve({ value: this.storyDetail.story, warnings: [] });
-  }
-
-  getAnalytics(query: AnalyticsQuery): Promise<AnalyticsResult> {
-    this.log("getAnalytics", query);
-    return Promise.resolve(this.analytics);
-  }
-
-  getBoardHealth(sprintScope: string): Promise<BacklogHealth> {
-    this.log("getBoardHealth", sprintScope);
-    return Promise.resolve(this.boardHealth);
   }
 
   override getSprintData(_query: SprintDataQuery): Promise<SprintRawData> {

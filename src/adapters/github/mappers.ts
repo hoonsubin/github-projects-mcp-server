@@ -17,7 +17,6 @@ import type {
 } from "../../domain/types.ts";
 import { computeSprintEndDate } from "../../scrum/sprint-math.ts";
 import type {
-  BurndownStoryInput,
   ItemAggregate,
   SprintInfo,
   StorySnapshotOverrides,
@@ -25,7 +24,7 @@ import type {
 import type { Story } from "../../domain/types.ts";
 import type { CreateStoryInput, ScrumField, StoryUpdates } from "../../scrum/ports.ts";
 import type { SprintRef } from "../../domain/types.ts";
-import { resolveSprint } from "./internal/resolver.ts";
+import { resolveSprint } from "./internal/infra/resolver.ts";
 import type {
   AssigneeNodes,
   BoardFields,
@@ -530,18 +529,6 @@ export const buildAggregateFromRaw = (
   };
 };
 
-export const aggregateToBurndownInput = (
-  agg: ItemAggregate,
-): BurndownStoryInput | null => {
-  if (agg.issueNumber === null || agg.title === null) return null;
-  return {
-    number: agg.issueNumber,
-    title: agg.title,
-    points: agg.storyPoints ?? 0,
-    status: agg.status,
-  };
-};
-
 /** Sum story points in terminal statuses for one sprint iteration. */
 export const sprintCompletionFromAggregates = (
   aggregates: readonly ItemAggregate[],
@@ -571,17 +558,6 @@ export const sprintCompletionFromAggregates = (
 
   return { completed, total };
 };
-
-// ── Burndown projection ────────────────────────────────────────────────────────
-
-/**
- * Project a ProjectItem to the four fields burndown computation needs.
- * Returns null for DraftIssues and items with no issue content.
- */
-export const buildBurndownStoryInput = (
-  item: ProjectItem,
-  config: GitHubBootState,
-): BurndownStoryInput | null => aggregateToBurndownInput(buildAggregateFromRaw(item, config));
 
 // ── Post-mutation snapshot merge ───────────────────────────────────────────────
 

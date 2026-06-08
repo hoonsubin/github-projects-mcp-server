@@ -3,15 +3,15 @@
 // =============================================================================
 
 import type { GitHubBootState } from "../../bootstrap.ts";
-import type { GitHubClient } from "../http-client.ts";
+import type { GitHubClient } from "../infra/http-client.ts";
 import type { ProjectItem } from "../../types.ts";
 import type { ResolvedItemFilter } from "../../../../scrum/ports.ts";
 import type { AssemblerOutput } from "./types.ts";
-import type { PaginationResult } from "../execution-engine.ts";
-import { fetchProjectItemsByIssueNumbers } from "../resolve-issue-number.ts";
-import { ResultNormalizer } from "../result-normalizer.ts";
-import { buildItemFilterFn } from "../item-filter.ts";
-import { buildDependencyMap } from "../story-query-service.ts";
+import type { PaginationResult } from "../query-pipeline/execution-engine.ts";
+import { fetchProjectItemsByIssueNumbers } from "../query-strategies/resolve-issue-number.ts";
+import { ResultNormalizer } from "../query-strategies/result-normalizer.ts";
+import { buildItemFilterFn } from "../query-strategies/item-filter.ts";
+import { buildDependencyMap } from "../read-services/story-query-service.ts";
 import { finalizeAssemblerOutput } from "./assembler-output.ts";
 
 /** Direct issue-number lookups via GetIssueProjectItem (no board scan). */

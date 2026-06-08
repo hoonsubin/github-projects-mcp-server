@@ -148,7 +148,7 @@ export interface DependencyEntry {
 
 /**
  * PBI vocabulary for item types.
- * Used in `z.enum(ITEM_TYPES)` in schemas, `TemplateUriMap`, and `BacklogHealth.by_type`.
+ * Used in `z.enum(ITEM_TYPES)` in schemas and `TemplateUriMap`.
  * Keep in sync with config.yml `type_mapping` keys.
  * todo: make the item types be dynamically populated based on the scrum config file properties
  */
@@ -216,16 +216,9 @@ export type TemplateUriMap = Partial<Record<ItemType, ScrumTemplateUri>>;
 // ── Sprint context ─────────────────────────────────────────────────────────────
 
 /**
- * Risk stance for the current sprint's time progress.
- * - `normal`: on track
- * - `monitor`: approaching deadline with insufficient progress
- * - `elevated`: significantly behind schedule
- */
-export type SprintRiskStance = "normal" | "monitor" | "elevated";
-
-/**
  * Sprint with time-progress fields.
  * Built by `sprintContextFromSprintInfo()` at the port boundary.
+ * Risk and readiness judgments are agent-side concerns (see scrum-master skill).
  */
 export interface SprintContext extends SprintWindowMeta {
   id: string;
@@ -233,28 +226,10 @@ export interface SprintContext extends SprintWindowMeta {
   goal: string | null;
   days_elapsed: number;
   time_elapsed_pct: number; // 0-100
-  riskStance: SprintRiskStance;
 }
 
 /**
- * Compute risk stance based on time elapsed vs. work remaining.
- * - `normal`: time_elapsed_pct <= 110% of work_pct (within 10% buffer)
- * - `monitor`: time_elapsed_pct > 110% of work_pct but < 130%
- * - `elevated`: time_elapsed_pct >= 130% of work_pct
- */
-const computeRiskStance = (
-  timeElapsedPct: number,
-  workPct: number,
-): SprintRiskStance => {
-  if (workPct === 0) return timeElapsedPct > 0 ? "elevated" : "normal";
-  const ratio = timeElapsedPct / workPct;
-  if (ratio >= 1.3) return "elevated";
-  if (ratio > 1.1) return "monitor";
-  return "normal";
-};
-
-/**
- * Build a SprintContext from sprint metadata + work data.
+ * Build a SprintContext from sprint metadata.
  * Called by orientUseCase to populate platform_state.iterations.active/next.
  */
 export const sprintContextFromSprintInfo = (
@@ -267,7 +242,6 @@ export const sprintContextFromSprintInfo = (
     duration_days: number;
   },
   daysElapsed: number,
-  workPct: number, // 0-100, percentage of committed points completed
 ): SprintContext => {
   const daysRemaining = Math.max(0, info.duration_days - daysElapsed);
   const timeElapsedPct = info.duration_days > 0
@@ -284,7 +258,6 @@ export const sprintContextFromSprintInfo = (
     days_elapsed: daysElapsed,
     days_remaining: daysRemaining,
     time_elapsed_pct: timeElapsedPct,
-    riskStance: computeRiskStance(timeElapsedPct, workPct),
   };
 };
 
@@ -300,44 +273,6 @@ export interface EpicSummary {
   description: string | null;
   status: EpicStatus | null;
   open_item_count: number;
-}
-
-// ── Board health ───────────────────────────────────────────────────────────────
-
-/**
- * Sprint risk signals - actionable counts the agent uses for intervention.
- * Structured as an object (not a string enum) so each signal carries
- * a concrete count the agent can act on directly.
- */
-export interface SprintRisk {
-  readonly unestimated_count: number;
-  readonly blocked_count: number; // items whose status = "Blocked" vocabulary option
-  readonly no_assignee_count: number;
-}
-
-/** Per-type readiness breakdown: ready, not_ready, total counts. */
-export type ReadinessBreakdown = { ready: number; not_ready: number; total: number };
-
-/**
- * Board health output for scrum_get_board_health.
- * Aggregated metrics - no individual story data.
- */
-export interface BacklogHealth {
-  readonly readiness: {
-    /** Per-PBI-type breakdown of ready vs not-ready items. */
-    /** Per-type breakdown of ready vs not-ready items. Uses `string` key to accommodate untyped items. */
-    readonly by_type: Record<string, ReadinessBreakdown>;
-    /** Percentage of all items meeting Definition of Ready (0-100). */
-    readonly overall_pct: number;
-  };
-  readonly sprint_risk: SprintRisk | null; // null when no active sprint
-  readonly impediments: {
-    /** Impediments not linked to any story (project-level blockers). */
-    readonly orphan_count: number;
-    /** Total open impediments (open + in_progress). */
-    readonly open_count: number;
-  };
-  readonly ungroomed_count: number; // items missing type OR estimate OR AC
 }
 
 // ── Item listing (findItems output) ────────────────────────────────────────────
@@ -461,15 +396,6 @@ export interface IterationEntry {
   duration: number;
 }
 
-// ── Burndown types (scrum_get_burndown) ───────────────────────────────────────
-
-/** Strategy used to derive burndown data. */
-export type DataSource =
-  | "audit_log"
-  | "issue_close_proxy"
-  | "issue_closed_at"
-  | "issue_closed_at_and_timeline";
-
 /** Metadata describing a sprint time window. */
 export interface SprintWindowMeta {
   readonly name: string;
@@ -477,38 +403,6 @@ export interface SprintWindowMeta {
   readonly end_date: string;
   readonly duration_days: number;
   readonly days_remaining: number;
-}
-
-/** Response shape for scrum_get_burndown. */
-export interface BurndownResponse {
-  readonly sprint: SprintWindowMeta;
-  readonly data_source: DataSource;
-  readonly warning?: string;
-  readonly series: readonly BurndownDayPoint[];
-  readonly ideal: readonly IdealDayPoint[];
-  readonly stories: readonly BurndownStory[];
-}
-
-/** One entry in the actual burndown series - one per calendar day. */
-export interface BurndownDayPoint {
-  date: string; // YYYY-MM-DD
-  remaining_points: number;
-  completed_points: number;
-}
-
-/** One entry in the ideal burndown line - one per calendar day. */
-export interface IdealDayPoint {
-  date: string; // YYYY-MM-DD
-  remaining_points: number;
-}
-
-/** Lightweight per-story summary in the burndown response. */
-export interface BurndownStory {
-  number: number;
-  title: string;
-  points: number; // 0 if the story has no points assigned
-  status: string | null;
-  completed_at: string | null; // ISO-8601 timestamp, or null if not yet done
 }
 
 // ── Find-items output ──────────────────────────────────────────────────────────
@@ -525,56 +419,6 @@ export interface ItemSearchResult {
     backlog_count: number | null;
   };
   dependency_map: DependencyMap | null;
-}
-
-// ── Sprint snapshot (analytics / history) ──────────────────────────────────────
-
-/**
- * Totals for a sprint snapshot.
- * Discriminated union - narrow on `kind` to access variant-specific fields.
- * - "active": totals for an in-progress sprint
- * - "completed": totals for a completed sprint (adds velocity metrics)
- */
-export type SprintTotals =
-  | {
-    kind: "active";
-    by_status: Record<string, number>;
-    story_points: number;
-  }
-  | {
-    kind: "completed";
-    by_status: Record<string, number>;
-    story_points: number;
-    committed_points: number;
-    completed_points: number;
-  };
-
-/** Discriminant for SprintTotals discriminated union. Derived - stays in sync automatically. */
-export type SprintTotalsKind = SprintTotals["kind"];
-
-/**
- * Sprint + item listing - canonical shape for both active and historical sprints.
- *
- * totals is a SprintTotals discriminated union - narrow on totals.kind
- * instead of checking for committed_points presence.
- */
-export interface SprintSnapshot {
-  readonly sprint: SprintWindowMeta;
-  readonly items: readonly BacklogItemListing[];
-  readonly total_count: number;
-  readonly totals: SprintTotals;
-}
-
-// ── Analytics output ───────────────────────────────────────────────────────────
-
-/**
- * Output for scrum_get_analytics.
- * Merges burndown data + sprint history into a single type.
- */
-export interface AnalyticsResult {
-  burndown: BurndownResponse | null; // null if burndown unavailable (view === "history")
-  history: SprintSnapshot[] | null; // null if history unavailable (view === "burndown")
-  window: number;
 }
 
 // ── Story detail output ────────────────────────────────────────────────────────
@@ -655,7 +499,7 @@ export type TeamRole = "scrum_master" | "product_owner" | "developer";
 /**
  * Exported output type for scrum_orient.
  * Extends PartialResult because orientUseCase wraps fallible backend calls
- * (getEpics, getSprintCompletion) via catchBackend() and accumulates their
+ * (getEpics) via catchBackend() and accumulates their
  * warnings here.
  */
 export interface OrientResult extends PartialResult {

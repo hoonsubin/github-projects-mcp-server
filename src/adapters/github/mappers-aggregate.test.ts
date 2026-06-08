@@ -1,6 +1,5 @@
 import { assertEquals } from "@std/assert";
 import {
-  aggregateToBurndownInput,
   buildAggregateFromRaw,
   sprintCompletionFromAggregates,
 } from "./mappers.ts";
@@ -69,16 +68,6 @@ Deno.test("buildAggregateFromRaw - maps sprint iteration and issue identity", ()
   assertEquals(agg.issueNumber, 42);
   assertEquals(agg.hasBlockers, true);
   assertEquals(agg.hasAssignee, true);
-});
-
-Deno.test("aggregateToBurndownInput - projects burndown row", () => {
-  const agg = buildAggregateFromRaw(issueItem, config);
-  assertEquals(aggregateToBurndownInput(agg), {
-    number: 42,
-    title: "Hello",
-    points: 5,
-    status: "Done",
-  });
 });
 
 Deno.test("sprintCompletionFromAggregates - sums terminal status points", () => {

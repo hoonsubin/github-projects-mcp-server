@@ -2,7 +2,7 @@
 // =============================================================================
 
 import type { AdapterFactory, AdapterStartupOptions, BackendResult } from "../factory.ts";
-import { graphql, rest } from "./internal/http-client.ts";
+import { graphql, rest } from "./internal/infra/http-client.ts";
 import type { GitHubBackendConfig } from "./types.ts";
 import { resolveToken, validateToken } from "./types.ts";
 import { describeContentLocation } from "../../domain/content-location.ts";

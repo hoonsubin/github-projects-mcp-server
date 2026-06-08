@@ -4,16 +4,16 @@
 
 import { assertEquals, assertExists, assertStrictEquals, assertStringIncludes } from "@std/assert";
 import { ProjectItemsAssembler } from "./project-items-assembler.ts";
-import { BoardScanCoordinator } from "../board-scan-coordinator.ts";
-import { ResultNormalizer } from "../result-normalizer.ts";
-import { createGhSpy, makeConfig } from "../_test_utils.ts";
+import { BoardScanCoordinator } from "../read-services/board-scan-coordinator.ts";
+import { ResultNormalizer } from "../query-strategies/result-normalizer.ts";
+import { createGhSpy, makeConfig } from "../infra/_test_utils.ts";
 import type { ResolvedItemFilter } from "../../../../scrum/ports.ts";
 import {
   FIXTURE_ITEM_WITH_CUSTOM_FIELDS,
   FIXTURE_PAGE_1,
   FIXTURE_PAGE_2,
   makePageEnvelope,
-} from "../_test_fixtures.ts";
+} from "../infra/_test_fixtures.ts";
 
 const P1_NODES = FIXTURE_PAGE_1.user.projectV2.items.nodes;
 const P2_NODES = FIXTURE_PAGE_2.user.projectV2.items.nodes;

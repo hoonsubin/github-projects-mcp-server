@@ -111,7 +111,7 @@ module.exports = {
       severity: "error",
       from: {
         path: "^src/adapters/github/internal/",
-        pathNot: "(query-pipeline|query-strategies|read-services)/",
+        pathNot: "(query-pipeline|query-strategies|read-services|assemblers)/",
       },
       to: { path: "^src/adapters/github/internal/query-pipeline/" },
     },
@@ -138,7 +138,7 @@ module.exports = {
       from: { path: "^src/adapters/github/internal/read-services/" },
       to: {
         path:
-          "^src/adapters/github/internal/(write-services/|pagination\\.ts|execution-engine\\.ts|rate-limiter\\.ts|retry-handler\\.ts|query-runner\\.ts)",
+          "^src/adapters/github/internal/(write-services/|query-pipeline/(pagination|execution-engine)\\.ts)",
       },
     },
 

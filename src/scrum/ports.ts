@@ -11,9 +11,6 @@
 // =============================================================================
 
 import type {
-  AnalyticsResult,
-  BacklogHealth,
-  EntityRef,
   EpicListing,
   EpicRef,
   EpicRefWithName,
@@ -80,16 +77,6 @@ export interface ResolvedItemFilter {
   readonly sprint_ref: string | null;
   readonly include_dependencies: boolean;
   readonly limit: number;
-}
-
-/**
- * Input query for getAnalytics port method.
- * Defined at the port boundary because it's an input type, not a domain type.
- */
-export interface AnalyticsQuery {
-  readonly view: AnalyticsView;
-  readonly sprint_ref?: string | null;
-  readonly history_window?: number; // 1-10, used when view includes history
 }
 
 // ── Supporting types that cross the boundary ──────────────────────────────────
@@ -234,42 +221,6 @@ export interface StorySnapshotOverrides {
   readonly blocked_by?: readonly StoryRef[] | null;
 }
 
-/**
- * Lightweight per-story projection shared by history and burndown.
- * Defined here (at the port boundary) so both the use-case layer (sprint-math)
- * and the adapter layer (mappers) can reference a single canonical type.
- */
-export interface BurndownStoryInput {
-  readonly number: number;
-  readonly title: string;
-  readonly points: number;
-  readonly status: string | null;
-  readonly ref?: EntityRef;
-}
-
-/** One completed sprint's worth of data for history. */
-export interface SprintHistoryEntry {
-  info: SprintInfo;
-  stories: BurndownStoryInput[];
-}
-
-/** Stories + sprint geometry needed to compute a burndown series. */
-export interface BurndownInput {
-  sprint: SprintInfo;
-  stories: BurndownStoryInput[];
-}
-
-/** Completion timestamps per story number. */
-export interface CompletionMap {
-  completions: Map<number, string>; // issue number → ISO-8601 timestamp
-  dataSource:
-    | "audit_log"
-    | "issue_close_proxy"
-    | "issue_closed_at"
-    | "issue_closed_at_and_timeline";
-  warning?: string;
-}
-
 /** Inputs for scrum_create_story. */
 export interface CreateStoryInput {
   readonly title: string;
@@ -358,24 +309,8 @@ export interface FindItemsPort {
 }
 
 /**
- * Analytics port - unified sprint analytics (burndown + history).
- * Replaces HistoryPort.getCompletedSprintHistory() and BurndownPort methods.
- */
-export interface AnalyticsPort {
-  getAnalytics(query: AnalyticsQuery): Promise<AnalyticsResult>;
-}
-
-/**
- * Board health port - health dashboard (no item lists).
- * Provides aggregated metrics without returning individual story data.
- */
-export interface BoardHealthPort {
-  getBoardHealth(sprintScope: string): Promise<BacklogHealth>;
-}
-
-/**
  * Impediment port - returns sprint-specific impediments and allows status updates.
- * Used by: getBoardHealthUseCase, updateImpedimentUseCase
+ * Used by: updateImpedimentUseCase
  */
 export interface ImpedimentPort {
   getSprintImpediments(sprint: SprintRef): Promise<ImpedimentListing[]>;
@@ -413,21 +348,12 @@ export interface ProjectReader
     StoryPort,
     EpicPort,
     FindItemsPort,
-    AnalyticsPort,
-    BoardHealthPort,
     ImpedimentPort,
     SprintDataPort {
   getPlatformState(declaredVocabulary: {
     canonicalStatusKeys: string[];
     canonicalPriorityKeys: string[];
   }): Promise<BackendCallResult<PlatformState>>;
-
-  /**
-   * Compute work completion for a sprint.
-   * Returns completed points and total committed points.
-   * { completed: 0, total: 0 } when no items have story points.
-   */
-  getSprintCompletion(iterationId: string): Promise<{ completed: number; total: number }>;
 
   /**
    * Re-sync with the platform: re-fetch live field metadata (iterations, field

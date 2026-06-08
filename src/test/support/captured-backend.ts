@@ -12,7 +12,6 @@ import {
 import type { CapturedProfile } from "../__fixtures__/index.ts";
 import type { BackendCallResult } from "../../services/error-enrichment.ts";
 import type {
-  AnalyticsQuery,
   CreateStoryInput,
   ImpedimentListing,
   PlatformState,
@@ -27,8 +26,6 @@ import type {
   VocabularyKind,
 } from "../../scrum/ports.ts";
 import type {
-  AnalyticsResult,
-  BacklogHealth,
   EpicListing,
   ItemSearchResult,
   SprintRef,
@@ -146,10 +143,6 @@ export class CapturedDataBackend extends AbstractProjectBackend {
     return Promise.resolve([]);
   }
 
-  getSprintCompletion(_iterationId: string): Promise<{ completed: number; total: number }> {
-    return Promise.resolve({ completed: 0, total: 0 });
-  }
-
   override getSprintData(query: SprintDataQuery): Promise<SprintRawData> {
     const { sprint_ref } = query;
     const iterations = this.profile.platformState.iterations;
@@ -194,26 +187,8 @@ export class CapturedDataBackend extends AbstractProjectBackend {
     return Promise.resolve({ sprint, items });
   }
 
-  // ── ProjectReader - unified search & analytics ───────────────────────────
-
   findItems(_filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResult>> {
     return Promise.resolve({ value: this.profile.findItems, warnings: [] });
-  }
-
-  getAnalytics(query: AnalyticsQuery): Promise<AnalyticsResult> {
-    if (query.view === "burndown" || query.view === "both") {
-      throw new UnsupportedCapabilityError(this.capabilities.platform, "getAnalytics(burndown)");
-    }
-    return Promise.resolve({ burndown: null, history: [], window: 5 });
-  }
-
-  getBoardHealth(_sprintScope: string): Promise<BacklogHealth> {
-    return Promise.resolve({
-      readiness: { by_type: {}, overall_pct: 0 },
-      sprint_risk: null,
-      impediments: { orphan_count: 0, open_count: 0 },
-      ungroomed_count: 0,
-    });
   }
 
   // ── ProjectReader - impediments ──────────────────────────────────────────

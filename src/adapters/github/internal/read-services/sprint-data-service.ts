@@ -7,12 +7,12 @@
 // =============================================================================
 
 import { GitHubApiError } from "../../errors.ts";
-import { BoardScanCoordinator } from "../board-scan-coordinator.ts";
+import { BoardScanCoordinator } from "./board-scan-coordinator.ts";
 import { buildAggregateFromRaw } from "../../mappers.ts";
-import { resolveSprint } from "../resolver.ts";
+import { resolveSprint } from "../infra/resolver.ts";
 import { computeSprintEndDate } from "../../../../scrum/sprint-math.ts";
 import { completionsFromBoardItems } from "../infra/burndown-completion.ts";
-import type { GitHubInfraContext } from "../infra-context.ts";
+import type { GitHubInfraContext } from "../infra/infra-context.ts";
 import type { ProjectItem } from "../../types.ts";
 import type {
   SprintDataQuery,

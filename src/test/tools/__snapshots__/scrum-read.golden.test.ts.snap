@@ -54,8 +54,7 @@ snapshot[`golden: scrum_orient handler output 1`] = `
         "duration_days": 14,
         "days_elapsed": "[COMPUTED]",
         "days_remaining": "[COMPUTED]",
-        "time_elapsed_pct": "[COMPUTED]",
-        "riskStance": "[COMPUTED]"
+        "time_elapsed_pct": "[COMPUTED]"
       },
       "next": {
         "id": "IT_fake_next",
@@ -66,8 +65,7 @@ snapshot[`golden: scrum_orient handler output 1`] = `
         "duration_days": 14,
         "days_elapsed": "[COMPUTED]",
         "days_remaining": "[COMPUTED]",
-        "time_elapsed_pct": "[COMPUTED]",
-        "riskStance": "[COMPUTED]"
+        "time_elapsed_pct": "[COMPUTED]"
       },
       "completed_count": 0
     },

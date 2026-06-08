@@ -14,8 +14,7 @@ import {
 } from "../support/contract-assertions.ts";
 import type { ItemSearchResult, OrientResult } from "../../domain/types.ts";
 import {
-  AnalyticsResultSchema,
-  BacklogHealthSchema,
+  DeprecationStubSchema,
   ItemDetailResultSchema,
   ItemSearchResultSchema,
   OrientResultSchema,
@@ -95,59 +94,28 @@ Deno.test("scrum_get_item_detail - happy path schema", async () => {
   assertEquals(payload.story.ref.id, listing.ref.id);
 });
 
-Deno.test("scrum_get_board_health - happy path schema", async () => {
+Deno.test("scrum_get_board_health - returns deprecation stub", async () => {
   const backend = await committedFakeBackendPromise;
-
-  assertHandlerSchema(
-    await handleGetBoardHealth(backend, { sprint_scope: "current" }),
-    BacklogHealthSchema,
-    "scrum_get_board_health",
-  );
-});
-
-Deno.test("scrum_get_board_health - explicit sprint name variant", async () => {
-  const backend = await committedFakeBackendPromise;
-
-  assertHandlerSchema(
-    await handleGetBoardHealth(backend, { sprint_scope: "Sprint 1" }),
-    BacklogHealthSchema,
-    "scrum_get_board_health (named sprint)",
-  );
-});
-
-Deno.test("scrum_get_analytics - both views schema", async () => {
-  const profile = await committedConfigProfilePromise;
-  const backend = await committedFakeBackendPromise;
-
-  assertHandlerSchema(
-    await handleGetAnalytics(backend, {
-      view: "both",
-      history_window: profile.expectedVelocityWindow,
-    }),
-    AnalyticsResultSchema,
-    "scrum_get_analytics (both)",
-  );
-});
-
-Deno.test("scrum_get_analytics - history-only variant", async () => {
-  const profile = await committedConfigProfilePromise;
-  const historyOnly = {
-    burndown: null,
-    history: [],
-    window: profile.expectedVelocityWindow,
-  };
-  const backend = (await committedFakeBackendPromise).withAnalytics(historyOnly);
 
   const payload = assertHandlerSchema(
-    await handleGetAnalytics(backend, {
-      view: "history",
-      history_window: profile.expectedVelocityWindow,
-    }),
-    AnalyticsResultSchema,
-    "scrum_get_analytics (history)",
+    await handleGetBoardHealth(backend, { sprint_scope: "current" }),
+    DeprecationStubSchema,
+    "scrum_get_board_health",
   );
-  assertEquals(payload.burndown, null);
-  assertEquals(payload.history, []);
+  assertEquals(payload.deprecated, true);
+  assertEquals(payload.use, "scrum_get_sprint_data");
+});
+
+Deno.test("scrum_get_analytics - returns deprecation stub", async () => {
+  const backend = await committedFakeBackendPromise;
+
+  const payload = assertHandlerSchema(
+    await handleGetAnalytics(backend, { view: "both", history_window: 5 }),
+    DeprecationStubSchema,
+    "scrum_get_analytics",
+  );
+  assertEquals(payload.deprecated, true);
+  assertEquals(payload.use, "scrum_get_sprint_data");
 });
 
 Deno.test("scrum_get_sprint_data - happy path schema", async () => {

@@ -16,8 +16,6 @@ import type { z } from "zod";
 import { orientUseCase } from "../../scrum/orient.ts";
 import { getStoryUseCase } from "../../scrum/get-story.ts";
 import { findItemsUseCase } from "../../scrum/find-items.ts";
-import { getAnalyticsUseCase } from "../../scrum/get-analytics.ts";
-import { getBoardHealthUseCase } from "../../scrum/get-board-health.ts";
 import { getSprintDataUseCase } from "../../scrum/get-sprint-data.ts";
 import { type McpTextResult, toMcpTextResult } from "../_mcp_result.ts";
 
@@ -25,6 +23,11 @@ const mergeWarnings = <T extends object>(
   data: T,
   warnings: readonly string[],
 ): T & { warnings?: string[] } => warnings.length > 0 ? { ...data, warnings: [...warnings] } : data;
+
+const DEPRECATION_STUB = {
+  deprecated: true as const,
+  use: "scrum_get_sprint_data" as const,
+};
 
 export const handleOrient = async (
   backend: ProjectBackend,
@@ -50,25 +53,15 @@ export const handleFindItems = async (
   return toMcpTextResult(mergeWarnings(data, warnings));
 };
 
-export const handleGetAnalytics = async (
-  backend: ProjectBackend,
-  params: z.infer<typeof GetAnalyticsSchema>,
-): Promise<McpTextResult> => {
-  const { data, warnings } = await getAnalyticsUseCase(backend, {
-    view: params.view ?? "both",
-    sprint_ref: params.sprint_ref,
-    history_window: params.history_window,
-  });
-  return toMcpTextResult(mergeWarnings(data, warnings));
-};
+export const handleGetAnalytics = (
+  _backend: ProjectBackend,
+  _params: z.infer<typeof GetAnalyticsSchema>,
+): Promise<McpTextResult> => Promise.resolve(toMcpTextResult(DEPRECATION_STUB));
 
-export const handleGetBoardHealth = async (
-  backend: ProjectBackend,
-  params: z.infer<typeof GetBoardHealthSchema>,
-): Promise<McpTextResult> => {
-  const { data, warnings } = await getBoardHealthUseCase(backend, params.sprint_scope);
-  return toMcpTextResult(mergeWarnings(data, warnings));
-};
+export const handleGetBoardHealth = (
+  _backend: ProjectBackend,
+  _params: z.infer<typeof GetBoardHealthSchema>,
+): Promise<McpTextResult> => Promise.resolve(toMcpTextResult(DEPRECATION_STUB));
 
 export const handleGetSprintData = async (
   backend: ProjectBackend,

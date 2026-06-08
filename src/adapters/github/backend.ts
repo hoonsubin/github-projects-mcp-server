@@ -12,34 +12,31 @@ import { GITHUB_CAPABILITIES } from "../capabilities.ts";
 import { AbstractProjectBackend } from "../abstract-backend.ts";
 import { assertNever } from "../../domain/errors.ts";
 import { type GitHubBootState } from "./bootstrap.ts";
-import { LabelResolver } from "./internal/label-resolver.ts";
-import { FieldValueMutator } from "./internal/field-value-mutator.ts";
-import { VocabularyManager } from "./internal/vocabulary-manager.ts";
-import { StoryQueryService } from "./internal/story-query-service.ts";
-import { StoryMutationService } from "./internal/story-mutation-service.ts";
-import { ImpedimentService } from "./internal/impediment-service.ts";
-import { EpicService } from "./internal/epic-service.ts";
-import { ConfigReloader } from "./internal/config-reloader.ts";
-import { AnalyticsService } from "./internal/analytics-service.ts";
-import { BoardHealthService } from "./internal/board-health-service.ts";
+import { LabelResolver } from "./internal/write-services/label-resolver.ts";
+import { FieldValueMutator } from "./internal/write-services/field-value-mutator.ts";
+import { VocabularyManager } from "./internal/write-services/vocabulary-manager.ts";
+import { StoryQueryService } from "./internal/read-services/story-query-service.ts";
+import { StoryMutationService } from "./internal/write-services/story-mutation-service.ts";
+import { ImpedimentService } from "./internal/read-services/impediment-service.ts";
+import { EpicService } from "./internal/read-services/epic-service.ts";
+import { ConfigReloader } from "./internal/infra/config-reloader.ts";
 import { resolveSprintGoal } from "./mappers.ts";
-import { classifyFilter } from "./internal/filter-strategy-router.ts";
+import { classifyFilter } from "./internal/query-strategies/filter-strategy-router.ts";
 import { DirectLookupAssembler } from "./internal/assemblers/direct-lookup-assembler.ts";
 import { ProjectItemsAssembler } from "./internal/assemblers/project-items-assembler.ts";
 import { SearchApiAssembler } from "./internal/assemblers/search-api-assembler.ts";
 import { MixedAssembler } from "./internal/assemblers/mixed-assembler.ts";
-import { BoardScanCoordinator } from "./internal/board-scan-coordinator.ts";
+import { BoardScanCoordinator } from "./internal/read-services/board-scan-coordinator.ts";
 import { SprintDataService } from "./internal/read-services/sprint-data-service.ts";
 import {
   storySnapshotOverridesFromCreateStory,
   storySnapshotOverridesFromSetField,
   storySnapshotOverridesFromStoryUpdates,
 } from "./mappers.ts";
-import { resolveProjectItemIdByIssueNumber } from "./internal/resolve-issue-number.ts";
-import type { GitHubClient } from "./internal/http-client.ts";
+import { resolveProjectItemIdByIssueNumber } from "./internal/query-strategies/resolve-issue-number.ts";
+import type { GitHubClient } from "./internal/infra/http-client.ts";
 import type { GitHubBackendConfig } from "./types.ts";
 import type {
-  AnalyticsQuery,
   CreateResult,
   CreateStoryInput,
   ImpedimentListing,
@@ -56,8 +53,6 @@ import type {
 } from "../../scrum/ports.ts";
 import { type BackendCallResult, catchBackend } from "../../services/error-enrichment.ts";
 import type {
-  AnalyticsResult,
-  BacklogHealth,
   EntityRef,
   EpicListing,
   ImpedimentRef,
@@ -92,8 +87,6 @@ export interface GitHubBackendDependencies {
   readonly owner: string;
   readonly repo: string;
   readonly configReloader: ConfigReloader;
-  readonly analyticsService: AnalyticsService;
-  readonly boardHealthService: BoardHealthService;
   readonly directLookupAssembler: DirectLookupAssembler;
   readonly projectItemsAssembler: ProjectItemsAssembler;
   readonly searchApiAssembler: SearchApiAssembler;
@@ -274,16 +267,8 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
     };
   }
 
-  getAnalytics(query: AnalyticsQuery): Promise<AnalyticsResult> {
-    return this.deps.analyticsService.getAnalytics(query);
-  }
-
   override getSprintData(query: SprintDataQuery): Promise<SprintRawData> {
     return this.deps.sprintDataService.getSprintData(query);
-  }
-
-  getBoardHealth(sprintScope: string): Promise<BacklogHealth> {
-    return this.deps.boardHealthService.getBoardHealth(sprintScope);
   }
 
   // ── Story read delegations ────────────────────────────────────────────────
@@ -331,10 +316,6 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
 
   getEpics(sprintIterationId?: string | null): Promise<EpicListing[]> {
     return this.deps.epicService.getEpics(sprintIterationId);
-  }
-
-  getSprintCompletion(iterationId: string): Promise<{ completed: number; total: number }> {
-    return this.deps.storyQueryService.computeSprintCompletion(iterationId);
   }
 
   // ── Story write delegations ───────────────────────────────────────────────

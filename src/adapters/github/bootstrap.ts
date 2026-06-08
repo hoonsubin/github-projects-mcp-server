@@ -28,7 +28,7 @@ import {
 } from "./bootstrap-field-sources.ts";
 import { GET_OWNER_BOOTSTRAP_QUERY, RESOLVE_REPOSITORY_OWNER } from "./queries.ts";
 import type { SelectFieldNode } from "./types.ts";
-import { classifyIterations } from "./internal/iteration-classifier.ts";
+import { classifyIterations } from "./internal/infra/iteration-classifier.ts";
 // ── Template path resolver (pure, no API call) ────────────────────────────────
 
 /**

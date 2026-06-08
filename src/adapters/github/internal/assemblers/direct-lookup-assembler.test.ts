@@ -6,9 +6,9 @@
 
 import { assertEquals, assertExists } from "@std/assert";
 import { DirectLookupAssembler } from "./direct-lookup-assembler.ts";
-import { ResultNormalizer } from "../result-normalizer.ts";
-import { createGhSpy, makeConfig } from "../_test_utils.ts";
-import { FIXTURE_ITEM_222 } from "../_test_fixtures.ts";
+import { ResultNormalizer } from "../query-strategies/result-normalizer.ts";
+import { createGhSpy, makeConfig } from "../infra/_test_utils.ts";
+import { FIXTURE_ITEM_222 } from "../infra/_test_fixtures.ts";
 
 Deno.test({
   name: "DirectLookupAssembler - fetches keyed item without board scan",

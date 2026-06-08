@@ -80,7 +80,6 @@ const SprintContextSchema = z.object({
   days_elapsed: z.number(),
   days_remaining: z.number(),
   time_elapsed_pct: z.number(),
-  riskStance: z.enum(["normal", "monitor", "elevated"]),
 }).strict();
 
 const EpicSummarySchema = z.object({
@@ -211,93 +210,9 @@ export const ImpedimentListingSchema = z.object({
   resolved_at: z.string().nullable(),
 }).strict();
 
-const ReadinessBreakdownSchema = z.object({
-  ready: z.number(),
-  not_ready: z.number(),
-  total: z.number(),
-}).strict();
-
-export const BacklogHealthSchema = z.object({
-  readiness: z.object({
-    by_type: z.record(z.string(), ReadinessBreakdownSchema),
-    overall_pct: z.number(),
-  }).strict(),
-  sprint_risk: z.object({
-    unestimated_count: z.number(),
-    blocked_count: z.number(),
-    no_assignee_count: z.number(),
-  }).strict().nullable(),
-  impediments: z.object({
-    orphan_count: z.number(),
-    open_count: z.number(),
-  }).strict(),
-  ungroomed_count: z.number(),
-  warnings: z.array(z.string()).optional(),
-}).strict();
-
-const SprintWindowMetaSchema = z.object({
-  name: z.string(),
-  start_date: z.string(),
-  end_date: z.string(),
-  duration_days: z.number(),
-  days_remaining: z.number(),
-}).strict();
-
-const BurndownResponseSchema = z.object({
-  sprint: SprintWindowMetaSchema,
-  data_source: z.enum(["audit_log", "issue_close_proxy"]),
-  warning: z.string().optional(),
-  series: z.array(
-    z.object({
-      date: z.string(),
-      remaining_points: z.number(),
-      completed_points: z.number(),
-    }).strict(),
-  ),
-  ideal: z.array(
-    z.object({
-      date: z.string(),
-      remaining_points: z.number(),
-    }).strict(),
-  ),
-  stories: z.array(
-    z.object({
-      number: z.number(),
-      title: z.string(),
-      points: z.number(),
-      status: z.string().nullable(),
-      completed_at: z.string().nullable(),
-    }).strict(),
-  ),
-}).strict();
-
-const SprintTotalsSchema = z.discriminatedUnion("kind", [
-  z.object({
-    kind: z.literal("active"),
-    by_status: z.record(z.string(), z.number()),
-    story_points: z.number(),
-  }).strict(),
-  z.object({
-    kind: z.literal("completed"),
-    by_status: z.record(z.string(), z.number()),
-    story_points: z.number(),
-    committed_points: z.number(),
-    completed_points: z.number(),
-  }).strict(),
-]);
-
-const SprintSnapshotSchema = z.object({
-  sprint: SprintWindowMetaSchema,
-  items: z.array(BacklogItemListingSchema),
-  total_count: z.number(),
-  totals: SprintTotalsSchema,
-}).strict();
-
-export const AnalyticsResultSchema = z.object({
-  burndown: BurndownResponseSchema.nullable(),
-  history: z.array(SprintSnapshotSchema).nullable(),
-  window: z.number(),
-  warnings: z.array(z.string()).optional(),
+export const DeprecationStubSchema = z.object({
+  deprecated: z.literal(true),
+  use: z.literal("scrum_get_sprint_data"),
 }).strict();
 
 export const AddVocabularyResultSchema = z.object({

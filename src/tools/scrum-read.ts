@@ -16,8 +16,7 @@ import {
 } from "../schemas/scrum.ts";
 import { z } from "zod";
 import {
-  AnalyticsResultSchema,
-  BacklogHealthSchema,
+  DeprecationStubSchema,
   ItemDetailResultSchema,
   ItemSearchResultSchema,
   OrientResultSchema,
@@ -177,32 +176,14 @@ export const registerScrumReadTools = (
     "scrum_get_analytics",
     {
       title: "Get Sprint Analytics",
-      description: `Unified sprint analytics - burndown + velocity history.
+      description: `DEPRECATED — use scrum_get_sprint_data instead.
 
-        Always pass view explicitly - default "both" fetches more data than most calls need:
-          "burndown" → standup / daily monitoring (current sprint progress only)
-          "history"  → velocity question, retrospective preparation (completed sprints only)
-          "both"     → sprint report, full board assessment
+        This tool no longer returns analytics. The agent skill computes burndown,
+        velocity, and sprint history from raw sprint data.
 
-        Set history_window from vocabulary.sprint.velocity_window in scrum_orient (default 5 if absent).
-        Do not leave it at the server default when the config declares a preferred window.
-
-        Args:
-          view   "burndown" | "history" | "both" - default: "both"
-                 "burndown" = burndown chart data for the target sprint
-                 "history" = completed sprint velocity snapshots
-                 "both" = burndown + history
-          sprint_ref "current" | "next" | "<name>" - target sprint for burndown
-                     defaults to "current"
-          history_window number 1-10, default 5 - how many completed sprints
-
-        Returns: {
-          burndown: BurndownResponse | null,
-          history: SprintSnapshot[] | null,
-          window: number
-        }`,
+        Returns: { deprecated: true, use: "scrum_get_sprint_data" }`,
       inputSchema: GetAnalyticsSchema.shape,
-      outputSchema: AnalyticsResultSchema.shape,
+      outputSchema: DeprecationStubSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -219,25 +200,14 @@ export const registerScrumReadTools = (
     "scrum_get_board_health",
     {
       title: "Get Board Health",
-      description: `Board health dashboard - aggregate metrics without item lists.
+      description: `DEPRECATED — use scrum_get_sprint_data and scrum_find_items instead.
 
-        Returns readiness breakdown (by PBI type with overall %), sprint risk counts
-        (unestimated/blocked/no-assignee), impediment counts (orphan + open), and
-        ungroomed count. No individual story data - use scrum_find_items
-        for item-level queries.
+        This tool no longer returns health metrics. The agent skill computes
+        readiness and sprint risk from raw sprint data and item listings.
 
-        Args:
-          sprint_scope string - "current" | "next" | "<name>" - which sprint to assess
-                        defaults to "current"
-
-        Returns: {
-          readiness: { by_type: Record<ItemType, { ready, not_ready, total }>, overall_pct: number },
-          sprint_risk: { unestimated_count, blocked_count, no_assignee_count } | null,
-          impediments: { orphan_count, open_count },
-          ungroomed_count: number
-        }`,
+        Returns: { deprecated: true, use: "scrum_get_sprint_data" }`,
       inputSchema: GetBoardHealthSchema.shape,
-      outputSchema: BacklogHealthSchema.shape,
+      outputSchema: DeprecationStubSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
