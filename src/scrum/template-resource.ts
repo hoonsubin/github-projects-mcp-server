@@ -15,7 +15,7 @@ import { mimeTypeForPath } from "../domain/content-location.ts";
 
 interface TemplateData {
   content: string;
-  /** MIME type for the template resource. Narrow union — not unconstrained string. */
+  /** MIME type for the template resource. Narrow union - not unconstrained string. */
   mimeType: SupportedMimeType;
 }
 

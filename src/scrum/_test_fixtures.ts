@@ -4,4 +4,4 @@
 // Barrel re-export. Fixture data is organized under fixtures/.
 // =============================================================================
 
-export * from "./fixtures/index.ts";
+export * from "./__fixtures__/index.ts";

@@ -29,7 +29,7 @@ import type { SprintRef, StoryRef } from "../../../domain/types.ts";
 
 /**
  * Org-backed board fields (priority, story points, etc.) must be written via
- * updateIssueFieldValue on a real Issue — not while the item is still a draft.
+ * updateIssueFieldValue on a real Issue - not while the item is still a draft.
  */
 const needsRealIssueForBoardFieldWrites = (
   live: GitHubLiveMetadata,

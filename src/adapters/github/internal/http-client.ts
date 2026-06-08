@@ -2,7 +2,7 @@
 // src/adapters/github/internal/http-client.ts - GitHub HTTP transport layer
 //
 // Provides GraphQL and REST transport to the GitHub API.
-// Token is injected as a parameter — the adapter factory resolves it once
+// Token is injected as a parameter - the adapter factory resolves it once
 // from the env var declared in the config file, never from a hardcoded name.
 // =============================================================================
 

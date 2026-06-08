@@ -129,23 +129,23 @@
     "typeTemplatePaths": {
       "user_story": {
         "kind": "file",
-        "path": "/Users/hoonkim/Projects/scrum-master-toolkit/.github/ISSUE_TEMPLATE/user_story.yml"
+        "path": "/workspace/.github/ISSUE_TEMPLATE/user_story.yml"
       },
       "bug": {
         "kind": "file",
-        "path": "/Users/hoonkim/Projects/scrum-master-toolkit/.github/ISSUE_TEMPLATE/bug_report.yml"
+        "path": "/workspace/.github/ISSUE_TEMPLATE/bug_report.yml"
       },
       "tech_debt": {
         "kind": "file",
-        "path": "/Users/hoonkim/Projects/scrum-master-toolkit/.github/ISSUE_TEMPLATE/tech_debt.yml"
+        "path": "/workspace/.github/ISSUE_TEMPLATE/tech_debt.yml"
       },
       "spike": {
         "kind": "file",
-        "path": "/Users/hoonkim/Projects/scrum-master-toolkit/.github/ISSUE_TEMPLATE/spike.yml"
+        "path": "/workspace/.github/ISSUE_TEMPLATE/spike.yml"
       },
       "impediment": {
         "kind": "file",
-        "path": "/Users/hoonkim/Projects/scrum-master-toolkit/.github/ISSUE_TEMPLATE/impediment.yml"
+        "path": "/workspace/.github/ISSUE_TEMPLATE/impediment.yml"
       }
     }
   },

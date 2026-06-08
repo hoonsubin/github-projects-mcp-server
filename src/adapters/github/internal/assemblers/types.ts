@@ -7,7 +7,7 @@ import type { BacklogItemListing, DependencyMap } from "../../../../domain/types
 
 export type { PlatformRequest } from "../platform-request.ts";
 
-/** Discriminated union — one execution strategy per findItems request. */
+/** Discriminated union - one execution strategy per findItems request. */
 export type FilterProfile =
   | { readonly kind: "direct_lookup"; readonly keys: readonly string[] }
   | {

@@ -1,5 +1,5 @@
 // =============================================================================
-// MCP transport integration — exercises CallTool + SDK output validation
+// MCP transport integration - exercises CallTool + SDK output validation
 // =============================================================================
 
 import { assertEquals, assertExists } from "@std/assert";

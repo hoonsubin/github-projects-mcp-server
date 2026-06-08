@@ -336,7 +336,7 @@ export const CreateStoryResponseSchema = z.union([
   StorySchema,
 ]);
 
-/** MCP outputSchema — success Story or same shape with partialFailure + failedFields set. */
+/** MCP outputSchema - success Story or same shape with partialFailure + failedFields set. */
 export const CreateStoryOutputSchema = CreateStoryPartialFailureSchema.partial({
   partialFailure: true,
   failedFields: true,

@@ -1,13 +1,13 @@
 // =============================================================================
 // src/adapters/github/internal/execution-engine.ts - Execution Engine
 //
-// Phase 4 of adapter refactoring — the Humble Object that calls the GitHub API.
+// Phase 4 of adapter refactoring - the Humble Object that calls the GitHub API.
 // No query construction. No response interpretation. No retry logic.
 // All policy (page limits, rate-limit handling) lives outside this class.
 //
 // Accepts a PlatformRequest (document + variables), handles cursor pagination,
 // and returns PaginationResult with raw unknown[] nodes. The caller provides a
-// PageExtractor callback to navigate the response shape — the engine knows
+// PageExtractor callback to navigate the response shape - the engine knows
 // nothing about what the response represents.
 // =============================================================================
 
@@ -18,12 +18,12 @@ import type { PlatformRequest } from "./platform-request.ts";
 
 /**
  * Controls the engine's pagination behaviour.
- * All policy is external — the engine does not make decisions about limits.
+ * All policy is external - the engine does not make decisions about limits.
  */
 export interface PaginationPolicy {
   /** Maximum number of pages to fetch (safety valve against runaway loops). */
   readonly maxPages: number;
-  /** Declared page size (informational — the engine does not set this value;
+  /** Declared page size (informational - the engine does not set this value;
    *  it is embedded in the query document by the assembler). */
   readonly pageSize: number;
   /** When true the caller should stop if the API returns a rate-limit signal.
@@ -55,7 +55,7 @@ export const SPRINT_PAGINATION_POLICY: PaginationPolicy = {
  * The engine calls `gh.graphql<T>(document, variables)` but has no knowledge
  * of T's shape. The extractor is the only place that navigates the response
  * to find `nodes`, `pageInfo`, and `totalCount`. It may throw (e.g. project
- * not found) — the engine transparently propagates the error.
+ * not found) - the engine transparently propagates the error.
  */
 export interface PageExtractor<T> {
   (response: T): {
@@ -68,7 +68,7 @@ export interface PageExtractor<T> {
 // ── Pagination result ────────────────────────────────────────────────────────
 
 /**
- * The engine's output — raw nodes collected from all fetched pages.
+ * The engine's output - raw nodes collected from all fetched pages.
  * The caller (ResultNormalizer) interprets the nodes and maps them to domain types.
  */
 export interface PaginationResult {
@@ -85,7 +85,7 @@ export interface PaginationResult {
 // ── ExecutionEngine ──────────────────────────────────────────────────────────
 
 /**
- * Humble Object — the only class that directly calls the GitHub GraphQL API
+ * Humble Object - the only class that directly calls the GitHub GraphQL API
  * for paginated queries. Hard to unit-test by design; integration-tested
  * through PaginatedProjectItemFetcher.
  *
@@ -105,7 +105,7 @@ export class ExecutionEngine {
   /**
    * Execute a paginated GraphQL query, collecting all nodes across all pages.
    *
-   * The request.variables MUST NOT include a `cursor` key — the engine adds
+   * The request.variables MUST NOT include a `cursor` key - the engine adds
    * `cursor` with the pageInfo.endCursor value for each subsequent page.
    *
    * @param request  A single PlatformRequest with document + variables.

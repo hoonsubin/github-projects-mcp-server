@@ -1,7 +1,7 @@
 // =============================================================================
 // src/adapters/github/internal/assemblers/extractors.ts
 //
-// PageExtractor callbacks for ExecutionEngine — navigate typed GraphQL response
+// PageExtractor callbacks for ExecutionEngine - navigate typed GraphQL response
 // shapes to extract nodes, pageInfo, and totalCount.
 // =============================================================================
 

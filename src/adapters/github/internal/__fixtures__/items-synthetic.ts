@@ -8,7 +8,7 @@ import type { ProjectItem } from "../../types.ts";
 import { FIXTURE_ITEM_192, FIXTURE_ITEM_222, FIXTURE_ITEM_WITH_CUSTOM_FIELDS } from "./items.ts";
 
 /**
- * Synthetic fixture: a Done-status item in Sprint 4 — needed for terminal-exclusion
+ * Synthetic fixture: a Done-status item in Sprint 4 - needed for terminal-exclusion
  * filter tests in item-filter.test.ts. Uses real field IDs from captured fixtures
  * so buildStoryFromRaw resolves status/sprint correctly.
  */
@@ -94,7 +94,7 @@ export const FIXTURE_ITEM_DONE = {
   },
 } as unknown as ProjectItem;
 
-/** All four nodes as an array — for tests that need diverse items. */
+/** All four nodes as an array - for tests that need diverse items. */
 export const FIXTURE_NODES: readonly ProjectItem[] = [
   FIXTURE_ITEM_222,
   FIXTURE_ITEM_192,

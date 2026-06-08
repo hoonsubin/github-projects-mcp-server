@@ -179,7 +179,7 @@ export class StoryQueryService {
       )
     );
 
-    // GraphQL call failed entirely — warnings carry the real error
+    // GraphQL call failed entirely - warnings carry the real error
     if (!data) {
       throw new GitHubApiError(`Failed to fetch project item ${ref.id}.`, {
         code: "FETCH_FAILED",

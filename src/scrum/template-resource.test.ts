@@ -24,7 +24,7 @@ import {
 
 // ── Inline template (no file I/O) ─────────────────────────────────────────────
 
-Deno.test("templateResourceUseCase — resolves inline template with text/markdown MIME", async () => {
+Deno.test("templateResourceUseCase - resolves inline template with text/markdown MIME", async () => {
   const typeTemplatePaths: Record<string, ContentLocation> = {
     custom_type: INLINE_LOCATION,
   };
@@ -34,7 +34,7 @@ Deno.test("templateResourceUseCase — resolves inline template with text/markdo
   assertEquals(result.mimeType, "text/markdown" as SupportedMimeType);
 });
 
-Deno.test("templateResourceUseCase — resolves inline YAML template content", async () => {
+Deno.test("templateResourceUseCase - resolves inline YAML template content", async () => {
   const typeTemplatePaths: Record<string, ContentLocation> = {
     yml_type: INLINE_YAML_LOCATION,
   };
@@ -44,7 +44,7 @@ Deno.test("templateResourceUseCase — resolves inline YAML template content", a
   assertEquals(result.mimeType, "text/markdown" as SupportedMimeType);
 });
 
-Deno.test("templateResourceUseCase — resolves inline JSON template content", async () => {
+Deno.test("templateResourceUseCase - resolves inline JSON template content", async () => {
   const typeTemplatePaths: Record<string, ContentLocation> = {
     json_type: INLINE_JSON_LOCATION,
   };
@@ -56,7 +56,7 @@ Deno.test("templateResourceUseCase — resolves inline JSON template content", a
 
 // ── Error paths ───────────────────────────────────────────────────────────────
 
-Deno.test("templateResourceUseCase — throws when type not in typeTemplatePaths", async () => {
+Deno.test("templateResourceUseCase - throws when type not in typeTemplatePaths", async () => {
   const typeTemplatePaths: Record<string, ContentLocation> = {
     user_story: { kind: "inline", content: "..." },
   };
@@ -67,7 +67,7 @@ Deno.test("templateResourceUseCase — throws when type not in typeTemplatePaths
   );
 });
 
-Deno.test("templateResourceUseCase — throws when typeTemplatePaths is empty", async () => {
+Deno.test("templateResourceUseCase - throws when typeTemplatePaths is empty", async () => {
   const typeTemplatePaths: Record<string, ContentLocation> = {};
   await assertRejects(
     () => templateResourceUseCase("user_story", stubFileReader, typeTemplatePaths),
@@ -78,19 +78,19 @@ Deno.test("templateResourceUseCase — throws when typeTemplatePaths is empty", 
 
 // ── file-kind MIME resolution ─────────────────────────────────────────────────
 
-Deno.test("templateResourceUseCase — file-kind .yml → application/x-yaml MIME", async () => {
+Deno.test("templateResourceUseCase - file-kind .yml → application/x-yaml MIME", async () => {
   const paths: Record<string, ContentLocation> = { my_type: FILE_YML_LOCATION };
   const result = await templateResourceUseCase("my_type", stubFileReader, paths);
   assertEquals(result.mimeType, "application/x-yaml" as SupportedMimeType);
 });
 
-Deno.test("templateResourceUseCase — file-kind .json → application/json MIME", async () => {
+Deno.test("templateResourceUseCase - file-kind .json → application/json MIME", async () => {
   const paths: Record<string, ContentLocation> = { my_type: FILE_JSON_LOCATION };
   const result = await templateResourceUseCase("my_type", stubFileReader, paths);
   assertEquals(result.mimeType, "application/json" as SupportedMimeType);
 });
 
-Deno.test("templateResourceUseCase — file-kind .md → text/markdown MIME", async () => {
+Deno.test("templateResourceUseCase - file-kind .md → text/markdown MIME", async () => {
   const paths: Record<string, ContentLocation> = { my_type: FILE_MD_LOCATION };
   const result = await templateResourceUseCase("my_type", stubFileReader, paths);
   assertEquals(result.mimeType, "text/markdown" as SupportedMimeType);
@@ -98,19 +98,19 @@ Deno.test("templateResourceUseCase — file-kind .md → text/markdown MIME", as
 
 // ── url-kind MIME resolution ──────────────────────────────────────────────────
 
-Deno.test("templateResourceUseCase — url-kind .yml → application/x-yaml MIME", async () => {
+Deno.test("templateResourceUseCase - url-kind .yml → application/x-yaml MIME", async () => {
   const paths: Record<string, ContentLocation> = { my_type: URL_YML_LOCATION };
   const result = await templateResourceUseCase("my_type", stubFileReader, paths);
   assertEquals(result.mimeType, "application/x-yaml" as SupportedMimeType);
 });
 
-Deno.test("templateResourceUseCase — url-kind .json → application/json MIME", async () => {
+Deno.test("templateResourceUseCase - url-kind .json → application/json MIME", async () => {
   const paths: Record<string, ContentLocation> = { my_type: URL_JSON_LOCATION };
   const result = await templateResourceUseCase("my_type", stubFileReader, paths);
   assertEquals(result.mimeType, "application/json" as SupportedMimeType);
 });
 
-Deno.test("templateResourceUseCase — url-kind .md → text/markdown MIME", async () => {
+Deno.test("templateResourceUseCase - url-kind .md → text/markdown MIME", async () => {
   const paths: Record<string, ContentLocation> = { my_type: URL_MD_LOCATION };
   const result = await templateResourceUseCase("my_type", stubFileReader, paths);
   assertEquals(result.mimeType, "text/markdown" as SupportedMimeType);

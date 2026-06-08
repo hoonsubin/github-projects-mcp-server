@@ -62,7 +62,7 @@ export const createGhSpy = (): GitHubClientSpy => {
  * Builds a minimal but structurally valid GitHubBootState for tests.
  * Pass overrides for only the fields your test cares about.
  *
- * Use this instead of `{} as unknown as GitHubBootState` — the cast hides
+ * Use this instead of `{} as unknown as GitHubBootState` - the cast hides
  * breakage when GitHubBootState fields change.
  */
 export const makeConfig = (overrides: Partial<GitHubBootState> = {}): GitHubBootState => {
@@ -112,7 +112,7 @@ export const makeConfig = (overrides: Partial<GitHubBootState> = {}): GitHubBoot
 
 // ── GitHubInfraContext factory ────────────────────────────────────────────────
 
-/** Overrides type for makeCtx — allows Partial<GitHubBackendConfig> via ghConfig. */
+/** Overrides type for makeCtx - allows Partial<GitHubBackendConfig> via ghConfig. */
 type CtxOverrides = Partial<Omit<GitHubBootState, "ghConfig">> & {
   ghConfig?: Partial<GitHubBackendConfig>;
 };

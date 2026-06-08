@@ -113,7 +113,7 @@ export interface IssueDetailsInput {
 /**
  * Fill in null story_points / priority from Issue.issueFieldValues when the
  * project board fieldValues extraction found nothing (org issue-backed fields).
- * Matches by field name against field_mapping — mutates `fields` in place.
+ * Matches by field name against field_mapping - mutates `fields` in place.
  */
 const overlayOrgIssueFieldValues = (
   fields: BoardFields,
@@ -397,7 +397,7 @@ export const resolveSprintGoal = (_iter: IterationEntry): never =>
  * issue node IDs or issue numbers against in-memory project items.
  *
  * Called after mapping stories from project items when the full item set is
- * available in memory. Not called from getStoryDetail() — ref.id stays as
+ * available in memory. Not called from getStoryDetail() - ref.id stays as
  * issue node ID in that context.
  */
 export const resolveDependencyRefs = (

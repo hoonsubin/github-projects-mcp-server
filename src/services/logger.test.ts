@@ -50,7 +50,7 @@ const initHttp = (): CapturedCall[] => {
 
 /**
  * Configure the logger for stdio mode with a capturing mock server.
- * Returns the calls array — should always be empty because stdio mode
+ * Returns the calls array - should always be empty because stdio mode
  * does not emit MCP notifications.
  */
 const initStdio = (): CapturedCall[] => {
@@ -62,7 +62,7 @@ const initStdio = (): CapturedCall[] => {
 
 // ── Tests ──────────────────────────────────────────────────────────────────
 
-// --- stdio mode — MCP notifications suppressed ---
+// --- stdio mode - MCP notifications suppressed ---
 
 Deno.test("stdio mode: log.info writes to stderr only, no MCP notification", () => {
   using stderrSpy = spyStderr();
@@ -91,7 +91,7 @@ Deno.test("stdio mode: log.error writes to stderr only, no MCP notification", ()
   assertEquals(calls.length, 0);
 });
 
-// --- http mode — dual output ---
+// --- http mode - dual output ---
 
 Deno.test("http mode: log.info writes to stderr AND sends MCP notification", () => {
   using stderrSpy = spyStderr();
@@ -231,7 +231,7 @@ Deno.test("http mode: rebinding server picks up new server, old server ignored",
 
 // --- Default mode is stdio ---
 
-Deno.test("default mode (before initLogger) is stdio — no MCP notifications", () => {
+Deno.test("default mode (before initLogger) is stdio - no MCP notifications", () => {
   // Simulate: mode hasn't been set yet (tests above may have left state)
   initLogger({ transport: "stdio", debug: false });
   const { server, calls } = capturingServer();

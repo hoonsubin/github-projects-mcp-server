@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/audit/renderers/markdown.ts — All stage results → docs/audit.md
+// scripts/audit/renderers/markdown.ts - All stage results → docs/audit.md
 //
 // Assembles the output of all 5 stages into a single markdown report with
 // sections in the prescribed order.

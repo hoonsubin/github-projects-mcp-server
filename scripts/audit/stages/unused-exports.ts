@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/audit/stages/unused-exports.ts — Unused export detection via TS Compiler API
+// scripts/audit/stages/unused-exports.ts - Unused export detection via TS Compiler API
 //
 // Reuses the existing ParsedModule scanner and findUnusedExports() from
 // scripts/diagram/. This is the only stage that preserves the old code.

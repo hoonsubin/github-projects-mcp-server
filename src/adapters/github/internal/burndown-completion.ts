@@ -1,5 +1,5 @@
 // =============================================================================
-// burndown-completion.ts — Derive burndown completion times from board items
+// burndown-completion.ts - Derive burndown completion times from board items
 // =============================================================================
 
 import type { ProjectItem } from "../types.ts";

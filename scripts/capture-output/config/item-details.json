@@ -90,7 +90,7 @@
       ],
       "linked_artifacts": []
     },
-    "captured_at": "2026-06-08T13:01:50.066Z"
+    "captured_at": "2026-06-08T14:19:36.089Z"
   },
   "55": {
     "normalized": {
@@ -183,7 +183,7 @@
       ],
       "linked_artifacts": []
     },
-    "captured_at": "2026-06-08T13:01:33.785Z"
+    "captured_at": "2026-06-08T14:19:23.034Z"
   },
   "73": {
     "normalized": {
@@ -280,7 +280,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:02:13.360Z"
+    "captured_at": "2026-06-08T14:19:56.770Z"
   },
   "74": {
     "normalized": {
@@ -405,7 +405,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:02:14.788Z"
+    "captured_at": "2026-06-08T14:19:58.589Z"
   },
   "94": {
     "normalized": {
@@ -514,7 +514,7 @@
       ],
       "linked_artifacts": []
     },
-    "captured_at": "2026-06-08T13:02:04.310Z"
+    "captured_at": "2026-06-08T14:19:48.769Z"
   },
   "114": {
     "normalized": {
@@ -619,7 +619,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:02:03.031Z"
+    "captured_at": "2026-06-08T14:19:47.438Z"
   },
   "142": {
     "normalized": {
@@ -746,7 +746,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:02:17.556Z"
+    "captured_at": "2026-06-08T14:20:01.260Z"
   },
   "143": {
     "normalized": {
@@ -901,7 +901,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:02:18.746Z"
+    "captured_at": "2026-06-08T14:20:02.832Z"
   },
   "147": {
     "normalized": {
@@ -1042,7 +1042,7 @@
       ],
       "linked_artifacts": []
     },
-    "captured_at": "2026-06-08T13:02:16.275Z"
+    "captured_at": "2026-06-08T14:19:59.833Z"
   },
   "148": {
     "normalized": {
@@ -1159,7 +1159,7 @@
       ],
       "linked_artifacts": []
     },
-    "captured_at": "2026-06-08T13:02:08.845Z"
+    "captured_at": "2026-06-08T14:19:52.746Z"
   },
   "150": {
     "normalized": {
@@ -1286,7 +1286,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:02:10.372Z"
+    "captured_at": "2026-06-08T14:19:54.132Z"
   },
   "151": {
     "normalized": {
@@ -1587,7 +1587,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:02:07.343Z"
+    "captured_at": "2026-06-08T14:19:51.464Z"
   },
   "155": {
     "normalized": {
@@ -1702,96 +1702,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:02:11.851Z"
-  },
-  "165": {
-    "normalized": {
-      "story": {
-        "kind": "issue",
-        "ref": {
-          "id": "PVTI_lAHOAmfLjc4BWiTtzgtw-go"
-        },
-        "key": "165",
-        "title": "[Story]: Replace type_display with type_mapping and add local-first template file resolution",
-        "body": "As a developer configuring the MCP server, I want to declare item-type display names and template file paths together under a single `type_mapping` key in `config.yml`, and have the server resolve template files from the local workspace before falling back to the remote GitHub API, so that new item types can be added without code changes and templates are immediately available during local development without a commit-push cycle.\n\n## Acceptance Criteria\n\n- [ ] Given `config.yml` has `type_mapping.<key>.display`, when `scrum_orient` is called, then `vocabulary.type` includes the canonical key mapped to its display name.\n- [ ] Given `config.yml` has `type_mapping.<key>.template`, when the `scrum://template/{type}` resource is read, then the server returns the content of the declared file.\n- [ ] Given a template file exists at the declared path in the local workspace, when the resource is read, then the server reads it from disk and does NOT make a GitHub API call.\n- [ ] Given a template file is absent locally but present in the remote repo, when the resource is read, then the server falls back to the GitHub Contents API.\n- [ ] Given `type_mapping` declares a display name that has no matching option in the Type board field, when the server starts, then it throws a decorated error naming the mismatched key, its declared display value, and the remediation steps.\n- [ ] Given `type_mapping` has no `template` keys, when `scrum_orient` is called, then `platform_state.template_uris` is `null`.\n- [ ] Given old `type_display` config is present, it is no longer recognised (breaking change — migration required).\n\n## Affected components\n\n- Config / bootstrap (`src/adapters/github/config-loader.ts`, `src/adapters/github/types.ts`)\n- GitHub adapter (`src/adapters/github/internal/file-reader.ts`, `src/adapters/github/factory.ts`)\n- Use-case layer (`src/scrum/orient.ts`, `src/scrum/template-resource.ts`)\n- Port boundary (`src/scrum/ports.ts`, `src/adapters/factory.ts`)",
-        "type": "user_story",
-        "status": "Done",
-        "sprint": "Sprint 3",
-        "story_points": 5,
-        "priority": "Should",
-        "assignees": [],
-        "labels": [
-          "adapter layer",
-          "use case layer",
-          "template",
-          "config"
-        ],
-        "epic": {
-          "ref": {
-            "id": "MI_kwDOSJo3Ms4A88if"
-          },
-          "name": "Flexible Item Template System"
-        },
-        "created_at": "2026-05-25T20:16:59Z",
-        "updated_at": "2026-05-25T20:28:34Z",
-        "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/165",
-        "blocked_by": []
-      },
-      "comments": [],
-      "linked_artifacts": [
-        {
-          "number": 166,
-          "title": "add local template fetch",
-          "url": "https://github.com/hoonsubin/github-projects-mcp-server/pull/166",
-          "state": "MERGED",
-          "is_draft": false
-        }
-      ]
-    },
-    "raw": {
-      "story": {
-        "kind": "issue",
-        "ref": {
-          "id": "PVTI_lAHOAmfLjc4BWiTtzgtw-go"
-        },
-        "key": "165",
-        "title": "[Story]: Replace type_display with type_mapping and add local-first template file resolution",
-        "body": "As a developer configuring the MCP server, I want to declare item-type display names and template file paths together under a single `type_mapping` key in `config.yml`, and have the server resolve template files from the local workspace before falling back to the remote GitHub API, so that new item types can be added without code changes and templates are immediately available during local development without a commit-push cycle.\n\n## Acceptance Criteria\n\n- [ ] Given `config.yml` has `type_mapping.<key>.display`, when `scrum_orient` is called, then `vocabulary.type` includes the canonical key mapped to its display name.\n- [ ] Given `config.yml` has `type_mapping.<key>.template`, when the `scrum://template/{type}` resource is read, then the server returns the content of the declared file.\n- [ ] Given a template file exists at the declared path in the local workspace, when the resource is read, then the server reads it from disk and does NOT make a GitHub API call.\n- [ ] Given a template file is absent locally but present in the remote repo, when the resource is read, then the server falls back to the GitHub Contents API.\n- [ ] Given `type_mapping` declares a display name that has no matching option in the Type board field, when the server starts, then it throws a decorated error naming the mismatched key, its declared display value, and the remediation steps.\n- [ ] Given `type_mapping` has no `template` keys, when `scrum_orient` is called, then `platform_state.template_uris` is `null`.\n- [ ] Given old `type_display` config is present, it is no longer recognised (breaking change — migration required).\n\n## Affected components\n\n- Config / bootstrap (`src/adapters/github/config-loader.ts`, `src/adapters/github/types.ts`)\n- GitHub adapter (`src/adapters/github/internal/file-reader.ts`, `src/adapters/github/factory.ts`)\n- Use-case layer (`src/scrum/orient.ts`, `src/scrum/template-resource.ts`)\n- Port boundary (`src/scrum/ports.ts`, `src/adapters/factory.ts`)",
-        "type": "user_story",
-        "status": "Done",
-        "sprint": "Sprint 3",
-        "story_points": 5,
-        "priority": "Should",
-        "assignees": [],
-        "labels": [
-          "adapter layer",
-          "use case layer",
-          "template",
-          "config"
-        ],
-        "epic": {
-          "ref": {
-            "id": "MI_kwDOSJo3Ms4A88if"
-          },
-          "name": "Flexible Item Template System"
-        },
-        "created_at": "2026-05-25T20:16:59Z",
-        "updated_at": "2026-05-25T20:28:34Z",
-        "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/165",
-        "blocked_by": []
-      },
-      "comments": [],
-      "linked_artifacts": [
-        {
-          "number": 166,
-          "title": "add local template fetch",
-          "url": "https://github.com/hoonsubin/github-projects-mcp-server/pull/166",
-          "state": "MERGED",
-          "is_draft": false
-        }
-      ]
-    },
-    "captured_at": "2026-06-08T13:02:20.026Z"
+    "captured_at": "2026-06-08T14:19:55.434Z"
   },
   "176": {
     "normalized": {
@@ -1890,7 +1801,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:02:05.862Z"
+    "captured_at": "2026-06-08T14:19:50.064Z"
   },
   "182": {
     "normalized": {
@@ -1981,7 +1892,7 @@
       ],
       "linked_artifacts": []
     },
-    "captured_at": "2026-06-08T13:01:39.681Z"
+    "captured_at": "2026-06-08T14:19:27.224Z"
   },
   "184": {
     "normalized": {
@@ -2068,7 +1979,7 @@
       ],
       "linked_artifacts": []
     },
-    "captured_at": "2026-06-08T13:01:44.107Z"
+    "captured_at": "2026-06-08T14:19:31.025Z"
   },
   "185": {
     "normalized": {
@@ -2171,7 +2082,7 @@
       ],
       "linked_artifacts": []
     },
-    "captured_at": "2026-06-08T13:01:42.548Z"
+    "captured_at": "2026-06-08T14:19:29.838Z"
   },
   "186": {
     "normalized": {
@@ -2288,7 +2199,7 @@
       ],
       "linked_artifacts": []
     },
-    "captured_at": "2026-06-08T13:01:10.638Z"
+    "captured_at": "2026-06-08T14:19:02.728Z"
   },
   "187": {
     "normalized": {
@@ -2419,7 +2330,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:01:14.793Z"
+    "captured_at": "2026-06-08T14:19:06.455Z"
   },
   "190": {
     "normalized": {
@@ -2506,7 +2417,7 @@
       ],
       "linked_artifacts": []
     },
-    "captured_at": "2026-06-08T13:01:38.291Z"
+    "captured_at": "2026-06-08T14:19:26.006Z"
   },
   "192": {
     "normalized": {
@@ -2609,7 +2520,7 @@
       "comments": [],
       "linked_artifacts": []
     },
-    "captured_at": "2026-06-08T13:01:27.360Z"
+    "captured_at": "2026-06-08T14:19:18.063Z"
   },
   "195": {
     "normalized": {
@@ -2698,7 +2609,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:01:30.096Z"
+    "captured_at": "2026-06-08T14:19:20.524Z"
   },
   "201": {
     "normalized": {
@@ -2767,7 +2678,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:01:58.841Z"
+    "captured_at": "2026-06-08T14:19:43.566Z"
   },
   "202": {
     "normalized": {
@@ -2870,7 +2781,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:02:01.513Z"
+    "captured_at": "2026-06-08T14:19:46.126Z"
   },
   "209": {
     "normalized": {
@@ -2945,7 +2856,7 @@
       ],
       "linked_artifacts": []
     },
-    "captured_at": "2026-06-08T13:01:24.623Z"
+    "captured_at": "2026-06-08T14:19:15.532Z"
   },
   "210": {
     "normalized": {
@@ -3046,7 +2957,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:02:00.199Z"
+    "captured_at": "2026-06-08T14:19:44.807Z"
   },
   "212": {
     "normalized": {
@@ -3135,7 +3046,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:01:52.930Z"
+    "captured_at": "2026-06-08T14:19:38.614Z"
   },
   "213": {
     "normalized": {
@@ -3224,7 +3135,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:01:51.305Z"
+    "captured_at": "2026-06-08T14:19:37.299Z"
   },
   "214": {
     "normalized": {
@@ -3311,7 +3222,7 @@
       ],
       "linked_artifacts": []
     },
-    "captured_at": "2026-06-08T13:01:07.776Z"
+    "captured_at": "2026-06-08T14:19:00.249Z"
   },
   "215": {
     "normalized": {
@@ -3400,7 +3311,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:01:55.740Z"
+    "captured_at": "2026-06-08T14:19:41.110Z"
   },
   "216": {
     "normalized": {
@@ -3515,7 +3426,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:01:31.590Z"
+    "captured_at": "2026-06-08T14:19:21.733Z"
   },
   "217": {
     "normalized": {
@@ -3614,7 +3525,7 @@
       ],
       "linked_artifacts": []
     },
-    "captured_at": "2026-06-08T13:01:45.643Z"
+    "captured_at": "2026-06-08T14:19:32.288Z"
   },
   "218": {
     "normalized": {
@@ -3701,7 +3612,7 @@
       ],
       "linked_artifacts": []
     },
-    "captured_at": "2026-06-08T13:01:09.245Z"
+    "captured_at": "2026-06-08T14:19:01.386Z"
   },
   "219": {
     "normalized": {
@@ -3816,7 +3727,7 @@
       ],
       "linked_artifacts": []
     },
-    "captured_at": "2026-06-08T13:01:41.136Z"
+    "captured_at": "2026-06-08T14:19:28.492Z"
   },
   "220": {
     "normalized": {
@@ -3937,7 +3848,7 @@
       ],
       "linked_artifacts": []
     },
-    "captured_at": "2026-06-08T13:01:35.353Z"
+    "captured_at": "2026-06-08T14:19:24.698Z"
   },
   "221": {
     "normalized": {
@@ -4026,7 +3937,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:01:57.140Z"
+    "captured_at": "2026-06-08T14:19:42.302Z"
   },
   "222": {
     "normalized": {
@@ -4099,7 +4010,7 @@
       "comments": [],
       "linked_artifacts": []
     },
-    "captured_at": "2026-06-08T13:01:25.807Z"
+    "captured_at": "2026-06-08T14:19:16.881Z"
   },
   "223": {
     "normalized": {
@@ -4188,7 +4099,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:01:54.275Z"
+    "captured_at": "2026-06-08T14:19:39.887Z"
   },
   "230": {
     "normalized": {
@@ -4241,7 +4152,7 @@
       "comments": [],
       "linked_artifacts": []
     },
-    "captured_at": "2026-06-08T13:01:13.388Z"
+    "captured_at": "2026-06-08T14:19:05.262Z"
   },
   "231": {
     "normalized": {
@@ -4356,7 +4267,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:01:28.746Z"
+    "captured_at": "2026-06-08T14:19:19.338Z"
   },
   "237": {
     "normalized": {
@@ -4445,7 +4356,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:01:16.139Z"
+    "captured_at": "2026-06-08T14:19:07.800Z"
   },
   "247": {
     "normalized": {
@@ -4534,7 +4445,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:01:19.066Z"
+    "captured_at": "2026-06-08T14:19:10.271Z"
   },
   "248": {
     "normalized": {
@@ -4649,7 +4560,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:01:23.312Z"
+    "captured_at": "2026-06-08T14:19:14.260Z"
   },
   "250": {
     "normalized": {
@@ -4752,7 +4663,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:01:20.486Z"
+    "captured_at": "2026-06-08T14:19:11.538Z"
   },
   "251": {
     "normalized": {
@@ -4855,7 +4766,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:01:21.962Z"
+    "captured_at": "2026-06-08T14:19:12.893Z"
   },
   "252": {
     "normalized": {
@@ -4958,7 +4869,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:01:48.817Z"
+    "captured_at": "2026-06-08T14:19:34.813Z"
   },
   "256": {
     "normalized": {
@@ -5045,7 +4956,7 @@
         }
       ]
     },
-    "captured_at": "2026-06-08T13:01:17.654Z"
+    "captured_at": "2026-06-08T14:19:09.029Z"
   },
   "261": {
     "normalized": {
@@ -5128,7 +5039,7 @@
       ],
       "linked_artifacts": []
     },
-    "captured_at": "2026-06-08T13:01:47.375Z"
+    "captured_at": "2026-06-08T14:19:33.544Z"
   },
   "262": {
     "normalized": {
@@ -5227,6 +5138,63 @@
       ],
       "linked_artifacts": []
     },
-    "captured_at": "2026-06-08T13:01:12.097Z"
+    "captured_at": "2026-06-08T14:19:03.964Z"
+  },
+  "PVTI_lAHOAmfLjc4BWiTtzgvD6Mk": {
+    "normalized": {
+      "story": {
+        "kind": "draft",
+        "ref": {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgvD6Mk"
+        },
+        "key": null,
+        "title": "test draft issue",
+        "body": "This is a test draft issue meant for development.",
+        "type": "user_story",
+        "status": "Ready",
+        "sprint": "Sprint 4",
+        "story_points": 1,
+        "priority": "Could",
+        "assignees": [
+          "hoonsubin"
+        ],
+        "labels": [],
+        "epic": null,
+        "created_at": "2026-06-08T13:56:46Z",
+        "updated_at": "2026-06-08T13:57:04Z",
+        "url": null,
+        "blocked_by": []
+      },
+      "comments": null,
+      "linked_artifacts": null
+    },
+    "raw": {
+      "story": {
+        "kind": "draft",
+        "ref": {
+          "id": "PVTI_lAHOAmfLjc4BWiTtzgvD6Mk"
+        },
+        "key": null,
+        "title": "test draft issue",
+        "body": "This is a test draft issue meant for development.",
+        "type": "user_story",
+        "status": "Ready",
+        "sprint": "Sprint 4",
+        "story_points": 1,
+        "priority": "Could",
+        "assignees": [
+          "hoonsubin"
+        ],
+        "labels": [],
+        "epic": null,
+        "created_at": "2026-06-08T13:56:46Z",
+        "updated_at": "2026-06-08T13:57:04Z",
+        "url": null,
+        "blocked_by": []
+      },
+      "comments": null,
+      "linked_artifacts": null
+    },
+    "captured_at": "2026-06-08T14:18:59.138Z"
   }
 }

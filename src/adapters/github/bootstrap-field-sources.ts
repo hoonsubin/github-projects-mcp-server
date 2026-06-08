@@ -1,5 +1,5 @@
 // =============================================================================
-// bootstrap-field-sources.ts — Pure helpers for merging project vs org issue field
+// bootstrap-field-sources.ts - Pure helpers for merging project vs org issue field
 // option catalogs during org bootstrap. Extracted for unit testing.
 // =============================================================================
 

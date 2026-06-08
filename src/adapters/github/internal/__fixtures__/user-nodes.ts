@@ -7,7 +7,7 @@
 /**
  * Captured GraphQL responses for ResolveActorNodeId queries.
  * Keyed by GitHub login. "_not_found_" is a synthetic entry where the API
- * returns { user: null } — used for NOT_FOUND error path tests.
+ * returns { user: null } - used for NOT_FOUND error path tests.
  */
 export const USERNODE_IDS: Record<string, { user: { id: string } | null }> = {
   "hoonsubin": {

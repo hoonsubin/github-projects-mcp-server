@@ -1,0 +1,165 @@
+{
+  "id": "PVTI_lAHOAmfLjc4BWiTtzgt_Oro",
+  "type": "ISSUE",
+  "createdAt": "2026-05-27T21:33:50Z",
+  "updatedAt": "2026-06-06T19:23:48Z",
+  "isArchived": false,
+  "content": {
+    "__typename": "Issue",
+    "id": "I_kwDOSJo3Ms8AAAABDlw8vA",
+    "number": 187,
+    "title": "[Bug]: Non-canonical project fields (deadlines, custom scores, flags) silently dropped in scrum_find_items — custom_fields sparsely populated",
+    "url": "https://github.com/hoonsubin/github-projects-mcp-server/issues/187",
+    "state": "CLOSED",
+    "body": "## Problem\n\n`scrum_find_items` responses include a `custom_fields` field in `BacklogItemListing` but it is sparsely populated. Non-canonical project fields — deadlines, custom numeric scores, non-standard flags, and any board field outside the Scrum vocabulary — are silently dropped in the mapping layer.\n\nThe query and mapper are coupled to a fixed set of canonical field types (iteration, single-select, number, and a small named set). Any ProjectV2 field a team configures outside that set is invisible in `scrum_find_items` output, even when it contains decision-relevant data. There is no error or warning — the fields are simply absent.\n\n## Impact\n\nAgents cannot filter, sort, or act on project-specific metadata that teams commonly use: due dates, custom priority scores, effort estimates in non-standard fields. The data exists in GitHub Projects but never reaches the agent.\n\n## Context — relationship to #216\n\nBoth issues affect `custom_fields` but in opposite directions:\n\n| Issue | Problem |\n|---|---|\n| #216 | Canonical fields *incorrectly included* in `custom_fields` (duplication, noise) |\n| This issue | Non-canonical fields *incorrectly excluded* from `custom_fields` (missing signal) |\n\nThe correct end state: `custom_fields` contains *only* non-canonical fields, and *all* of them. These two issues should be resolved together or in immediate sequence.\n\n## Affected file\n\n`src/adapters/github/internal/result-normalizer.ts` — field value mapping in `enrichListingCustomFields()`\n\n## Acceptance Criteria\n- [ ] All non-canonical field value types from the GraphQL response appear in `custom_fields`\n- [ ] No non-canonical field type is silently dropped in the mapping layer\n- [ ] Canonical fields (Title, Status, Type, Priority, Story Points, Sprint, Assignees, Labels, Milestone, Repository) are not present in `custom_fields` (handled by #216)\n- [ ] Existing tests pass; new tests cover passthrough of non-canonical field types\n- [ ] No changes to domain types, port interfaces, or use-case functions",
+    "issueType": null,
+    "assignees": {
+      "nodes": [
+        {
+          "login": "hoonsubin"
+        }
+      ]
+    },
+    "labels": {
+      "nodes": [
+        {
+          "name": "feature",
+          "color": "a29bfe"
+        },
+        {
+          "name": "adapter layer",
+          "color": "e69dd2"
+        }
+      ]
+    },
+    "milestone": {
+      "id": "MI_kwDOSJo3Ms4A9dd1",
+      "title": "Adapter Layer Assembly Pattern",
+      "dueOn": null
+    },
+    "repository": {
+      "name": "github-projects-mcp-server",
+      "nameWithOwner": "hoonsubin/github-projects-mcp-server"
+    },
+    "blockedBy": {
+      "nodes": [
+        {
+          "id": "I_kwDOSJo3Ms8AAAABDlwG0A",
+          "number": 185,
+          "title": "[Tech Debt]: Extract fragment library — catalog recurring field selections into named, composable fragments"
+        }
+      ]
+    },
+    "issueFieldValues": {
+      "nodes": []
+    }
+  },
+  "fieldValues": {
+    "nodes": [
+      {
+        "__typename": "ProjectV2ItemFieldUserValue",
+        "users": {
+          "nodes": [
+            {
+              "login": "hoonsubin"
+            }
+          ]
+        },
+        "field": {
+          "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seU",
+          "name": "Assignees"
+        }
+      },
+      {
+        "__typename": "ProjectV2ItemFieldRepositoryValue",
+        "repository": {
+          "name": "github-projects-mcp-server",
+          "nameWithOwner": "hoonsubin/github-projects-mcp-server"
+        },
+        "field": {
+          "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seo",
+          "name": "Repository"
+        }
+      },
+      {
+        "__typename": "ProjectV2ItemFieldLabelValue",
+        "labels": {
+          "nodes": [
+            {
+              "name": "feature",
+              "color": "a29bfe"
+            },
+            {
+              "name": "adapter layer",
+              "color": "e69dd2"
+            }
+          ]
+        },
+        "field": {
+          "id": "PVTF_lAHOAmfLjc4BWiTtzhR1sec",
+          "name": "Labels"
+        }
+      },
+      {
+        "__typename": "ProjectV2ItemFieldMilestoneValue",
+        "milestone": {
+          "title": "Adapter Layer Assembly Pattern",
+          "dueOn": null
+        },
+        "field": {
+          "id": "PVTF_lAHOAmfLjc4BWiTtzhR1sek",
+          "name": "Milestone"
+        }
+      },
+      {
+        "__typename": "ProjectV2ItemFieldPullRequestValue"
+      },
+      {
+        "__typename": "ProjectV2ItemFieldTextValue",
+        "text": "[Bug]: Non-canonical project fields (deadlines, custom scores, flags) silently dropped in scrum_find_items — custom_fields sparsely populated",
+        "field": {
+          "id": "PVTF_lAHOAmfLjc4BWiTtzhR1seQ",
+          "name": "Title"
+        }
+      },
+      {
+        "__typename": "ProjectV2ItemFieldSingleSelectValue",
+        "name": "User Story",
+        "color": "YELLOW",
+        "optionId": "bf0dd60d",
+        "field": {
+          "id": "PVTSSF_lAHOAmfLjc4BWiTtzhS9YWs",
+          "name": "Type"
+        }
+      },
+      {
+        "__typename": "ProjectV2ItemFieldSingleSelectValue",
+        "name": "Must",
+        "color": "RED",
+        "optionId": "457ca5cd",
+        "field": {
+          "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1soA",
+          "name": "Priority"
+        }
+      },
+      {
+        "__typename": "ProjectV2ItemFieldSingleSelectValue",
+        "name": "Done",
+        "color": "GREEN",
+        "optionId": "4ad38d58",
+        "field": {
+          "id": "PVTSSF_lAHOAmfLjc4BWiTtzhR1seY",
+          "name": "Status"
+        }
+      },
+      {
+        "__typename": "ProjectV2ItemFieldNumberValue",
+        "number": 3,
+        "field": {
+          "id": "PVTF_lAHOAmfLjc4BWiTtzhR1soI",
+          "name": "Story Points"
+        }
+      }
+    ]
+  }
+}

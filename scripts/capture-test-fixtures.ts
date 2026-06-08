@@ -34,7 +34,7 @@ import type {
 // ── CLI ───────────────────────────────────────────────────────────────────────
 
 const args = parseArgs(Deno.args, {
-  string: ["output-dir", "user-logins", "search-query", "project-name"],
+  string: ["output-dir", "user-logins", "search-query", "project-name", "item-keys"],
   alias: { o: "output-dir", u: "user-logins", q: "search-query", n: "project-name" },
   collect: ["project-name"],
   unknown: (flag: string) => {
@@ -58,6 +58,11 @@ const outputBase = args["output-dir"] ?? resolve(Deno.cwd(), "scripts/capture-ou
 const userLoginsRaw: string | undefined = args["user-logins"];
 const searchQuery: string | undefined = args["search-query"];
 const projectNames: string[] = args["project-name"] ?? [];
+const itemKeysRaw: string = args["item-keys"] ?? "222,192,187";
+const itemKeys: number[] = itemKeysRaw
+  .split(",")
+  .map((s) => parseInt(s.trim(), 10))
+  .filter((n) => !isNaN(n));
 
 // ── GraphQL queries ───────────────────────────────────────────────────────────
 
@@ -80,6 +85,129 @@ query SearchIssues($query: String!, $first: Int) {
       }
     }
     issueCount
+  }
+}
+`;
+
+const GET_ISSUE_PROJECT_ITEM = `
+fragment ItemContent on ProjectV2Item {
+  content {
+    __typename
+    ... on Issue {
+      id number title url state body
+      issueType { id name }
+      assignees(first: 5) { nodes { login } }
+      labels(first: 10)   { nodes { name color } }
+      milestone { id title dueOn }
+      repository { name nameWithOwner }
+      blockedBy(first: 10) { nodes { id number title } }
+      issueFieldValues(first: 25) {
+        nodes {
+          ... on IssueFieldNumberValue {
+            value
+            field { ... on IssueFieldNumber { name } }
+          }
+          ... on IssueFieldSingleSelectValue {
+            name optionId
+            field { ... on IssueFieldSingleSelect { name } }
+          }
+        }
+      }
+    }
+    ... on PullRequest {
+      id number title url state body isDraft
+      assignees(first: 5) { nodes { login } }
+      labels(first: 10)   { nodes { name color } }
+      repository { name nameWithOwner }
+    }
+    ... on DraftIssue {
+      id title body
+      assignees(first: 5) { nodes { login } }
+    }
+  }
+}
+
+fragment ItemFieldValues on ProjectV2Item {
+  fieldValues(first: 20) {
+    nodes {
+      __typename
+      ... on ProjectV2ItemFieldTextValue {
+        text
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldNumberValue {
+        number
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldDateValue {
+        date
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldSingleSelectValue {
+        name color optionId
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldIterationValue {
+        title startDate duration iterationId
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldUserValue {
+        users(first: 5) { nodes { login } }
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldLabelValue {
+        labels(first: 10) { nodes { name color } }
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldMilestoneValue {
+        milestone { title dueOn }
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldRepositoryValue {
+        repository { name nameWithOwner }
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemIssueFieldValue {
+        field {
+          ... on ProjectV2Field { id name }
+          ... on ProjectV2SingleSelectField { id name }
+        }
+        issueFieldValue {
+          ... on IssueFieldSingleSelectValue {
+            name optionId color
+          }
+          ... on IssueFieldTextValue {
+            value
+          }
+          ... on IssueFieldNumberValue {
+            value
+          }
+          ... on IssueFieldDateValue {
+            value
+          }
+        }
+      }
+    }
+  }
+}
+
+query GetIssueProjectItem($owner: String!, $repo: String!, $number: Int!) {
+  repository(owner: $owner, name: $repo) {
+    issue(number: $number) {
+      id
+      projectItems(first: 10) {
+        nodes {
+          project { number }
+          id
+          type
+          createdAt
+          updatedAt
+          isArchived
+          ...ItemContent
+          ...ItemFieldValues
+        }
+      }
+    }
   }
 }
 `;
@@ -135,6 +263,120 @@ const loadAugmentConfig = async (): Promise<AugmentationConfig | null> => {
   }
 };
 
+/**
+ * Extract owner and primary repo name from the GitHub backend config.
+ * The config shape is type-erased as `unknown` at the domain boundary,
+ * so we cast to the known GitHub backend shape.
+ */
+const extractGitHubOwnerRepo = (
+  scrumConfig: Record<string, unknown>,
+): { owner: string; repo: string; projectNumber: number } | null => {
+  const backends = scrumConfig["backends"] as Record<string, Record<string, unknown>> | undefined;
+  if (!backends) return null;
+  const gh = backends["github"];
+  if (!gh) return null;
+  const owner = gh["owner"] as string | undefined;
+  const trackedRepos = gh["tracked_repos"] as string[] | undefined;
+  const projectNumber = gh["project_number"] as number | undefined;
+  if (!owner || !trackedRepos || trackedRepos.length === 0 || typeof projectNumber !== "number") {
+    return null;
+  }
+  return { owner, repo: trackedRepos[0], projectNumber };
+};
+
+// ── Raw ProjectItem capture ────────────────────────────────────────────────────
+
+/** Shape of a raw ProjectItem node returned by GetIssueProjectItem. */
+interface RawProjectItemNode {
+  project: { number: number } | null;
+  id: string;
+  type: string;
+  createdAt: string;
+  updatedAt: string;
+  isArchived: boolean;
+  content: Record<string, unknown> | null;
+  fieldValues: { nodes: Record<string, unknown>[] };
+}
+
+interface GetIssueProjectItemResponse {
+  repository: {
+    issue: {
+      id: string;
+      projectItems: {
+        nodes: RawProjectItemNode[];
+      };
+    } | null;
+  } | null;
+}
+
+/**
+ * Capture raw ProjectItem GraphQL responses for the given issue keys.
+ * Writes each item as captured/items/<key>.json in the output directory.
+ * Filters by project number when an issue belongs to multiple projects.
+ */
+const captureRawProjectItems = async (
+  githubClient: GitHubClient,
+  owner: string,
+  repo: string,
+  itemKeys: number[],
+  projectNumber: number,
+  outputDir: string,
+): Promise<Record<string, RawProjectItemNode>> => {
+  const itemsDir = resolve(outputDir, "captured", "items");
+  await ensureDir(itemsDir);
+  const captured: Record<string, RawProjectItemNode> = {};
+
+  console.error(`capturing raw ProjectItems for keys: ${itemKeys.join(", ")}…`);
+
+  for (const key of itemKeys) {
+    try {
+      const data = await githubClient.graphql<GetIssueProjectItemResponse>(
+        GET_ISSUE_PROJECT_ITEM,
+        { owner, repo, number: key },
+      );
+
+      const issue = data.repository?.issue;
+      if (!issue) {
+        console.error(`  ${key}: issue not found, skipping`);
+        continue;
+      }
+
+      const nodes = issue.projectItems?.nodes ?? [];
+      if (nodes.length === 0) {
+        console.error(`  ${key}: no project items found, skipping`);
+        continue;
+      }
+
+      // Filter to the matching project number when multiple project items exist
+      let node: RawProjectItemNode;
+      if (nodes.length === 1) {
+        node = nodes[0];
+      } else {
+        const filtered = nodes.filter((n) => n.project?.number === projectNumber);
+        if (filtered.length === 0) {
+          console.error(
+            `  ${key}: no project item for project #${projectNumber} among ${nodes.length} nodes, using first`,
+          );
+          node = nodes[0];
+        } else {
+          node = filtered[0];
+        }
+      }
+
+      // Write the raw node - strip only the `project` wrapper field
+      const { project: _project, ...itemNode } = node;
+      const itemPath = resolve(itemsDir, `${key}.json`);
+      await Deno.writeTextFile(itemPath, JSON.stringify(itemNode, null, 2));
+      captured[String(key)] = node;
+      console.error(`  ${key}: captured raw ProjectItem → ${itemPath}`);
+    } catch (err) {
+      console.error(`  ${key}: SKIPPED - ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
+  return captured;
+};
+
 // ── Capture pipeline per config ───────────────────────────────────────────────
 
 const captureConfig = async (
@@ -179,7 +421,7 @@ const captureConfig = async (
       templateSnapshots[type] = { content, location: locPath };
       console.error(`  ${type}: ${locPath} (${content.length} bytes)`);
     } catch (err) {
-      console.error(`  ${type}: SKIPPED — ${err instanceof Error ? err.message : err}`);
+      console.error(`  ${type}: SKIPPED - ${err instanceof Error ? err.message : err}`);
     }
   }
 
@@ -248,7 +490,7 @@ const captureConfig = async (
       };
       console.error(`  ${key}: captured`);
     } catch (err) {
-      console.error(`  ${key}: SKIPPED — ${err instanceof Error ? err.message : err}`);
+      console.error(`  ${key}: SKIPPED - ${err instanceof Error ? err.message : err}`);
     }
   }
 
@@ -256,6 +498,24 @@ const captureConfig = async (
   await Deno.writeTextFile(detailsPath, JSON.stringify(capturedDetails, null, 2));
   files.push(detailsPath);
   console.error(`wrote item details → ${detailsPath}`);
+
+  // 4.5 Raw ProjectItem capture (for adapter-layer fixture generation)
+  const ghOwnerRepo = extractGitHubOwnerRepo(
+    scrumConfig as unknown as Record<string, unknown>,
+  );
+  if (ghOwnerRepo && itemKeys.length > 0) {
+    const ghClient = buildGitHubClient(token);
+    await captureRawProjectItems(
+      ghClient,
+      ghOwnerRepo.owner,
+      ghOwnerRepo.repo,
+      itemKeys,
+      ghOwnerRepo.projectNumber,
+      outputDir,
+    );
+  } else {
+    console.error("skipping raw ProjectItem capture - no owner/repo from config or no item keys");
+  }
 
   // 5. User node IDs via GraphQL
   if (userLoginsRaw) {
@@ -273,7 +533,7 @@ const captureConfig = async (
         userNodes[login] = data.user?.id ?? null;
         console.error(`  ${login}: ${data.user?.id ?? "not found"}`);
       } catch (err) {
-        console.error(`  ${login}: SKIPPED — ${err instanceof Error ? err.message : err}`);
+        console.error(`  ${login}: SKIPPED - ${err instanceof Error ? err.message : err}`);
         userNodes[login] = null;
       }
     }
@@ -298,7 +558,7 @@ const captureConfig = async (
       files.push(searchPath);
       console.error(`wrote search results → ${searchPath}`);
     } catch (err) {
-      console.error(`  search SKIPPED — ${err instanceof Error ? err.message : err}`);
+      console.error(`  search SKIPPED - ${err instanceof Error ? err.message : err}`);
     }
   }
 
@@ -308,24 +568,52 @@ const captureConfig = async (
     const augmentedDir = resolve(outputDir, "augmented-items");
     await ensureDir(augmentedDir);
 
+    // Raw items directory for augmented raw ProjectItem JSON
+    const rawItemsDir = resolve(outputDir, "captured", "items");
+
     for (const aug of augmentConfig.augmentations) {
+      // 7a. Augment normalized item detail (unchanged from before)
       const detail = capturedDetails[aug.item_key];
       if (!detail) {
         console.error(`  ${aug.item_key}: not found in captured details, skipping`);
-        continue;
+      } else {
+        const augmentedRaw = { ...detail.raw as Record<string, unknown> };
+        augmentedRaw["_augmented_fields"] = aug.append_fields;
+        const augmentedEntry: CapturedItemDetail = {
+          normalized: detail.normalized,
+          raw: augmentedRaw,
+          captured_at: new Date().toISOString(),
+        };
+        const augPath = resolve(augmentedDir, `${aug.item_key}.json`);
+        await Deno.writeTextFile(augPath, JSON.stringify(augmentedEntry, null, 2));
+        files.push(augPath);
+        console.error(`  ${aug.item_key}: augmented (normalized) → ${augPath}`);
       }
-      const augmentedRaw = { ...detail.raw as Record<string, unknown> };
-      // Merge append_fields into the raw shape under a synthetic key
-      augmentedRaw["_augmented_fields"] = aug.append_fields;
-      const augmentedEntry: CapturedItemDetail = {
-        normalized: detail.normalized,
-        raw: augmentedRaw,
-        captured_at: new Date().toISOString(),
-      };
-      const augPath = resolve(augmentedDir, `${aug.item_key}.json`);
-      await Deno.writeTextFile(augPath, JSON.stringify(augmentedEntry, null, 2));
-      files.push(augPath);
-      console.error(`  ${aug.item_key}: augmented → ${augPath}`);
+
+      // 7b. Augment raw ProjectItem - merge append_fields into fieldValues.nodes
+      const rawItemPath = resolve(rawItemsDir, `${aug.item_key}.json`);
+      try {
+        const rawJson = await Deno.readTextFile(rawItemPath);
+        const rawItem = JSON.parse(rawJson) as Record<string, unknown>;
+        const fieldValues = rawItem["fieldValues"] as { nodes: unknown[] } | undefined;
+        if (fieldValues && Array.isArray(fieldValues.nodes)) {
+          const augmentedRawItem = JSON.parse(JSON.stringify(rawItem)); // deep clone
+          const augmentedFv = augmentedRawItem["fieldValues"] as { nodes: unknown[] };
+          augmentedFv.nodes = [...augmentedFv.nodes, ...aug.append_fields];
+          const augRawPath = resolve(rawItemsDir, `${aug.item_key}-augmented.json`);
+          await Deno.writeTextFile(augRawPath, JSON.stringify(augmentedRawItem, null, 2));
+          files.push(augRawPath);
+          console.error(`  ${aug.item_key}: augmented (raw) → ${augRawPath}`);
+        } else {
+          console.error(
+            `  ${aug.item_key}: raw item has no fieldValues.nodes, skipping raw augmentation`,
+          );
+        }
+      } catch (_err) {
+        console.error(
+          `  ${aug.item_key}: raw item not found at ${rawItemPath}, skipping raw augmentation`,
+        );
+      }
     }
   }
 

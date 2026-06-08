@@ -1,16 +1,16 @@
 // =============================================================================
-// src/adapters/github/bootstrap.ts — GitHub live metadata bootstrap
+// src/adapters/github/bootstrap.ts - GitHub live metadata bootstrap
 //
 // Formerly config-loader.ts (renamed per Phase 4 of plans/config-loader-refactor.md).
 // Single responsibility: fetch live GitHub project field metadata and return
-// typed boot state. Does NOT fetch or parse YAML — that moved to
-// src/scrum/config-boot.ts (Phase 1). Does NOT resolve env vars — that happens
+// typed boot state. Does NOT fetch or parse YAML - that moved to
+// src/scrum/config-boot.ts (Phase 1). Does NOT resolve env vars - that happens
 // in the factory (Phase 0).
 //
 // Called at startup and on each ConfigReloader.reload().
 //
 // computeTypeTemplatePaths() is also exported for use by the factory at
-// construction time — it is a pure computation (no API call) that resolves
+// construction time - it is a pure computation (no API call) that resolves
 // configured template paths into ContentLocation values.
 // =============================================================================
 
@@ -34,7 +34,7 @@ import { classifyIterations } from "./internal/iteration-classifier.ts";
 /**
  * Resolve canonical type key → ContentLocation map from ghConfig.type_mapping.
  *
- * Pure computation — no network or filesystem I/O. Reads only the configured
+ * Pure computation - no network or filesystem I/O. Reads only the configured
  * type_mapping entries and resolves template paths/URLs relative to projectRoot.
  *
  * Exported for use by the factory at construction time (before bootstrap) AND
@@ -78,7 +78,7 @@ export interface IssueBackedFieldMeta {
 }
 
 /**
- * Live GitHub project metadata — mutable, patched in-place by ConfigReloader.
+ * Live GitHub project metadata - mutable, patched in-place by ConfigReloader.
  * typeTemplatePaths is included here because it's re-resolved on each reload.
  */
 export interface GitHubLiveMetadata {
@@ -302,8 +302,8 @@ interface OrgBootstrapResponse {
  * Bootstrap live GitHub project field metadata.
  * Called at startup and on each ConfigReloader.reload().
  *
- * Does NOT fetch or parse YAML — receives the already-typed ghConfig.
- * Does NOT resolve env vars — token is already a ResolvedToken.
+ * Does NOT fetch or parse YAML - receives the already-typed ghConfig.
+ * Does NOT resolve env vars - token is already a ResolvedToken.
  */
 export const bootstrapGitHub = async (params: BootstrapParams): Promise<GitHubLiveMetadata> => {
   const { ghConfig, github, projectRoot, configDesc } = params;
@@ -364,7 +364,7 @@ export const bootstrapGitHub = async (params: BootstrapParams): Promise<GitHubLi
         statusCode: 404,
         recovery: "Verify backends.github.owner, owner_type, and project_number in config, " +
           "and confirm the token can read this project. " +
-          "Make sure owner_type matches the project's owner type — " +
+          "Make sure owner_type matches the project's owner type - " +
           'set to "user" for user-owned projects or "org" for organization-owned projects.',
         context: { owner, ownerType, projectNumber },
       },
@@ -500,7 +500,7 @@ export const bootstrapGitHub = async (params: BootstrapParams): Promise<GitHubLi
     );
   }
 
-  // Resolve template paths — pure computation from config, no API call.
+  // Resolve template paths - pure computation from config, no API call.
   const typeTemplatePaths = computeTypeTemplatePaths(ghConfig.type_mapping, projectRoot);
 
   let activeIterations: IterationEntry[] = [];

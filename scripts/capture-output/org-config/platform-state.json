@@ -1,0 +1,146 @@
+{
+  "fields": {
+    "status": {
+      "exists": true,
+      "options": [
+        "Backlog",
+        "Ready",
+        "In Progress",
+        "In Review",
+        "Blocked",
+        "Done"
+      ],
+      "missingOptions": []
+    },
+    "sprint": {
+      "exists": true
+    },
+    "story_points": {
+      "exists": true
+    },
+    "priority": {
+      "exists": true,
+      "options": [
+        "Must",
+        "Should",
+        "Could",
+        "Won't"
+      ],
+      "missingOptions": []
+    },
+    "type": {
+      "exists": true,
+      "configured": true
+    }
+  },
+  "labels": {
+    "existing": [
+      "critical",
+      "feature",
+      "help wanted",
+      "invalid",
+      "polish",
+      "question",
+      "runtime bug",
+      "wontfix",
+      "game design",
+      "mechanics",
+      "testing",
+      "artwork",
+      "audio asset",
+      "controls",
+      "localization",
+      "video asset"
+    ],
+    "expected": [],
+    "missing": []
+  },
+  "iterations": {
+    "active": {
+      "id": "07155ad6",
+      "name": "Sprint 4",
+      "goal": null,
+      "startDate": "2026-06-05",
+      "durationDays": 16,
+      "endDate": "2026-06-21"
+    },
+    "next": null,
+    "completed": [
+      {
+        "id": "ecba33e9",
+        "name": "Sprint 3",
+        "goal": null,
+        "startDate": "2026-05-24",
+        "durationDays": 8,
+        "endDate": "2026-06-01"
+      },
+      {
+        "id": "9085132c",
+        "name": "Sprint 2",
+        "goal": null,
+        "startDate": "2026-05-17",
+        "durationDays": 6,
+        "endDate": "2026-05-23"
+      },
+      {
+        "id": "b1710bb8",
+        "name": "Sprint 1",
+        "goal": null,
+        "startDate": "2026-05-03",
+        "durationDays": 14,
+        "endDate": "2026-05-17"
+      }
+    ],
+    "completedCount": 3
+  },
+  "vocabulary": {
+    "statusDisplay": {
+      "backlog": "Backlog",
+      "ready": "Ready",
+      "in_progress": "In Progress",
+      "in_review": "In Review",
+      "blocked": "Blocked",
+      "done": "Done"
+    },
+    "priorityDisplay": {
+      "p0": "Must",
+      "p1": "Should",
+      "p2": "Could",
+      "p3": "Won't"
+    },
+    "typeDisplay": {
+      "user_story": "User Story",
+      "bug": "Bug",
+      "tech_debt": "Tech Debt",
+      "spike": "Spike",
+      "impediment": "Impediment"
+    },
+    "typeTemplatePaths": {
+      "user_story": {
+        "kind": "file",
+        "path": "/workspace/.github/scrum/.github/ISSUE_TEMPLATE/user_story.yml"
+      },
+      "bug": {
+        "kind": "file",
+        "path": "/workspace/.github/scrum/.github/ISSUE_TEMPLATE/bug_report.yml"
+      },
+      "tech_debt": {
+        "kind": "file",
+        "path": "/workspace/.github/scrum/.github/ISSUE_TEMPLATE/tech_debt.yml"
+      },
+      "spike": {
+        "kind": "file",
+        "path": "/workspace/.github/scrum/.github/ISSUE_TEMPLATE/spike.yml"
+      },
+      "impediment": {
+        "kind": "file",
+        "path": "/workspace/.github/scrum/.github/ISSUE_TEMPLATE/impediment.yml"
+      }
+    }
+  },
+  "epics": {
+    "active": [],
+    "totalCount": 0
+  },
+  "templateUris": null
+}

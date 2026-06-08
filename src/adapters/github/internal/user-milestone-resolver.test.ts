@@ -17,16 +17,16 @@ import { FIXTURE_USER_ID, USERNODE_IDS } from "./_test_fixtures.ts";
 // Fixture-derived constants
 // =============================================================================
 
-/** The real owner login from the captured fixture — matches the config owner. */
+/** The real owner login from the captured fixture - matches the config owner. */
 const REAL_LOGIN = "hoonsubin";
 
 /** Real API response for a valid assignee user. */
 const USER_FOUND = USERNODE_IDS[REAL_LOGIN];
 
-/** Synthesized NOT_FOUND response — API returns { user: null } for unknown logins. */
+/** Synthesized NOT_FOUND response - API returns { user: null } for unknown logins. */
 const USER_NULL = USERNODE_IDS["_not_found_"];
 
-/** Malformed response — no user key at all (edge case). */
+/** Malformed response - no user key at all (edge case). */
 const USER_UNDEF = {};
 
 // Assert fixture integrity at module-load time
@@ -51,7 +51,7 @@ const createResolver = () => {
 };
 
 // =============================================================================
-// Test-specification helpers — express intent, not wiring
+// Test-specification helpers - express intent, not wiring
 // =============================================================================
 
 const givenUserExists = (spy: GitHubClientSpy): void => {

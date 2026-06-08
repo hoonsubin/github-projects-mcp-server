@@ -133,7 +133,7 @@ const createService = (options: CreateServiceOptions = {}) => {
     },
   } as unknown as UserMilestoneResolver;
 
-  // Track field mutator calls — per-method recorders so tests can assert
+  // Track field mutator calls - per-method recorders so tests can assert
   // which specific field mutator method was invoked.
   const fieldCalls: Array<{ method: string; args: unknown[] }> = [];
   const makeRecorder = (method: string) => (...args: unknown[]): Promise<void> => {

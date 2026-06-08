@@ -1,94 +1,126 @@
 # Fixture Capture Refactoring Strategy
 
-> **Status:** Draft **Scope:** Test fixture capture pipeline &mdash; `scripts/capture-test-fixtures.ts`, `src/adapters/github/internal/_test_fixtures.ts`, `src/scrum/_test_fixtures.ts`, and 13 consuming test files **Principle:** Every fixture that comes from a real API call should be captured via script, not hand-edited into TypeScript. Synthetic fixtures (error paths, terminal states) remain hand-authored but are explicitly documented as such.
+> **Status:** In Progress **Scope:** Test fixture capture pipeline — `scripts/capture-test-fixtures.ts`, `src/adapters/github/internal/__fixtures__/`, `src/scrum/__fixtures__/`, and all consuming test files **Principle:** Every fixture that comes from a real API call should be auto-captured as JSON and loaded at import time — not hand-edited into TypeScript. Synthetic fixtures (error paths, terminal states) remain hand-authored but are explicitly documented as such.
 
 ---
 
 ## Table of Contents
 
-1. [Gap Analysis](#section-1-gap-analysis)
-2. [Proposed Capture Script Enhancements](#section-2-proposed-capture-script-enhancements)
-3. [Test-Side Fixture Restructuring](#section-3-test-side-fixture-restructuring)
-4. [Implementation Plan](#section-4-implementation-plan)
+1. [Current State](#section-1-current-state)
+2. [Gap Analysis](#section-2-gap-analysis)
+3. [Architecture Overview](#section-3-architecture-overview)
+4. [Smart Fixture Selection](#section-4-smart-fixture-selection)
+5. [Implementation Plan](#section-5-implementation-plan)
+6. [Directory Rename: `fixtures` → `__fixtures__`](#section-6-directory-rename-fixtures-to-__fixtures__)
+7. [Fixture Regeneration Workflow](#section-7-fixture-regeneration-workflow)
 
 ---
 
-## Section 1: Gap Analysis
+## Section 1: Current State
 
-### 1.1 Current Capture Pipeline
+### 1.1 What's Done
 
-The script at [`scripts/capture-test-fixtures.ts`](scripts/capture-test-fixtures.ts) runs the production adapter pipeline and dumps three JSON files to [`scripts/capture-output/`](scripts/capture-output/):
+The capture script at [`scripts/capture-test-fixtures.ts`](scripts/capture-test-fixtures.ts) has been refactored to a single-entry-point design:
 
-| Output File           | Source Method                         | Content                                                                          |
-| --------------------- | ------------------------------------- | -------------------------------------------------------------------------------- |
-| `platform-state.json` | `backend.getPlatformState()`          | Vocabulary maps, field presence, active/next/completed iterations, epics, labels |
-| `items.json`          | `backend.findItems({ scope: "all" })` | Up to 50 board items as `ItemSearchResult`                                       |
-| `templates.json`      | `fileReader.fetchContent()` per type  | Template YAML content keyed by canonical type                                    |
+- **CLI:** Positional config paths after `--`, flags: `--project-name`, `--user-logins`, `--search-query`, `--output-dir`, `--item-keys`
+- **All capture functions implemented inline:**
+  - `captureBase()` — platform state + items + templates (the original 3 outputs)
+  - `captureUserNodeIds()` — resolves GitHub logins to GraphQL node IDs via `ResolveActorNodeId`
+  - `captureItemDetails()` — per-item normalized `StoryDetail` + raw reference
+  - `captureSearchResults()` — search API results from `SearchIssues` query
+  - `captureRawProjectItems()` — raw ProjectItem GraphQL shapes for given issue keys
+  - `augmentFields()` — appends synthetic non-canonical fields from `augment-config.yml`
+- **Supporting modules:** `scripts/capture/types.ts` (shared types), `scripts/capture/augment-config.yml` (augmentation config)
+- **Task definition:** `deno task capture-fixtures` in [`deno.json`](deno.json:18)
 
-### 1.2 Test &rarr; Fixture Dependency Map
+### 1.2 What's Already Captured
 
-Thirteen test files consume fixtures from two fixture modules. The table below maps each test file to every fixture it imports and categorizes the fixture source.
+Running `deno task capture-fixtures -- .github/scrum/config.yml` produces under `scripts/capture-output/config/`:
 
-#### Adapter-layer tests (11 files)
+| File                         | Content                                                                 |
+| ---------------------------- | ----------------------------------------------------------------------- |
+| `platform-state.json`        | Vocabulary maps, field definitions, iterations, epics, labels           |
+| `items.json`                 | Up to 50 board items as `ItemSearchResult` (port-level, **normalized**) |
+| `templates.json`             | Template YAML content keyed by canonical type                           |
+| `item-details.json`          | Per-item `{ normalized: StoryDetail, raw: StoryDetail, captured_at }`   |
+| `captured/items/*.json`      | Raw ProjectItem GraphQL shapes per issue key                            |
+| `augmented-items/<key>.json` | Items with synthetic non-canonical fields appended                      |
+| `user-nodes.json`            | ResolveActorNodeId responses (requires `--user-logins` flag)            |
+| `search-results.json`        | SearchIssues query results (requires `--search-query` flag)             |
 
-| #  | Test File                                                                                                                  | Imports From `_test_fixtures.ts`                          | Fixture Category                          |
-| -- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ----------------------------------------- |
-| 1  | [`pagination.test.ts`](src/adapters/github/internal/pagination.test.ts)                                                    | `FIXTURE_PAGE_1`, `FIXTURE_PAGE_2`                        | Page envelope (built from captured items) |
-| 2  | [`project-items-cache.test.ts`](src/adapters/github/internal/project-items-cache.test.ts)                                  | `FIXTURE_PAGE_1`, `FIXTURE_PAGE_2`                        | Page envelope                             |
-| 3  | [`result-normalizer.test.ts`](src/adapters/github/internal/result-normalizer.test.ts)                                      | `FIXTURE_ITEM_WITH_CUSTOM_FIELDS`                         | Augmented real item                       |
-| 4  | [`field-value-mutator.test.ts`](src/adapters/github/internal/field-value-mutator.test.ts)                                  | `FIXTURE_USER_ID`, `USERNODE_IDS`                         | User node ID resolution                   |
-| 5  | [`story-query-service.test.ts`](src/adapters/github/internal/story-query-service.test.ts)                                  | `FIXTURE_NODES`                                           | All 4 items as array                      |
-| 6  | [`item-filter.test.ts`](src/adapters/github/internal/item-filter.test.ts)                                                  | `FIXTURE_NODES`                                           | All 4 items as array                      |
-| 7  | [`user-milestone-resolver.test.ts`](src/adapters/github/internal/user-milestone-resolver.test.ts)                          | `FIXTURE_USER_ID`, `USERNODE_IDS`                         | User node ID resolution                   |
-| 8  | [`search-api-assembler.test.ts`](src/adapters/github/internal/assemblers/search-api-assembler.test.ts)                     | `FIXTURE_PAGE_1`, `FIXTURE_PAGE_2`                        | Page envelope (fallback path)             |
-| 9  | [`direct-lookup-assembler.test.ts`](src/adapters/github/internal/assemblers/direct-lookup-assembler.test.ts)               | `FIXTURE_ITEM_222`                                        | Individual real item                      |
-| 10 | [`project-items-assembler.test.ts`](src/adapters/github/internal/assemblers/project-items-assembler.test.ts)               | `FIXTURE_ITEM_222`, `FIXTURE_NODES`, `makePageEnvelope()` | Real item + page builder                  |
-| 11 | [`assembler-pipeline.integration.test.ts`](src/adapters/github/internal/assemblers/assembler-pipeline.integration.test.ts) | `FIXTURE_ITEM_222`, `FIXTURE_PAGE_1`, `FIXTURE_PAGE_2`    | Real item + page envelopes                |
+### 1.3 What Tests Currently Consume
 
-#### Scrum-layer tests (2 files)
+The fixture modules under [`src/adapters/github/internal/__fixtures__/`](src/adapters/github/internal/__fixtures__/index.ts) are **hand-authored TypeScript constants**. They contain raw `ProjectItem` GraphQL response shapes — **not** the normalized port-level data that the capture script produces:
 
-| #  | Test File                                                          | Imports From `_test_fixtures.ts`                                 | Fixture Category                    |
-| -- | ------------------------------------------------------------------ | ---------------------------------------------------------------- | ----------------------------------- |
-| 12 | [`template-pipeline.test.ts`](src/scrum/template-pipeline.test.ts) | `TYPE_TEMPLATE_CONTENT`                                          | Template content strings            |
-| 13 | [`template-resource.test.ts`](src/scrum/template-resource.test.ts) | `INLINE_LOCATION`, `FILE_YML_LOCATION`, `URL_YML_LOCATION`, etc. | Synthetic ContentLocation constants |
+| Module                                                                               | Exports                                                                   | Source                                   |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- | ---------------------------------------- |
+| [`items.ts`](src/adapters/github/internal/__fixtures__/items.ts)                     | `FIXTURE_ITEM_222`, `FIXTURE_ITEM_192`, `FIXTURE_ITEM_WITH_CUSTOM_FIELDS` | Hand-authored from captured fixture JSON |
+| [`items-synthetic.ts`](src/adapters/github/internal/__fixtures__/items-synthetic.ts) | `FIXTURE_ITEM_DONE`, `FIXTURE_NODES`                                      | Synthetic (must stay hand-authored)      |
+| [`pages.ts`](src/adapters/github/internal/__fixtures__/pages.ts)                     | `FIXTURE_PAGE_1`, `FIXTURE_PAGE_2`, `makePageEnvelope()`                  | Built from the item constants            |
+| [`user-nodes.ts`](src/adapters/github/internal/__fixtures__/user-nodes.ts)           | `USERNODE_IDS`, `FIXTURE_USER_ID`                                         | Hand-authored                            |
+| [`index.ts`](src/adapters/github/internal/__fixtures__/index.ts)                     | Barrel re-export                                                          | Re-exports above                         |
 
-> **Note:** [`search-result-normalizer.test.ts`](src/adapters/github/internal/search-result-normalizer.test.ts) does **not** import `_test_fixtures.ts`. It constructs inline `SearchIssueNode[]` fixtures. This is the gap &mdash; real search API response shapes are never captured or replayed.
+These are consumed by 11 adapter-layer test files via `_test_fixtures.ts` barrel, plus 2 scrum-layer test files. The scrum-layer [`__fixtures__/`](src/scrum/__fixtures__/index.ts) module contains `ContentLocation` constants and template content strings — these are synthetic and will remain hand-authored.
 
-### 1.3 Gap Matrix
+### 1.4 Problems with the Current Hard-Coded Approach
 
-| Fixture Type                                                         | Currently Captured?             | Consumed By                                                                      | Gap                                                                                    |
-| -------------------------------------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Platform state (vocabulary, fields, iterations, epics)               | **Yes** (`platform-state.json`) | No test currently loads it                                                       | Low priority &mdash; captured for manual review                                        |
-| Board items (aggregate listing)                                      | **Yes** (`items.json`)          | No test directly loads it                                                        | Extracted manually into `FIXTURE_ITEM_222`, `FIXTURE_ITEM_192`                         |
-| Template content strings                                             | **Yes** (`templates.json`)      | `template-pipeline.test.ts`, `template-resource.test.ts`                         | ✅ Covered                                                                             |
-| **Individual item detail** (GetProjectItemById / full story payload) | **No**                          | `field-value-mutator.test.ts`, `story-query-service.test.ts`                     | **High** &mdash; mutation tests need issue-backed field data                           |
-| **User node ID resolution** (ResolveActorNodeId)                     | **No**                          | `field-value-mutator.test.ts`, `user-milestone-resolver.test.ts`                 | **High** &mdash; currently hand-edited `USERNODE_IDS`                                  |
-| **Search API results** (searchIssues query envelope)                 | **No**                          | `search-api-assembler.test.ts` fallback path, `search-result-normalizer.test.ts` | **Medium** &mdash; search tests use synthetic inline data; no real result shapes       |
-| **Non-canonical field augmentation**                                 | **No** (manual)                 | `result-normalizer.test.ts`                                                      | **Low** &mdash; synthetic fields appended by hand to `FIXTURE_ITEM_WITH_CUSTOM_FIELDS` |
-| Multiple project configs                                             | **No** (single `--config`)      | N/A                                                                              | **Medium** &mdash; locks capture to one project                                        |
+The current script relies on a hard-coded default: `--item-keys "222,192,187"`. This has three problems:
 
-### 1.4 Auto-Capturable vs. Must-Remain-Synthetic
+1. **Not comprehensive** — The 3 hard-coded keys cover only what was manually verified. They don't guarantee coverage of all board item types, statuses, priorities, story point values, or edge cases like epics, dependencies, or draft issues.
+2. **Not portable** — If the capture script is run against a different project (e.g. `--project-name other-project`), the same 3 keys are used. They may not exist or may not represent that project's variety.
+3. **Requires tribal knowledge** — A new contributor doesn't know which keys to pass. They must read the test fixtures to discover `"222,192,187"`.
 
-| Fixture                                                                 | Can Be Auto-Captured?                                                | Rationale                                                                                                                          |
-| ----------------------------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `FIXTURE_ITEM_222`, `FIXTURE_ITEM_192`, `FIXTURE_ITEM_187` (real items) | **Yes** &mdash; via `findItems` / item detail                        | Already present in `items.json`; detail can be captured per-item                                                                   |
-| `FIXTURE_ITEM_DONE`                                                     | **No** &mdash; synthetic                                             | Requires a terminal-status item with specific field values that may not exist on the real board                                    |
-| `FIXTURE_ITEM_WITH_CUSTOM_FIELDS`                                       | **Hybrid**                                                           | Real item #187 + synthetic non-canonical fields appended. The base item is auto-capturable; the augmentation must be config-driven |
-| `USERNODE_IDS["hoonsubin"]`                                             | **Yes** &mdash; via GraphQL `ResolveActorNodeId`                     | Real API response                                                                                                                  |
-| `USERNODE_IDS["_not_found_"]`                                           | **No** &mdash; synthetic                                             | Error path; no real GitHub login consistently returns null                                                                         |
-| `FIXTURE_USER_ID`                                                       | **Yes** &mdash; derived from `USERNODE_IDS["hoonsubin"]`             | Convenience constant                                                                                                               |
-| `FIXTURE_PAGE_1`, `FIXTURE_PAGE_2`                                      | **Yes** &mdash; derived from captured items via `makePageEnvelope()` | Builder function stays; items loaded from JSON                                                                                     |
-| `TEMPLATE_USER_STORY`, `TEMPLATE_BUG`, `TEMPLATE_IMPEDIMENT`            | **Yes** &mdash; via `fileReader.fetchContent()`                      | Already captured in `templates.json`                                                                                               |
-| `INLINE_LOCATION`, `FILE_YML_LOCATION`, `URL_YML_LOCATION`, etc.        | **No** &mdash; synthetic                                             | Test data for ContentLocation type coverage                                                                                        |
-| `TYPE_TEMPLATE_CONTENT`                                                 | **Yes** &mdash; derived from template constants                      | Can be built from loaded templates                                                                                                 |
+The same problem applies to user logins: `--user-logins` must be passed manually despite the data being available in the scrum config.
 
 ---
 
-## Section 2: Proposed Capture Script Enhancements
+## Section 2: Gap Analysis
 
-### 2.1 Architecture Overview
+### 2.1 The Core Gap
 
-The refactored capture script uses a single-entry-point design. [`scripts/capture-test-fixtures.ts`](scripts/capture-test-fixtures.ts) accepts any number of scrum config file paths (local or URL) as positional CLI arguments after `--` and runs the full capture pipeline for each config. All capture functions are defined inline within the main script &mdash; not dispatched to separate mode files.
+The capture script captures **normalized** data (port-level `StoryDetail`, `ItemSearchResult`), but the fixture constants contain **raw** GraphQL response shapes (`ProjectItem`). These are different types:
+
+| What                        | Level            | Used By                                                          |
+| --------------------------- | ---------------- | ---------------------------------------------------------------- |
+| `StoryDetail` (normalized)  | Port level       | Use-case tests                                                   |
+| `ProjectItem` (raw GraphQL) | Adapter internal | Paginator, assemblers, normalizer, filter, cache, mutation tests |
+
+To auto-generate the `items.ts` constants, the capture script must also capture **raw `ProjectItem`** GraphQL responses.
+
+### 2.2 Can Be Auto-Captured
+
+| Fixture                               | Source                      | Mechanism                                                  |
+| ------------------------------------- | --------------------------- | ---------------------------------------------------------- |
+| All raw `ProjectItem` per corner case | Raw `ProjectItem` GraphQL   | `GetIssueProjectItem` query via capture script             |
+| Augmented items with custom fields    | Raw item + augmentation     | Capture base item, then merge `augment-config.yml` entries |
+| `FIXTURE_PAGE_1`, `FIXTURE_PAGE_2`    | Derived from items          | `makePageEnvelope()` stays — items loaded from JSON        |
+| `USERNODE_IDS` for all team members   | `ResolveActorNodeId` query  | Auto-derived from `backends.github.team[].login`           |
+| `FIXTURE_USER_ID`                     | Derived from `USERNODE_IDS` | Computed inline                                            |
+| `FIXTURE_NODES`                       | Aggregate of items          | Computed from loaded items                                 |
+
+### 2.3 Must Remain Hand-Authored
+
+| Fixture                                                          | Reason                                                                                                 |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `FIXTURE_ITEM_DONE`                                              | Synthetic terminal-status item. No guarantee the real board has one with the exact field values needed |
+| `USERNODE_IDS["_not_found_"]`                                    | Synthetic error path. No real GitHub login consistently returns `null`                                 |
+| `INLINE_LOCATION`, `FILE_YML_LOCATION`, `URL_YML_LOCATION`, etc. | Test data for `ContentLocation` type coverage — not derived from any API                               |
+
+### 2.4 The Augmentation Problem
+
+`FIXTURE_ITEM_WITH_CUSTOM_FIELDS` is item #187 (real) + 2 synthetic non-canonical field entries (Deadline, Target Quarter). With auto-capture:
+
+1. Capture raw #187 from the API → `captured/items/187.json`
+2. Load it, then spread in the synthetic fields from `augment-config.yml`
+3. Export as `FIXTURE_ITEM_WITH_CUSTOM_FIELDS`
+
+The augmentation config must move alongside the captured JSON so the loader can reference it.
+
+---
+
+## Section 3: Architecture Overview
+
+### 3.1 Capture Pipeline Enhancement
 
 ```mermaid
 flowchart TD
@@ -96,624 +128,471 @@ flowchart TD
     CONFIGS --> LOOP{For each config}
     LOOP --> FACTORY[createBackend + raw client]
     FACTORY --> BASE[captureBase]
-    BASE --> USERS[captureUserNodeIds]
-    USERS --> ITEMS[captureItemDetails]
-    ITEMS --> SEARCH[captureSearchResults]
+    BASE --> SELECT[selectRepresentativeItems]
+    
+    subgraph SelectLogic["selectRepresentativeItems()"]
+        FIND[findItems result from captureBase] --> GROUP[Group by type, status,
+            priority, story_points]
+        GROUP --> PICK[Pick one item per unique value]
+        PICK --> EDGE[Add edge cases: epic,
+            dependencies, custom fields,
+            unassigned, drafts]
+        EDGE --> DEDUP[Deduplicate to Set<number>]
+        CLI_KEYS[--item-keys flag]
+        CLI_KEYS --> |supplement| DEDUP
+    end
+    
+    SELECT --> ITEMS[captureItemDetails]
+    ITEMS --> RAW[captureRawProjectItems<br/>for selected keys]
+    RAW --> USERS[captureUserNodeIds]
+    
+    subgraph AutoDerive["Auto-derive user logins"]
+        CONFIG[backends.github.team] --> |extract .login| LOGINS[login strings]
+        LOGINS --> USERS
+        CLI_USERS[--user-logins flag]
+        CLI_USERS --> |supplemental| USERS
+    end
+    
+    USERS --> SEARCH[captureSearchResults]
     SEARCH --> AUGMENT[augmentFields]
     AUGMENT --> LOOP
     LOOP -->|no more| DONE[Done]
     
     BASE --> OUT[output-dir/slug/]
-    USERS --> OUT
+    SELECT --> OUT
     ITEMS --> OUT
+    RAW --> OUT
+    USERS --> OUT
     SEARCH --> OUT
     AUGMENT --> OUT
 ```
 
-The capture script must access two levels of the adapter:
+### 3.2 `captureRawProjectItems(client, owner, repo, itemKeys, outputDir)`
 
-| Level                    | Interface                          | Used By                                          |
-| ------------------------ | ---------------------------------- | ------------------------------------------------ |
-| **Port level**           | `ProjectReader` / `ProjectBackend` | Base capture, item detail (via `getStoryDetail`) |
-| **GraphQL client level** | Raw `GitHubClient.graphql()`       | User node ID resolution, search API queries      |
+**Input:** Raw `GitHubClient`, owner/repo strings, list of item issue numbers **Output:** `captured/items/<key>.json` per item — the raw `ProjectItem` GraphQL response shape
 
-This two-level access is acceptable because the capture script lives in `scripts/` (infrastructure, not production code) and the fixture data itself (`_test_fixtures.ts`) already contains raw GraphQL response shapes.
-
-### 2.2 CLI Interface
-
-A single `deno.json` task with positional config arguments:
-
-```bash
-# Single config (local file)
-deno task capture-fixtures -- .github/scrum/config.yml
-
-# Multiple configs (local + URL)
-deno task capture-fixtures -- \
-  .github/scrum/config.yml \
-  docs/scrum-org-config.yml \
-  https://raw.githubusercontent.com/TeamSTEP/Meltdown/refs/heads/main/scrum-config.yml
-
-# With optional flags
-deno task capture-fixtures -- --project-name my-slug --user-logins alice,bob .github/scrum/config.yml
-```
-
-**Flags:**
-
-| Flag             | Type     | Default                                | Description                                                      |
-| ---------------- | -------- | -------------------------------------- | ---------------------------------------------------------------- |
-| `--project-name` | `string` | derived from config filename           | Override the output subdirectory slug                            |
-| `--user-logins`  | `string` | none (skip user node capture if empty) | Comma-separated GitHub logins for `ResolveActorNodeId`           |
-| `--search-query` | `string` | none (skip search capture if empty)    | Issue search query string passed to `SearchIssues` GraphQL query |
-| `--output-dir`   | `string` | `scripts/capture-output`               | Parent output directory; per-config slugs go under this          |
-
-**Positional arguments** (after `--`): zero or more scrum config file paths (local path or absolute URL).
-
-### 2.3 Config Slug Derivation
-
-Each config maps to a subdirectory under the output directory. The slug is derived as follows:
-
-1. **`--project-name` flag** (if set): use the explicit value directly (e.g., `--project-name my-team` &rarr; `my-team/`)
-2. **Local file**: use the filename without extension (e.g., `config.yml` &rarr; `config`, `.github/scrum/config.yml` &rarr; `config`)
-3. **URL**: use the last path segment without extension (e.g., `https://example.com/meltdown-scrum-config.yml` &rarr; `meltdown-scrum-config`)
-4. **Duplicate slugs**: append `-2`, `-3`, etc. to avoid overwrites
-
-### 2.4 Capture Pipeline
-
-For each config, the script runs these functions sequentially. Every function is defined inline in [`capture-test-fixtures.ts`](scripts/capture-test-fixtures.ts); the supporting modules [`scripts/capture/infra.ts`](scripts/capture/infra.ts) and [`scripts/capture/types.ts`](scripts/capture/types.ts) provide shared adapter construction and type definitions.
-
-#### `captureBase(backendResult, outputDir)`
-
-Produces the same three files as today's script:
-
-| Output File           | Source Method                         | Content                                                                          |
-| --------------------- | ------------------------------------- | -------------------------------------------------------------------------------- |
-| `platform-state.json` | `backend.getPlatformState()`          | Vocabulary maps, field presence, active/next/completed iterations, epics, labels |
-| `items.json`          | `backend.findItems({ scope: "all" })` | Up to 50 board items as `ItemSearchResult`                                       |
-| `templates.json`      | `fileReader.fetchContent()` per type  | Template YAML content keyed by canonical type                                    |
-
-#### `captureUserNodeIds(client, logins, outputDir)`
-
-**Input:** `GitHubClient` from factory, list of GitHub login strings (from `--user-logins` flag) **Output:** `usernode-ids.json`
+Uses the existing `GetIssueProjectItem` query from [`operations.graphql`](src/adapters/github/operations.graphql:438), which returns a `ProjectItem` node with `ItemContent` and `ItemFieldValues` fragments — exactly the shape that [`items.ts`](src/adapters/github/internal/__fixtures__/items.ts) currently contains as hand-authored TypeScript.
 
 ```json
 {
-  "hoonsubin": { "user": { "id": "U_kgDOAmfLjQ" } },
-  "alice": { "user": { "id": "U_kgDOAnExAmP" } }
+  "id": "PVTI_lAHOAmfLjc4BWiTtzguSvrg",
+  "type": "ISSUE",
+  "createdAt": "2026-05-31T12:04:40Z",
+  "updatedAt": "2026-06-02T23:10:22Z",
+  "isArchived": false,
+  "content": { "__typename": "Issue", "id": "I_kwDOSJo3Ms8AAAABD6XGfw", ... },
+  "fieldValues": { "nodes": [ ... ] }
 }
 ```
 
-For each login, calls `client.graphql(RESOLVE_ACTOR_NODE_ID, { login })`. Automatically appends the synthetic `"_not_found_": { "user": null }` entry. Skipped if `--user-logins` is not provided.
+Item keys are **auto-selected** by `selectRepresentativeItems()` — see Section 4. The `--item-keys` flag supplies supplemental keys on top of the auto-selected set.
 
-#### `captureItemDetails(backend, client, owner, repo, projectNumber, keys, outputDir)`
+### 3.3 Fixture Module Structure (after rename)
 
-**Input:** Item issue numbers extracted from `items.json` (all discovered items; can be overridden with a future `--item-keys` flag) **Output:** `item-details/<number>.json` per item
-
-```json
-{
-  "normalized": { "story": {/* StoryDetail */}, "comments": null, "linked_artifacts": null },
-  "raw": {/* ProjectItem GraphQL shape */},
-  "captured_at": "2026-06-07T17:00:00Z"
-}
-```
-
-Uses the port-level `backend.getStoryDetail()` for normalized data and raw `GitHubClient` for the un-normalized `ProjectItem` GraphQL response.
-
-#### `captureSearchResults(client, query, outputDir)`
-
-**Input:** Search query string from `--search-query` flag **Output:** `search-results.json`
-
-```json
-{
-  "query": "custom_fields passthrough",
-  "result": { "search": { "nodes": [/* SearchIssueNode[] */], "issueCount": 3 } },
-  "captured_at": "2026-06-07T17:00:00Z"
-}
-```
-
-Executes the `SearchIssues` GraphQL query and preserves the exact envelope shape consumed by [`search-result-normalizer.ts`](src/adapters/github/internal/search-result-normalizer.ts). Skipped if `--search-query` is not provided.
-
-#### `augmentFields(capturedDir, configPath, outputDir)`
-
-**Input:** Previously captured `item-details/` directory and the augmentation config YAML **Output:** `item-details/<number>-augmented.json` per augmentation entry
-
-Loads the augmentation config from [`scripts/capture/augment-config.yml`](scripts/capture/augment-config.yml) (loaded automatically; no CLI flag needed unless overriding the default path), applies synthetic field entries to the raw `ProjectItem` shape, and writes augmented variants. This preserves the original captured data while producing the augmented version for tests like [`result-normalizer.test.ts`](src/adapters/github/internal/result-normalizer.test.ts).
-
-### 2.5 Non-Canonical Field Augmentation Config
-
-The file at [`scripts/capture/augment-config.yml`](scripts/capture/augment-config.yml) describes which items to augment and with what synthetic fields. It is loaded automatically by `augmentFields()` for each project.
-
-```yaml
-# scripts/capture/augment-config.yml
-# Synthetic field entries appended to captured ProjectItem raw shapes.
-# Used by result-normalizer.test.ts to exercise non-canonical field passthrough.
-augmentations:
-  - item_key: "187"
-    append_fields:
-      - __typename: "ProjectV2ItemFieldDateValue"
-        date: "2026-08-15"
-        field:
-          id: "PVTF_lAHOAmfLjc4BWiTtzhR1seC"
-          name: "Deadline"
-      - __typename: "ProjectV2ItemFieldTextValue"
-        text: "Q3"
-        field:
-          id: "PVTF_lAHOAmfLjc4BWiTtzhR1seD"
-          name: "Target Quarter"
-```
-
-### 2.6 Script Directory Structure
-
-```
-scripts/
-├── capture-test-fixtures.ts          # CLI entry point — single script with all capture functions
-├── capture/
-│   ├── infra.ts                      # Shared: adapter construction, graphql client access
-│   ├── types.ts                      # Shared capture output types
-│   └── augment-config.yml            # Non-canonical field augmentation config
-```
-
-All capture functions (`captureBase`, `captureUserNodeIds`, `captureItemDetails`, `captureSearchResults`, `augmentFields`) are defined inline in [`capture-test-fixtures.ts`](scripts/capture-test-fixtures.ts). The `infra.ts` and `types.ts` modules provide shared infrastructure and type definitions. No `capture/modes/` directory &mdash; there is only one mode: run everything.
-
-### 2.7 Output Directory Structure
-
-Each config produces output under a config-slugged subdirectory:
-
-```
-scripts/capture-output/
-├── config/                           # from .github/scrum/config.yml
-│   ├── platform-state.json
-│   ├── items.json
-│   ├── templates.json
-│   ├── usernode-ids.json
-│   ├── search-results.json
-│   └── item-details/
-│       ├── 222.json
-│       ├── 187.json
-│       ├── 187-augmented.json
-│       └── 192.json
-├── scrum-org-config/                 # from docs/scrum-org-config.yml
-│   ├── platform-state.json
-│   ├── items.json
-│   └── ...
-└── meltdown-scrum-config/            # from URL
-    ├── platform-state.json
-    └── ...
-```
-
-### 2.8 `deno.json` Task Definition
-
-A single task replaces the previous monolithic task:
-
-```jsonc
-{
-  "tasks": {
-    "capture-fixtures": "deno run --allow-env=GITHUB_TOKEN,DEBUG,NODE_ENV --allow-net --allow-read --allow-write scripts/capture-test-fixtures.ts"
-  }
-}
-```
-
-Config files are passed as positional arguments after `--`. The task definition no longer hardcodes a default config path &mdash; the caller always supplies the configs. There are no mode-specific sub-tasks (`capture-fixtures:users`, `capture-fixtures:items`, etc.) and no composite task (`capture-fixtures:full`). A single invocation captures everything:
-
-```bash
-# Default project (single config)
-deno task capture-fixtures -- .github/scrum/config.yml
-
-# Default project + user nodes + search
-deno task capture-fixtures -- --user-logins hoonsubin --search-query "custom_fields" .github/scrum/config.yml
-
-# Multiple projects
-deno task capture-fixtures -- .github/scrum/config.yml docs/scrum-org-config.yml
-```
-
----
-
-## Section 3: Test-Side Fixture Restructuring
-
-### 3.1 Design Principles
-
-1. **Real data lives in JSON, not TypeScript.** Captured JSON files are committed alongside the fixture modules and loaded at test time through thin wrapper exports.
-2. **Synthetic data stays in TypeScript.** Error paths, terminal states, and hand-crafted edge cases remain as explicit TypeScript constants with clear documentation.
-3. **One fixture module per concern.** Split the monolithic `_test_fixtures.ts` into domain-specific modules, organized by what they represent, not by where they happen to be imported.
-4. **Backward compatibility via re-exports.** During the transition, the existing `_test_fixtures.ts` files can re-export from the new modules so test files don't need to change their import paths immediately.
-
-### 3.2 Proposed Directory Structure
+After the `fixtures/` → `__fixtures__/` rename and JSON migration:
 
 ```
 src/adapters/github/internal/
-├── _test_fixtures.ts              # Re-export barrel (backward compat)
-├── __fixtures__/
-│   ├── items.ts                   # FIXTURE_ITEM_222, FIXTURE_ITEM_192, FIXTURE_ITEM_WITH_CUSTOM_FIELDS, FIXTURE_ITEM_DONE
-│   ├── items-synthetic.ts         # FIXTURE_ITEM_DONE (synthetic, stays in TS)
-│   ├── pages.ts                   # FIXTURE_PAGE_1, FIXTURE_PAGE_2, makePageEnvelope()
-│   ├── user-nodes.ts              # USERNODE_IDS, FIXTURE_USER_ID
+├── __fixtures__/                   # ← renamed from fixtures/
+│   ├── index.ts                    # Barrel re-export
+│   ├── items.ts                    # Thin loader: imports JSON, exports named constants
+│   ├── items-synthetic.ts          # FIXTURE_ITEM_DONE (hand-authored, unchanged)
+│   ├── pages.ts                    # makePageEnvelope, FIXTURE_PAGE_1, FIXTURE_PAGE_2
+│   ├── user-nodes.ts               # Load from JSON + synthetic _not_found_
 │   ├── captured/
-│   │   ├── items.json             # Auto-captured: items from findItems
-│   │   ├── item-details/          # Auto-captured: per-item StoryDetail + raw
-│   │   │   ├── 222.json
-│   │   │   ├── 187.json
-│   │   │   ├── 187-augmented.json
-│   │   │   └── 192.json
-│   │   ├── usernode-ids.json      # Auto-captured: user node resolution
-│   │   └── search-results.json    # Auto-captured: search API results
-│   └── loaders.ts                 # JSON loading helpers (import assertions)
-└── _test_utils.ts                 # Unchanged
+│   │   ├── items/
+│   │   │   ├── <key>.json          # Auto-captured: raw ProjectItem per selected key
+│   │   │   └── <key>-augmented.json # Auto-captured base + augmentation merged
+│   │   └── usernode-ids.json       # Auto-captured: ResolveActorNodeId responses
+│   └── augment-config.yml          # Moved from scripts/capture/ (loads alongside captured JSON)
+│
+├── _test_fixtures.ts               # Barrel re-export for backward compat
+│                                    # (import paths unchanged for current files)
+└── _test_utils.ts                  # Unchanged
 
 src/scrum/
-├── _test_fixtures.ts              # Re-export barrel (backward compat)
-├── __fixtures__/
-│   ├── templates.ts               # TEMPLATE_USER_STORY, TEMPLATE_BUG, TEMPLATE_IMPEDIMENT
-│   ├── locations.ts               # INLINE_LOCATION, FILE_YML_LOCATION, etc. (synthetic)
-│   ├── captured/
-│   │   └── templates.json         # Auto-captured: template content
-│   └── loaders.ts                 # JSON loading helpers
+├── __fixtures__/                   # ← renamed from fixtures/
+│   ├── index.ts                    # Barrel re-export
+│   ├── templates.ts                # Template content strings (unchanged)
+│   └── locations.ts                # ContentLocation constants (synthetic, unchanged)
+│
+├── _test_fixtures.ts               # Barrel re-export for backward compat
+└── ...
 ```
 
-### 3.3 JSON Loading Mechanism
+### 3.4 JSON Loading via Deno Import Assertions
 
-Deno supports importing JSON files directly with import assertions:
+The project's [`deno.json`](deno.json:60) already enables `"unstable": ["raw-imports"]`. JSON files are imported at compile time — zero runtime I/O, no `--allow-read` needed in tests:
 
 ```typescript
-// __fixtures__/loaders.ts
-import capturedItems from "./captured/items.json" with { type: "json" };
-import capturedUserNodeIds from "./captured/usernode-ids.json" with { type: "json" };
+// __fixtures__/items.ts — thin loader
+import fixture222 from "./captured/items/222.json" with { type: "json" };
+import fixture192 from "./captured/items/192.json" with { type: "json" };
+import fixture187 from "./captured/items/187.json" with { type: "json" };
+import fixture187Augmented from "./captured/items/187-augmented.json" with { type: "json" };
 
-export { capturedItems, capturedUserNodeIds };
-```
-
-This avoids runtime `Deno.readTextFile` calls that require `--allow-read` permissions in every test. The JSON is inlined at compile time.
-
-**Caveat:** Deno's JSON import currently requires `--unstable-sloppy-imports` or uses the `"imports"` map. Alternative approaches:
-
-| Approach                                                | Pros                                   | Cons                                                               |
-| ------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------ |
-| Direct `import x from "./x.json" with { type: "json" }` | Zero runtime overhead, type-safe       | Requires Deno 1.36+; may need `--unstable-sloppy-imports`          |
-| `Deno.readTextFile` + `JSON.parse` in a loader          | Works on all Deno versions             | Requires `--allow-read`; adds I/O overhead                         |
-| Inline as a generated `.ts` file                        | Maximum compatibility, no --allow-read | Captured data in TypeScript defeats the purpose of JSON separation |
-
-**Recommendation:** Use the direct JSON import assertion approach. The project already targets Deno with modern features. Update `deno.json` if needed:
-
-```jsonc
-{
-  "unstable": ["raw-imports"] // already present
-}
-```
-
-### 3.4 Fixture Module Refactoring
-
-#### `src/adapters/github/internal/__fixtures__/items.ts`
-
-```typescript
-// Auto-captured items (from captured/items.json)
-// Manually extracted representative items for focused tests
 import type { ProjectItem } from "../../types.ts";
 
-/** Real fixture: Issue #222 — Ready, 3 SP, Could, MCP Tool Surface epic */
-export const FIXTURE_ITEM_222: ProjectItem = {/* ... verbatim from captured JSON ... */};
-
-/** Real fixture: Issue #192 — Ready, 2 SP, Could, blocked by #195 and #191 */
-export const FIXTURE_ITEM_192: ProjectItem = {/* ... */};
-
-/** Real fixture: Issue #187 — augmented with synthetic non-canonical fields */
-export const FIXTURE_ITEM_WITH_CUSTOM_FIELDS: ProjectItem = {/* ... */};
-
-/** All canonical nodes as an array */
+/** All auto-captured canonical nodes as an array. */
 export const FIXTURE_NODES: readonly ProjectItem[] = [
-  FIXTURE_ITEM_222,
-  FIXTURE_ITEM_192,
-  FIXTURE_ITEM_WITH_CUSTOM_FIELDS,
+  fixture222 as unknown as ProjectItem,
+  fixture192 as unknown as ProjectItem,
+  fixture187Augmented as unknown as ProjectItem,
 ];
 ```
 
-#### `src/adapters/github/internal/__fixtures__/items-synthetic.ts`
+User nodes are loaded similarly:
 
 ```typescript
-import type { ProjectItem } from "../../types.ts";
+// __fixtures__/user-nodes.ts
+import capturedUserNodes from "./captured/usernode-ids.json" with { type: "json" };
 
-/**
- * Synthetic fixture: a Done-status item in Sprint 4.
- * MUST REMAIN HAND-AUTHORED — no guarantee a terminal-status item exists
- * on the real board with the exact field configuration needed for filter tests.
- */
-export const FIXTURE_ITEM_DONE: ProjectItem = {/* ... */};
-```
-
-#### `src/adapters/github/internal/__fixtures__/pages.ts`
-
-```typescript
-import type { ProjectItem } from "../../types.ts";
-import { FIXTURE_ITEM_192, FIXTURE_ITEM_222 } from "./items.ts";
-import { FIXTURE_ITEM_WITH_CUSTOM_FIELDS } from "./items.ts";
-import { FIXTURE_ITEM_DONE } from "./items-synthetic.ts";
-
-/** Build a full user.projectV2.items GraphQL response envelope from nodes. */
-export const makePageEnvelope = (
-  nodes: readonly ProjectItem[],
-  opts?: { totalCount?: number; hasNextPage?: boolean; endCursor?: string | null },
-) => ({/* ... same as current ... */});
-
-export const FIXTURE_PAGE_1 = makePageEnvelope([FIXTURE_ITEM_222, FIXTURE_ITEM_192], {
-  hasNextPage: true,
-  endCursor: "Y3Vyc29yOnYyOpKrMDAwMDAwMDAuMDHOCzXmIQ==",
-});
-
-export const FIXTURE_PAGE_2 = makePageEnvelope([
-  FIXTURE_ITEM_WITH_CUSTOM_FIELDS,
-  FIXTURE_ITEM_DONE,
-]);
-```
-
-#### `src/adapters/github/internal/__fixtures__/user-nodes.ts`
-
-```typescript
-// Auto-captured: from captured/usernode-ids.json
 export const USERNODE_IDS: Record<string, { user: { id: string } | null }> = {
-  "hoonsubin": {
-    user: { id: "U_kgDOAmfLjQ" },
-  },
-  "_not_found_": {
-    user: null,
-  },
+  ...(capturedUserNodes as Record<string, { user: { id: string } | null }>),
+  // Synthetic error-path entry — no real GitHub login consistently returns null
+  "_not_found_": { user: null },
 };
 
-export const FIXTURE_USER_ID = "U_kgDOAmfLjQ";
+export const FIXTURE_USER_ID = USERNODE_IDS["hoonsubin"]?.user?.id ?? "U_kgDOAmfLjQ";
 ```
 
-> **Workflow note:** When re-capturing user nodes, a reviewer runs `deno task capture-fixtures -- --user-logins hoonsubin .github/scrum/config.yml`, verifies the updated `captured/usernode-ids.json` under the config's output subdirectory, and copies the relevant values into `user-nodes.ts`. The `"_not_found_"` entry is always synthetic and preserved manually.
+### 3.5 Backward Compatibility
 
-#### `src/adapters/github/internal/_test_fixtures.ts` (barrel re-export)
+The [`_test_fixtures.ts`](src/adapters/github/internal/_test_fixtures.ts) barrel re-export and [`__fixtures__/index.ts`](src/adapters/github/internal/__fixtures__/index.ts) barrel **preserve all import paths**. No test file needs to change its imports. The only visible change is that `items.ts` loads from JSON instead of containing inline data.
+
+---
+
+## Section 4: Smart Fixture Selection
+
+### 4.1 The Problem
+
+The capture script currently hard-codes three issue keys (222, 192, 187). This is insufficient for comprehensive test coverage because:
+
+- The set may not include every **type** (e.g., no `spike` or `impediment`)
+- The set may not include every **status** (e.g., no `in_review` or `blocked`)
+- The set may not include every **priority** tier (e.g., no `p3`)
+- The set may not include all **story point** values (e.g., no 1-point story)
+- The set may miss **edge cases**: items with epics, dependency chains, custom fields, unassigned items, or draft issues
+
+### 4.2 Solution: `selectRepresentativeItems(items)`
+
+A new function that analyzes a board's [`BacklogItemListing[]`](src/domain/types.ts:351) and returns a `Set<number>` of issue keys covering all corner cases.
+
+**Input:** `items: BacklogItemListing[]` — the result of `findItems()` (already fetched in step 3 of the pipeline) **Output:** `Set<number>` — deduplicated set of issue numbers to capture as raw ProjectItems
+
+**Selection dimensions** (in priority order):
+
+| Dimension                  | Values to Cover                                                                      | Why                                                                    | Target Code Path                     |
+| -------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- | ------------------------------------ |
+| **Type**                   | Each canonical key in `type_mapping` (user_story, bug, tech_debt, spike, impediment) | Each type normalizes differently, may have different templates         | Type normalizer, field derivation    |
+| **Status**                 | Each canonical key (backlog, ready, in_progress, in_review, blocked, done)           | Terminal vs non-terminal, blocking vs non-blocking diverge in behavior | Status normalizer, burndown/velocity |
+| **Priority**               | Each priority tier (p0, p1, p2, p3)                                                  | Priority drives ranking, filtering, and sprint planning heuristics     | Priority filter, ordering            |
+| **Story Points**           | Each Fibonacci value (1, 2, 3, 5, 8)                                                 | Estimate-dependent logic diverges per value                            | Estimate filter, capacity calc       |
+| **Edge: Has epic**         | Items where `epic !== null`                                                          | Epic-linked items follow different aggregation paths                   | Epic linking, hierarchy              |
+| **Edge: Has dependencies** | Items where `blocked_by.length > 0`                                                  | Dependency resolution touches different code paths                     | Dependency graph, blocked detection  |
+| **Edge: Custom fields**    | Items with non-empty `custom_fields`                                                 | Non-canonical field passthrough is a distinct code path                | Custom field serialization           |
+| **Edge: Unassigned**       | Items where `assignees.length === 0`                                                 | Unassigned items trigger different filter paths                        | Assignee filter, board health        |
+| **Edge: Draft**            | Items where `ref.key === ""` (Draft Issues)                                          | Drafts have no issue number, different content structure               | Nullable type/sprint paths           |
+
+### 4.3 Algorithm
+
+```
+function selectRepresentativeItems(items: BacklogItemListing[]): Set<number>
+  selected = Set<number>
+
+  // For each dimension, pick the first item matching the criterion
+  for each type in all_present_types:
+    item = findFirst(items, type == type)
+    if item: selected.add(parseInt(item.ref.key))
+
+  for each status in all_present_statuses:
+    item = findFirst(items, status == status AND key not in selected)
+    if item: selected.add(parseInt(item.ref.key))
+
+  for each priority in all_present_priorities:
+    item = findFirst(items, priority == priority AND key not in selected)
+    if item: selected.add(parseInt(item.ref.key))
+
+  for each points_value in all_present_points_values:
+    item = findFirst(items, story_points == points_value AND key not in selected)
+    if item: selected.add(parseInt(item.ref.key))
+
+  // Edge cases — prefer items not already selected for broader coverage
+  if any item with epic !== null: selected.add(parseInt(item.ref.key))
+  if any item with blocked_by.length > 0: selected.add(parseInt(item.ref.key))
+  if any item with custom_fields non-empty: selected.add(parseInt(item.ref.key))
+  if any item with assignees.length == 0: selected.add(parseInt(item.ref.key))
+  if any Draft Issue: selected.add(parseInt(item.ref.key)) -- note: Drafts have key="" so use ref.id hash
+
+  // Merge supplemental keys from --item-keys flag
+  for each key in CLI_supplement:
+    selected.add(key)
+
+  return selected
+```
+
+One item can satisfy multiple criteria (e.g., an in_progress 5-point user_story with an epic covers 4 dimensions at once). The algorithm prefers items not yet selected when picking for a new dimension, maximizing coverage breadth.
+
+### 4.4 Gap Warnings
+
+When no item matches a given dimension, a warning is emitted:
+
+```
+[selectRepresentativeItems] WARNING: no impediment type found on board — fixture coverage: missing
+[selectRepresentativeItems] WARNING: no in_review status found on board — fixture coverage: missing
+```
+
+This tells the user which corner cases are **not** covered, so they can add items manually or wait for the board to have them.
+
+---
+
+## Section 5: Implementation Plan
+
+Five phases, each producing a shippable increment — `deno task test` must pass after every phase.
+
+```mermaid
+flowchart LR
+    P0[Phase 0: Rename to __fixtures__] --> P1[Phase 1: Smart Selection + Auto-Derive]
+    P1 --> P2[Phase 2: Run Capture + Commit JSON]
+    P2 --> P3[Phase 3: Wire JSON into Fixture Loaders]
+    P3 --> P4[Phase 4: Validation + Documentation]
+```
+
+### Phase 0: Rename `fixtures/` to `__fixtures__/`
+
+**Goal:** Rename all fixture directories from `fixtures/` to `__fixtures__/` to follow Deno conventions for test-support directories, and update all import paths that reference them.
+
+| Step | Action                                                                                                                                                                   | Files                                                                         |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| 0.1  | Rename `src/adapters/github/internal/fixtures/` → `src/adapters/github/internal/__fixtures__/`                                                                           | Directory rename                                                              |
+| 0.2  | Rename `src/scrum/fixtures/` → `src/scrum/__fixtures__/`                                                                                                                 | Directory rename                                                              |
+| 0.3  | Update `src/adapters/github/internal/_test_fixtures.ts` barrel to import from `./__fixtures__/index.ts` instead of `./fixtures/index.ts`                                 | `src/adapters/github/internal/_test_fixtures.ts`                              |
+| 0.4  | Update `src/scrum/_test_fixtures.ts` barrel to import from `./__fixtures__/index.ts` instead of `./fixtures/index.ts`                                                    | `src/scrum/_test_fixtures.ts`                                                 |
+| 0.5  | Update `src/adapters/github/internal/fixtures/index.ts` → now at `src/adapters/github/internal/__fixtures__/index.ts` — update internal relative imports to use new path | `__fixtures__/index.ts`                                                       |
+| 0.6  | Update any other files that directly import from `./fixtures/` to `./__fixtures__/`                                                                                      | Search: `from.*fixtures/` in `src/adapters/github/internal/` and `src/scrum/` |
+| 0.7  | Run `deno task test` — **all tests must pass**                                                                                                                           | Validation                                                                    |
+| 0.8  | Run `deno lint` and `deno task depcruise`                                                                                                                                | Validation                                                                    |
+
+**Acceptance criteria:**
+
+- Directory names changed: `fixtures/` → `__fixtures__/` in both adapter and scrum layers
+- All imports updated to point to `__fixtures__/`
+- Full test suite passes (257+ tests)
+- `deno lint` and `deno task depcruise` pass
+
+### Phase 1: Smart Fixture Selection + Auto-Derive User Logins
+
+**Goal:** Replace hard-coded item keys with automatic selection from board data. Replace `--user-logins` requirement with auto-extraction from config.
+
+| Step | Action                                                                                                                                                                                                         | Files                              |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| 1.1  | Add `selectRepresentativeItems(items: BacklogItemListing[]): Set<number>` function that analyzes findItems result and picks items covering all types, statuses, priorities, story point values, and edge cases | `scripts/capture-test-fixtures.ts` |
+| 1.2  | Integrate into pipeline — replace hard-coded `--item-keys "222,192,187"` default with auto-selected set; merge `--item-keys` as supplemental override                                                          | `scripts/capture-test-fixtures.ts` |
+| 1.3  | Add `extractGitHubTeamLogins(scrumConfig): string[]` helper that reads `backends.github.team[].login` from scrum config (mirrors pattern of existing `extractGitHubOwnerRepo()`)                               | `scripts/capture-test-fixtures.ts` |
+| 1.4  | Refactor user node ID capture to use auto-extracted logins; keep `--user-logins` as supplemental override                                                                                                      | `scripts/capture-test-fixtures.ts` |
+| 1.5  | Move `augment-config.yml` to `src/adapters/github/internal/__fixtures__/augment-config.yml`                                                                                                                    | File move                          |
+| 1.6  | Extend `augmentFields()` to also produce augmented raw items (merge `append_fields` into raw ProjectItem's `fieldValues.nodes`)                                                                                | `scripts/capture-test-fixtures.ts` |
+
+_NOTE: `captureRawProjectItems()` already exists in the script (lines 317-378) — no implementation needed, just verification._
+
+**Acceptance criteria:**
+
+- `deno task capture-fixtures -- .github/scrum/config.yml` succeeds without `--user-logins` or `--item-keys`
+- Logins auto-extracted from `backends.github.team[].login` in config
+- Items auto-selected cover at least one per type, per status, per priority tier, and per unique story point value present on the board
+- Gap warnings printed for any missing dimension
+- `--user-logins` and `--item-keys` flags still work as supplemental overrides
+
+### Phase 2: Run Capture and Commit JSON
+
+**Goal:** Produce committed JSON fixture files from real API calls.
+
+| Step | Action                                                                                                                | Files         |
+| ---- | --------------------------------------------------------------------------------------------------------------------- | ------------- |
+| 2.1  | Create `src/adapters/github/internal/__fixtures__/captured/items/` directory                                          | New directory |
+| 2.2  | Create `src/adapters/github/internal/__fixtures__/captured/usernode-ids.json`                                         | New file      |
+| 2.3  | Run capture: `deno task capture-fixtures -- .github/scrum/config.yml`                                                 | —             |
+| 2.4  | Copy captured items JSON from `scripts/capture-output/config/captured/items/*.json` to `__fixtures__/captured/items/` | File copy     |
+| 2.5  | Copy captured user nodes to `__fixtures__/captured/usernode-ids.json`                                                 | File copy     |
+| 2.6  | Sanity check: verify selection coverage — ensure at least one fixture per type, status, priority, story point         | Validation    |
+| 2.7  | Commit the captured JSON                                                                                              | Git           |
+
+**Acceptance criteria:** Committed JSON files contain valid raw `ProjectItem` shapes covering all corner cases present on the board.
+
+### Phase 3: Wire JSON into Fixture Loaders
+
+**Goal:** Replace hand-authored TypeScript in `items.ts` and `user-nodes.ts` with JSON imports. Remove inline data.
+
+| Step | Action                                                                                                                          | Files                              |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| 3.1  | Rewrite `__fixtures__/items.ts` to import from `captured/items/*.json` and export named constants using `with { type: "json" }` | `__fixtures__/items.ts`            |
+| 3.2  | Rewrite `__fixtures__/user-nodes.ts` to import from `captured/usernode-ids.json`, append `_not_found_` synthetic entry          | `__fixtures__/user-nodes.ts`       |
+| 3.3  | Ensure `FIXTURE_ITEM_WITH_CUSTOM_FIELDS` loads from `<key>-augmented.json` per item selection                                   | `__fixtures__/items.ts`            |
+| 3.4  | Update `__fixtures__/pages.ts` import path (source of data changes, import unchanged)                                           | `__fixtures__/pages.ts`            |
+| 3.5  | Create `__fixtures__/augment-config.yml` with same content as `scripts/capture/augment-config.yml`                              | `__fixtures__/augment-config.yml`  |
+| 3.6  | Update capture script's `augmentFields()` to read from `__fixtures__/augment-config.yml`                                        | `scripts/capture-test-fixtures.ts` |
+| 3.7  | Remove `scripts/capture/augment-config.yml` (moved to `__fixtures__/`)                                                          | File delete                        |
+| 3.8  | Run `deno task test` — **all tests must pass**                                                                                  | Validation                         |
+| 3.9  | Run `deno lint` and `deno task depcruise`                                                                                       | Validation                         |
+
+**Acceptance criteria:**
+
+- `items.ts` no longer contains inline GraphQL response data — it imports from JSON
+- `user-nodes.ts` loads real IDs from JSON, appends `_not_found_` programmatically
+- All 13 fixture-consuming test files pass without import path changes
+- `deno lint` and `deno task depcruise` pass
+
+### Phase 4: Validation and Documentation
+
+**Goal:** Ensure the fixture regeneration workflow is documented and verifiable.
+
+| Step | Action                                                                                                                                                 | Files                                                 |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
+| 4.1  | Add inline documentation in `items.ts` and `user-nodes.ts` explaining the auto-capture workflow                                                        | `__fixtures__/items.ts`, `__fixtures__/user-nodes.ts` |
+| 4.2  | Add a PR checklist item: "If adapter types changed, re-capture fixtures"                                                                               | `docs/` or `.github/`                                 |
+| 4.3  | Verify that augmented fixtures exercise both non-canonical field passthrough and canonical field filtering (validated by `result-normalizer.test.ts`)  | Validation                                            |
+| 4.4  | Verify that captured items cover all declared types, statuses, priorities, and story point values per the project's config                             | Validation                                            |
+| 4.5  | Add a `deno task validate-fixtures` task that loads captured JSON and asserts shape consistency with ProjectItem type (optional — signpost for future) | `deno.json`                                           |
+
+**Acceptance criteria:** A new contributor can follow the fixture regeneration workflow (Section 7) to capture fresh fixtures without tribal knowledge.
+
+---
+
+## Section 6: Directory Rename: `fixtures` → `__fixtures__`
+
+### 6.1 Why Rename
+
+The `__fixtures__/` naming convention (double-underscore prefix/suffix) is a Deno convention for test-support directories, analogous to Python's `__pycache__/` or `__init__.py`. This explicitly marks the directory as test infrastructure and distinguishes it from production code directories.
+
+### 6.2 Directories to Rename
+
+| Current Path                             | Target Path                                  |
+| ---------------------------------------- | -------------------------------------------- |
+| `src/adapters/github/internal/fixtures/` | `src/adapters/github/internal/__fixtures__/` |
+| `src/scrum/fixtures/`                    | `src/scrum/__fixtures__/`                    |
+
+### 6.3 Import Paths to Update
+
+Every file that imports from the old path must be updated. The files to check:
+
+| Current Import Path             | Target Import Path                  | Likely Files                               |
+| ------------------------------- | ----------------------------------- | ------------------------------------------ |
+| `./fixtures/index.ts`           | `./__fixtures__/index.ts`           | `_test_fixtures.ts` (both adapter + scrum) |
+| `./fixtures/items.ts`           | `./__fixtures__/items.ts`           | Barrel re-export index files               |
+| `./fixtures/pages.ts`           | `./__fixtures__/pages.ts`           | Barrel re-export index files               |
+| `./fixtures/items-synthetic.ts` | `./__fixtures__/items-synthetic.ts` | Barrel re-export index files               |
+| `./fixtures/user-nodes.ts`      | `./__fixtures__/user-nodes.ts`      | Barrel re-export index files               |
+| `./fixtures/locations.ts`       | `./__fixtures__/locations.ts`       | Barrel re-export index files               |
+| `./fixtures/templates.ts`       | `./__fixtures__/templates.ts`       | Barrel re-export index files               |
+
+### 6.4 Internal Fixture Relative Imports
+
+Within `__fixtures__/items-synthetic.ts`, there are cross-references to other fixture files that must also resolve correctly:
 
 ```typescript
-// =============================================================================
-// Re-export barrel — backward compatibility for existing test imports.
-// New tests should import from __fixtures__/*.ts directly.
-// =============================================================================
-export {
-  FIXTURE_ITEM_192,
-  FIXTURE_ITEM_222,
-  FIXTURE_ITEM_WITH_CUSTOM_FIELDS,
-  FIXTURE_NODES,
-} from "./__fixtures__/items.ts";
-export { FIXTURE_ITEM_DONE } from "./__fixtures__/items-synthetic.ts";
-export { FIXTURE_PAGE_1, FIXTURE_PAGE_2, makePageEnvelope } from "./__fixtures__/pages.ts";
-export { FIXTURE_USER_ID, USERNODE_IDS } from "./__fixtures__/user-nodes.ts";
+// Current (in items-synthetic.ts):
+import { FIXTURE_ITEM_192, FIXTURE_ITEM_222, FIXTURE_ITEM_WITH_CUSTOM_FIELDS } from "./items.ts";
+// This is a relative import within the same directory — unchanged by the rename
 ```
 
-### 3.5 Test File Migration Strategy
+These relative imports stay the same because they're internal to the directory. Only imports _from outside_ the `__fixtures__/` directory need updating.
 
-The 13 test files **do not need to change** their import paths during Phases 1-4 of the implementation plan. The barrel re-export in `_test_fixtures.ts` ensures backward compatibility. In Phase 5 (future cleanup), test files can optionally switch to importing from `__fixtures__/<module>.ts` directly.
+### 6.5 Git Move Command
 
-Test files that need **new** fixture data (e.g., search results) import directly from the new fixture path:
+```bash
+# Rename adapter fixtures
+git mv src/adapters/github/internal/fixtures src/adapters/github/internal/__fixtures__
 
-```typescript
-// Example: search-result-normalizer.test.ts after refactoring
-import capturedSearchResults from "./__fixtures__/captured/search-results.json" with {
-  type: "json",
-};
-```
+# Rename scrum fixtures
+git mv src/scrum/fixtures src/scrum/__fixtures__
 
-### 3.6 Scrum-Layer Fixture Restructuring
-
-The scrum-layer [`_test_fixtures.ts`](src/scrum/_test_fixtures.ts) requires minimal changes:
-
-1. **Template content strings** (`TEMPLATE_USER_STORY`, `TEMPLATE_BUG`, `TEMPLATE_IMPEDIMENT`) remain as TypeScript constants since they must be available at compile time without `--allow-read`. They are regenerated by copying from `scripts/capture-output/<slug>/templates.json` after capture.
-2. **ContentLocation constants** (`INLINE_LOCATION`, `FILE_YML_LOCATION`, `URL_YML_LOCATION`, etc.) remain synthetic — they are not derived from any API and exist purely for type coverage.
-3. **`TYPE_TEMPLATE_CONTENT`** remains derived from the template constants.
-
-```
-src/scrum/
-├── _test_fixtures.ts              # Re-export barrel
-├── __fixtures__/
-│   ├── templates.ts               # TEMPLATE_USER_STORY, TEMPLATE_BUG, TEMPLATE_IMPEDIMENT
-│   └── locations.ts               # ContentLocation constants (synthetic)
+# After rename, update imports in barrel files
+# See Phase 0 step table for the full list
 ```
 
 ---
 
-## Section 4: Implementation Plan
+## Section 7: Fixture Regeneration Workflow
 
-The implementation is split into seven phases, ordered by dependency and risk. Each phase produces a shippable increment — the test suite must pass after every phase.
-
-```mermaid
-flowchart LR
-    P1[Phase 1: Script Refactor] --> P2[Phase 2: New Capture Functions]
-    P2 --> P3[Phase 3: Run Capture]
-    P3 --> P4[Phase 4: Restructure Fixtures]
-    P4 --> P5[Phase 5: Update Tests]
-    P3 --> P6[Phase 6: Capture Script Tests]
-    P5 --> P7[Phase 7: Documentation]
-    P6 --> P7
-```
-
-### Phase 1: Refactor Capture Script Structure
-
-**Goal:** Restructure `scripts/capture-test-fixtures.ts` to the single-entry-point design with inline functions, without changing behavior.
-
-| Step | Action                                                                                    | Files                      |
-| ---- | ----------------------------------------------------------------------------------------- | -------------------------- |
-| 1.1  | Create `scripts/capture/` directory with `infra.ts`, `types.ts`                           | New files                  |
-| 1.2  | Extract shared adapter construction into `scripts/capture/infra.ts`                       | `capture/infra.ts`         |
-| 1.3  | Move existing capture logic into `captureBase()` function                                 | `capture-test-fixtures.ts` |
-| 1.4  | Implement positional config arg parsing with slug derivation                              | `capture-test-fixtures.ts` |
-| 1.5  | Verify `deno task capture-fixtures -- .github/scrum/config.yml` produces identical output | Validation                 |
-
-**Acceptance criteria:** `deno task capture-fixtures -- .github/scrum/config.yml` produces byte-identical JSON output to the current script.
-
-### Phase 2: Add New Capture Functions
-
-**Goal:** Implement each new capture function inline within the main script.
-
-| Step | Action                                                                     | Files                      |
-| ---- | -------------------------------------------------------------------------- | -------------------------- |
-| 2.1  | Implement `captureUserNodeIds()` function in `capture-test-fixtures.ts`    | `capture-test-fixtures.ts` |
-| 2.2  | Implement `captureItemDetails()` function in `capture-test-fixtures.ts`    | `capture-test-fixtures.ts` |
-| 2.3  | Implement `captureSearchResults()` function in `capture-test-fixtures.ts`  | `capture-test-fixtures.ts` |
-| 2.4  | Implement `augmentFields()` function in `capture-test-fixtures.ts`         | `capture-test-fixtures.ts` |
-| 2.5  | Create `scripts/capture/augment-config.yml` with initial augmentation data | New file                   |
-| 2.6  | Update `deno.json` to the single `capture-fixtures` task definition        | `deno.json`                |
-
-**Acceptance criteria:** `deno task capture-fixtures -- --user-logins hoonsubin --search-query "custom_fields" .github/scrum/config.yml` produces all fixture types under `scripts/capture-output/<slug>/`.
-
-### Phase 3: Run Capture and Commit Output
-
-**Goal:** Produce committed JSON fixture files from real API calls.
-
-| Step | Action                                                                                                 | Files      |
-| ---- | ------------------------------------------------------------------------------------------------------ | ---------- |
-| 3.1  | Run `deno task capture-fixtures -- --user-logins hoonsubin .github/scrum/config.yml` and commit output | New files  |
-| 3.2  | Run `deno task capture-fixtures -- --search-query "custom_fields" .github/scrum/config.yml` and commit | New files  |
-| 3.3  | Verify all committed JSON matches the expected shapes in `_test_fixtures.ts`                           | Validation |
-
-**Acceptance criteria:** Captured JSON files exist and contain valid data matching existing hand-authored fixture constants.
-
-### Phase 4: Restructure Fixture Modules
-
-**Goal:** Reorganize `_test_fixtures.ts` into domain-specific modules without breaking tests.
-
-| Step | Action                                                                              | Files                     |
-| ---- | ----------------------------------------------------------------------------------- | ------------------------- |
-| 4.1  | Create `src/adapters/github/internal/__fixtures__/` directory structure             | New directory             |
-| 4.2  | Move item fixtures to `__fixtures__/items.ts` and `__fixtures__/items-synthetic.ts` | New files                 |
-| 4.3  | Move page fixtures to `__fixtures__/pages.ts`                                       | New file                  |
-| 4.4  | Move user node fixtures to `__fixtures__/user-nodes.ts`                             | New file                  |
-| 4.5  | Move captured JSON into `__fixtures__/captured/`                                    | New directory, JSON files |
-| 4.6  | Create `__fixtures__/loaders.ts` for JSON imports                                   | New file                  |
-| 4.7  | Update `_test_fixtures.ts` to be a barrel re-export                                 | Modified file             |
-| 4.8  | Create `src/scrum/__fixtures__/` for scrum-layer fixtures                           | New directory             |
-| 4.9  | Run `deno task test` to verify no regressions                                       | Validation                |
-
-**Acceptance criteria:** All 13 test files pass without any import path changes in test files.
-
-### Phase 5: Update Test Files
-
-**Goal:** Migrate test files to use new fixture imports where beneficial.
-
-| Step | Action                                                                                        | Files          |
-| ---- | --------------------------------------------------------------------------------------------- | -------------- |
-| 5.1  | Update `search-result-normalizer.test.ts` to use captured search results                      | Modified file  |
-| 5.2  | Update `search-api-assembler.test.ts` to include search result fixture paths                  | Modified file  |
-| 5.3  | Update `field-value-mutator.test.ts` to use captured item detail for issue-backed field tests | Modified file  |
-| 5.4  | Optionally update remaining test files to import from `__fixtures__/*.ts` directly            | Multiple files |
-| 5.5  | Run `deno task test` after each file change                                                   | Validation     |
-
-**Acceptance criteria:** Test coverage does not decrease. Captured search data increases coverage of search result normalization paths.
-
-### Phase 6: Add Capture Script Tests
-
-**Goal:** Tests for the capture script itself to prevent regressions in fixture shape.
-
-| Step | Action                                                                                   | Files                       |
-| ---- | ---------------------------------------------------------------------------------------- | --------------------------- |
-| 6.1  | Add unit tests for each capture function's output validation                             | `scripts/capture/*.test.ts` |
-| 6.2  | Add a shape validation test that checks captured JSON matches expected type structures   | New test file               |
-| 6.3  | Add a CI step (manual trigger) that validates `deno task capture-fixtures` doesn't error | CI config                   |
-
-**Acceptance criteria:** Capture functions are independently testable. Shape validation catches drift between captured fixtures and consumer expectations.
-
-### Phase 7: Document Workflows
-
-**Goal:** Ensure future maintainers can regenerate and validate fixtures.
-
-| Step | Action                                                                   | Files                 |
-| ---- | ------------------------------------------------------------------------ | --------------------- |
-| 7.1  | Add "Regenerating Fixtures" section to this document                     | This file             |
-| 7.2  | Add inline documentation in each fixture module explaining its origin    | Fixture `.ts` files   |
-| 7.3  | Add a PR checklist item: "If adapter types changed, re-capture fixtures" | `docs/` or `.github/` |
-
-**Acceptance criteria:** A new contributor can follow the documentation to capture fresh fixtures for a new project without tribal knowledge.
-
-### 4.1 Fixture Regeneration Workflow
-
-After the refactoring, the standard fixture regeneration workflow:
+### 7.1 Standard Workflow (after Phase 1)
 
 ```bash
 # 1. Capture all fixture types for the default project
-deno task capture-fixtures -- --user-logins hoonsubin --search-query "custom_fields" .github/scrum/config.yml
+deno task capture-fixtures -- .github/scrum/config.yml
 
-# 2. If adapter types changed, validate captured output shapes
-deno test scripts/capture/
-
-# 3. Review the captured JSON for sensitive data
+# 2. Review the captured JSON for sensitive data
 #    (issue bodies, assignee names, field IDs are project-specific but not secrets)
+
+# 3. Copy captured files into committed fixture directories
+cp scripts/capture-output/config/captured/items/*.json \
+   src/adapters/github/internal/__fixtures__/captured/items/
+cp scripts/capture-output/config/captured/usernode-ids.json \
+   src/adapters/github/internal/__fixtures__/captured/
 
 # 4. Run the full test suite to confirm fixtures are compatible
 deno task test
 
-# 5. If adding a new user or item to fixtures:
-deno task capture-fixtures -- --user-logins new-user .github/scrum/config.yml
-
-# 6. Commit the updated capture output
-git add scripts/capture-output/ src/adapters/github/internal/__fixtures__/captured/
+# 5. Commit the updated capture output
+git add src/adapters/github/internal/__fixtures__/captured/
 ```
 
-### 4.2 Risk Assessment
+Item selection and user logins are **auto-derived** — no need to pass `--item-keys` or `--user-logins`. The script picks the most representative set of items from the board and resolves all team members from config.
 
-| Risk                                                                        | Likelihood | Mitigation                                                                                  |
-| --------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------- |
-| JSON import assertions incompatible with current Deno version               | Low        | Project already uses `"unstable": ["raw-imports"]`; test before committing                  |
-| Captured item data changes shape between runs (field renames, new fields)   | Medium     | Shape validation tests (Phase 6) detect drift; fixture update is intentional                |
-| Real API capture leaks sensitive data into committed fixtures               | Low        | Existing fixtures already contain real project data; reviewers check before commit          |
-| `createBackend()` doesn't expose raw `GitHubClient` for search/user capture | Medium     | Option A: return client from factory. Option B: construct client directly in capture script |
-| Circular imports from barrel re-exports                                     | Low        | Fixtures have no runtime dependencies on production code; strictly data                     |
-| Test performance regression from JSON loading                               | Low        | JSON import assertions are compile-time; zero runtime I/O overhead                          |
-| Single script grows too large with all inline functions                     | Low        | Functions are independently testable; extract to modules later if needed                    |
+### 7.2 Supplemental Overrides
 
-### 4.3 Backward Compatibility Commitment
+If you need to add specific extra items or users:
 
-Throughout all phases, the following invariants are maintained:
+```bash
+# Add extra items on top of auto-selected set
+deno task capture-fixtures -- \
+  --item-keys "42,99" \
+  .github/scrum/config.yml
 
-1. **`import { FIXTURE_ITEM_222 } from "./_test_fixtures.ts"` continues to work** in all existing test files — the barrel re-exports preserve import paths.
-2. **`deno task test` passes after every phase** — no phase is considered complete until the full suite is green.
-3. **`deno lint` and `deno task depcruise` pass after every phase** — no new layer breaches are introduced.
-4. **No test file is forced to change its imports** during Phases 1-4 — changes in Phase 5 are additive and optional.
-
-### 4.4 `deno.json` Task Definition
-
-```jsonc
-{
-  "tasks": {
-    "capture-fixtures": "deno run --allow-env=GITHUB_TOKEN,DEBUG,NODE_ENV --allow-net --allow-read --allow-write scripts/capture-test-fixtures.ts"
-  }
-}
+# Add extra logins on top of auto-extracted team
+deno task capture-fixtures -- \
+  --user-logins "extra-user" \
+  .github/scrum/config.yml
 ```
 
-No additional sub-tasks. The single `capture-fixtures` task accepts positional config arguments after `--` and optional flags for user logins and search queries. See [Section 2.2](#22-cli-interface) and [Section 2.8](#28-denojson-task-definition) for usage examples.
+### 7.3 Custom Project Name Override
+
+```bash
+# Override output slug for a named config
+deno task capture-fixtures -- \
+  --project-name "my-custom-slug" \
+  .github/scrum/config.yml
+```
 
 ---
 
-## Appendix A: Complete Test-to-Fixture Matrix
+## Appendix A: Risk Assessment
 
-| Test File                                | `_test_fixtures` Imports                                                                                                                                                                     | Also Uses                                                                     |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `pagination.test.ts`                     | `FIXTURE_PAGE_1`, `FIXTURE_PAGE_2`                                                                                                                                                           | `createGhSpy`, `makeConfig`, `makeCtx` from `_test_utils.ts`                  |
-| `project-items-cache.test.ts`            | `FIXTURE_PAGE_1`, `FIXTURE_PAGE_2`                                                                                                                                                           | `createGhSpy`, `makeCtx` from `_test_utils.ts`                                |
-| `result-normalizer.test.ts`              | `FIXTURE_ITEM_WITH_CUSTOM_FIELDS`                                                                                                                                                            | `makeConfig` from `_test_utils.ts`                                            |
-| `field-value-mutator.test.ts`            | `FIXTURE_USER_ID`, `USERNODE_IDS`                                                                                                                                                            | `createGhSpy`, `makeConfig`, `makeCtx` from `_test_utils.ts`                  |
-| `story-query-service.test.ts`            | `FIXTURE_NODES`                                                                                                                                                                              | `createGhSpy`, `makeConfig`, `makeCtx`; `buildStoryFromRaw` from `mappers.ts` |
-| `item-filter.test.ts`                    | `FIXTURE_NODES`                                                                                                                                                                              | `buildStoryFromRaw` from `mappers.ts`                                         |
-| `user-milestone-resolver.test.ts`        | `FIXTURE_USER_ID`, `USERNODE_IDS`                                                                                                                                                            | `createGhSpy`, `makeCtx` from `_test_utils.ts`                                |
-| `search-api-assembler.test.ts`           | `FIXTURE_PAGE_1`, `FIXTURE_PAGE_2`                                                                                                                                                           | `createGhSpy`, `makeConfig` from `_test_utils.ts`                             |
-| `direct-lookup-assembler.test.ts`        | `FIXTURE_ITEM_222`                                                                                                                                                                           | `createGhSpy`, `makeConfig` from `_test_utils.ts`                             |
-| `project-items-assembler.test.ts`        | `FIXTURE_ITEM_222`, `FIXTURE_NODES`, `makePageEnvelope`                                                                                                                                      | `createGhSpy`, `makeConfig` from `_test_utils.ts`                             |
-| `assembler-pipeline.integration.test.ts` | `FIXTURE_ITEM_222`, `FIXTURE_PAGE_1`, `FIXTURE_PAGE_2`                                                                                                                                       | `createGhSpy`, `makeConfig` from `_test_utils.ts`                             |
-| `template-pipeline.test.ts` (scrum)      | `TYPE_TEMPLATE_CONTENT`                                                                                                                                                                      | —                                                                             |
-| `template-resource.test.ts` (scrum)      | `INLINE_LOCATION`, `FILE_YML_LOCATION`, `URL_YML_LOCATION`, `URL_JSON_LOCATION`, `URL_MD_LOCATION`, `INLINE_YAML_LOCATION`, `INLINE_JSON_LOCATION`, `FILE_JSON_LOCATION`, `FILE_MD_LOCATION` | —                                                                             |
-| `search-result-normalizer.test.ts`       | _(none — uses inline data)_                                                                                                                                                                  | _(should use captured search results post-refactor)_                          |
+| Risk                                                                          | Likelihood | Mitigation                                                                                                    |
+| ----------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------- |
+| JSON import assertions incompatible with current Deno version                 | Low        | Project already uses `"unstable": ["raw-imports"]` in `deno.json`; test before committing                     |
+| Captured item data changes shape between runs                                 | Medium     | `GetIssueProjectItem` is a stable query with fragments from `operations.graphql`; shape is version-controlled |
+| Real API capture leaks sensitive data into committed fixtures                 | Low        | Existing fixtures already contain real project data; reviewers check before commit                            |
+| `GetIssueProjectItem` returns item from wrong project for multi-project repos | Low        | The query filters by owner/repo/number; the capture script already knows the correct project context          |
+| `as unknown as ProjectItem` cast masks type mismatches                        | Low        | Already the pattern used in current `items.ts`; runtime tests catch shape mismatches                          |
+| Augmented item drifts from base item                                          | Low        | Both captured in the same run; augmentation is deterministic from config                                      |
+| Import path updates missed during rename                                      | Medium     | `deno task test` catches all import errors; lint also detects unused imports                                  |
+| Auto-selected items shift between captures                                    | Low        | Selection is deterministic from board data; items vary only when board content changes (desired behavior)     |
+| No item matches a required dimension (e.g., no spike on board)                | Medium     | Warning emitted; user can add item manually or accept gap                                                     |
 
 ## Appendix B: Key Files Referenced
 
-| File                                                                                                                                 | Role                                            |
-| ------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
-| [`scripts/capture-test-fixtures.ts`](scripts/capture-test-fixtures.ts)                                                               | Capture script entry point (will be refactored) |
-| [`scripts/capture-output/`](scripts/capture-output/)                                                                                 | Current capture output (flat, 3 JSON files)     |
-| [`scripts/capture/`](scripts/capture/)                                                                                               | New capture infrastructure directory            |
-| [`scripts/capture/augment-config.yml`](scripts/capture/augment-config.yml)                                                           | Non-canonical field augmentation config         |
-| [`src/adapters/github/internal/_test_fixtures.ts`](src/adapters/github/internal/_test_fixtures.ts)                                   | Adapter fixture constants (10 exports)          |
-| [`src/scrum/_test_fixtures.ts`](src/scrum/_test_fixtures.ts)                                                                         | Scrum fixture constants (10 exports)            |
-| [`src/adapters/github/internal/_test_utils.ts`](src/adapters/github/internal/_test_utils.ts)                                         | `createGhSpy`, `makeConfig`, `makeCtx`          |
-| [`src/scrum/ports.ts`](src/scrum/ports.ts)                                                                                           | Port interface (THE CONTRACT)                   |
-| [`src/adapters/github/backend.ts`](src/adapters/github/backend.ts)                                                                   | GitHub adapter facade                           |
-| [`src/adapters/github/internal/user-milestone-resolver.ts`](src/adapters/github/internal/user-milestone-resolver.ts)                 | Resolves user logins to GraphQL node IDs        |
-| [`src/adapters/github/internal/search-result-normalizer.ts`](src/adapters/github/internal/search-result-normalizer.ts)               | Converts search API results to `ProjectItem[]`  |
-| [`src/adapters/github/internal/field-value-mutator.ts`](src/adapters/github/internal/field-value-mutator.ts)                         | Field mutation operations (uses user node IDs)  |
-| [`src/adapters/github/internal/assemblers/search-api-assembler.ts`](src/adapters/github/internal/assemblers/search-api-assembler.ts) | Search → board scan fallback orchestration      |
-| [`deno.json`](deno.json)                                                                                                             | Task definitions and import map                 |
+| File                                                                                                                           | Role                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
+| [`scripts/capture-test-fixtures.ts`](scripts/capture-test-fixtures.ts)                                                         | Capture script entry point                                |
+| [`scripts/capture/types.ts`](scripts/capture/types.ts)                                                                         | Shared capture output types                               |
+| [`src/adapters/github/internal/__fixtures__/items.ts`](src/adapters/github/internal/__fixtures__/items.ts)                     | Item fixture constants (to become JSON loader)            |
+| [`src/adapters/github/internal/__fixtures__/items-synthetic.ts`](src/adapters/github/internal/__fixtures__/items-synthetic.ts) | Synthetic FIXTURE_ITEM_DONE (stays hand-authored)         |
+| [`src/adapters/github/internal/__fixtures__/pages.ts`](src/adapters/github/internal/__fixtures__/pages.ts)                     | Page envelope builder                                     |
+| [`src/adapters/github/internal/__fixtures__/user-nodes.ts`](src/adapters/github/internal/__fixtures__/user-nodes.ts)           | User node ID fixtures (to become JSON loader + synthetic) |
+| [`src/adapters/github/internal/__fixtures__/index.ts`](src/adapters/github/internal/__fixtures__/index.ts)                     | Barrel re-export                                          |
+| [`src/adapters/github/internal/_test_fixtures.ts`](src/adapters/github/internal/_test_fixtures.ts)                             | Barrel re-export for backward compat                      |
+| [`src/adapters/github/operations.graphql`](src/adapters/github/operations.graphql)                                             | GraphQL operations (includes `GetIssueProjectItem`)       |
+| [`src/domain/types.ts`](src/domain/types.ts:351)                                                                               | `BacklogItemListing` type definition                      |
+| [`scripts/capture/augment-config.yml`](scripts/capture/augment-config.yml)                                                     | Augmentation config (to move to `__fixtures__/`)          |
+| [`.github/scrum/config.yml`](.github/scrum/config.yml)                                                                         | Scrum config with `backends.github.team[].login`          |
+| [`deno.json`](deno.json)                                                                                                       | Task definitions and import map                           |

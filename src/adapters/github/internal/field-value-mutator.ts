@@ -207,7 +207,7 @@ export class FieldValueMutator {
           "then re-run the server so config-loader can pick it up.",
       });
     }
-    // Coerce to a real JS number — the MCP input union (z.string | z.number) can
+    // Coerce to a real JS number - the MCP input union (z.string | z.number) can
     // deliver "1" as a string even when the caller intended a number. GitHub's
     // GraphQL rejects non-numeric numberValue with "cannot coerce to Float".
     const numericValue = value !== null ? Number(value) : null;

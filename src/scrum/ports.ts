@@ -33,7 +33,7 @@ import type { AnalyticsView, ScrumField, SearchScope, VocabularyKind } from "../
 import type { BackendCallResult } from "../services/error-enrichment.ts";
 import type { ContentLocation } from "../domain/content-location.ts";
 
-// ── Re-exports (domain vocabulary — single source of truth) ─────────────────
+// ── Re-exports (domain vocabulary - single source of truth) ─────────────────
 
 export { ANALYTICS_VIEWS, SCRUM_FIELDS, SEARCH_SCOPES, VOCABULARY_KINDS };
 export type { AnalyticsView, ScrumField, SearchScope, VocabularyKind };
@@ -168,7 +168,7 @@ export interface StoryDetail {
 
 /**
  * Lean per-item projection from an aggregate board scan.
- * Prep for BoardAggregates / getAggregates — not yet on the port interface.
+ * Prep for BoardAggregates / getAggregates - not yet on the port interface.
  */
 export interface ItemAggregate {
   readonly id: string;

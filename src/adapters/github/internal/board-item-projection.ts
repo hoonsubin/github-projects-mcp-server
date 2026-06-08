@@ -1,5 +1,5 @@
 // =============================================================================
-// board-item-projection.ts — In-memory projections of cached full board items
+// board-item-projection.ts - In-memory projections of cached full board items
 // =============================================================================
 
 import type { ProjectItem } from "../types.ts";

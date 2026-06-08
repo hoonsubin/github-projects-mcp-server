@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/generate-audit.ts — CLI entry point for the audit pipeline
+// scripts/generate-audit.ts - CLI entry point for the audit pipeline
 //
 // Usage: deno run --allow-read --allow-env --allow-write --allow-run scripts/generate-audit.ts
 //
@@ -49,7 +49,7 @@ const main = async (): Promise<void> => {
       await savePlantumlFile(c4Diagram, config.c4OutputPath);
       console.error(`[audit] PlantUML diagram written to ${config.c4OutputPath}`);
     } else {
-      console.error("[audit] Skipping PlantUML diagram — C4 data unavailable.");
+      console.error("[audit] Skipping PlantUML diagram - C4 data unavailable.");
     }
   }
 
@@ -61,7 +61,7 @@ const main = async (): Promise<void> => {
       await saveMermaidFile(layerGraph, config.mermaidOutputPath);
       console.error(`[audit] Mermaid diagram written to ${config.mermaidOutputPath}`);
     } else if (!layerGraph || layerGraph.nodes.length === 0) {
-      console.error("[audit] Skipping mermaid diagram — layer-graph data unavailable.");
+      console.error("[audit] Skipping mermaid diagram - layer-graph data unavailable.");
     }
   }
 };
@@ -80,7 +80,7 @@ const getCommitSha = async (): Promise<string | null> => {
       return new TextDecoder().decode(stdout).trim();
     }
   } catch {
-    // Not a git repo or git not available — skip
+    // Not a git repo or git not available - skip
   }
   return null;
 };

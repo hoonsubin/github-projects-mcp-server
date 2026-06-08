@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/audit/stages/file-stats.ts — File count and LOC per layer
+// scripts/audit/stages/file-stats.ts - File count and LOC per layer
 //
 // Walks the src/ directory, counts files and lines of code per architectural
 // layer, and identifies the top-3 largest files per layer.

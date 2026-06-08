@@ -1,5 +1,5 @@
 // =============================================================================
-// Tool-surface contract tests — scrum_* read handlers
+// Tool-surface contract tests - scrum_* read handlers
 // =============================================================================
 
 import { assertEquals, assertExists } from "@std/assert";
@@ -29,7 +29,7 @@ import {
   handleOrient,
 } from "../../tools/scrum-read.ts";
 
-Deno.test("scrum_orient — happy path schema + config contract", async () => {
+Deno.test("scrum_orient - happy path schema + config contract", async () => {
   const boot = await committedScrumConfigPromise;
   const profile = await committedConfigProfilePromise;
   const backend = await committedFakeBackendPromise;
@@ -43,7 +43,7 @@ Deno.test("scrum_orient — happy path schema + config contract", async () => {
   assertExists(payload.platform_state.iterations.active);
 });
 
-Deno.test("scrum_find_items — happy path schema + config contract", async () => {
+Deno.test("scrum_find_items - happy path schema + config contract", async () => {
   const profile = await committedConfigProfilePromise;
   const backend = await committedFakeBackendPromise;
 
@@ -56,7 +56,7 @@ Deno.test("scrum_find_items — happy path schema + config contract", async () =
   assertEquals(payload.total_count >= payload.items.length, true);
 });
 
-Deno.test("scrum_find_items — include_dependencies variant", async () => {
+Deno.test("scrum_find_items - include_dependencies variant", async () => {
   const backend = await committedFakeBackendPromise;
 
   const payload = assertHandlerSchema(
@@ -67,7 +67,7 @@ Deno.test("scrum_find_items — include_dependencies variant", async () => {
   assertEquals(payload.dependency_map !== null, true);
 });
 
-Deno.test("scrum_get_item_detail — happy path schema", async () => {
+Deno.test("scrum_get_item_detail - happy path schema", async () => {
   const backend = await committedFakeBackendPromise;
   const listing = (await backend.findItems({
     scope: "all",
@@ -93,7 +93,7 @@ Deno.test("scrum_get_item_detail — happy path schema", async () => {
   assertEquals(payload.story.ref.id, listing.ref.id);
 });
 
-Deno.test("scrum_get_board_health — happy path schema", async () => {
+Deno.test("scrum_get_board_health - happy path schema", async () => {
   const backend = await committedFakeBackendPromise;
 
   assertHandlerSchema(
@@ -103,7 +103,7 @@ Deno.test("scrum_get_board_health — happy path schema", async () => {
   );
 });
 
-Deno.test("scrum_get_board_health — explicit sprint name variant", async () => {
+Deno.test("scrum_get_board_health - explicit sprint name variant", async () => {
   const backend = await committedFakeBackendPromise;
 
   assertHandlerSchema(
@@ -113,7 +113,7 @@ Deno.test("scrum_get_board_health — explicit sprint name variant", async () =>
   );
 });
 
-Deno.test("scrum_get_analytics — both views schema", async () => {
+Deno.test("scrum_get_analytics - both views schema", async () => {
   const profile = await committedConfigProfilePromise;
   const backend = await committedFakeBackendPromise;
 
@@ -127,7 +127,7 @@ Deno.test("scrum_get_analytics — both views schema", async () => {
   );
 });
 
-Deno.test("scrum_get_analytics — history-only variant", async () => {
+Deno.test("scrum_get_analytics - history-only variant", async () => {
   const profile = await committedConfigProfilePromise;
   const historyOnly = {
     burndown: null,

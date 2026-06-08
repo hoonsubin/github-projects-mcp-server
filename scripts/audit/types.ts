@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/audit/types.ts — Shared types and the AuditStage interface
+// scripts/audit/types.ts - Shared types and the AuditStage interface
 // =============================================================================
 
 import type { UnusedExport } from "../diagram/types.ts";

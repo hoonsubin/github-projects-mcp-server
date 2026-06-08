@@ -1,5 +1,5 @@
 // =============================================================================
-// src/domain/env.ts — EnvGetter type
+// src/domain/env.ts - EnvGetter type
 //
 // Abstracts "resolve an environment variable name to its value" without
 // coupling any module to Deno.env.get(). The composition root (src/server.ts)

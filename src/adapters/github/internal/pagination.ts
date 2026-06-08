@@ -3,10 +3,10 @@
 //
 // Cursor-based pagination infrastructure for GitHub Projects v2 items.
 // Phase 4: delegates execution to ExecutionEngine (Humble Object pattern).
-// The fetcher is now a thin convenience wrapper — its public API is unchanged
+// The fetcher is now a thin convenience wrapper - its public API is unchanged
 // so no consumer code needs modification.
 //
-// Phase 1 of adapter refactoring — query-building responsibility moved to
+// Phase 1 of adapter refactoring - query-building responsibility moved to
 // project-items-query-builder.ts. The fetcher is pure cursor iteration.
 // =============================================================================
 
@@ -31,7 +31,7 @@ import type {
 /**
  * Cursor-based paginated fetcher for GitHub Projects v2 items.
  *
- * Thin wrapper over ExecutionEngine — the engine handles raw cursor iteration;
+ * Thin wrapper over ExecutionEngine - the engine handles raw cursor iteration;
  * the fetcher interprets the project-items-specific response shape and provides
  * the collect(predicate) convenience API.
  *

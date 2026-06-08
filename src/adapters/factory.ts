@@ -16,8 +16,8 @@ import { ConfigError } from "../domain/errors.ts";
 /**
  * Startup options passed from the composition root to every adapter factory.
  * scrumConfig and projectRoot come from loadScrumConfig() in the use-case layer
- * — the adapter never touches the YAML file directly.
- * env comes from the composition root — adapters never read Deno.env directly.
+ * - the adapter never touches the YAML file directly.
+ * env comes from the composition root - adapters never read Deno.env directly.
  */
 export interface AdapterStartupOptions {
   /**
@@ -60,8 +60,8 @@ export interface AdapterFactory {
  * Unified return type for all adapter factories.
  *
  * The composition root receives this and uses it for tool registration.
- * scrumConfig is no longer carried on BackendResult — the caller already has
- * it from loadScrumConfig(). typeTemplatePaths is also removed — it lives
+ * scrumConfig is no longer carried on BackendResult - the caller already has
+ * it from loadScrumConfig(). typeTemplatePaths is also removed - it lives
  * inside the adapter's bootState.live.typeTemplatePaths.
  *
  * fileReader is nullable because not every platform has a file-reader

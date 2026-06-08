@@ -1,5 +1,5 @@
 // =============================================================================
-// Tool-surface contract tests — scrum_* write handlers
+// Tool-surface contract tests - scrum_* write handlers
 // =============================================================================
 
 import { assertEquals } from "@std/assert";
@@ -32,7 +32,7 @@ import {
   resolveP0PriorityDisplay,
 } from "../../tools/scrum-write.ts";
 
-Deno.test("scrum_add_vocabulary — happy path schema", async () => {
+Deno.test("scrum_add_vocabulary - happy path schema", async () => {
   const backend = await committedFakeBackendPromise;
 
   assertHandlerSchema(
@@ -42,7 +42,7 @@ Deno.test("scrum_add_vocabulary — happy path schema", async () => {
   );
 });
 
-Deno.test("scrum_add_vocabulary — status_option variant", async () => {
+Deno.test("scrum_add_vocabulary - status_option variant", async () => {
   const profile = await committedConfigProfilePromise;
   const backend = await committedFakeBackendPromise;
   const statusDisplay = Object.values(profile.statusDisplay)[0] ?? "Ready";
@@ -55,7 +55,7 @@ Deno.test("scrum_add_vocabulary — status_option variant", async () => {
   assertEquals(payload.kind, "status_option");
 });
 
-Deno.test("scrum_set_field — happy path schema", async () => {
+Deno.test("scrum_set_field - happy path schema", async () => {
   const profile = await committedConfigProfilePromise;
   const backend = await committedFakeBackendPromise;
   const itemRef = { id: "PVTI_fake_1" };
@@ -71,7 +71,7 @@ Deno.test("scrum_set_field — happy path schema", async () => {
   );
 });
 
-Deno.test("scrum_update_story — happy path schema", async () => {
+Deno.test("scrum_update_story - happy path schema", async () => {
   const backend = await committedFakeBackendPromise;
 
   assertHandlerSchema(
@@ -84,7 +84,7 @@ Deno.test("scrum_update_story — happy path schema", async () => {
   );
 });
 
-Deno.test("scrum_create_story — happy path schema", async () => {
+Deno.test("scrum_create_story - happy path schema", async () => {
   const profile = await committedConfigProfilePromise;
   const backend = await committedFakeBackendPromise;
   const storyType = (Object.keys(profile.typeDisplay)[0] ?? "user_story") as "user_story";
@@ -101,7 +101,7 @@ Deno.test("scrum_create_story — happy path schema", async () => {
   );
 });
 
-Deno.test("scrum_create_story — partial failure when post-create setField fails", async () => {
+Deno.test("scrum_create_story - partial failure when post-create setField fails", async () => {
   const profile = await committedConfigProfilePromise;
   const backend = (await committedFakeBackendPromise as ConfigShapedFakeBackend)
     .withSetFieldFailureOn("sprint");
@@ -126,7 +126,7 @@ Deno.test("scrum_create_story — partial failure when post-create setField fail
   }
 });
 
-Deno.test("scrum_plan_sprint — happy path schema", async () => {
+Deno.test("scrum_plan_sprint - happy path schema", async () => {
   const backend = await committedFakeBackendPromise;
 
   assertHandlerSchema(
@@ -140,7 +140,7 @@ Deno.test("scrum_plan_sprint — happy path schema", async () => {
   );
 });
 
-Deno.test("scrum_plan_sprint — replace variant clears sprint first", async () => {
+Deno.test("scrum_plan_sprint - replace variant clears sprint first", async () => {
   const backend = await committedFakeBackendPromise;
 
   const payload = assertHandlerSchema(
@@ -155,7 +155,7 @@ Deno.test("scrum_plan_sprint — replace variant clears sprint first", async () 
   assertEquals(Array.isArray(payload.assigned), true);
 });
 
-Deno.test("scrum_log_impediment — happy path schema", async () => {
+Deno.test("scrum_log_impediment - happy path schema", async () => {
   const boot = await committedScrumConfigPromise;
   const backend = await committedFakeBackendPromise;
 
@@ -169,7 +169,7 @@ Deno.test("scrum_log_impediment — happy path schema", async () => {
   );
 });
 
-Deno.test("scrum_log_impediment — sprint affects variant", async () => {
+Deno.test("scrum_log_impediment - sprint affects variant", async () => {
   const boot = await committedScrumConfigPromise;
   const backend = await committedFakeBackendPromise;
   const p0 = resolveP0PriorityDisplay(boot.scrumConfig);
@@ -187,7 +187,7 @@ Deno.test("scrum_log_impediment — sprint affects variant", async () => {
   assertEquals(payload.affects !== null, true);
 });
 
-Deno.test("scrum_update_impediment — happy path schema", async () => {
+Deno.test("scrum_update_impediment - happy path schema", async () => {
   const backend = await committedFakeBackendPromise;
 
   assertHandlerSchema(

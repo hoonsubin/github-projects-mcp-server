@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/audit/stages/c4-diagram.ts — C4 diagram generation stage
+// scripts/audit/stages/c4-diagram.ts - C4 diagram generation stage
 // =============================================================================
 
 import type { AuditConfig, AuditStage, C4DiagramResult } from "../types.ts";

@@ -2,6 +2,33 @@
   "items": [
     {
       "ref": {
+        "id": "PVTI_lAHOAmfLjc4BWiTtzgvD6Mk",
+        "key": ""
+      },
+      "title": "test draft issue",
+      "type": "user_story",
+      "status": "Ready",
+      "story_points": 1,
+      "priority": "Could",
+      "assignees": [
+        "hoonsubin"
+      ],
+      "labels": [],
+      "sprint": {
+        "name": "Sprint 4",
+        "ref": {
+          "id": "07155ad6"
+        }
+      },
+      "epic": null,
+      "blocked_by": [],
+      "blocks": [],
+      "custom_fields": {
+        "__typename": "DraftIssue"
+      }
+    },
+    {
+      "ref": {
         "id": "PVTI_lAHOAmfLjc4BWiTtzguSudU",
         "key": "214"
       },
@@ -1850,46 +1877,11 @@
       "custom_fields": {
         "__typename": "Issue"
       }
-    },
-    {
-      "ref": {
-        "id": "PVTI_lAHOAmfLjc4BWiTtzgtw-go",
-        "key": "165"
-      },
-      "title": "[Story]: Replace type_display with type_mapping and add local-first template file resolution",
-      "type": "user_story",
-      "status": "Done",
-      "story_points": 5,
-      "priority": "Should",
-      "assignees": [],
-      "labels": [
-        "adapter layer",
-        "use case layer",
-        "template",
-        "config"
-      ],
-      "sprint": {
-        "name": "Sprint 3",
-        "ref": {
-          "id": "ecba33e9"
-        }
-      },
-      "epic": {
-        "ref": {
-          "id": "MI_kwDOSJo3Ms4A88if"
-        },
-        "name": "Flexible Item Template System"
-      },
-      "blocked_by": [],
-      "blocks": [],
-      "custom_fields": {
-        "__typename": "Issue"
-      }
     }
   ],
-  "total_count": 179,
+  "total_count": 180,
   "scope_summary": {
-    "sprint_count": 128,
+    "sprint_count": 129,
     "backlog_count": 51
   },
   "dependency_map": null

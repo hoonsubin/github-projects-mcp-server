@@ -17,7 +17,7 @@ export type McpOutputShape = Record<string, z.ZodType>;
 
 /**
  * Mirrors MCP SDK validateToolOutput: requires structuredContent and parses it
- * with normalizeObjectSchema(outputShape) — same path as runtime CallTool.
+ * with normalizeObjectSchema(outputShape) - same path as runtime CallTool.
  */
 export const assertMcpToolOutput = (
   result: McpTextResult,

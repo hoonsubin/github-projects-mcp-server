@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/audit/renderers/mermaid-file.ts — Write mermaid diagram to .mermaid file
+// scripts/audit/renderers/mermaid-file.ts - Write mermaid diagram to .mermaid file
 //
 // Uses renderMermaidFenced so the output includes ```mermaid...``` fences,
 // making it compatible with GitHub's mermaid renderer and other tools that

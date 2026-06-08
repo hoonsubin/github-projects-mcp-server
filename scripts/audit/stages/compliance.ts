@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/audit/stages/compliance.ts — Architecture rule compliance check
+// scripts/audit/stages/compliance.ts - Architecture rule compliance check
 //
 // Parses depcruise JSON violations from summary.violations and produces a
 // per-rule pass/fail summary using the rules declared in ruleSetUsed.forbidden.

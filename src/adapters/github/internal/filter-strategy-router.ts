@@ -1,7 +1,7 @@
 // =============================================================================
 // src/adapters/github/internal/filter-strategy-router.ts - Filter Strategy Router
 //
-// Pure function (no dependencies, no class — fully unit-testable).
+// Pure function (no dependencies, no class - fully unit-testable).
 // Classifies a ResolvedItemFilter into exactly one FilterProfile.
 // =============================================================================
 
@@ -60,7 +60,7 @@ export const classifyFilter = (filter: ResolvedItemFilter): FilterProfile => {
     };
   }
   if (hasSearchableOnly && !hasBoardFields) {
-    // Draft Issues are not indexed by GitHub search — use board scan for scope=all.
+    // Draft Issues are not indexed by GitHub search - use board scan for scope=all.
     if (filter.scope === "all") {
       return { kind: "project_items", filter };
     }

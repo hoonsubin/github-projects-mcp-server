@@ -100,7 +100,7 @@ const makeProjectItem = (opts: { id: string; key: string; title: string }): Proj
 });
 
 // =============================================================================
-// Real fixture data — loaded from captured API responses
+// Real fixture data - loaded from captured API responses
 // =============================================================================
 
 // JSON imports produce loose types; cast through unknown for ProjectV2ItemType
@@ -113,7 +113,7 @@ const realStories: Story[] = allRealItems
   .filter((s): s is Story => s !== null);
 
 // =============================================================================
-// Test cases — edge cases with hand-crafted data
+// Test cases - edge cases with hand-crafted data
 // =============================================================================
 
 Deno.test("A-bug-1: dependency direction - A blocked by B", () => {
@@ -291,7 +291,7 @@ Deno.test("draft stories are excluded from dependency map", () => {
 });
 
 // =============================================================================
-// Integration test — real data from captured fixtures
+// Integration test - real data from captured fixtures
 // =============================================================================
 
 Deno.test({
@@ -355,7 +355,7 @@ Deno.test({
 });
 
 // =============================================================================
-// Error handling tests — composeStorySnapshot, _getDraftIssueDetail, getStoryDetail
+// Error handling tests - composeStorySnapshot, _getDraftIssueDetail, getStoryDetail
 // Covers Bug A (error shadowing), Bug B (inconsistent error handling),
 // and Bug B.1 (resolveStory error propagation).
 // =============================================================================
@@ -381,7 +381,7 @@ const DRAFT_ISSUE_RESPONSE = {
   },
 };
 
-/** Null-node response — simulates item deleted from project. */
+/** Null-node response - simulates item deleted from project. */
 const NULL_NODE_RESPONSE = { node: null };
 
 /** resolveStory → Issue (so getStoryDetail proceeds to the issue-detail path). */
@@ -539,7 +539,7 @@ Deno.test({
     assertEquals(result.value !== null, true, "should return a story detail");
     assertEquals(result.value?.story.ref.id, "PVTI_test_draft");
     assertEquals(Array.isArray(result.warnings), true);
-    // Before the fix, warnings were hardcoded to [] — verify they are no longer empty.
+    // Before the fix, warnings were hardcoded to [] - verify they are no longer empty.
     // catchBackend returns [] on success, so this is fine. The key assertion is
     // that warnings is a real array (not a literal [] placeholder).
   },

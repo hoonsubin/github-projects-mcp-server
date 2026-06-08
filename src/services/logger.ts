@@ -1,8 +1,8 @@
 // =============================================================================
 // src/services/logger.ts
 // Structured logger with transport-mode-aware dual output:
-//   stderr     — always used (host-app log capture), safe for both stdio & HTTP
-//   MCP notifications/message — only used in HTTP mode (SSE transport)
+//   stderr     - always used (host-app log capture), safe for both stdio & HTTP
+//   MCP notifications/message - only used in HTTP mode (SSE transport)
 //
 // In stdio mode, stdout carries the JSON-RPC wire protocol and MUST NOT contain
 // anything else. Logging goes to stderr only. Per the MCP spec (2024-11-05):
@@ -39,7 +39,7 @@ import type { JSONRPCMessage, MessageExtraInfo } from "@modelcontextprotocol/sdk
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
-/** Transport mode — determines output routing. */
+/** Transport mode - determines output routing. */
 export type TransportMode = "stdio" | "http";
 
 /**
@@ -152,10 +152,10 @@ const write = (level: string, msg: string, extra?: unknown): void => {
   console.error(line);
 
   // In HTTP mode, also send structured MCP log notification.
-  // Fire-and-forget — transport failure must never crash the logger.
+  // Fire-and-forget - transport failure must never crash the logger.
   if (_mode === "http" && _mcpServer) {
     _mcpServer.sendLoggingMessage({ level: toMcpLevel(level), data: msg }).catch(() => {
-      // Silently ignore — stderr already captured the message.
+      // Silently ignore - stderr already captured the message.
     });
   }
 };
@@ -179,10 +179,10 @@ interface McpServerInternal {
  * before/after logging with timing. The public log.* API is used internally.
  *
  * Each invocation produces:
- *   log.info(`→ toolName`)      — on entry
- *   log.debug(`  params`, ...)  — input params (debug=true only)
- *   log.info(`← toolName OK`)   — on success, with elapsed ms
- *   log.error(`✗ toolName FAILED`) — on throw, with error + params
+ *   log.info(`→ toolName`)      - on entry
+ *   log.debug(`  params`, ...)  - input params (debug=true only)
+ *   log.info(`← toolName OK`)   - on success, with elapsed ms
+ *   log.error(`✗ toolName FAILED`) - on throw, with error + params
  *
  * Errors are re-thrown so the MCP SDK can return a JSON-RPC error response.
  */
@@ -200,7 +200,7 @@ export const patchToolLogging = (server: McpServer): void => {
     handler: (params: unknown, extra: unknown) => Promise<unknown>,
   ): unknown => {
     return original(name, config, async (params: unknown, extra: unknown) => {
-      // Always: log which tool fired (no params — keeps the line short)
+      // Always: log which tool fired (no params - keeps the line short)
       log.info(`→ ${name}`);
       // DEBUG: also log the full input so you can see what the agent passed
       log.debug(`  params`, params);
@@ -253,7 +253,7 @@ export const wrapTransportLogging = (transport: Transport, label: string): void 
 // ── Public API ──────────────────────────────────────────────────────────────
 
 export const log = {
-  /** True when debug is enabled — useful for conditional debug work outside this module. */
+  /** True when debug is enabled - useful for conditional debug work outside this module. */
   isDebug,
 
   /** Low-level tracing: tool calls, GraphQL operations, timing. Only emitted when debug=true. */
@@ -273,7 +273,7 @@ export const log = {
   },
 
   /**
-   * Errors — thrown exceptions, API failures, startup failures, etc.
+   * Errors - thrown exceptions, API failures, startup failures, etc.
    * Always emitted. This is the single output path for ALL errors in the project.
    */
   error(msg: string, extra?: unknown): void {

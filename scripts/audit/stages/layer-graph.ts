@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/audit/stages/layer-graph.ts — Layer dependency graph from depcruise JSON
+// scripts/audit/stages/layer-graph.ts - Layer dependency graph from depcruise JSON
 //
 // Classifies every module into an architectural layer, then builds a directed
 // graph of cross-layer dependencies. Violation edges are detected by checking

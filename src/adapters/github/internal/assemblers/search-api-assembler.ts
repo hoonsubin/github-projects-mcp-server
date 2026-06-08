@@ -41,7 +41,7 @@ export class SearchApiAssembler {
     },
     filter?: ResolvedItemFilter,
   ): Promise<AssemblerOutput> {
-    // Draft Issues are not GitHub Issues — fall back to board scan for scope=all.
+    // Draft Issues are not GitHub Issues - fall back to board scan for scope=all.
     if (filter?.scope === "all") {
       return this.projectItemsAssembler.assemble(filter);
     }

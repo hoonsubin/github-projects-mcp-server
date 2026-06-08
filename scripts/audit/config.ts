@@ -1,5 +1,5 @@
 // =============================================================================
-// scripts/audit/config.ts — AuditConfig type + CLI argument parsing
+// scripts/audit/config.ts - AuditConfig type + CLI argument parsing
 // =============================================================================
 
 import type { AuditConfig } from "./types.ts";

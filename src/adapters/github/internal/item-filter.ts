@@ -1,7 +1,7 @@
 // =============================================================================
 // src/adapters/github/internal/item-filter.ts
 //
-// Pure client-side filter predicate for findItems — extracted from
+// Pure client-side filter predicate for findItems - extracted from
 // Client-side post-filter predicate for the assembler → normalizer pipeline.
 // Filter order matches the original sequential chain (AND semantics).
 // =============================================================================
