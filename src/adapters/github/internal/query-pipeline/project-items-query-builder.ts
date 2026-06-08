@@ -11,7 +11,10 @@ import type { OwnerType } from "../../types.ts";
 import { getFragmentSource } from "../../queries.ts";
 import { ownerRootField } from "../infra/owner-graphql.ts";
 
-export type { ProjectItemsResponse, ProjectV2ItemsPage } from "../infra/project-items-response-types.ts";
+export type {
+  ProjectItemsResponse,
+  ProjectV2ItemsPage,
+} from "../infra/project-items-response-types.ts";
 
 /**
  * Builds the GraphQL query document for fetching project items.

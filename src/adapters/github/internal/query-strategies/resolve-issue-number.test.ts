@@ -6,7 +6,7 @@ import {
   fetchProjectItemIdByIssueNumber,
   resolveProjectItemIdByIssueNumber,
 } from "./resolve-issue-number.ts";
-import { createGhSpy, makeConfig } from "../infra/_test_utils.ts";
+import { createGhSpy, makeConfig } from "@test/support/github-client.ts";
 
 const GH_CONFIG = {
   ...makeConfig().ghConfig,

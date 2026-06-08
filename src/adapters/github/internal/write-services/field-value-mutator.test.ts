@@ -10,12 +10,12 @@
 import { assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { FieldValueMutator } from "./field-value-mutator.ts";
 import { UserMilestoneResolver } from "./user-milestone-resolver.ts";
-import { createGhSpy, makeConfig, makeCtx } from "../infra/_test_utils.ts";
-import type { GitHubClientSpy } from "../infra/_test_utils.ts";
+import { createGhSpy, makeConfig, makeCtx } from "@test/support/github-client.ts";
+import type { GitHubClientSpy } from "@test/support/github-client.ts";
 import type { GitHubBootState } from "../../bootstrap.ts";
 import { GitHubApiError } from "../../errors.ts";
 import type { SprintRef } from "../../../../domain/types.ts";
-import { FIXTURE_USER_ID, USERNODE_IDS } from "../infra/_test_fixtures.ts";
+import { FIXTURE_USER_ID, USERNODE_IDS } from "@test/fixtures/github/index.ts";
 
 // =============================================================================
 // Fixture-derived constants

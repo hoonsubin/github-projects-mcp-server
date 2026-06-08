@@ -3,10 +3,7 @@
 // In-memory ProjectBackend whose platform vocabulary is derived from scrum config.
 // =============================================================================
 
-import {
-  AbstractProjectBackend,
-  UnsupportedCapabilityError,
-} from "../../adapters/abstract-backend.ts";
+import { AbstractProjectBackend } from "../../adapters/abstract-backend.ts";
 import { AdapterError } from "../../domain/errors.ts";
 import { CapabilityStatus, type PlatformCapabilities } from "../../adapters/capabilities.ts";
 import type {
@@ -176,15 +173,6 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
     options?: ConfigShapedFakeBackendOptions,
   ): ConfigShapedFakeBackend {
     return new ConfigShapedFakeBackend(deriveConfigProfile(boot), options);
-  }
-
-  withItems(items: readonly BacklogItemListing[]): ConfigShapedFakeBackend {
-    return new ConfigShapedFakeBackend(this.profile, {
-      items,
-      epics: this.epics,
-      storyDetail: this.storyDetail,
-      setFieldFailureOn: this.setFieldFailureOn,
-    });
   }
 
   withSetFieldFailureOn(field: ScrumField): ConfigShapedFakeBackend {
@@ -402,10 +390,5 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
   addVocabulary(kind: VocabularyKind, value: string): Promise<CreateResult> {
     this.log("addVocabulary", kind, value);
     return Promise.resolve({ created: true });
-  }
-
-  /** Write helpers not yet needed for read contract tests. */
-  unsupported(method: string): never {
-    throw new UnsupportedCapabilityError(this.capabilities.platform, method);
   }
 }

@@ -351,5 +351,4 @@ export class StoryQueryService {
   fetchFullItems(): Promise<ProjectItem[]> {
     return this.boardScan.fetchFullBoard();
   }
-
 }

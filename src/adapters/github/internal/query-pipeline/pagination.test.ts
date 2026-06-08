@@ -17,14 +17,14 @@
 import { assert, assertEquals, assertRejects } from "@std/assert";
 import { isBacklogItem, PaginatedProjectItemFetcher } from "./pagination.ts";
 import { ProjectItemsQueryBuilder } from "./project-items-query-builder.ts";
-import { createGhSpy, makeCtx } from "../infra/_test_utils.ts";
+import { createGhSpy, makeCtx } from "@test/support/github-client.ts";
 import { GitHubApiError } from "../../errors.ts";
 
 // ── Fixture imports ───────────────────────────────────────────────────────────
 // JSON captured from the live API via `deno task capture-fixtures`.
 // Re-run that task after schema changes or when the project board changes significantly.
 
-import { FIXTURE_PAGE_1, FIXTURE_PAGE_2 } from "../infra/_test_fixtures.ts";
+import { FIXTURE_PAGE_1, FIXTURE_PAGE_2 } from "@test/fixtures/github/index.ts";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

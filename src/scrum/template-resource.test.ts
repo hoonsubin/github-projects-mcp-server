@@ -20,7 +20,7 @@ import {
   URL_JSON_LOCATION,
   URL_MD_LOCATION,
   URL_YML_LOCATION,
-} from "./_test_fixtures.ts";
+} from "@test/fixtures/scrum/index.ts";
 
 // ── Inline template (no file I/O) ─────────────────────────────────────────────
 

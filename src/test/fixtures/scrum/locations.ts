@@ -4,7 +4,7 @@
 // ContentLocation constants for template-resource.test.ts.
 // =============================================================================
 
-import type { ContentLocation } from "../../domain/content-location.ts";
+import type { ContentLocation } from "../../../domain/content-location.ts";
 
 export const INLINE_LOCATION = {
   kind: "inline",

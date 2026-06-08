@@ -4,7 +4,7 @@
 // Synthetic fixture items and convenience aggregates.
 // =============================================================================
 
-import type { ProjectItem } from "../../types.ts";
+import type { ProjectItem } from "../../../adapters/github/types.ts";
 import { FIXTURE_ITEM_192, FIXTURE_ITEM_222, FIXTURE_ITEM_WITH_CUSTOM_FIELDS } from "./items.ts";
 
 /**

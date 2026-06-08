@@ -2,8 +2,8 @@
 
 import { assertEquals } from "@std/assert";
 import { ProjectItemsCache } from "./project-items-cache.ts";
-import { createGhSpy, makeCtx } from "../infra/_test_utils.ts";
-import { FIXTURE_PAGE_1, FIXTURE_PAGE_2 } from "../infra/_test_fixtures.ts";
+import { createGhSpy, makeCtx } from "@test/support/github-client.ts";
+import { FIXTURE_PAGE_1, FIXTURE_PAGE_2 } from "@test/fixtures/github/index.ts";
 
 const ctx = (gh: ReturnType<typeof createGhSpy>) =>
   makeCtx(gh, { ghConfig: { owner_type: "user" } });

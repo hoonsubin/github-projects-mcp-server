@@ -344,12 +344,7 @@ export interface FileReaderPort {
  * Used by: orientUseCase (via getPlatformState), scrum-read tools
  */
 export interface ProjectReader
-  extends
-    StoryPort,
-    EpicPort,
-    FindItemsPort,
-    ImpedimentPort,
-    SprintDataPort {
+  extends StoryPort, EpicPort, FindItemsPort, ImpedimentPort, SprintDataPort {
   getPlatformState(declaredVocabulary: {
     canonicalStatusKeys: string[];
     canonicalPriorityKeys: string[];

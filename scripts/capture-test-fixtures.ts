@@ -147,7 +147,7 @@ const output = {
   profiles,
 };
 
-const OUT = resolve(Deno.cwd(), "src/test/__fixtures__/captured.json");
+const OUT = resolve(Deno.cwd(), "src/test/fixtures/port/captured.json");
 await Deno.writeTextFile(OUT, JSON.stringify(output, null, 2));
 
 console.log(

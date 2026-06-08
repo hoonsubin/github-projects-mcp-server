@@ -8,13 +8,13 @@
 
 import { assertEquals, assertFalse, assertStringIncludes } from "@std/assert";
 import { buildDependencyMap, StoryQueryService } from "./story-query-service.ts";
-import { createGhSpy, makeConfig, makeCtx } from "../infra/_test_utils.ts";
+import { createGhSpy, makeConfig, makeCtx } from "@test/support/github-client.ts";
 import { BoardScanCoordinator } from "./board-scan-coordinator.ts";
 import { GitHubApiError } from "../../errors.ts";
 import { toIssueKey } from "../../../../domain/types.ts";
 import type { DependencyEntry, EntityRef, ItemType, Story } from "../../../../domain/types.ts";
 import type { IssueStory, ProjectItem } from "../../types.ts";
-import { FIXTURE_NODES } from "../infra/_test_fixtures.ts";
+import { FIXTURE_NODES } from "@test/fixtures/github/index.ts";
 import { buildStoryFromRaw } from "../../mappers.ts";
 
 // =============================================================================

@@ -17,7 +17,7 @@ import {
   TEMPLATE_IMPEDIMENT,
   TEMPLATE_USER_STORY,
   TYPE_TEMPLATE_CONTENT,
-} from "./_test_fixtures.ts";
+} from "@test/fixtures/scrum/index.ts";
 
 // ── Per-type pipeline tests ───────────────────────────────────────────────────
 

@@ -13,9 +13,9 @@ import { SearchApiAssembler } from "./search-api-assembler.ts";
 import { ExecutionEngine } from "../query-pipeline/execution-engine.ts";
 import { ResultNormalizer } from "../query-strategies/result-normalizer.ts";
 import { BoardScanCoordinator } from "../read-services/board-scan-coordinator.ts";
-import { createGhSpy, makeConfig } from "../infra/_test_utils.ts";
+import { createGhSpy, makeConfig } from "@test/support/github-client.ts";
 import type { ResolvedItemFilter } from "../../../../scrum/ports.ts";
-import { FIXTURE_ITEM_222, FIXTURE_PAGE_1, FIXTURE_PAGE_2 } from "../infra/_test_fixtures.ts";
+import { FIXTURE_ITEM_222, FIXTURE_PAGE_1, FIXTURE_PAGE_2 } from "@test/fixtures/github/index.ts";
 
 const config = makeConfig({
   ghConfig: { ...makeConfig().ghConfig, owner_type: "user" as const, project_number: 6 },

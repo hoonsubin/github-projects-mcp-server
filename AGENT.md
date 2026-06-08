@@ -47,7 +47,7 @@ Run the full suite with `deno task test` (~257 tests, no network required for CI
 | **Unit / single-layer** | Co-located `*.test.ts` next to the module                                                     | May only import inward (same layer, domain, services). Example: `item-filter.test.ts` beside `item-filter.ts`. |
 | **Cross-layer**         | [`src/test/support/`](src/test/support/) helpers + [`src/test/tools/`](src/test/tools/) tests | May import across layers (adapters, tools, schemas). Never add these imports to production modules.            |
 
-Adapter-local spies stay beside adapter tests: [`src/adapters/github/internal/_test_utils.ts`](src/adapters/github/internal/_test_utils.ts).
+GitHub adapter test spies and config factories: [`src/test/support/github-client.ts`](src/test/support/github-client.ts) (`createGhSpy`, `makeConfig`, `makeCtx`).
 
 `src/tools/` contains handlers only — no `*.test.ts` files.
 
@@ -69,7 +69,9 @@ Do **not** mock the GitHub adapter with hand-rolled stubs in integration paths. 
 
 | Module                                                              | Role                                                                             |
 | ------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| [`scrum-test-utils.ts`](src/test/support/scrum-test-utils.ts)       | `committedScrumConfigPromise`, `committedFakeBackendPromise`, `withTestServer`   |
+| [`scrum-test-utils.ts`](src/test/support/scrum-test-utils.ts)       | `committedScrumConfigPromise`, `committedFakeBackendPromise`, `capturedBackendPromise`, `withTestServer` |
+| [`github-client.ts`](src/test/support/github-client.ts)             | `createGhSpy`, `makeConfig`, `makeCtx` for adapter unit tests                    |
+| [`handler-assertions.ts`](src/test/support/handler-assertions.ts)   | `assertHandlerSchema`, `assertMcpToolOutput`, `parseHandlerPayload`              |
 | [`config-profile.ts`](src/test/support/config-profile.ts)           | Derives vocabulary/status expectations from committed config                     |
 | [`contract-assertions.ts`](src/test/support/contract-assertions.ts) | `assertOrientMatchesConfig`, `assertFindItemsMatchesConfig`                      |
 | [`fake-backend.ts`](src/test/support/fake-backend.ts)               | In-memory `ProjectBackend` for handler tests                                     |
@@ -79,10 +81,10 @@ Do **not** mock the GitHub adapter with hand-rolled stubs in integration paths. 
 
 | File                                                                            | Purpose                                                             |
 | ------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| [`scrum-read.contract.test.ts`](src/test/tools/scrum-read.contract.test.ts)     | 5 read tools — Zod schema + config contract                         |
+| [`scrum-read.contract.test.ts`](src/test/tools/scrum-read.contract.test.ts)     | Read tools — Zod schema + config contract (fake backend)            |
+| [`scrum-read.captured.test.ts`](src/test/tools/scrum-read.captured.test.ts)   | Read tools — Zod schema against captured port data                  |
 | [`scrum-write.contract.test.ts`](src/test/tools/scrum-write.contract.test.ts)   | 7 write tools — Zod schema                                          |
 | [`scrum-read.golden.test.ts`](src/test/tools/scrum-read.golden.test.ts)         | Golden snapshots for `scrum_orient`, `scrum_find_items`             |
-| [`contract-test-utils.ts`](src/test/tools/contract-test-utils.ts)               | `assertHandlerSchema`, `assertMcpToolOutput`, `parseHandlerPayload` |
 | [`scrum-mcp.integration.test.ts`](src/test/tools/scrum-mcp.integration.test.ts) | `CallTool` through MCP SDK + InMemoryTransport (output validation)  |
 
 Handlers are exported from [`src/tools/scrum-read.ts`](src/tools/scrum-read.ts) and [`src/tools/scrum-write.ts`](src/tools/scrum-write.ts). Contract tests call handlers directly but must assert `structuredContent` (see `assertHandlerSchema`). [`scrum-mcp.integration.test.ts`](src/test/tools/scrum-mcp.integration.test.ts) exercises the full MCP `CallTool` path.
@@ -109,13 +111,17 @@ deno test --allow-env=DEBUG,GITHUB_TOKEN,NODE_ENV --allow-net --allow-read --all
 
 Pass `-- --update` (after `--`) — not a top-level `deno test` flag.
 
-### Fixture architecture (two tiers)
+### Fixture architecture
 
-**Tier 1 — Adapter-internal raw shapes** (`src/adapters/github/internal/__fixtures__/`)\
-Hand-authored `ProjectItem` GraphQL node constants (`FIXTURE_ITEM_222`, `FIXTURE_NODES`, `FIXTURE_PAGE_1`, etc.). These are the only fixtures that know about GitHub-specific types — Tier 1 is strictly for testing the adapter internals. Import via `_test_fixtures.ts` barrel in the same directory.
+All fixtures live under [`src/test/fixtures/`](src/test/fixtures/). Import via `@test/fixtures/` (see `deno.json` import map).
 
-**Tier 2 — Port-level captured data** (`src/test/__fixtures__/captured.json`)\
-Real `getPlatformState` / `findItems` / `getStoryDetail` responses captured through the production adapter. Import typed constants from `src/test/__fixtures__/index.ts` (`CAPTURED`, `FIXTURE_PLATFORM_STATE`, `FIXTURE_FIND_ITEMS`, `FIXTURE_ITEM_DETAILS`). Use `CapturedDataBackend.fromProfile(CAPTURED.profiles["config"])` to construct a read-only replay backend.
+| Subfolder | Contents | Consumers |
+| --------- | -------- | --------- |
+| [`github/`](src/test/fixtures/github/) | Hand-authored `ProjectItem` GraphQL nodes (`FIXTURE_ITEM_222`, `FIXTURE_NODES`, `FIXTURE_PAGE_1`, …) | Adapter unit tests only |
+| [`port/`](src/test/fixtures/port/) | `captured.json` + typed `CAPTURED` / `FIXTURE_*` exports | `CapturedDataBackend`, captured contract tests |
+| [`scrum/`](src/test/fixtures/scrum/) | Template content and `ContentLocation` constants | Scrum pipeline / template tests |
+
+Use `capturedBackendPromise` from `scrum-test-utils.ts` (or `CapturedDataBackend.fromProfile(CAPTURED.profiles["config"])`) for read-path tests against real port responses.
 
 **Refreshing captured.json** (requires `GITHUB_TOKEN`):
 

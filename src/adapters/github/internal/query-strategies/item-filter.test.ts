@@ -7,12 +7,12 @@
 
 import { assertEquals } from "@std/assert";
 import { buildItemFilterFn } from "./item-filter.ts";
-import { makeConfig } from "../infra/_test_utils.ts";
+import { makeConfig } from "@test/support/github-client.ts";
 import { buildStoryFromRaw } from "../../mappers.ts";
 import type { ItemFieldValue, ProjectItem } from "../../types.ts";
 import type { ResolvedItemFilter } from "../../../../scrum/ports.ts";
 import type { Story } from "../../../../domain/types.ts";
-import { FIXTURE_NODES } from "../infra/_test_fixtures.ts";
+import { FIXTURE_NODES } from "@test/fixtures/github/index.ts";
 
 const allItems: ProjectItem[] = [...FIXTURE_NODES];
 

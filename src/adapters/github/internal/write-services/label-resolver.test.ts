@@ -2,7 +2,7 @@
 
 import { assertEquals } from "@std/assert";
 import { LabelResolver } from "./label-resolver.ts";
-import { createGhSpy, makeCtx } from "../infra/_test_utils.ts";
+import { createGhSpy, makeCtx } from "@test/support/github-client.ts";
 
 const LABELS_RESPONSE = {
   repository: {

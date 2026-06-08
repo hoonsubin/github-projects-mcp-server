@@ -9,7 +9,7 @@ import {
   AbstractProjectBackend,
   UnsupportedCapabilityError,
 } from "../../adapters/abstract-backend.ts";
-import type { CapturedProfile } from "../__fixtures__/index.ts";
+import type { CapturedProfile } from "@test/fixtures/port/index.ts";
 import type { BackendCallResult } from "../../services/error-enrichment.ts";
 import type {
   CreateStoryInput,

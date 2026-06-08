@@ -2,7 +2,7 @@
 // src/adapters/github/internal/result-normalizer.test.ts
 //
 // Unit tests for buildNonCanonicalFieldPredicate and serializeFieldValuePayload.
-// Uses FIXTURE_ITEM_WITH_CUSTOM_FIELDS from _test_fixtures.ts - the same data
+// Uses FIXTURE_ITEM_WITH_CUSTOM_FIELDS from @test/fixtures/github - the same data
 // the production pipeline processes - so no hand-crafted mocks are needed.
 // =============================================================================
 
@@ -11,8 +11,8 @@ import {
   buildNonCanonicalFieldPredicate,
   serializeFieldValuePayload,
 } from "./result-normalizer.ts";
-import { makeConfig } from "../infra/_test_utils.ts";
-import { FIXTURE_ITEM_WITH_CUSTOM_FIELDS } from "../infra/_test_fixtures.ts";
+import { makeConfig } from "@test/support/github-client.ts";
+import { FIXTURE_ITEM_WITH_CUSTOM_FIELDS } from "@test/fixtures/github/index.ts";
 
 const config = makeConfig();
 

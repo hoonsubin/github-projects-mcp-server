@@ -1,7 +1,7 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { VocabularyManager } from "./vocabulary-manager.ts";
 import { LabelResolver } from "./label-resolver.ts";
-import { createGhSpy, makeCtx } from "../infra/_test_utils.ts";
+import { createGhSpy, makeCtx } from "@test/support/github-client.ts";
 
 const createManager = (configOverrides?: Parameters<typeof makeCtx>[1]) => {
   const gh = createGhSpy();

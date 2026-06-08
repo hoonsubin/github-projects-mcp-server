@@ -4,7 +4,7 @@
 // Real project-item fixture nodes extracted verbatim from captured fixture JSON.
 // =============================================================================
 
-import type { ProjectItem } from "../../types.ts";
+import type { ProjectItem } from "../../../adapters/github/types.ts";
 
 /** Real fixture: Issue #222 - Ready, 3 SP, Could, MCP Tool Surface epic */
 export const FIXTURE_ITEM_222 = {

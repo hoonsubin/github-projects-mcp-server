@@ -8,7 +8,7 @@
 
 import { assert, assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { StoryMutationService } from "./story-mutation-service.ts";
-import { createGhSpy, makeConfig, makeCtx } from "../infra/_test_utils.ts";
+import { createGhSpy, makeConfig, makeCtx } from "@test/support/github-client.ts";
 import type { GitHubBootState } from "../../bootstrap.ts";
 import type { LabelResolver } from "./label-resolver.ts";
 import type { UserMilestoneResolver } from "./user-milestone-resolver.ts";

@@ -1,8 +1,5 @@
 import { assertEquals } from "@std/assert";
-import {
-  buildAggregateFromRaw,
-  sprintCompletionFromAggregates,
-} from "./mappers.ts";
+import { buildAggregateFromRaw, sprintCompletionFromAggregates } from "./mappers.ts";
 import type { GitHubBootState } from "./bootstrap.ts";
 import type { ProjectItem } from "./types.ts";
 

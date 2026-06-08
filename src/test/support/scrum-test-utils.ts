@@ -11,7 +11,9 @@ import { type BootConfig, loadScrumConfig } from "../../scrum/config-boot.ts";
 import { resolveLocation, SUPPORTED_TEMPLATE_EXTENSIONS } from "../../scrum/resolve-location.ts";
 import type { ContentLocation } from "../../domain/content-location.ts";
 import type { FileReaderPort } from "../../scrum/ports.ts";
+import { CAPTURED } from "@test/fixtures/port/index.ts";
 import { type ConfigProfile, deriveConfigProfile } from "./config-profile.ts";
+import { CapturedDataBackend } from "./captured-backend.ts";
 import { ConfigShapedFakeBackend } from "./fake-backend.ts";
 
 // ── Type template paths ───────────────────────────────────────────────────────
@@ -78,6 +80,13 @@ export const committedConfigProfilePromise: Promise<ConfigProfile> = committedSc
  */
 export const committedFakeBackendPromise: Promise<ConfigShapedFakeBackend> =
   committedScrumConfigPromise.then((boot) => ConfigShapedFakeBackend.fromBoot(boot));
+
+/**
+ * Read-only backend replaying real port responses from captured.json (default profile).
+ */
+export const capturedBackendPromise: Promise<CapturedDataBackend> = Promise.resolve(
+  CapturedDataBackend.fromProfile(CAPTURED.profiles["config"]),
+);
 
 // ── FileReaderPort stubs ──────────────────────────────────────────────────────
 

@@ -1,8 +1,8 @@
-// src/test/__fixtures__/index.ts
+// src/test/fixtures/port/index.ts — port-level captured board responses
 
 import capturedRaw from "./captured.json" with { type: "json" };
-import type { PlatformState, StoryDetail } from "../../scrum/ports.ts";
-import type { ItemSearchResult } from "../../domain/types.ts";
+import type { PlatformState, StoryDetail } from "../../../scrum/ports.ts";
+import type { ItemSearchResult } from "../../../domain/types.ts";
 
 export interface CapturedProfile {
   readonly configPath: string;

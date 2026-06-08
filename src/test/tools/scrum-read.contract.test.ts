@@ -20,7 +20,7 @@ import {
   OrientResultSchema,
   SprintRawDataSchema,
 } from "../../schemas/scrum-outputs.ts";
-import { assertHandlerSchema } from "./contract-test-utils.ts";
+import { assertHandlerSchema } from "../support/handler-assertions.ts";
 import {
   handleFindItems,
   handleGetAnalytics,

@@ -1,12 +1,11 @@
 // =============================================================================
-// src/adapters/github/internal/_test_utils.ts
-// Internal test utility for GitHub adapter tests.
+// GitHub adapter test utilities — queue-based GraphQL spy and config factories.
 // =============================================================================
 
-import type { GitHubClient, RestResponse } from "./http-client.ts";
-import type { GitHubBootState } from "../../bootstrap.ts";
-import type { GitHubInfraContext } from "./infra-context.ts";
-import type { GitHubBackendConfig } from "../../types.ts";
+import type { GitHubClient, RestResponse } from "../../adapters/github/internal/infra/http-client.ts";
+import type { GitHubBootState } from "../../adapters/github/bootstrap.ts";
+import type { GitHubInfraContext } from "../../adapters/github/internal/infra/infra-context.ts";
+import type { GitHubBackendConfig } from "../../adapters/github/types.ts";
 
 // ── GitHubClient spy ──────────────────────────────────────────────────────────
 
@@ -61,9 +60,6 @@ export const createGhSpy = (): GitHubClientSpy => {
 /**
  * Builds a minimal but structurally valid GitHubBootState for tests.
  * Pass overrides for only the fields your test cares about.
- *
- * Use this instead of `{} as unknown as GitHubBootState` - the cast hides
- * breakage when GitHubBootState fields change.
  */
 export const makeConfig = (overrides: Partial<GitHubBootState> = {}): GitHubBootState => {
   return {
@@ -112,16 +108,12 @@ export const makeConfig = (overrides: Partial<GitHubBootState> = {}): GitHubBoot
 
 // ── GitHubInfraContext factory ────────────────────────────────────────────────
 
-/** Overrides type for makeCtx - allows Partial<GitHubBackendConfig> via ghConfig. */
 type CtxOverrides = Partial<Omit<GitHubBootState, "ghConfig">> & {
   ghConfig?: Partial<GitHubBackendConfig>;
 };
 
 /**
- * Build a GitHubInfraContext for tests. Accepts a GitHubClientSpy (or any
- * GitHubClient) and optional config overrides. ghConfig overrides are
- * deep-merged so callers can set only owner_type without re-specifying
- * the entire ghConfig object.
+ * Build a GitHubInfraContext for tests. ghConfig overrides are deep-merged.
  */
 export const makeCtx = (
   gh: GitHubClient,
