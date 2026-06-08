@@ -1,15 +1,15 @@
 // =============================================================================
-// src/adapters/github/internal/assembler-output.ts
+// src/adapters/github/internal/assemblers/assembler-output.ts
 //
 // Post-normalizer finalization: sprint ref.id backfill and limit slicing.
 // Preserves pre-limit totalCount for behavioral parity with StoryQueryService.
 // =============================================================================
 
-import { GitHubApiError } from "../errors.ts";
-import type { GitHubBootState } from "../bootstrap.ts";
-import type { AssemblerOutput } from "./assemblers/types.ts";
-import type { ResolvedItemFilter } from "../../../scrum/ports.ts";
-import type { BacklogItemListing } from "../../../domain/types.ts";
+import { GitHubApiError } from "../../errors.ts";
+import type { GitHubBootState } from "../../bootstrap.ts";
+import type { AssemblerOutput } from "./types.ts";
+import type { ResolvedItemFilter } from "../../../../scrum/ports.ts";
+import type { BacklogItemListing } from "../../../../domain/types.ts";
 
 /** Backfill sprint.ref.id from iteration config (replaces hardcoded "" in listings). */
 export const backfillSprintRefs = (

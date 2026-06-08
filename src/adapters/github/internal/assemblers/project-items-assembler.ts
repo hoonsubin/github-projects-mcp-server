@@ -13,7 +13,7 @@ import type { BoardScanCoordinator } from "../board-scan-coordinator.ts";
 import { ResultNormalizer } from "../result-normalizer.ts";
 import { buildItemFilterFn } from "../item-filter.ts";
 import { buildDependencyMap } from "../story-query-service.ts";
-import { finalizeAssemblerOutput } from "../assembler-output.ts";
+import { finalizeAssemblerOutput } from "./assembler-output.ts";
 
 /**
  * Handles board-field-based queries via a cached full-board scan.

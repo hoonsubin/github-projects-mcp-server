@@ -1,12 +1,12 @@
 # Architecture Audit Report
 
-**Generated:** 2026-06-07T15:23:23.099Z
-**Commit:** `13f6a56`
+**Generated:** 2026-06-08T18:46:29.280Z
+**Commit:** `2b5743d`
 **Source directory:** `./src`
 
 ## Architecture Compliance
 
-Modules scanned: **138**
+Modules scanned: **150**
 
 | Rule | Severity | Status | Violations |
 |------|----------|--------|------------|
@@ -29,6 +29,7 @@ _Instability (I) measures outgoing dependencies. I=0 means the module depends on
 | Module | Layer | I | Risk |
 |--------|-------|---|------|
 | `src/server.ts` | entrypoint | 1.00 | 🔴 high-risk |
+| `src/test/support/captured-backend.ts` | framework | 1.00 | 🔴 high-risk |
 | `src/adapters/github/create-backend.ts` | adapter | 0.97 | 🔴 high-risk |
 | `src/adapters/github/backend.ts` | adapter | 0.96 | 🔴 high-risk |
 | `src/tools/handlers/read.ts` | framework | 0.90 | 🔴 high-risk |
@@ -40,13 +41,15 @@ _Instability (I) measures outgoing dependencies. I=0 means the module depends on
 | `src/test/support/fake-backend.ts` | framework | 0.82 | 🔴 high-risk |
 | `src/adapters/github/internal/impediment-service.ts` | adapter | 0.80 | 🔴 high-risk |
 | `src/adapters/github/internal/file-reader.ts` | adapter | 0.80 | 🔴 high-risk |
+| `src/adapters/github/internal/__fixtures__/index.ts` | adapter | 0.80 | 🔴 high-risk |
 | `src/tools/handlers/write.ts` | framework | 0.80 | 🔴 high-risk |
 | `src/adapters/github/internal/assemblers/search-api-assembler.ts` | adapter | 0.76 | 🟡 moderate |
 | `src/adapters/github/internal/story-mutation-service.ts` | adapter | 0.76 | 🟡 moderate |
 | `src/adapters/github/internal/epic-service.ts` | adapter | 0.75 | 🟡 moderate |
+| `src/adapters/github/internal/__fixtures__/pages.ts` | adapter | 0.75 | 🟡 moderate |
 | `src/scrum/get-story.ts` | use-case | 0.75 | 🟡 moderate |
+| `src/test/__fixtures__/index.ts` | framework | 0.75 | 🟡 moderate |
 | `src/adapters/github/internal/assemblers/direct-lookup-assembler.ts` | adapter | 0.73 | 🟡 moderate |
-| `src/adapters/abstract-backend.ts` | adapter | 0.71 | 🟡 moderate |
 | `src/adapters/github/internal/project-items-cache.ts` | adapter | 0.71 | 🟡 moderate |
 | `src/adapters/github/internal/pagination.ts` | adapter | 0.71 | 🟡 moderate |
 | `src/adapters/github/internal/assemblers/extractors.ts` | adapter | 0.71 | 🟡 moderate |
@@ -54,13 +57,15 @@ _Instability (I) measures outgoing dependencies. I=0 means the module depends on
 | `src/adapters/github/internal/vocabulary-manager.ts` | adapter | 0.70 | 🟡 moderate |
 | `src/adapters/factory.ts` | adapter | 0.67 | 🟡 moderate |
 | `src/adapters/github/internal/resolve-issue-number.ts` | adapter | 0.67 | 🟡 moderate |
+| `src/scrum/__fixtures__/index.ts` | use-case | 0.67 | 🟡 moderate |
 | `src/scrum/find-items.ts` | use-case | 0.67 | 🟡 moderate |
 | `src/scrum/get-analytics.ts` | use-case | 0.67 | 🟡 moderate |
 | `src/scrum/get-board-health.ts` | use-case | 0.67 | 🟡 moderate |
 | `src/scrum/update-impediment.ts` | use-case | 0.67 | 🟡 moderate |
 | `src/test/support/contract-assertions.ts` | framework | 0.67 | 🟡 moderate |
 | `src/adapters/github/internal/story-query-service.ts` | adapter | 0.63 | 🟡 moderate |
-| `src/adapters/github/internal/assembler-output.ts` | adapter | 0.63 | 🟡 moderate |
+| `src/adapters/abstract-backend.ts` | adapter | 0.63 | 🟡 moderate |
+| `src/adapters/github/internal/assemblers/assembler-output.ts` | adapter | 0.63 | 🟡 moderate |
 | `src/tools/scrum-write.ts` | framework | 0.63 | 🟡 moderate |
 | `src/adapters/github/internal/assemblers/mixed-assembler.ts` | adapter | 0.60 | 🟡 moderate |
 | `src/adapters/github/internal/config-reloader.ts` | adapter | 0.60 | 🟡 moderate |
@@ -74,6 +79,8 @@ _Instability (I) measures outgoing dependencies. I=0 means the module depends on
 | `src/adapters/github/internal/assemblers/project-items-assembler.ts` | adapter | 0.53 | 🟡 moderate |
 | `src/scrum/listing-mappers.ts` | use-case | 0.50 | 🟡 moderate |
 | `src/adapters/github/internal/burndown-completion.ts` | adapter | 0.50 | 🟡 moderate |
+| `src/adapters/github/internal/__fixtures__/items-synthetic.ts` | adapter | 0.50 | 🟡 moderate |
+| `src/scrum/__fixtures__/locations.ts` | use-case | 0.50 | 🟡 moderate |
 | `src/scrum/template-resource.ts` | use-case | 0.50 | 🟡 moderate |
 | `src/adapters/github/internal/result-normalizer.ts` | adapter | 0.47 | 🟡 moderate |
 | `src/test/support/scrum-test-utils.ts` | framework | 0.47 | 🟡 moderate |
@@ -96,19 +103,20 @@ _Instability (I) measures outgoing dependencies. I=0 means the module depends on
 | `src/schemas/scrum.ts` | framework | 0.29 | 🟡 moderate |
 | `src/adapters/github/internal/project-items-response-types.ts` | adapter | 0.25 | 🟡 moderate |
 | `src/adapters/github/internal/search-query-builder.ts` | adapter | 0.25 | 🟡 moderate |
+| `src/adapters/github/internal/__fixtures__/items.ts` | adapter | 0.25 | 🟡 moderate |
 | `src/test/tools/contract-test-utils.ts` | framework | 0.25 | 🟡 moderate |
-| `src/adapters/github/internal/http-client.ts` | adapter | 0.23 | 🟡 moderate |
-| `src/services/error-enrichment.ts` | framework | 0.22 | 🟡 moderate |
-| `src/adapters/github/internal/board-scan-coordinator.ts` | adapter | 0.21 | 🟡 moderate |
+| `src/adapters/github/internal/http-client.ts` | adapter | 0.21 | 🟡 moderate |
 | `src/adapters/github/internal/_test_utils.ts` | adapter | 0.21 | 🟡 moderate |
+| `src/adapters/github/internal/board-scan-coordinator.ts` | adapter | 0.20 | 🟢 low-risk |
 | `src/adapters/github/internal/execution-engine.ts` | adapter | 0.20 | 🟢 low-risk |
 | `src/schemas/scrum-outputs.ts` | framework | 0.20 | 🟢 low-risk |
 | `src/adapters/github/internal/infra-context.ts` | adapter | 0.19 | 🟢 low-risk |
-| `src/scrum/ports.ts` | use-case | 0.09 | 🟢 low-risk |
+| `src/services/error-enrichment.ts` | framework | 0.18 | 🟢 low-risk |
 | `src/domain/config.ts` | domain | 0.08 | 🟢 low-risk |
-| `src/adapters/github/types.ts` | adapter | 0.08 | 🟢 low-risk |
-| `src/adapters/github/errors.ts` | adapter | 0.08 | 🟢 low-risk |
 | `src/adapters/github/internal/_test_fixtures.ts` | adapter | 0.08 | 🟢 low-risk |
+| `src/scrum/ports.ts` | use-case | 0.08 | 🟢 low-risk |
+| `src/adapters/github/types.ts` | adapter | 0.08 | 🟢 low-risk |
+| `src/adapters/github/errors.ts` | adapter | 0.07 | 🟢 low-risk |
 | `src/domain/errors.ts` | domain | 0.07 | 🟢 low-risk |
 | `src/adapters/github/queries.ts` | adapter | 0.07 | 🟢 low-risk |
 | `src/domain/content-location.ts` | domain | 0.05 | 🟢 low-risk |
@@ -121,28 +129,41 @@ _Instability (I) measures outgoing dependencies. I=0 means the module depends on
 | `src/adapters/github/internal/platform-request.ts` | adapter | 0.00 | 🟢 low-risk |
 | `src/adapters/github/internal/concurrent.ts` | adapter | 0.00 | 🟢 low-risk |
 | `src/domain/rules/readiness.ts` | domain | 0.00 | 🟢 low-risk |
+| `src/adapters/github/internal/__fixtures__/user-nodes.ts` | adapter | 0.00 | 🟢 low-risk |
 | `src/domain/rules/acceptance-criteria.ts` | domain | 0.00 | 🟢 low-risk |
 | `src/schemas/inputs.ts` | framework | 0.00 | 🟢 low-risk |
+| `src/scrum/__fixtures__/templates.ts` | use-case | 0.00 | 🟢 low-risk |
 | `src/tools/_mcp_result.ts` | framework | 0.00 | 🟢 low-risk |
 | `src/services/pick-defined.ts` | framework | 0.00 | 🟢 low-risk |
+| `src/test/__fixtures__/captured.json` | framework | 0.00 | 🟢 low-risk |
 | `src/tools/_snapshot_normalize.ts` | framework | 0.00 | 🟢 low-risk |
 
 ## File Statistics
 
 | Layer | Files | Total LOC | Top 3 Largest |
 |-------|-------|-----------|---------------|
-| adapter | 57 | 24463 | `adapters/github/generated/github-types.ts` (14767 LOC), `adapters/github/mappers.ts` (686 LOC), `adapters/github/internal/_test_fixtures.ts` (622 LOC) |
-| framework | 18 | 3114 | `schemas/scrum.ts` (479 LOC), `test/support/fake-backend.ts` (457 LOC), `schemas/scrum-outputs.ts` (355 LOC) |
-| use-case | 15 | 1888 | `scrum/ports.ts` (428 LOC), `scrum/_test_fixtures.ts` (420 LOC), `scrum/orient.ts` (221 LOC) |
+| adapter | 62 | 24529 | `adapters/github/generated/github-types.ts` (14767 LOC), `adapters/github/mappers.ts` (690 LOC), `adapters/github/bootstrap.ts` (558 LOC) |
+| framework | 20 | 3387 | `schemas/scrum.ts` (479 LOC), `test/support/fake-backend.ts` (457 LOC), `schemas/scrum-outputs.ts` (355 LOC) |
+| use-case | 18 | 1905 | `scrum/ports.ts` (428 LOC), `scrum/__fixtures__/templates.ts` (367 LOC), `scrum/orient.ts` (221 LOC) |
 | domain | 7 | 1149 | `domain/types.ts` (725 LOC), `domain/config.ts` (125 LOC), `domain/content-location.ts` (103 LOC) |
 | entrypoint | 1 | 367 | `server.ts` (367 LOC) |
 
 ## Unused Exports
 
-**Total unused exports:** 51
+**Total unused exports:** 70
 
 | File | Export | Kind |
 |------|--------|------|
+| `src/scrum/__fixtures__/locations.ts` | INLINE_LOCATION | var |
+| `src/scrum/__fixtures__/locations.ts` | INLINE_YAML_LOCATION | var |
+| `src/scrum/__fixtures__/locations.ts` | INLINE_JSON_LOCATION | var |
+| `src/scrum/__fixtures__/locations.ts` | FILE_YML_LOCATION | var |
+| `src/scrum/__fixtures__/locations.ts` | FILE_JSON_LOCATION | var |
+| `src/scrum/__fixtures__/locations.ts` | FILE_MD_LOCATION | var |
+| `src/scrum/__fixtures__/locations.ts` | URL_YML_LOCATION | var |
+| `src/scrum/__fixtures__/locations.ts` | URL_JSON_LOCATION | var |
+| `src/scrum/__fixtures__/locations.ts` | URL_MD_LOCATION | var |
+| `src/scrum/__fixtures__/templates.ts` | TYPE_TEMPLATE_CONTENT | var |
 | `src/scrum/template-resource.ts` | templateResourceUseCase | function |
 | `src/scrum/resolve-location.ts` | SupportedConfigExtension | type |
 | `src/scrum/resolve-location.ts` | SupportedTemplateExtension | type |
@@ -152,6 +173,10 @@ _Instability (I) measures outgoing dependencies. I=0 means the module depends on
 | `src/tools/scrum-write.ts` | registerScrumWriteTools | function |
 | `src/test/tools/contract-test-utils.ts` | parseHandlerPayload | function |
 | `src/test/tools/contract-test-utils.ts` | assertHandlerSchema | function |
+| `src/test/__fixtures__/index.ts` | FIXTURE_PLATFORM_STATE | var |
+| `src/test/__fixtures__/index.ts` | FIXTURE_FIND_ITEMS | var |
+| `src/test/__fixtures__/index.ts` | FIXTURE_ITEM_DETAILS | var |
+| `src/test/__fixtures__/index.ts` | FIXTURE_FIRST_ITEM_DETAIL | var |
 | `src/test/support/contract-assertions.ts` | assertOrientMatchesConfig | function |
 | `src/test/support/contract-assertions.ts` | assertFindItemsMatchesConfig | function |
 | `src/test/support/scrum-test-utils.ts` | typeTemplatePathsPromise | var |
@@ -178,6 +203,11 @@ _Instability (I) measures outgoing dependencies. I=0 means the module depends on
 | `src/adapters/github/mappers.ts` | toSprintInfo | function |
 | `src/adapters/github/internal/owner-graphql.ts` | projectV2FieldsFromBootstrap | function |
 | `src/adapters/github/internal/pagination.ts` | isBacklogItem | function |
+| `src/adapters/github/internal/__fixtures__/user-nodes.ts` | USERNODE_IDS | var |
+| `src/adapters/github/internal/__fixtures__/user-nodes.ts` | FIXTURE_USER_ID | var |
+| `src/adapters/github/internal/__fixtures__/pages.ts` | FIXTURE_PAGE_1 | var |
+| `src/adapters/github/internal/__fixtures__/pages.ts` | FIXTURE_PAGE_2 | var |
+| `src/adapters/github/internal/__fixtures__/items-synthetic.ts` | FIXTURE_NODES | var |
 | `src/adapters/github/internal/execution-engine.ts` | SPRINT_PAGINATION_POLICY | var |
 | `src/adapters/github/factory.ts` | GitHubAdapterFactory | class |
 | `src/adapters/github/types.ts` | GitHubMilestoneId | type |
