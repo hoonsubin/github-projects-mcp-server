@@ -1,8 +1,6 @@
 # Fixture Capture Refactoring
 
-> **Status:** Complete
-> **Scope:** `scripts/capture-test-fixtures.ts`, `src/test/__fixtures__/`, `src/test/support/captured-backend.ts`
-> **Principle:** The capture script calls only adapter port methods. No raw GraphQL. No manual copy step. One output file, directly importable by tests.
+> **Status:** Complete **Scope:** `scripts/capture-test-fixtures.ts`, `src/test/__fixtures__/`, `src/test/support/captured-backend.ts` **Principle:** The capture script calls only adapter port methods. No raw GraphQL. No manual copy step. One output file, directly importable by tests.
 
 ---
 

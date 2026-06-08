@@ -70,7 +70,10 @@ const captureConfig = async (configPath: string): Promise<CaptureResult> => {
   const canonicalPriorityKeys = scrumConfig.scrum.priority.map((p) => p.key);
 
   // ── platformState ────────────────────────────────────────────────────────
-  const platformResult = await backend.getPlatformState({ canonicalStatusKeys, canonicalPriorityKeys });
+  const platformResult = await backend.getPlatformState({
+    canonicalStatusKeys,
+    canonicalPriorityKeys,
+  });
   if (!platformResult.value) {
     throw new Error(`getPlatformState failed: ${JSON.stringify(platformResult.warnings)}`);
   }
@@ -114,7 +117,12 @@ const captureConfig = async (configPath: string): Promise<CaptureResult> => {
 
   return {
     slug,
-    profile: { configPath, platformState: platformResult.value, findItems: findResult.value, itemDetails },
+    profile: {
+      configPath,
+      platformState: platformResult.value,
+      findItems: findResult.value,
+      itemDetails,
+    },
   };
 };
 
