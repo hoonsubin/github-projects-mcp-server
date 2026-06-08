@@ -12,7 +12,7 @@ import { fetchProjectItemsByIssueNumbers } from "../resolve-issue-number.ts";
 import { ResultNormalizer } from "../result-normalizer.ts";
 import { buildItemFilterFn } from "../item-filter.ts";
 import { buildDependencyMap } from "../story-query-service.ts";
-import { finalizeAssemblerOutput } from "../assembler-output.ts";
+import { finalizeAssemblerOutput } from "./assembler-output.ts";
 
 /** Direct issue-number lookups via GetIssueProjectItem (no board scan). */
 export class DirectLookupAssembler {

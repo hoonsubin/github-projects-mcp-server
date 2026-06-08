@@ -15,7 +15,7 @@ import { buildSearchQueryString } from "../search-query-builder.ts";
 import { searchIssuesToProjectItems } from "../search-result-normalizer.ts";
 import { buildItemFilterFn } from "../item-filter.ts";
 import { buildDependencyMap } from "../story-query-service.ts";
-import { finalizeAssemblerOutput } from "../assembler-output.ts";
+import { finalizeAssemblerOutput } from "./assembler-output.ts";
 import { SEARCH_ISSUES_QUERY } from "../../queries.ts";
 import { searchIssuesExtractor, type SearchIssuesResponse } from "./extractors.ts";
 import type { ProjectItemsAssembler } from "./project-items-assembler.ts";
