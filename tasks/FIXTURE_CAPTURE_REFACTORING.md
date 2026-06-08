@@ -1,6 +1,8 @@
 # Fixture Capture Refactoring
 
-> **Status:** Planned **Scope:** `scripts/capture-test-fixtures.ts`, `src/test/__fixtures__/` (new), `src/test/support/` (new file) **Principle:** The capture script calls only adapter port methods. No raw GraphQL. No manual copy step. One output file, directly importable by tests.
+> **Status:** Complete
+> **Scope:** `scripts/capture-test-fixtures.ts`, `src/test/__fixtures__/`, `src/test/support/captured-backend.ts`
+> **Principle:** The capture script calls only adapter port methods. No raw GraphQL. No manual copy step. One output file, directly importable by tests.
 
 ---
 
@@ -124,7 +126,8 @@ Thin typed shim. Committed. Updated rarely (only when `captured.json` shape chan
 // src/test/__fixtures__/index.ts
 
 import capturedRaw from "./captured.json" with { type: "json" };
-import type { ItemSearchResult, PlatformState, StoryDetail } from "../../scrum/ports.ts";
+import type { PlatformState, StoryDetail } from "../../scrum/ports.ts";
+import type { ItemSearchResult } from "../../domain/types.ts";
 
 export interface CapturedProfile {
   readonly configPath: string;

@@ -78,7 +78,10 @@
 		},
 		"excalidraw-mcp": {
 			"type": "streamable-http",
-			"url": "https://mcp.excalidraw.com"
+			"url": "https://mcp.excalidraw.com",
+			"alwaysAllow": [
+				"read_me"
+			]
 		}
 	}
 }

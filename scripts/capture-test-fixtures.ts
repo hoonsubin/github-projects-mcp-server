@@ -40,7 +40,12 @@ interface CaptureProfile {
   itemDetails: Record<string, unknown>;
 }
 
-const captureConfig = async (configPath: string): Promise<CaptureProfile> => {
+interface CaptureResult {
+  slug: string;
+  profile: CaptureProfile;
+}
+
+const captureConfig = async (configPath: string): Promise<CaptureResult> => {
   const slug = deriveConfigSlug(configPath);
   console.log(`=== Capturing: ${configPath} → ${slug} ===`);
 
@@ -65,19 +70,13 @@ const captureConfig = async (configPath: string): Promise<CaptureProfile> => {
   const canonicalPriorityKeys = scrumConfig.scrum.priority.map((p) => p.key);
 
   // ── platformState ────────────────────────────────────────────────────────
-  console.log("  platformState:");
-  const platformResult = await backend.getPlatformState({
-    canonicalStatusKeys,
-    canonicalPriorityKeys,
-  });
+  const platformResult = await backend.getPlatformState({ canonicalStatusKeys, canonicalPriorityKeys });
   if (!platformResult.value) {
-    throw new Error(
-      `getPlatformState failed for ${configPath}: ${JSON.stringify(platformResult.warnings)}`,
-    );
+    throw new Error(`getPlatformState failed: ${JSON.stringify(platformResult.warnings)}`);
   }
+  console.log("  platformState: OK");
 
-  // ── findItems (all items) ────────────────────────────────────────────────
-  console.log("  findItems:");
+  // ── findItems (all items, up to 50) ─────────────────────────────────────
   const findResult = await backend.findItems({
     scope: "all",
     keys: [],
@@ -94,31 +93,28 @@ const captureConfig = async (configPath: string): Promise<CaptureProfile> => {
     limit: 50,
   });
   if (!findResult.value) {
-    throw new Error(`findItems failed for ${configPath}: ${JSON.stringify(findResult.warnings)}`);
+    throw new Error(`findItems failed: ${JSON.stringify(findResult.warnings)}`);
   }
+  console.log(`  findItems: ${findResult.value.items.length} items`);
 
-  // ── itemDetails (one per item, skip on failure) ──────────────────────────
-  console.log("  itemDetails:");
+  // ── itemDetails (one per item, skip on error) ────────────────────────────
+  // Key by stable internal ID so CapturedDataBackend.getStoryDetail({ id }) resolves correctly.
   const itemDetails: Record<string, unknown> = {};
   for (const item of findResult.value.items) {
+    const label = item.ref.key || item.ref.id;
     try {
       const detailResult = await backend.getStoryDetail({ id: item.ref.id });
       if (!detailResult.value) continue;
-      // Use the human-readable key when available.
-      const key = item.ref.key ?? item.ref.id;
-      itemDetails[key] = detailResult.value;
-      console.log(`    ${key}: OK`);
+      itemDetails[item.ref.id] = detailResult.value;
+      console.log(`    ${label}: OK`);
     } catch (err) {
-      const key = item.ref.key ?? item.ref.id;
-      console.log(`    ${key}: SKIPPED (${err instanceof Error ? err.message : String(err)})`);
+      console.log(`    ${label}: SKIPPED (${err instanceof Error ? err.message : String(err)})`);
     }
   }
 
   return {
-    configPath,
-    platformState: platformResult.value,
-    findItems: findResult.value,
-    itemDetails,
+    slug,
+    profile: { configPath, platformState: platformResult.value, findItems: findResult.value, itemDetails },
   };
 };
 
@@ -129,10 +125,9 @@ let totalItems = 0;
 
 for (const configPath of configPaths) {
   try {
-    const profile = await captureConfig(configPath);
-    const slug = deriveConfigSlug(configPath);
+    const { slug, profile } = await captureConfig(configPath);
     profiles[slug] = profile;
-    totalItems += Object.keys(profile.findItems as Record<string, unknown>).length;
+    totalItems += Object.keys(profile.itemDetails).length;
   } catch (err) {
     console.error(`FATAL for ${configPath}: ${err instanceof Error ? err.message : String(err)}`);
   }
