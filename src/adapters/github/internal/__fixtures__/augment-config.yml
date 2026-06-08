@@ -1,4 +1,4 @@
-# scripts/capture/augment-config.yml
+# Synthetic field entries appended to captured ProjectItem raw shapes.
 # Synthetic field entries appended to captured ProjectItem raw shapes.
 # Used by result-normalizer.test.ts to exercise non-canonical field passthrough.
 augmentations:

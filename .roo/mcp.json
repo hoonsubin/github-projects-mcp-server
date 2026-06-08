@@ -75,6 +75,10 @@
 				"fetch_github_mcp_server_docs",
 				"search_github_mcp_server_docs"
 			]
+		},
+		"excalidraw-mcp": {
+			"type": "streamable-http",
+			"url": "https://mcp.excalidraw.com"
 		}
 	}
 }
