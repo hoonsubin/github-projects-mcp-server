@@ -68,13 +68,18 @@
 			],
 			"disabled": false
 		},
-		"git-mcp": {
+		"github-mcp-docs": {
 			"type": "streamable-http",
 			"url": "https://gitmcp.io/github/github-mcp-server",
 			"alwaysAllow": [
 				"fetch_github_mcp_server_docs",
-				"search_github_mcp_server_docs"
+				"search_github_mcp_server_docs",
+				"search_github_mcp_server_code"
 			]
+		},
+		"mcp-ts-sd-docs": {
+			"type": "streamable-http",
+			"url": "https://gitmcp.io/modelcontextprotocol/typescript-sdk"
 		},
 		"excalidraw-mcp": {
 			"type": "streamable-http",
