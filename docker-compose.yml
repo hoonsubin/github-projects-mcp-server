@@ -28,9 +28,17 @@ services:
       # ── Required ─────────────────────────────────────────────────────
       GITHUB_TOKEN: "${GITHUB_TOKEN}"
       # ── Optional overrides ────────────────────────────────────────────
+      # Containers must bind to 0.0.0.0 to receive traffic from the Docker
+      # bridge network; the Dockerfile default covers this but it is listed
+      # explicitly here for visibility.
+      MCP_HOST: "0.0.0.0"
       # DEBUG: "1"
       # TRACE: "1"
       # RELEASE_VERSION: "2.0.0"
+      # Set ALLOWED_ORIGINS in production to restrict cross-origin access.
+      # Empty (default) permits all origins — acceptable for local dev only.
+      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:-}"
+      # SESSION_IDLE_TIMEOUT_MS: "600000"
 
     # Optional: load secrets from a .env file instead.
     # Copy .env.example to .env, fill in the values, then uncomment:
