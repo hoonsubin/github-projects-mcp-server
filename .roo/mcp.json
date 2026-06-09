@@ -90,7 +90,9 @@
 			"type": "streamable-http",
 			"url": "https://gitmcp.io/modelcontextprotocol/modelcontextprotocol",
 			"alwaysAllow": [
-				"fetch_repo_docs"
+				"fetch_repo_docs",
+				"search_repo_docs",
+				"fetch_generic_url_content"
 			]
 		}
 	}

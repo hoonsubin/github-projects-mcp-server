@@ -35,7 +35,9 @@ services:
       # DEBUG: "1"
       # TRACE: "1"
       # RELEASE_VERSION: "2.0.0"
-      # ALLOWED_ORIGINS: "https://your-client.example.com"
+      # Set ALLOWED_ORIGINS in production to restrict cross-origin access.
+      # Empty (default) permits all origins — acceptable for local dev only.
+      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:-}"
       # SESSION_IDLE_TIMEOUT_MS: "600000"
 
     # Optional: load secrets from a .env file instead.

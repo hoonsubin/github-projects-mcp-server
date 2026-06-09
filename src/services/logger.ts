@@ -160,6 +160,23 @@ const write = (level: string, msg: string, extra?: unknown): void => {
   }
 };
 
+// ── Secret redaction ────────────────────────────────────────────────────────
+
+// Matches object keys that commonly hold secrets. Deliberately scoped to avoid
+// redacting unrelated fields (e.g. "keyboard", "monkey") that contain common
+// words. Values under matching keys are replaced with "***REDACTED***".
+const SENSITIVE_KEY_RE = /(api.?key|auth|token|secret|password|credential)/i;
+
+export const redactSensitive = (obj: unknown): unknown => {
+  if (obj === null || obj === undefined || typeof obj !== "object") return obj;
+  if (Array.isArray(obj)) return obj.map(redactSensitive);
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+    result[key] = SENSITIVE_KEY_RE.test(key) ? "***REDACTED***" : redactSensitive(value);
+  }
+  return result;
+};
+
 // ── Tool invocation logging ─────────────────────────────────────────────────
 
 /**
@@ -203,7 +220,7 @@ export const patchToolLogging = (server: McpServer): void => {
       // Always: log which tool fired (no params - keeps the line short)
       log.info(`→ ${name}`);
       // DEBUG: also log the full input so you can see what the agent passed
-      log.debug(`  params`, params);
+      log.debug(`  params`, redactSensitive(params));
 
       const t0 = performance.now();
       try {
@@ -216,7 +233,7 @@ export const patchToolLogging = (server: McpServer): void => {
         // the input params so you can reproduce or diagnose the call.
         log.error(`✗ ${name} FAILED (${ms}ms)`, {
           error: err instanceof Error ? err.message : String(err),
-          params,
+          params: redactSensitive(params),
         });
         throw err;
       }
@@ -239,7 +256,7 @@ export const wrapTransportLogging = (transport: Transport, label: string): void 
     msg: T,
     extra?: MessageExtraInfo,
   ): void => {
-    log.debug(`[${label}] ← recv`, msg);
+    log.debug(`[${label}] ← recv`, redactSensitive(msg));
     origOnMessage?.(msg, extra);
   };
 
