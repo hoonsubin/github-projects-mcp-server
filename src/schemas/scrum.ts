@@ -208,38 +208,6 @@ export const FindItemsSchema = z
   })
   .strict();
 
-// Deprecated tools — schemas accept legacy params; handlers return a migration stub.
-const DEPRECATED_ANALYTICS_VIEWS = ["burndown", "history", "both"] as const;
-
-export const GetAnalyticsSchema = z
-  .object({
-    view: z
-      .enum(DEPRECATED_ANALYTICS_VIEWS)
-      .optional()
-      .default("both")
-      .describe("Ignored — tool is deprecated."),
-    sprint_ref: SprintRefSchema.optional().describe("Ignored — tool is deprecated."),
-    history_window: z
-      .number()
-      .int()
-      .min(1)
-      .max(10)
-      .optional()
-      .default(5)
-      .describe("Ignored — tool is deprecated."),
-  })
-  .strict();
-
-export const GetBoardHealthSchema = z
-  .object({
-    sprint_scope: z
-      .string()
-      .optional()
-      .default("current")
-      .describe("Ignored — tool is deprecated."),
-  })
-  .strict();
-
 // scrum_get_sprint_data - raw sprint items with completion timestamps
 export const GetSprintDataSchema = z
   .object({

@@ -265,9 +265,6 @@ export interface BacklogItemListing {
   readonly custom_fields: Record<string, string | number | boolean | null>;
 }
 
-/** @deprecated Use BacklogItemListing instead. */
-export type ItemListing = BacklogItemListing;
-
 // ── Dependency graph ───────────────────────────────────────────────────────────
 
 /**

@@ -186,8 +186,6 @@ body:
         - scrum_orient
         - scrum_find_items
         - scrum_get_item_detail
-        - scrum_get_board_health
-        - scrum_get_analytics
         - scrum_get_sprint
         - scrum_get_story
         - scrum_get_history

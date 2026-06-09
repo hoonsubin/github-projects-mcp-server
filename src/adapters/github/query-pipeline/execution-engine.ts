@@ -1,7 +1,7 @@
 // =============================================================================
 // src/adapters/github/execution-engine.ts - Execution Engine
 //
-// Phase 4 of adapter refactoring - the Humble Object that calls the GitHub API.
+// The Humble Object that calls the GitHub API (created during adapter refactoring).
 // No query construction. No response interpretation. No retry logic.
 // All policy (page limits, rate-limit handling) lives outside this class.
 //

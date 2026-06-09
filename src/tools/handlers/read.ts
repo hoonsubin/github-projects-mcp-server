@@ -4,13 +4,7 @@
 
 import type { ProjectBackend } from "../../scrum/ports.ts";
 import type { ScrumConfig } from "../../domain/config.ts";
-import {
-  FindItemsSchema,
-  GetAnalyticsSchema,
-  GetBoardHealthSchema,
-  GetSprintDataSchema,
-  GetStorySchema,
-} from "../../schemas/scrum.ts";
+import { FindItemsSchema, GetSprintDataSchema, GetStorySchema } from "../../schemas/scrum.ts";
 import type { SprintRef } from "../../domain/types.ts";
 import type { z } from "zod";
 import { orientUseCase } from "../../scrum/orient.ts";
@@ -23,11 +17,6 @@ const mergeWarnings = <T extends object>(
   data: T,
   warnings: readonly string[],
 ): T & { warnings?: string[] } => warnings.length > 0 ? { ...data, warnings: [...warnings] } : data;
-
-const DEPRECATION_STUB = {
-  deprecated: true as const,
-  use: "scrum_get_sprint_data" as const,
-};
 
 export const handleOrient = async (
   backend: ProjectBackend,
@@ -52,16 +41,6 @@ export const handleFindItems = async (
   const { data, warnings } = await findItemsUseCase(backend, params);
   return toMcpTextResult(mergeWarnings(data, warnings));
 };
-
-export const handleGetAnalytics = (
-  _backend: ProjectBackend,
-  _params: z.infer<typeof GetAnalyticsSchema>,
-): Promise<McpTextResult> => Promise.resolve(toMcpTextResult(DEPRECATION_STUB));
-
-export const handleGetBoardHealth = (
-  _backend: ProjectBackend,
-  _params: z.infer<typeof GetBoardHealthSchema>,
-): Promise<McpTextResult> => Promise.resolve(toMcpTextResult(DEPRECATION_STUB));
 
 export const handleGetSprintData = async (
   backend: ProjectBackend,
