@@ -8,7 +8,8 @@
 import type { ProjectReader, SprintInfo } from "./ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 import type { EpicSummary, OrientResult, TemplateUriMap, UseCaseResult } from "../domain/types.ts";
-import { ITEM_TYPES, sprintContextFromSprintInfo } from "../domain/types.ts";
+import { ITEM_TYPES } from "../domain/types.ts";
+import { sprintContextFromSprintInfo } from "./utils/sprint-context.ts";
 import { catchBackend } from "../services/error-enrichment.ts";
 import type { ContentLocation } from "../domain/content-location.ts";
 
@@ -86,20 +87,6 @@ export const orientUseCase = async (
     open_item_count: epic.open_item_count,
   }));
 
-  // ── Optional: work completion percentage ──────────────────────────────
-  let workPct = 0;
-  if (state?.iterations.active) {
-    const activeId = state.iterations.active.id; // narrowed before closure
-    const { value: completion, warnings: compWarnings } = await catchBackend(
-      () => backend.getSprintCompletion(activeId),
-    );
-    warnings.push(...compWarnings);
-    if (completion) {
-      const { completed, total } = completion;
-      workPct = total > 0 ? Math.round((completed / total) * 100) : 0;
-    }
-  }
-
   // Build SprintContext from SprintInfo via the domain factory (pure, no backend call)
   const buildSprintContext = (
     info: SprintInfo | null,
@@ -115,7 +102,6 @@ export const orientUseCase = async (
         duration_days: info.durationDays,
       },
       daysSince(info.startDate),
-      workPct,
     );
   };
 

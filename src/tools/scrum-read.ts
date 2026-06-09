@@ -11,21 +11,23 @@ import {
   FindItemsSchema,
   GetAnalyticsSchema,
   GetBoardHealthSchema,
+  GetSprintDataSchema,
   GetStorySchema,
 } from "../schemas/scrum.ts";
 import { z } from "zod";
 import {
-  AnalyticsResultSchema,
-  BacklogHealthSchema,
+  DeprecationStubSchema,
   ItemDetailResultSchema,
   ItemSearchResultSchema,
   OrientResultSchema,
+  SprintRawDataSchema,
 } from "../schemas/scrum-outputs.ts";
 import {
   handleFindItems,
   handleGetAnalytics,
   handleGetBoardHealth,
   handleGetItemDetail,
+  handleGetSprintData,
   handleOrient,
 } from "./handlers/read.ts";
 
@@ -40,6 +42,7 @@ export const SCRUM_READ_TOOL_NAMES = [
   "scrum_get_item_detail",
   "scrum_get_board_health",
   "scrum_get_analytics",
+  "scrum_get_sprint_data",
 ] as const;
 
 // ── Tool registration ──────────────────────────────────────────────────────────
@@ -67,7 +70,6 @@ export const registerScrumReadTools = (
           platform_state.deadline_field - null when the project does not track deadlines via a
             custom field. When non-null, it is the exact key to use when reading deadline values
             from item.custom_fields[deadline_field]. Do not re-orient just to retrieve this value.
-          vocabulary.sprint.velocity_window - preferred history window for scrum_get_analytics calls.
           vocabulary.status - canonical key → display label map; always resolve status values from
             here before passing to scrum_set_field. Never hardcode strings like "Done" or "In Progress".
 
@@ -173,32 +175,14 @@ export const registerScrumReadTools = (
     "scrum_get_analytics",
     {
       title: "Get Sprint Analytics",
-      description: `Unified sprint analytics - burndown + velocity history.
+      description: `DEPRECATED — use scrum_get_sprint_data instead.
 
-        Always pass view explicitly - default "both" fetches more data than most calls need:
-          "burndown" → standup / daily monitoring (current sprint progress only)
-          "history"  → velocity question, retrospective preparation (completed sprints only)
-          "both"     → sprint report, full board assessment
+        This tool no longer returns analytics. The agent skill computes burndown,
+        velocity, and sprint history from raw sprint data.
 
-        Set history_window from vocabulary.sprint.velocity_window in scrum_orient (default 5 if absent).
-        Do not leave it at the server default when the config declares a preferred window.
-
-        Args:
-          view   "burndown" | "history" | "both" - default: "both"
-                 "burndown" = burndown chart data for the target sprint
-                 "history" = completed sprint velocity snapshots
-                 "both" = burndown + history
-          sprint_ref "current" | "next" | "<name>" - target sprint for burndown
-                     defaults to "current"
-          history_window number 1-10, default 5 - how many completed sprints
-
-        Returns: {
-          burndown: BurndownResponse | null,
-          history: SprintSnapshot[] | null,
-          window: number
-        }`,
+        Returns: { deprecated: true, use: "scrum_get_sprint_data" }`,
       inputSchema: GetAnalyticsSchema.shape,
-      outputSchema: AnalyticsResultSchema.shape,
+      outputSchema: DeprecationStubSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -215,25 +199,14 @@ export const registerScrumReadTools = (
     "scrum_get_board_health",
     {
       title: "Get Board Health",
-      description: `Board health dashboard - aggregate metrics without item lists.
+      description: `DEPRECATED — use scrum_get_sprint_data and scrum_find_items instead.
 
-        Returns readiness breakdown (by PBI type with overall %), sprint risk counts
-        (unestimated/blocked/no-assignee), impediment counts (orphan + open), and
-        ungroomed count. No individual story data - use scrum_find_items
-        for item-level queries.
+        This tool no longer returns health metrics. The agent skill computes
+        readiness and sprint risk from raw sprint data and item listings.
 
-        Args:
-          sprint_scope string - "current" | "next" | "<name>" - which sprint to assess
-                        defaults to "current"
-
-        Returns: {
-          readiness: { by_type: Record<ItemType, { ready, not_ready, total }>, overall_pct: number },
-          sprint_risk: { unestimated_count, blocked_count, no_assignee_count } | null,
-          impediments: { orphan_count, open_count },
-          ungroomed_count: number
-        }`,
+        Returns: { deprecated: true, use: "scrum_get_sprint_data" }`,
       inputSchema: GetBoardHealthSchema.shape,
-      outputSchema: BacklogHealthSchema.shape,
+      outputSchema: DeprecationStubSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -243,6 +216,28 @@ export const registerScrumReadTools = (
     },
     (params: z.infer<typeof GetBoardHealthSchema>) => handleGetBoardHealth(backend, params),
   );
+
+  // ── scrum_get_sprint_data ──────────────────────────────────────────────────
+
+  server.registerTool(
+    "scrum_get_sprint_data",
+    {
+      title: "Get Sprint Data",
+      description: `Returns raw sprint items with completion timestamps — flat per-item facts, ` +
+        `no aggregation, no burndown series, no health computation. ` +
+        `Use this tool when you need sprint-level raw data to compute your own ` +
+        `burndown, velocity, readiness, or risk metrics.`,
+      inputSchema: GetSprintDataSchema.shape,
+      outputSchema: SprintRawDataSchema.shape,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    (params: z.infer<typeof GetSprintDataSchema>) => handleGetSprintData(backend, params),
+  );
 };
 
 // Re-export handlers for contract tests
@@ -251,5 +246,6 @@ export {
   handleGetAnalytics,
   handleGetBoardHealth,
   handleGetItemDetail,
+  handleGetSprintData,
   handleOrient,
 } from "./handlers/read.ts";

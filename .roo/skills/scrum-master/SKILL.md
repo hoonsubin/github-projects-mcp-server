@@ -145,13 +145,66 @@ Focus factor: 0.6–0.7 (meetings/reviews); 0.7–0.8 (solo/async-heavy).
 
 ## MCP tool surface
 
-Read tools: `scrum_orient`, `scrum_find_items`, `scrum_get_item_detail`, `scrum_get_board_health`, `scrum_get_analytics`  
+Read tools: `scrum_orient`, `scrum_find_items`, `scrum_get_item_detail`, `scrum_get_sprint_data`
 Write tools: `scrum_create_story`, `scrum_update_story`, `scrum_set_field`, `scrum_log_impediment`, `scrum_update_impediment`, `scrum_plan_sprint`, `scrum_add_vocabulary`
 
+> **Deprecation notice:** `scrum_get_analytics` and `scrum_get_board_health` will be deprecated in a future release — prefer `scrum_get_sprint_data` for raw item-level sprint data.
+
 For any coaching response referencing project metrics, call the relevant read tool first:
-- Velocity, completion trends, burndown → `scrum_get_analytics`
-- Current sprint state → `scrum_find_items(scope: "sprint")` or `scrum_get_board_health`
+- Burndown, velocity, completion trends → `scrum_get_sprint_data` (returns raw item-level completion data for agent-side computation)
+- Current sprint state → `scrum_find_items(scope: "sprint")` or `scrum_get_sprint_data(sprint_ref: "current")` for completion timestamps
 - Board vocabulary, field gaps, item type templates → `scrum_orient`
+
+### Agent-Side Sprint Computations
+
+All sprint metrics are computed by the agent from raw data. The server returns facts only.
+
+#### Burndown series
+
+1. Call `scrum_get_sprint_data(sprint_ref: "current")` → `{ sprint, items[] }`.
+2. `committedPoints` = sum of `item.storyPoints` for all items (treat null as 0).
+3. Walk calendar days from `sprint.startDate` to `min(today, sprint.endDate)`, one entry per day:
+   - `endOfDay` = that date at 23:59:59 UTC
+   - `completedByDay` = sum of `item.storyPoints` where `item.completedAt != null` and `item.completedAt ≤ endOfDay`
+   - Series entry: `{ date, remaining_points: committedPoints - completedByDay, completed_points: completedByDay }`
+4. Flatline signal: ≥3 consecutive days with zero change in `completed_points` → surface as burndown flatline risk.
+
+#### Ideal burndown line
+
+For each day index `d` from 0 to `sprint.durationDays` (inclusive):
+- `date` = `sprint.startDate + d days`
+- `remaining_points` = `committedPoints × (1 − d / durationDays)`, rounded to one decimal
+
+#### Velocity (agent-side)
+
+1. From `scrum_orient`, read `iterations.completed` — sorted newest-first.
+2. For each sprint name in the window (default: `vocabulary.sprint.velocity_window`, fallback 5):
+   - Call `scrum_get_sprint_data(sprint_ref: "<sprint.name>")` → `{ items[] }`
+   - `sprintVelocity` = sum of `item.storyPoints` where `item.completedAt != null`
+3. `avgVelocity` = mean of collected sprint velocities (exclude sprints with zero committed points).
+4. `daysRemaining` = days from today to `sprint.endDate` (floor to 0 if past).
+
+#### Sprint risk counts
+
+Derived directly from `SprintRawItem[]` (no additional tool call needed). Exclude items whose `status` matches the terminal "done" display name from `vocabulary.status`:
+
+| Risk signal | Condition on SprintRawItem |
+|---|---|
+| Unestimated | `storyPoints == null \|\| storyPoints == 0` |
+| Blocked | `hasBlockers == true` |
+| No assignee | `hasAssignee == false` |
+
+Surface all three counts when loading board health for "Recommendation / ceremony / planning" sessions.
+
+#### DoR readiness assessment
+
+`SprintRawItem` does not carry the item body, so readiness is assessed from listing data:
+
+1. Call `scrum_find_items(scope: "sprint")` to get full item listings for the current sprint.
+2. Load `vocabulary.dor` from `scrum_orient` — these are the project-configured DoR criteria.
+3. For each item, evaluate each configured DoR criterion against the available fields (type set, `story_points > 0`, AC present in listing summary if visible, no open dependencies).
+4. `readinessPct` = `readyCount / totalActiveCount × 100` (exclude Done items).
+5. Flag sprints where `readinessPct < 70%` as at-risk for planning.
 
 ## Playbook index
 

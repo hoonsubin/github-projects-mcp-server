@@ -235,7 +235,7 @@ export const registerScrumWriteTools = (
       description: `Update an impediment's status and optionally add resolution notes.
 
         Args:
-          ref              { id } - impediment project item ID from scrum_get_board_health or scrum_find_items
+          ref              { id } - impediment project item ID from scrum_find_items
           status           "open" | "in_progress" | "resolved" - new impediment status
           resolution_notes  string (optional) - notes explaining why this impediment was resolved
 

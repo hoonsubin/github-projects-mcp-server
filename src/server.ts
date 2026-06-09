@@ -20,7 +20,7 @@ import {
 } from "./services/logger.ts";
 import { parseArgs } from "@std/cli/parse-args";
 import { resolve as resolvePath } from "@std/path";
-import { resolveLocation } from "./scrum/resolve-location.ts";
+import { resolveLocation } from "./scrum/utils/resolve-location.ts";
 import { SCRUM_READ_TOOL_NAMES } from "./tools/scrum-read.ts";
 import { SCRUM_WRITE_TOOL_NAMES } from "./tools/scrum-write.ts";
 import type { ScrumConfig } from "./domain/config.ts";

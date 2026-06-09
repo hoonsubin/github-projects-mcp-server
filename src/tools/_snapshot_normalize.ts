@@ -6,8 +6,6 @@ const VOLATILE_KEYS = new Set([
   "days_elapsed",
   "days_remaining",
   "time_elapsed_pct",
-  "riskStance",
-  "work_completion_pct",
   "capturedAt",
 ]);
 

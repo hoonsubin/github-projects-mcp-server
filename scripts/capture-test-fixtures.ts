@@ -14,7 +14,7 @@
 
 import { parseArgs } from "@std/cli/parse-args";
 import { resolve } from "@std/path/resolve";
-import { resolveLocation } from "../src/scrum/resolve-location.ts";
+import { resolveLocation } from "../src/scrum/utils/resolve-location.ts";
 import { loadScrumConfig } from "../src/scrum/config-boot.ts";
 import { createBackend } from "../src/adapters/factory.ts";
 import { GitHubAdapterFactory } from "../src/adapters/github/factory.ts";
@@ -147,7 +147,7 @@ const output = {
   profiles,
 };
 
-const OUT = resolve(Deno.cwd(), "src/test/__fixtures__/captured.json");
+const OUT = resolve(Deno.cwd(), "src/test/fixtures/port/captured.json");
 await Deno.writeTextFile(OUT, JSON.stringify(output, null, 2));
 
 console.log(

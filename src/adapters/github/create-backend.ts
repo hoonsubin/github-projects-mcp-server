@@ -14,28 +14,25 @@ import {
 } from "./bootstrap.ts";
 import { GitHubProjectBackend } from "./backend.ts";
 import type { GitHubBackendDependencies } from "./backend.ts";
-import type { GitHubClient } from "./internal/http-client.ts";
-import { BoardScanCoordinator } from "./internal/board-scan-coordinator.ts";
-import { BurndownCalculator } from "./internal/burndown-calculator.ts";
-import { ConfigReloader } from "./internal/config-reloader.ts";
-import { FieldValueMutator } from "./internal/field-value-mutator.ts";
-import { ImpedimentService } from "./internal/impediment-service.ts";
-import { LabelResolver } from "./internal/label-resolver.ts";
-import { SprintHistoryService } from "./internal/sprint-history-service.ts";
-import { StoryMutationService } from "./internal/story-mutation-service.ts";
-import { StoryQueryService } from "./internal/story-query-service.ts";
-import { UserMilestoneResolver } from "./internal/user-milestone-resolver.ts";
-import { EpicService } from "./internal/epic-service.ts";
-import { VocabularyManager } from "./internal/vocabulary-manager.ts";
-import { AnalyticsService } from "./internal/analytics-service.ts";
-import { BoardHealthService } from "./internal/board-health-service.ts";
-import { DirectLookupAssembler } from "./internal/assemblers/direct-lookup-assembler.ts";
-import { ProjectItemsAssembler } from "./internal/assemblers/project-items-assembler.ts";
-import { SearchApiAssembler } from "./internal/assemblers/search-api-assembler.ts";
-import { MixedAssembler } from "./internal/assemblers/mixed-assembler.ts";
-import { ExecutionEngine } from "./internal/execution-engine.ts";
-import { ResultNormalizer } from "./internal/result-normalizer.ts";
-import { GitHubFileReader } from "./internal/file-reader.ts";
+import type { GitHubClient } from "./infra/http-client.ts";
+import { BoardScanCoordinator } from "./read-services/board-scan-coordinator.ts";
+import { ConfigReloader } from "./infra/config-reloader.ts";
+import { FieldValueMutator } from "./write-services/field-value-mutator.ts";
+import { ImpedimentService } from "./read-services/impediment-service.ts";
+import { LabelResolver } from "./write-services/label-resolver.ts";
+import { SprintDataService } from "./read-services/sprint-data-service.ts";
+import { StoryMutationService } from "./write-services/story-mutation-service.ts";
+import { StoryQueryService } from "./read-services/story-query-service.ts";
+import { UserMilestoneResolver } from "./write-services/user-milestone-resolver.ts";
+import { EpicService } from "./read-services/epic-service.ts";
+import { VocabularyManager } from "./write-services/vocabulary-manager.ts";
+import { DirectLookupAssembler } from "./assemblers/direct-lookup-assembler.ts";
+import { ProjectItemsAssembler } from "./assemblers/project-items-assembler.ts";
+import { SearchApiAssembler } from "./assemblers/search-api-assembler.ts";
+import { MixedAssembler } from "./assemblers/mixed-assembler.ts";
+import { ExecutionEngine } from "./query-pipeline/execution-engine.ts";
+import { ResultNormalizer } from "./query-strategies/result-normalizer.ts";
+import { GitHubFileReader } from "./infra/file-reader.ts";
 import type { GitHubBackendConfig, ResolvedToken } from "./types.ts";
 import type { ScrumConfig } from "../../domain/config.ts";
 import type { ProjectBackend } from "../../scrum/ports.ts";
@@ -111,8 +108,6 @@ export const createGitHubBackend = (
   const userMilestoneResolver = new UserMilestoneResolver(ctx);
   const fieldValueMutator = new FieldValueMutator(ctx, userMilestoneResolver);
   const boardScan = new BoardScanCoordinator(ctx);
-  const burndownCalculator = new BurndownCalculator(ctx, boardScan);
-  const sprintHistoryService = new SprintHistoryService(ctx, boardScan);
   const vocabularyManager = new VocabularyManager(ctx, labelResolver);
   const storyQueryService = new StoryQueryService(ctx, boardScan);
   const storyMutationService = new StoryMutationService(
@@ -163,19 +158,7 @@ export const createGitHubBackend = (
     configDesc,
   );
 
-  const analyticsService = new AnalyticsService(
-    bootState,
-    boardScan,
-    sprintHistoryService,
-    burndownCalculator,
-  );
-
-  const boardHealthService = new BoardHealthService(
-    bootState,
-    ghConfig,
-    storyQueryService,
-    impedimentService,
-  );
+  const sprintDataService = new SprintDataService(ctx, boardScan);
 
   const fileReader = new GitHubFileReader(owner, primaryRepo, resolvedToken);
 
@@ -194,8 +177,7 @@ export const createGitHubBackend = (
     owner,
     repo: primaryRepo,
     configReloader,
-    analyticsService,
-    boardHealthService,
+    sprintDataService,
     directLookupAssembler,
     projectItemsAssembler,
     searchApiAssembler,

@@ -18,7 +18,10 @@ import type { GitHubBackendConfig } from "./types.ts";
 import type { ScrumConfig } from "../../domain/config.ts";
 import type { IterationEntry } from "../../domain/types.ts";
 import type { ContentLocation } from "../../domain/content-location.ts";
-import { resolveLocation, SUPPORTED_TEMPLATE_EXTENSIONS } from "../../scrum/resolve-location.ts";
+import {
+  resolveLocation,
+  SUPPORTED_TEMPLATE_EXTENSIONS,
+} from "../../scrum/utils/resolve-location.ts";
 import { GitHubApiError } from "./errors.ts";
 import {
   buildOptionMaps,
@@ -28,7 +31,7 @@ import {
 } from "./bootstrap-field-sources.ts";
 import { GET_OWNER_BOOTSTRAP_QUERY, RESOLVE_REPOSITORY_OWNER } from "./queries.ts";
 import type { SelectFieldNode } from "./types.ts";
-import { classifyIterations } from "./internal/iteration-classifier.ts";
+import { classifyIterations } from "./infra/iteration-classifier.ts";
 // ── Template path resolver (pure, no API call) ────────────────────────────────
 
 /**

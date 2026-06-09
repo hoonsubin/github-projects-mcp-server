@@ -11,13 +11,13 @@
 
 import { parse } from "@std/yaml";
 import { dirname, resolve } from "@std/path";
-import { fetchContent } from "./fetch-location.ts";
+import { fetchContent } from "./utils/fetch-location.ts";
 import { describeContentLocation } from "../domain/content-location.ts";
 import type { ContentLocation } from "../domain/content-location.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 import type { EnvGetter } from "../domain/env.ts";
 import { ConfigError } from "../domain/errors.ts";
-import { findRewriter } from "./url-rewriters.ts";
+import { findRewriter } from "./utils/url-rewriters.ts";
 
 export interface BootConfig {
   readonly scrumConfig: ScrumConfig;

@@ -75,31 +75,95 @@ module.exports = {
       to: { circular: true },
     },
 
-    // ── Rule 7b: owner-graphql and response types stay acyclic leaves ─────
+    // ── Rule 7b: infra leaf types stay acyclic ───────────────────────────
     {
       name: "owner-graphql-no-query-builder",
       comment: "owner-graphql.ts must not depend on project-items-query-builder " +
         "(types live in project-items-response-types.ts).",
       severity: "error",
-      from: { path: "^src/adapters/github/internal/owner-graphql\\.ts$" },
+      from: { path: "^src/adapters/github/infra/owner-graphql\\.ts$" },
       to: { path: "project-items-query-builder" },
     },
     {
       name: "project-items-response-types-is-leaf",
       comment: "Response type shapes must not import query or execution layers.",
       severity: "error",
-      from: { path: "^src/adapters/github/internal/project-items-response-types\\.ts$" },
+      from: { path: "^src/adapters/github/infra/project-items-response-types\\.ts$" },
       to: {
         path:
-          "^src/adapters/github/internal/(owner-graphql|project-items-query-builder|pagination|assemblers)/",
+          "^src/adapters/github/(infra/owner-graphql|query-pipeline/project-items-query-builder|query-pipeline/pagination|assemblers)/",
       },
     },
     {
       name: "platform-request-is-leaf",
       comment: "PlatformRequest must not depend on assembler pipeline types.",
       severity: "error",
-      from: { path: "^src/adapters/github/internal/platform-request\\.ts$" },
-      to: { path: "^src/adapters/github/internal/assemblers/" },
+      from: { path: "^src/adapters/github/infra/platform-request\\.ts$" },
+      to: { path: "^src/adapters/github/assemblers/" },
+    },
+
+    // ── Rule 7c: Adapter subfolder boundary rules ────────────────────────
+    // query-pipeline may only be imported by query-strategies/ and read-services/
+    {
+      name: "query-pipeline-import-boundary",
+      comment: "query-pipeline/ is a low-level query execution layer. " +
+        "Only query-strategies/ and read-services/ may import from it.",
+      severity: "error",
+      from: {
+        path: "^src/adapters/github/",
+        pathNot: "(query-pipeline|query-strategies|read-services|assemblers)/|" +
+          "(backend|create-backend|factory)\\.ts$",
+      },
+      to: { path: "^src/adapters/github/query-pipeline/" },
+    },
+
+    // query-strategies must not import read-services/ or write-services/
+    {
+      name: "query-strategies-not-import-services",
+      comment: "query-strategies/ lives at the same architectural level as " +
+        "read-services/ and write-services/ — it must not depend on either.",
+      severity: "error",
+      from: { path: "^src/adapters/github/query-strategies/" },
+      to: {
+        path: "^src/adapters/github/(read-services|write-services)/",
+      },
+    },
+
+    // read-services must not import paginator or write-services
+    {
+      name: "read-services-not-import-write-or-paginator",
+      comment: "read-services/ must not depend on write-services/ or the raw " +
+        "pagination engine (pagination.ts, execution-engine.ts, rate-limiter.ts, " +
+        "retry-handler.ts, query-runner.ts).",
+      severity: "error",
+      from: { path: "^src/adapters/github/read-services/" },
+      to: {
+        path:
+          "^src/adapters/github/(write-services/|query-pipeline/(pagination|execution-engine)\\.ts)",
+      },
+    },
+
+    // write-services must not import query-pipeline
+    {
+      name: "write-services-not-import-query-pipeline",
+      comment: "write-services/ must not depend on query-pipeline/.",
+      severity: "error",
+      from: { path: "^src/adapters/github/write-services/" },
+      to: { path: "^src/adapters/github/query-pipeline/" },
+    },
+
+    // infra must not import any service or pipeline folder
+    {
+      name: "infra-not-import-services",
+      comment: "infra/ is a utility layer; it must not import from any service " +
+        "or pipeline folder (query-pipeline, query-strategies, read-services, " +
+        "write-services).",
+      severity: "error",
+      from: { path: "^src/adapters/github/infra/" },
+      to: {
+        path:
+          "^src/adapters/github/(query-pipeline|query-strategies|read-services|write-services)/",
+      },
     },
 
     // ── Rule 8: No console.log in src/ ───────────────────────────────────

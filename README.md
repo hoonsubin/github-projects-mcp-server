@@ -324,35 +324,71 @@ Under `act` the workflow automatically skips the four publish and prune steps th
 ### 7. Running tests
 
 ```bash
-deno task test
+deno task test        # full suite (~250+ tests, no network required for CI)
+deno task depcruise   # layer boundary checks
+deno lint src/        # ESLint-style rules via deno lint
 ```
 
-Tests live co-located with source files (`*.test.ts`) in `src/`. Use-cases are unit-tested with a stub `ProjectBackend` (pure TypeScript, no network). Adapter tests use fixture data captured via `deno task capture-fixtures`.
+Tests follow a two-bucket rule:
+
+- **Unit / single-layer** — co-located `*.test.ts` next to the module under test
+- **Cross-layer** — [`src/test/tools/`](src/test/tools/) (tool-surface contract, golden, captured) and [`src/test/support/`](src/test/support/) (fake/captured backends, handler assertions)
+
+Adapter unit tests use fixtures from [`src/test/fixtures/`](src/test/fixtures/) (import via `@test/fixtures/`). Capture live port responses with `deno task capture-fixtures`.
 
 ## Project Structure
 
 ```
 src/
-├── server.ts              # Composition root - transport wiring & bootstrap
-├── tools/                  # MCP tool registration (thin handlers, Zod validation)
-├── scrum/                  # Use-cases (pure computation, depend on ports.ts)
-├── domain/                 # Shared types, errors, rules (no dependencies)
-├── adapters/               # Backend implementations (GitHub adapter)
+├── server.ts                 # Composition root — transport wiring & bootstrap
+├── tools/                    # MCP tool registration (thin handlers → use-cases)
+│   └── handlers/             # Extracted read/write handler functions
+├── scrum/                    # Use-case layer (depends on ports.ts + domain/)
+│   ├── ports.ts              # ProjectBackend port interface
+│   ├── orient.ts             # One file per MCP read/write use-case
+│   ├── find-items.ts
+│   ├── get-item-detail.ts
+│   ├── get-sprint-data.ts
+│   ├── update-impediment.ts
+│   ├── config-boot.ts        # Config loading at server startup
+│   ├── template-resource.ts  # scrum://template/{type} MCP resources
+│   └── utils/                # Shared helpers (not use-cases)
+│       ├── listing-mappers.ts
+│       ├── sprint-math.ts
+│       ├── sprint-context.ts
+│       ├── fetch-location.ts
+│       └── …
+├── domain/                   # Types, vocabulary constants, config schema (no runtime logic)
+├── adapters/                 # Backend implementations
 │   └── github/
-│       ├── backend.ts      # Implements ProjectBackend port
-│       ├── operations.graphql  # All GitHub GraphQL queries
-│       └── internal/       # Adapter-internal services
-├── services/               # Cross-cutting: logger, error enrichment, pickDefined
-└── schemas/                # Zod input schemas (strict validation at handler boundary)
+│       ├── backend.ts        # Concrete ProjectBackend facade
+│       ├── mappers.ts        # Wire types → domain types (sole platform boundary)
+│       ├── bootstrap.ts      # Field IDs, iteration cache
+│       ├── operations.graphql
+│       ├── query-pipeline/   # Board-scan loop, caching, pagination
+│       ├── query-strategies/ # findItems routing + normalization
+│       ├── read-services/    # Data aggregation via board-scan coordinator
+│       ├── write-services/   # Mutations only
+│       ├── infra/            # HTTP client, ref resolution, completion timestamps
+│       └── assemblers/       # Strategy implementations (pipeline ↔ strategy bridge)
+├── services/                 # Cross-cutting: logger, error enrichment
+├── schemas/                  # Zod input/output schemas (handler boundary)
+└── test/                     # Cross-layer tests, fixtures, evaluation suite
+    ├── fixtures/             # GitHub nodes, port captures, scrum templates
+    ├── support/              # FakeBackend, CapturedBackend, test utilities
+    ├── tools/                # scrum_* contract, golden, and integration tests
+    └── evaluation/           # Agent-side parity tests (Phase B gate)
 
-scripts/                    # Build, audit, diagram generation, fixture capture
-.roo/                       # RooCode MCP config + agent skills + mode rules
-.github/                    # CI/CD workflows (deployment.yml, pr-check.yml)
-docs/                       # Architecture docs, audit reports
-plans/                      # Implementation plans and design documents
+scripts/                      # Build, audit, diagram generation, fixture capture
+.roo/                         # RooCode MCP config + agent skills + mode rules
+.github/                      # CI/CD workflows (deployment.yml, pr-check.yml)
+docs/                         # Architecture docs (ARCHITECTURE.MD is authoritative)
+tasks/                        # Refactoring plan and active work items
 ```
 
-See [`docs/ARCHITECTURE.MD`](docs/ARCHITECTURE.MD) for the full domain model, tool surface, and layer contract.
+**Layer contract:** Handler → Use-case → Port → Adapter. The server returns raw facts; Scrum judgments (readiness, burndown, velocity, risk) are computed by the agent skill from `scrum_get_sprint_data` and `scrum_find_items`.
+
+See [`docs/ARCHITECTURE.MD`](docs/ARCHITECTURE.MD) for the full domain model, tool surface, and layer contract. See [`tasks/REFACTORING.md`](tasks/REFACTORING.md) for the completed refactoring phases and remaining agent-side work.
 
 ## License
 

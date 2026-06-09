@@ -54,8 +54,7 @@ snapshot[`golden: scrum_orient handler output 1`] = `
         "duration_days": 14,
         "days_elapsed": "[COMPUTED]",
         "days_remaining": "[COMPUTED]",
-        "time_elapsed_pct": "[COMPUTED]",
-        "riskStance": "[COMPUTED]"
+        "time_elapsed_pct": "[COMPUTED]"
       },
       "next": {
         "id": "IT_fake_next",
@@ -66,8 +65,7 @@ snapshot[`golden: scrum_orient handler output 1`] = `
         "duration_days": 14,
         "days_elapsed": "[COMPUTED]",
         "days_remaining": "[COMPUTED]",
-        "time_elapsed_pct": "[COMPUTED]",
-        "riskStance": "[COMPUTED]"
+        "time_elapsed_pct": "[COMPUTED]"
       },
       "completed_count": 0
     },
@@ -155,6 +153,32 @@ snapshot[`golden: scrum_orient handler output 1`] = `
     }
   }
 }\`
+`;
+
+snapshot[`golden: scrum_get_sprint_data handler output 1`] = `
+'{
+  "sprint": {
+    "id": "IT_fake_active",
+    "name": "Sprint 1",
+    "goal": "Config-shaped fake sprint",
+    "startDate": "2026-01-01",
+    "durationDays": 14,
+    "endDate": "2026-01-15"
+  },
+  "items": [
+    {
+      "id": "PVTI_fake_1",
+      "number": 101,
+      "title": "Config-shaped fixture story",
+      "type": "user_story",
+      "status": "Backlog",
+      "storyPoints": 3,
+      "hasAssignee": true,
+      "hasBlockers": false,
+      "completedAt": null
+    }
+  ]
+}'
 `;
 
 snapshot[`golden: scrum_find_items handler output 1`] = `

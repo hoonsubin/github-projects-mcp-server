@@ -7,7 +7,6 @@
 
 import type { PlatformCapabilities } from "./capabilities.ts";
 import type {
-  AnalyticsQuery,
   CreateResult,
   CreateStoryInput,
   ImpedimentListing,
@@ -16,6 +15,8 @@ import type {
   ProjectWriter,
   ResolvedItemFilter,
   ScrumField,
+  SprintDataQuery,
+  SprintRawData,
   StoryDetail,
   StorySnapshotOverrides,
   StoryUpdates,
@@ -23,8 +24,6 @@ import type {
 } from "../scrum/ports.ts";
 import type { BackendCallResult } from "../services/error-enrichment.ts";
 import type {
-  AnalyticsResult,
-  BacklogHealth,
   EpicListing,
   ImpedimentRef,
   ImpedimentStatus,
@@ -134,14 +133,7 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
 
   abstract getEpics(sprintIterationId?: string | null): Promise<EpicListing[]>;
 
-  /**
-   * Compute work completion for a sprint.
-   * Returns completed points and total committed points.
-   * { completed: 0, total: 0 } when no items have story points.
-   */
-  abstract getSprintCompletion(iterationId: string): Promise<{ completed: number; total: number }>;
-
-  // ── ProjectReader - unified search & analytics ───────────────────────────
+  // ── ProjectReader - unified search ───────────────────────────────────────
 
   /**
    * Unified item search across all PBIs.
@@ -149,17 +141,19 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
    */
   abstract findItems(filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResult>>;
 
-  /**
-   * Unified sprint analytics (burndown + history).
-   * Replaces getCompletedSprintHistory(), getBurndownInput(), and
-   * resolveCompletionTimestamps().
-   */
-  abstract getAnalytics(query: AnalyticsQuery): Promise<AnalyticsResult>;
+  // ── ProjectReader - sprint data ──────────────────────────────────────────
 
   /**
-   * Board health dashboard - aggregated metrics without item lists.
+   * Return raw sprint items with completion timestamps.
+   * No aggregation, no burndown series — flat per-item facts.
+   *
+   * Default: throws {@link UnsupportedCapabilityError}.
+   * Override in adapters that support the sprint data pipeline
+   * (board scan coordinator + completionsFromBoardItems).
    */
-  abstract getBoardHealth(sprintScope: string): Promise<BacklogHealth>;
+  getSprintData(_query: SprintDataQuery): Promise<SprintRawData> {
+    throw new UnsupportedCapabilityError(this.capabilities.platform, "getSprintData");
+  }
 
   // ── ProjectReader - impediments ──────────────────────────────────────────
 

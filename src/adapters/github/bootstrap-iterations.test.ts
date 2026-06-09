@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { classifyIterations } from "./internal/iteration-classifier.ts";
+import { classifyIterations } from "./infra/iteration-classifier.ts";
 import type { IterationEntry } from "../../domain/types.ts";
 
 const activeIterations: IterationEntry[] = [

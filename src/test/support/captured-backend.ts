@@ -9,23 +9,23 @@ import {
   AbstractProjectBackend,
   UnsupportedCapabilityError,
 } from "../../adapters/abstract-backend.ts";
-import type { CapturedProfile } from "../__fixtures__/index.ts";
+import type { CapturedProfile } from "@test/fixtures/port/index.ts";
 import type { BackendCallResult } from "../../services/error-enrichment.ts";
 import type {
-  AnalyticsQuery,
   CreateStoryInput,
   ImpedimentListing,
   PlatformState,
   ResolvedItemFilter,
   ScrumField,
+  SprintDataQuery,
+  SprintRawData,
+  SprintRawItem,
   StoryDetail,
   StorySnapshotOverrides,
   StoryUpdates,
   VocabularyKind,
 } from "../../scrum/ports.ts";
 import type {
-  AnalyticsResult,
-  BacklogHealth,
   EpicListing,
   ItemSearchResult,
   SprintRef,
@@ -143,30 +143,52 @@ export class CapturedDataBackend extends AbstractProjectBackend {
     return Promise.resolve([]);
   }
 
-  getSprintCompletion(_iterationId: string): Promise<{ completed: number; total: number }> {
-    return Promise.resolve({ completed: 0, total: 0 });
-  }
+  override getSprintData(query: SprintDataQuery): Promise<SprintRawData> {
+    const { sprint_ref } = query;
+    const iterations = this.profile.platformState.iterations;
 
-  // ── ProjectReader - unified search & analytics ───────────────────────────
+    // Resolve the sprint reference to a SprintInfo from the captured data.
+    let sprint: typeof iterations.active = null;
+    if (sprint_ref === "current") {
+      sprint = iterations.active;
+    } else if (sprint_ref === "next") {
+      sprint = iterations.next;
+    } else if (sprint_ref === null) {
+      throw new Error("Captured backend requires a sprint reference for getSprintData");
+    } else {
+      // SprintName — search by display name across all iteration buckets.
+      if (iterations.active?.name === sprint_ref) sprint = iterations.active;
+      else if (iterations.next?.name === sprint_ref) sprint = iterations.next;
+      else {
+        sprint = iterations.completed.find((s) => s.name === sprint_ref) ?? null;
+      }
+    }
+
+    if (!sprint) {
+      throw new Error(`Sprint not found in captured data: ${sprint_ref}`);
+    }
+
+    // Derive SprintRawItem[] from the captured findItems payload.
+    // Filter items whose sprint.ref.id matches the resolved sprint id.
+    const items: SprintRawItem[] = this.profile.findItems.items
+      .filter((item) => item.sprint.ref.id === sprint!.id)
+      .map((item) => ({
+        id: item.ref.id,
+        number: parseInt(item.ref.key, 10) || 0,
+        title: item.title,
+        type: item.type,
+        status: item.status,
+        storyPoints: item.story_points,
+        hasAssignee: item.assignees.length > 0,
+        hasBlockers: item.blocked_by.length > 0,
+        completedAt: null,
+      }));
+
+    return Promise.resolve({ sprint, items });
+  }
 
   findItems(_filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResult>> {
     return Promise.resolve({ value: this.profile.findItems, warnings: [] });
-  }
-
-  getAnalytics(query: AnalyticsQuery): Promise<AnalyticsResult> {
-    if (query.view === "burndown" || query.view === "both") {
-      throw new UnsupportedCapabilityError(this.capabilities.platform, "getAnalytics(burndown)");
-    }
-    return Promise.resolve({ burndown: null, history: [], window: 5 });
-  }
-
-  getBoardHealth(_sprintScope: string): Promise<BacklogHealth> {
-    return Promise.resolve({
-      readiness: { by_type: {}, overall_pct: 0 },
-      sprint_risk: null,
-      impediments: { orphan_count: 0, open_count: 0 },
-      ungroomed_count: 0,
-    });
   }
 
   // ── ProjectReader - impediments ──────────────────────────────────────────
