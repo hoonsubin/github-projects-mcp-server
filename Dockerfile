@@ -35,8 +35,8 @@ FROM debian:bookworm-slim AS runtime
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
+    ca-certificates=20230311+deb12u1 \
+    curl=7.88.1-10+deb12u14 \
   && rm -rf /var/lib/apt/lists/*
 
 # Non-root user matching the deno image convention (UID 1993).

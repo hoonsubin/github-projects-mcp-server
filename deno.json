@@ -1,7 +1,7 @@
 {
   "tasks": {
     "dev": "deno run --env-file --allow-env --watch --allow-net --allow-read src/server.ts",
-    "start": "deno run --env-file --allow-env --allow-net --allow-read src/server.ts --config .github/scrum/config.yml",
+    "start": "deno run --env-file --allow-env --allow-net --allow-read src/server.ts",
     "audit": "deno run --allow-read --allow-env --allow-write --allow-run scripts/generate-audit.ts",
     "test": "GITHUB_TOKEN=test-token deno test --allow-env=DEBUG,GITHUB_TOKEN,NODE_ENV --allow-net --allow-read src/",
     "inspector": "deno task bundle:node && DANGEROUSLY_OMIT_AUTH=true HOST=0.0.0.0 CLIENT_PORT=6274 SERVER_PORT=6277 npx -y @modelcontextprotocol/inspector node dist/server.mjs",
