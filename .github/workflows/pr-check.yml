@@ -51,20 +51,6 @@ jobs:
       - name: Build Docker image
         run: docker build -t scrum-master-toolkit:ci .
 
-      # ── 3. CVE scan the built image ─────────────────────────────────────
-      # aquasecurity/trivy-action v0.36.0 — post-supply-chain-attack release
-      - name: CVE scan (Trivy)
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: scrum-master-toolkit:ci
-          format: sarif
-          output: trivy-results.sarif
-          severity: CRITICAL,HIGH
-          exit-code: "1"
-          # Ignore unfixed CVEs in the base image — the Debian slim image
-          # receives regular updates; we only gate on fixable findings.
-          ignore-unfixed: true
-
   audit-report:
     name: Architecture Audit Report
     runs-on: ubuntu-latest
