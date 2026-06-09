@@ -7,6 +7,9 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  # Required by github/codeql-action/upload-sarif to post results to the
+  # repository's Security tab (Code Scanning alerts).
+  security-events: write
 
 jobs:
   test:
@@ -29,6 +32,61 @@ jobs:
         run: deno task test
       - name: Build check
         run: deno task build:all
+
+  container-ci:
+    name: Container CI (lint → build → CVE → smoke)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── 1. Lint Dockerfile against CIS Docker Benchmark ──────────────────
+      - name: Lint Dockerfile (hadolint)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          failure-threshold: warning
+          format: tty
+
+      # ── 2. Build the container image (no compose up — CI lacks secrets) ──
+      - name: Build Docker image
+        run: docker build -t scrum-master-toolkit:ci .
+
+      # ── 3. CVE scan the built image ─────────────────────────────────────
+      # aquasecurity/trivy-action v0.36.0 — post-supply-chain-attack release
+      - name: CVE scan (Trivy)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: scrum-master-toolkit:ci
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          # Ignore unfixed CVEs in the base image — the Debian slim image
+          # receives regular updates; we only gate on fixable findings.
+          ignore-unfixed: true
+
+      # ── 4. Upload SARIF results to GitHub Security tab ──────────────────
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-results.sarif
+
+      # ── 5. Smoke-test the compiled binary ───────────────────────────────
+      # The binary is expected to exit code 1 (missing config is a controlled
+      # application exit). A broken binary (missing libc, corrupted file)
+      # would exit 126/127/139 (SIGABRT/SIGSEGV), not 1.
+      - name: Smoke test (binary boot check)
+        run: |
+          set -o pipefail
+          EXIT_CODE=0
+          docker run --rm scrum-master-toolkit:ci 2>&1 || EXIT_CODE=$?
+          if [ "$EXIT_CODE" -eq 1 ]; then
+            echo "PASS: binary boots and exits cleanly (missing config)"
+          else
+            echo "FAIL: binary exited with code $EXIT_CODE (expected 1)"
+            exit 1
+          fi
 
   audit-report:
     name: Architecture Audit Report
