@@ -60,6 +60,7 @@ USER deno
 # SCRUM_CONFIG_PATH defaults to /app/config.yml — mount the config file at
 # that path and no further env var configuration is needed.
 ENV MCP_TRANSPORT=http \
+    MCP_HOST=0.0.0.0 \
     PORT=3000 \
     SCRUM_PLATFORM=github \
     SCRUM_CONFIG_PATH=/app/config.yml \

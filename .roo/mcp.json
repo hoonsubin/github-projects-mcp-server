@@ -77,15 +77,20 @@
 				"search_github_mcp_server_code"
 			]
 		},
-		"mcp-ts-sd-docs": {
+		"mcp-ts-sdk": {
 			"type": "streamable-http",
-			"url": "https://gitmcp.io/modelcontextprotocol/typescript-sdk"
-		},
-		"excalidraw-mcp": {
-			"type": "streamable-http",
-			"url": "https://mcp.excalidraw.com",
+			"url": "https://gitmcp.io/modelcontextprotocol/typescript-sdk",
 			"alwaysAllow": [
-				"read_me"
+				"fetch_typescript_sdk_docs",
+				"search_typescript_sdk_docs",
+				"search_typescript_sdk_code"
+			]
+		},
+		"mcp-specs": {
+			"type": "streamable-http",
+			"url": "https://gitmcp.io/modelcontextprotocol/modelcontextprotocol",
+			"alwaysAllow": [
+				"fetch_repo_docs"
 			]
 		}
 	}

@@ -75,6 +75,13 @@ Environment variables:
   SCRUM_PLATFORM       Platform adapter to use (default: github)
   DEBUG                Set to 1 for API-level tracing
   TRACE                Set to 1 for raw JSON-RPC wire tracing
+  MCP_HOST             Listen address for HTTP transport (default: 127.0.0.1;
+                       set to 0.0.0.0 in Docker/container environments)
+  ALLOWED_ORIGINS      Comma-separated allowed Origins for CORS validation
+                       (empty = permissive, suitable for local dev)
+  SESSION_IDLE_TIMEOUT_MS
+                       Idle session expiry in ms for HTTP transport
+                       (default: 600000 = 10 minutes)
 
 Examples:
   # Run with default config (must be invoked from the project root):
@@ -257,15 +264,89 @@ const runStdio = async (): Promise<void> => {
 
 const runHttp = (): void => {
   const transports: Record<string, WebStandardStreamableHTTPServerTransport> = {};
+  const sessionActivity: Map<string, number> = new Map();
   const port = parseInt(env("PORT") || "3000", 10);
+  const SESSION_IDLE_TIMEOUT_MS = parseInt(env("SESSION_IDLE_TIMEOUT_MS") ?? "", 10) || 10 * 60_000;
 
-  Deno.serve({ port }, async (req: Request): Promise<Response> => {
+  const allowedOrigins: Set<string> = (() => {
+    const raw = env("ALLOWED_ORIGINS");
+    if (!raw) return new Set<string>();
+    return new Set(raw.split(",").map((s) => s.trim()).filter(Boolean));
+  })();
+
+  const corsHeaders = (origin: string | null): HeadersInit =>
+    origin && (allowedOrigins.size === 0 || allowedOrigins.has(origin))
+      ? {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Methods": "POST, GET, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers":
+          "Content-Type, MCP-Session-Id, MCP-Protocol-Version, Accept",
+      }
+      : {};
+
+  // Merges CORS headers onto a Response returned by the SDK transport, which
+  // constructs its own Response objects that we cannot intercept at creation.
+  const withCors = (res: Response, origin: string | null): Response => {
+    const hdrs = corsHeaders(origin);
+    if (!Object.keys(hdrs).length) return res;
+    const merged = new Headers(res.headers);
+    for (const [k, v] of Object.entries(hdrs)) merged.set(k, v as string);
+    return new Response(res.body, {
+      status: res.status,
+      statusText: res.statusText,
+      headers: merged,
+    });
+  };
+
+  const hostname = env("MCP_HOST") ?? "127.0.0.1";
+
+  const sweepInterval = setInterval(() => {
+    const now = Date.now();
+    for (const [id, lastActive] of sessionActivity) {
+      if (now - lastActive > SESSION_IDLE_TIMEOUT_MS) {
+        delete transports[id];
+        sessionActivity.delete(id);
+        log.info(`session expired: ${id}`);
+      }
+    }
+  }, 60_000);
+
+  const clearSweep = () => clearInterval(sweepInterval);
+  Deno.addSignalListener("SIGTERM", clearSweep);
+  Deno.addSignalListener("SIGINT", clearSweep);
+
+  Deno.serve({ hostname, port }, async (req: Request): Promise<Response> => {
     const { pathname } = new URL(req.url);
+    const origin = req.headers.get("Origin");
+
+    // ── CORS preflight ────────────────────────────────────────────────────────
+    if (req.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          ...corsHeaders(origin),
+          "Access-Control-Allow-Methods": "POST, GET, DELETE, OPTIONS",
+          "Access-Control-Allow-Headers":
+            "Content-Type, MCP-Session-Id, MCP-Protocol-Version, Accept",
+        },
+      });
+    }
+
+    // ── Origin validation (strict mode when ALLOWED_ORIGINS is set) ───────────
+    if (origin && allowedOrigins.size > 0 && !allowedOrigins.has(origin)) {
+      return Response.json(
+        { jsonrpc: "2.0", error: { code: -32000, message: "Forbidden: invalid Origin" }, id: null },
+        { status: 403, headers: corsHeaders(origin) },
+      );
+    }
 
     // ── Health check ──────────────────────────────────────────────────────────
     if (pathname === "/health" && req.method === "GET") {
       log.debug("health check", { method: req.method, url: req.url });
-      return Response.json({ jsonrpc: "2.0", server: "scrum-master-toolkit-server" });
+      return Response.json(
+        { jsonrpc: "2.0", server: "scrum-master-toolkit-server" },
+        { headers: corsHeaders(origin) },
+      );
     }
 
     // ── MCP endpoint ──────────────────────────────────────────────────────────
@@ -286,7 +367,7 @@ const runHttp = (): void => {
                 error: { code: -32700, message: "Parse error: invalid JSON" },
                 id: null,
               },
-              { status: 400 },
+              { status: 400, headers: corsHeaders(origin) },
             );
           }
 
@@ -294,10 +375,10 @@ const runHttp = (): void => {
             return Response.json(
               {
                 jsonrpc: "2.0",
-                error: { code: -32000, message: "Bad Request: No valid session ID provided" },
+                error: { code: -32600, message: "Bad Request: first request must be initialize" },
                 id: null,
               },
-              { status: 400 },
+              { status: 400, headers: corsHeaders(origin) },
             );
           }
 
@@ -305,13 +386,16 @@ const runHttp = (): void => {
             sessionIdGenerator: () => crypto.randomUUID(),
             onsessioninitialized: (id: string) => {
               transports[id] = transport;
+              sessionActivity.set(id, Date.now());
             },
           });
 
+          // SSE stream closure must NOT evict the session — the session is a
+          // logical scope that survives stream reconnections. Only the TTL
+          // sweep or an explicit DELETE /mcp should remove a session.
           transport.onclose = () => {
             if (transport.sessionId) {
-              delete transports[transport.sessionId];
-              log.info(`session closed: ${transport.sessionId}`);
+              log.info(`SSE stream closed for session: ${transport.sessionId}`);
             }
           };
 
@@ -319,36 +403,68 @@ const runHttp = (): void => {
           await server.connect(transport);
           if (trace) wrapTransportLogging(transport, `http:${transport.sessionId}`);
 
-          return await transport.handleRequest(req, { parsedBody: body });
+          return withCors(await transport.handleRequest(req, { parsedBody: body }), origin);
         }
 
         // Existing session.
         const transport = transports[sessionId];
         if (!transport) {
           return Response.json(
-            {
-              jsonrpc: "2.0",
-              error: { code: -32000, message: "Bad Request: No valid session ID provided" },
-              id: null,
-            },
-            { status: 400 },
+            { jsonrpc: "2.0", error: { code: -32001, message: "Session not found" }, id: null },
+            { status: 404, headers: corsHeaders(origin) },
           );
         }
-        return await transport.handleRequest(req);
+        sessionActivity.set(sessionId, Date.now());
+        return withCors(await transport.handleRequest(req), origin);
       }
 
-      if (req.method === "GET" || req.method === "DELETE") {
-        if (!sessionId || !transports[sessionId]) {
-          return new Response("Invalid or missing session ID", { status: 400 });
+      if (req.method === "GET") {
+        if (!sessionId) {
+          return new Response(null, {
+            status: 405,
+            headers: { Allow: "POST", ...corsHeaders(origin) },
+          });
         }
-        return await transports[sessionId].handleRequest(req);
+        if (!transports[sessionId]) {
+          return Response.json(
+            { jsonrpc: "2.0", error: { code: -32001, message: "Session not found" }, id: null },
+            { status: 404, headers: corsHeaders(origin) },
+          );
+        }
+        return withCors(await transports[sessionId].handleRequest(req), origin);
+      }
+
+      if (req.method === "DELETE") {
+        if (!sessionId) {
+          return Response.json(
+            {
+              jsonrpc: "2.0",
+              error: { code: -32000, message: "Bad Request: missing session ID" },
+              id: null,
+            },
+            { status: 400, headers: corsHeaders(origin) },
+          );
+        }
+        if (!transports[sessionId]) {
+          return Response.json(
+            { jsonrpc: "2.0", error: { code: -32001, message: "Session not found" }, id: null },
+            { status: 404, headers: corsHeaders(origin) },
+          );
+        }
+        try {
+          return withCors(await transports[sessionId].handleRequest(req), origin);
+        } finally {
+          delete transports[sessionId];
+          sessionActivity.delete(sessionId);
+          log.info(`session terminated by client: ${sessionId}`);
+        }
       }
     }
 
-    return new Response("Not Found", { status: 404 });
+    return new Response("Not Found", { status: 404, headers: corsHeaders(origin) });
   });
 
-  log.info(`scrum-master-toolkit-server listening → http://0.0.0.0:${port}/mcp`);
+  log.info(`scrum-master-toolkit-server listening → http://${hostname}:${port}/mcp`);
 };
 
 // ── Entry point ──────────────────────────────────────────────────────────────
