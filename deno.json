@@ -1,7 +1,7 @@
 {
   "tasks": {
     "dev": "deno run --env-file --allow-env --watch --allow-net --allow-read src/server.ts",
-    "start": "deno run --env-file --allow-env --allow-net --allow-read src/server.ts --config .github/scrum/config.yml",
+    "start": "deno run --env-file --allow-env --allow-net --allow-read src/server.ts",
     "audit": "deno run --allow-read --allow-env --allow-write --allow-run scripts/generate-audit.ts",
     "test": "GITHUB_TOKEN=test-token deno test --allow-env=DEBUG,GITHUB_TOKEN,NODE_ENV --allow-net --allow-read src/",
     "inspector": "deno task bundle:node && DANGEROUSLY_OMIT_AUTH=true HOST=0.0.0.0 CLIENT_PORT=6274 SERVER_PORT=6277 npx -y @modelcontextprotocol/inspector node dist/server.mjs",
@@ -17,7 +17,12 @@
     "capture-fixtures": "deno run --allow-env=GITHUB_TOKEN,DEBUG,NODE_ENV --allow-net --allow-read --allow-write=src/test/fixtures/port scripts/capture-test-fixtures.ts",
     "depcruise": "deno run --allow-read --allow-env --allow-run scripts/depcruise.ts",
     "depcruise:json": "deno run --allow-read --allow-env --allow-run scripts/depcruise.ts --json",
-    "depcruise:html": "deno run --allow-read --allow-env --allow-run --allow-write scripts/depcruise.ts --html"
+    "depcruise:html": "deno run --allow-read --allow-env --allow-run --allow-write scripts/depcruise.ts --html",
+    "docker:lint": "hadolint Dockerfile",
+    "docker:scan": "trivy image --severity CRITICAL,HIGH scrum-master-toolkit",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up --build -d",
+    "docker:test": "docker compose up --build --wait && curl -sf http://localhost:3000/health && echo '' && curl -sf -X POST http://localhost:3000/mcp -H 'Content-Type: application/json' -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}' | head -c 200"
   },
   "imports": {
     "@anthropic-ai/mcpb": "npm:@anthropic-ai/mcpb@^2.1.2",

@@ -33,7 +33,8 @@
         "ms-azuretools.vscode-containers",
         "github.vscode-github-actions",
         "bpruitt-goddard.mermaid-markdown-syntax-highlighting",
-        "jebbs.plantuml"
+        "jebbs.plantuml",
+        "exiasr.hadolint"
       ],
       "settings": {
         // Deno as the default TypeScript/JavaScript language server

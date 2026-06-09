@@ -1,0 +1,50 @@
+# ── Git ──────────────────────────────────────────────────────────────────────
+.git
+.gitattributes
+.gitignore
+
+# ── Dependencies & build artifacts ──────────────────────────────────────────
+dist/
+node_modules/
+
+# ── IDE & tooling ───────────────────────────────────────────────────────────
+.vscode/
+.roomodes
+.actrc
+.dependency-cruiser.cjs
+
+# ── Roo / agent configuration ───────────────────────────────────────────────
+.roo/
+
+# ── Documentation & plans ───────────────────────────────────────────────────
+docs/
+plans/
+tasks/
+*.md
+!README.md
+
+# ── Scripts (not needed for the compiled binary) ────────────────────────────
+scripts/
+
+# ── Test files & fixtures ───────────────────────────────────────────────────
+src/test/
+**/*.test.ts
+**/_test*
+
+# ── Configuration & secrets ─────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+.github/scrum/config.yml
+
+# ── Devcontainer ────────────────────────────────────────────────────────────
+.devcontainer/
+
+# ── Docker files (avoid recursion) ──────────────────────────────────────────
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# ── Build-only production assets ─────────────────────────────────────────────
+LICENSE
+mcp-server*

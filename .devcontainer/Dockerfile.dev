@@ -1,29 +1,43 @@
 FROM denoland/deno:latest
 
+# ── System packages ───────────────────────────────────────────────────────────
 RUN apt-get update && apt-get install -y --no-install-recommends \
       curl wget git unzip bash-completion \
-      ca-certificates gnupg procps sudo \
+      ca-certificates gnupg procps sudo lsb-release \
     && rm -rf /var/lib/apt/lists/*
 
+# ── Node.js ───────────────────────────────────────────────────────────────────
 RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/* \
     && node --version && npm --version
 
-# install github mcp server
+# ── hadolint (Dockerfile linter, CIS Docker Benchmark rules) ─────────────────
+# Precompiled static binary from GitHub releases. Pinned to a specific version
+# for reproducibility — bump when updating.
+ARG HADOLINT_VERSION=v2.12.0
+RUN curl -fsSL "https://github.com/hadolint/hadolint/releases/download/${HADOLINT_VERSION}/hadolint-Linux-x86_64" \
+      -o /usr/local/bin/hadolint \
+    && chmod +x /usr/local/bin/hadolint \
+    && hadolint --version
+
+# ── trivy (container vulnerability scanner) ──────────────────────────────────
+# Official Aqua Security APT repository.
+RUN wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key \
+    | gpg --dearmor \
+    | tee /usr/share/keyrings/trivy.gpg > /dev/null \
+    && echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" \
+    | tee -a /etc/apt/sources.list.d/trivy.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends trivy \
+    && rm -rf /var/lib/apt/lists/* \
+    && trivy --version
+
+# ── github mcp server ─────────────────────────────────────────────────────────
 RUN curl -L https://github.com/github/github-mcp-server/releases/latest/download/github-mcp-server_Linux_x86_64.tar.gz \
   | tar -xz -C /usr/local/bin github-mcp-server
 
-# ── install excalidraw MCP server ─────────────────────────────────────────────
-# RUN MCPB_TMP=$(mktemp -d) \
-#  && curl -fsSL https://github.com/excalidraw/excalidraw-mcp/releases/download/v0.3.2/excalidraw-mcp-app.mcpb \
-#       -o "$MCPB_TMP/excalidraw-mcp.zip" \
-#  && unzip "$MCPB_TMP/excalidraw-mcp.zip" -d /opt/excalidraw-mcp \
-#  && cd /opt/excalidraw-mcp \
-#  && npm install --omit=dev --ignore-scripts 2>/dev/null || true \
-#  && rm -rf "$MCPB_TMP"
-
-# ── 4. vscode user ────────────────────────────────────────────────────────────
+# ── vscode user ───────────────────────────────────────────────────────────────
 ARG USERNAME=vscode
 ARG USER_UID=1000
 ARG USER_GID=1000

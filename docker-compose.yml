@@ -3,26 +3,78 @@ services:
     build: .
     container_name: scrum-master-toolkit
     restart: unless-stopped
-    env_file:
-      - .env
+
+    # ── Volumes ────────────────────────────────────────────────────────────
+    # Mount the scrum config file from the host. The default SCRUM_CONFIG_PATH
+    # is /app/config.yml (set in the Dockerfile), so mount it there.
+    volumes:
+      - ./.github/scrum/config.yml:/app/config.yml:ro
+
+    # ── Environment ────────────────────────────────────────────────────────
+    # All variables recognized by the server (src/server.ts).
+    # REQUIRED — the server will exit with a clear error if it's missing:
+    #   GITHUB_TOKEN: your GitHub personal access token
+    #
+    # Everything else has a sensible default in the Dockerfile:
+    #   SCRUM_CONFIG_PATH = /app/config.yml (the default mount location below)
+    #   MCP_TRANSPORT      = http
+    #   PORT               = 3000
+    #   SCRUM_PLATFORM     = github
+    #   DEBUG              = 0
+    #
+    # To expose on a different host port, edit the left side of the ports
+    # mapping below (e.g. "8080:3000") — the container port is always 3000.
     environment:
-      - PORT=3030
+      # ── Required ─────────────────────────────────────────────────────
+      GITHUB_TOKEN: "${GITHUB_TOKEN}"
+      # ── Optional overrides ────────────────────────────────────────────
+      # DEBUG: "1"
+      # TRACE: "1"
+      # RELEASE_VERSION: "2.0.0"
+
+    # Optional: load secrets from a .env file instead.
+    # Copy .env.example to .env, fill in the values, then uncomment:
+    # env_file:
+    #   - .env
+
+    # ── Port mapping ───────────────────────────────────────────────────────
+    # Left side  = host port (edit to expose on a different host port).
+    # Right side = container port (must stay 3000 — pinned in the Dockerfile).
+    # The server always listens on 3000 via streamable HTTP at /mcp.
     ports:
-      - "3030:3030" # host:container port mapping
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3030/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-    # Resource limits - this is a lightweight process
+      - "3000:3000"
+
+    # ── Security hardening ────────────────────────────────────────────────
+    # The compiled binary only needs --allow-read (config, templates) and
+    # --allow-net (GitHub API). It never writes to disk, so the root
+    # filesystem is mounted read-only.
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    init: true
+
+    # ── Resource limits ───────────────────────────────────────────────────
     deploy:
       resources:
         limits:
-          memory: 256m
-          cpus: "0.5"
+          memory: 516m
+          cpus: "1"
 
-  # Optional: add to your existing Open WebUI compose file instead
+    # ── Logging ───────────────────────────────────────────────────────────
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ── Integration example ─────────────────────────────────────────────────
+  # To add this to an existing Open WebUI or other MCP client compose file,
+  # point the client at http://scrum-master-toolkit:3000/mcp
+  #
   # open-webui:
-  #   ...
   #   environment:
-  #     - MCP_SERVER_URL=http://scrum-master-toolkit:3000/mcp
+  #     MCP_SERVER_URL: http://scrum-master-toolkit:3000/mcp
