@@ -80,7 +80,7 @@ export const runPipeline = async (config: AuditConfig): Promise<AuditResults> =>
     ? config.excludedDirs.flatMap((g) => ["--exclude", globToRegExp(g, { extended: true }).source])
     : [];
 
-  // Phase 1: Collect (run depcruise once for violations, once for metrics)
+  // Step 1 — Collect: run depcruise for violations and metrics
   let depcruiseJson: DepcruiseOutput | undefined;
   let depcruiseMetricsJson: DepcruiseOutput | undefined;
 
@@ -103,7 +103,7 @@ export const runPipeline = async (config: AuditConfig): Promise<AuditResults> =>
   const deps: StageDependencies = { depcruiseJson, depcruiseMetricsJson };
   const results: AuditResults = {};
 
-  // Phase 2: Analyze
+  // Step 2 — Analyze: run all audit stages
   for (const stage of ALL_STAGES) {
     if (config.skipStages.includes(stage.name)) {
       console.error(`[audit] Skipping stage: ${stage.name}`);

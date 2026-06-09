@@ -5,8 +5,7 @@
 // ContentLocation. Validates required top-level sections but does NOT resolve
 // $ENV_VAR references or make any network calls - those are adapter concerns.
 //
-// Extracted from src/adapters/github/config-loader.ts per the config-loader
-// refactoring plan (plans/config-loader-refactor.md Phase 1).
+// Extracted from src/adapters/github/config-loader.ts during the adapter refactoring.
 // =============================================================================
 
 import { parse } from "@std/yaml";

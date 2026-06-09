@@ -7,16 +7,9 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ProjectBackend } from "../scrum/ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
-import {
-  FindItemsSchema,
-  GetAnalyticsSchema,
-  GetBoardHealthSchema,
-  GetSprintDataSchema,
-  GetStorySchema,
-} from "../schemas/scrum.ts";
+import { FindItemsSchema, GetSprintDataSchema, GetStorySchema } from "../schemas/scrum.ts";
 import { z } from "zod";
 import {
-  DeprecationStubSchema,
   ItemDetailResultSchema,
   ItemSearchResultSchema,
   OrientResultSchema,
@@ -24,8 +17,6 @@ import {
 } from "../schemas/scrum-outputs.ts";
 import {
   handleFindItems,
-  handleGetAnalytics,
-  handleGetBoardHealth,
   handleGetItemDetail,
   handleGetSprintData,
   handleOrient,
@@ -40,8 +31,6 @@ export const SCRUM_READ_TOOL_NAMES = [
   "scrum_orient",
   "scrum_find_items",
   "scrum_get_item_detail",
-  "scrum_get_board_health",
-  "scrum_get_analytics",
   "scrum_get_sprint_data",
 ] as const;
 
@@ -169,54 +158,6 @@ export const registerScrumReadTools = (
     (params: z.infer<typeof FindItemsSchema>) => handleFindItems(backend, params),
   );
 
-  // ── scrum_get_analytics ────────────────────────────────────────────────────
-
-  server.registerTool(
-    "scrum_get_analytics",
-    {
-      title: "Get Sprint Analytics",
-      description: `DEPRECATED — use scrum_get_sprint_data instead.
-
-        This tool no longer returns analytics. The agent skill computes burndown,
-        velocity, and sprint history from raw sprint data.
-
-        Returns: { deprecated: true, use: "scrum_get_sprint_data" }`,
-      inputSchema: GetAnalyticsSchema.shape,
-      outputSchema: DeprecationStubSchema.shape,
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: true,
-      },
-    },
-    (params: z.infer<typeof GetAnalyticsSchema>) => handleGetAnalytics(backend, params),
-  );
-
-  // ── scrum_get_board_health ─────────────────────────────────────────────────
-
-  server.registerTool(
-    "scrum_get_board_health",
-    {
-      title: "Get Board Health",
-      description: `DEPRECATED — use scrum_get_sprint_data and scrum_find_items instead.
-
-        This tool no longer returns health metrics. The agent skill computes
-        readiness and sprint risk from raw sprint data and item listings.
-
-        Returns: { deprecated: true, use: "scrum_get_sprint_data" }`,
-      inputSchema: GetBoardHealthSchema.shape,
-      outputSchema: DeprecationStubSchema.shape,
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: true,
-      },
-    },
-    (params: z.infer<typeof GetBoardHealthSchema>) => handleGetBoardHealth(backend, params),
-  );
-
   // ── scrum_get_sprint_data ──────────────────────────────────────────────────
 
   server.registerTool(
@@ -243,8 +184,6 @@ export const registerScrumReadTools = (
 // Re-export handlers for contract tests
 export {
   handleFindItems,
-  handleGetAnalytics,
-  handleGetBoardHealth,
   handleGetItemDetail,
   handleGetSprintData,
   handleOrient,

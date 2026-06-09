@@ -210,11 +210,6 @@ export const ImpedimentListingSchema = z.object({
   resolved_at: z.string().nullable(),
 }).strict();
 
-export const DeprecationStubSchema = z.object({
-  deprecated: z.literal(true),
-  use: z.literal("scrum_get_sprint_data"),
-}).strict();
-
 export const AddVocabularyResultSchema = z.object({
   created: z.boolean(),
   kind: z.string(),

@@ -145,7 +145,7 @@ export interface PlatformState {
  *
  * @deprecated Use ItemDetailResult from ../domain/types.ts instead.
  *   ItemDetailResult is a superset - it adds acceptance_criteria.
- *   StoryDetail will be removed in P2 (port type consolidation).
+ *   StoryDetail is retained for backward compatibility until port type consolidation.
  */
 export interface StoryDetail {
   story: Story;

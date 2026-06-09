@@ -14,7 +14,6 @@ import {
 } from "../support/contract-assertions.ts";
 import type { ItemSearchResult, OrientResult } from "../../domain/types.ts";
 import {
-  DeprecationStubSchema,
   ItemDetailResultSchema,
   ItemSearchResultSchema,
   OrientResultSchema,
@@ -23,8 +22,6 @@ import {
 import { assertHandlerSchema } from "../support/handler-assertions.ts";
 import {
   handleFindItems,
-  handleGetAnalytics,
-  handleGetBoardHealth,
   handleGetItemDetail,
   handleGetSprintData,
   handleOrient,
@@ -92,30 +89,6 @@ Deno.test("scrum_get_item_detail - happy path schema", async () => {
     "scrum_get_item_detail",
   );
   assertEquals(payload.story.ref.id, listing.ref.id);
-});
-
-Deno.test("scrum_get_board_health - returns deprecation stub", async () => {
-  const backend = await committedFakeBackendPromise;
-
-  const payload = assertHandlerSchema(
-    await handleGetBoardHealth(backend, { sprint_scope: "current" }),
-    DeprecationStubSchema,
-    "scrum_get_board_health",
-  );
-  assertEquals(payload.deprecated, true);
-  assertEquals(payload.use, "scrum_get_sprint_data");
-});
-
-Deno.test("scrum_get_analytics - returns deprecation stub", async () => {
-  const backend = await committedFakeBackendPromise;
-
-  const payload = assertHandlerSchema(
-    await handleGetAnalytics(backend, { view: "both", history_window: 5 }),
-    DeprecationStubSchema,
-    "scrum_get_analytics",
-  );
-  assertEquals(payload.deprecated, true);
-  assertEquals(payload.use, "scrum_get_sprint_data");
 });
 
 Deno.test("scrum_get_sprint_data - happy path schema", async () => {

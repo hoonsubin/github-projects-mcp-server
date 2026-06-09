@@ -2,12 +2,11 @@
 // src/adapters/github/pagination.ts - PaginatedProjectItemFetcher
 //
 // Cursor-based pagination infrastructure for GitHub Projects v2 items.
-// Phase 4: delegates execution to ExecutionEngine (Humble Object pattern).
+// Delegates execution to ExecutionEngine (Humble Object pattern).
 // The fetcher is now a thin convenience wrapper - its public API is unchanged
 // so no consumer code needs modification.
 //
-// Phase 1 of adapter refactoring - query-building responsibility moved to
-// project-items-query-builder.ts. The fetcher is pure cursor iteration.
+// Pagination logic for the project items query pipeline.
 // =============================================================================
 
 import type { GitHubInfraContext } from "../infra/infra-context.ts";

@@ -1,7 +1,7 @@
 // =============================================================================
 // src/test/evaluation/risk-parity.test.ts
 //
-// Phase B exit gate — SB4: Sprint risk and readiness parity verification.
+// Risk parity verification — SB4: Sprint risk and readiness parity (Phase B exit gate, now complete).
 //
 // Proves that the agent-side risk counting algorithm described in SKILL.md
 // §Sprint risk counts produces the same counts as the server's
