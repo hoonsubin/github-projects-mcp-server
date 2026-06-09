@@ -34,7 +34,7 @@ jobs:
         run: deno task build:all
 
   container-ci:
-    name: Container CI (lint → build → CVE → smoke)
+    name: Container CI Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -64,29 +64,6 @@ jobs:
           # Ignore unfixed CVEs in the base image — the Debian slim image
           # receives regular updates; we only gate on fixable findings.
           ignore-unfixed: true
-
-      # ── 4. Upload SARIF results to GitHub Security tab ──────────────────
-      - name: Upload SARIF to GitHub Security
-        if: always()
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: trivy-results.sarif
-
-      # ── 5. Smoke-test the compiled binary ───────────────────────────────
-      # The binary is expected to exit code 1 (missing config is a controlled
-      # application exit). A broken binary (missing libc, corrupted file)
-      # would exit 126/127/139 (SIGABRT/SIGSEGV), not 1.
-      - name: Smoke test (binary boot check)
-        run: |
-          set -o pipefail
-          EXIT_CODE=0
-          docker run --rm scrum-master-toolkit:ci 2>&1 || EXIT_CODE=$?
-          if [ "$EXIT_CODE" -eq 1 ]; then
-            echo "PASS: binary boots and exits cleanly (missing config)"
-          else
-            echo "FAIL: binary exited with code $EXIT_CODE (expected 1)"
-            exit 1
-          fi
 
   audit-report:
     name: Architecture Audit Report

@@ -8,7 +8,7 @@ ENV DENO_DIR=/deno-dir
 WORKDIR /app
 
 # Layer 1: dependency manifests (cache-friendly — only invalidates when deps change)
-COPY deno.json deno.lock ./
+COPY deno.json ./
 
 # Install dependencies. --frozen=false allows the lockfile to update when
 # deno.json has changed since the lockfile was generated (common in dev).
