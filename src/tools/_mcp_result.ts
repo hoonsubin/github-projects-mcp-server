@@ -2,7 +2,7 @@
 // src/tools/_mcp_result.ts - MCP tool response helpers for contract tests
 // =============================================================================
 
-import { serializeToolPayload, stripEmpty } from "./response-serialize.ts";
+import { serializeToolPayload } from "./response-serialize.ts";
 
 /** Shape returned by scrum tool handlers before MCP SDK wrapping. */
 export interface McpTextResult {

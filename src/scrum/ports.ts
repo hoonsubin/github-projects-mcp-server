@@ -19,7 +19,6 @@ import type {
   EpicSummary,
   ImpedimentRef,
   ImpedimentStatus,
-  ItemSearchResult,
   LinkedArtifact,
   SprintRef,
   Story,

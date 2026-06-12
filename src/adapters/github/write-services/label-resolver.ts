@@ -143,7 +143,7 @@ export class LabelResolver {
         {
           code: "OPTION_NOT_FOUND",
           recovery:
-            `Call scrum_orient to see all existing repo labels in platform_state.labels.existing. ` +
+            `Call scrum_orient(detail:"full") to see all existing repo labels in platform_state.labels.existing. ` +
             `If you need to create a new label, use scrum_add_vocabulary with kind: "label" first, ` +
             `then assign it to the story.`,
           context: { unknown, available: existingLabels.map((l) => l.name) },
@@ -219,10 +219,23 @@ export class LabelResolver {
     }
     const color = this.hashToColor(value);
     const repositoryId = await this.fetchRepoNodeId();
-    await this.ctx.gh.graphql(
+    const createResult = await this.ctx.gh.graphql<{
+      createLabel?: { label?: { id: string } } | null;
+    }>(
       CREATE_LABEL_MUTATION,
       { repositoryId, name: value, color },
     );
+    if (!createResult.createLabel?.label?.id) {
+      throw new GitHubApiError(
+        `Label creation mutation succeeded but returned no label node for "${value}".`,
+        {
+          code: "MUTATION_FAILED",
+          recovery: "Retry the label creation. If the issue persists, the GitHub API " +
+            "may be returning an unexpected shape — check GitHub status.",
+          context: { name: value, repositoryId, responseShape: JSON.stringify(createResult) },
+        },
+      );
+    }
     this.invalidateLabelCache();
     return { created: true };
   }

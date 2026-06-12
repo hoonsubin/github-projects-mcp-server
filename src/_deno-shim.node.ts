@@ -115,8 +115,8 @@ export const Deno = {
   ): void => {
     const port = options.port ?? 3000;
     honoServe({
-      fetch: (req: Request, env: { incoming: IncomingMessage }) =>
-        handler(req, remoteAddrFromIncoming(env.incoming)),
+      fetch: (req, env) =>
+        handler(req, remoteAddrFromIncoming((env as { incoming: IncomingMessage }).incoming)),
       port,
       hostname: options.hostname,
     });

@@ -368,7 +368,7 @@ export interface SprintWindowMeta {
 export interface ItemSearchResult {
   items: readonly BacklogItemListing[];
   total_count: number;
-  scope_summary?: {
+  scope_summary: {
     sprint_count: number | null;
     backlog_count: number | null;
   };

@@ -196,10 +196,10 @@ interface McpServerInternal {
  * before/after logging with timing. The public log.* API is used internally.
  *
  * Each invocation produces:
- *   log.info(`→ toolName`)      - on entry
- *   log.debug(`  params`, ...)  - input params (debug=true only)
- *   log.info(`← toolName OK`)   - on success, with elapsed ms
- *   log.error(`✗ toolName FAILED`) - on throw, with error + params
+ *   log.info(`→ toolName`, params)           - on entry, with redacted params
+ *   log.info(`← toolName OK (Nms, Nb)`)      - on success, elapsed ms + response byte count
+ *   log.debug(`← toolName response`, result) - full redacted response at DEBUG only
+ *   log.error(`✗ toolName FAILED`)           - on throw, with error + params
  *
  * Errors are re-thrown so the MCP SDK can return a JSON-RPC error response.
  */
@@ -217,15 +217,21 @@ export const patchToolLogging = (server: McpServer): void => {
     handler: (params: unknown, extra: unknown) => Promise<unknown>,
   ): unknown => {
     return original(name, config, async (params: unknown, extra: unknown) => {
-      // Always: log which tool fired (no params - keeps the line short)
-      log.info(`→ ${name}`);
-      // DEBUG: also log the full input so you can see what the agent passed
-      log.debug(`  params`, redactSensitive(params));
+      // Always: log which tool fired and the full input params
+      log.info(`→ ${name}`, redactSensitive(params));
 
       const t0 = performance.now();
       try {
         const result = await handler(params, extra);
-        log.info(`← ${name} OK (${Math.round(performance.now() - t0)}ms)`);
+        const ms = Math.round(performance.now() - t0);
+        // Summarize at INFO: timing + response text size.
+        // Full response is only emitted at DEBUG to avoid flooding logs with
+        // multi-KB structuredContent on every call (orient alone is ~150 lines).
+        const text = (result as { content?: Array<{ text?: string }> } | null)
+          ?.content?.[0]?.text;
+        const isErr = !!(result as { isError?: boolean } | null)?.isError;
+        log.info(`← ${name} ${isErr ? "ERR" : "OK"} (${ms}ms, ${text?.length ?? 0}b)`);
+        log.debug(`← ${name} response`, redactSensitive(result));
         return result;
       } catch (err: unknown) {
         const ms = Math.round(performance.now() - t0);

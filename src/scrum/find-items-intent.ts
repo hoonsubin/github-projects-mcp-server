@@ -82,7 +82,9 @@ export const applyFindItemsIntent = (input: FindItemsInput): ItemFilter => {
       }
       return {
         ...rest,
-        sprint: rest.sprint ?? "all",
+        // Do NOT default sprint to "all" — that would restrict to sprint-assigned items only,
+        // silently dropping pure backlog items before the text match runs.
+        // Leave sprint undefined so sprint_ref = null and the filter scans all items.
         fields: rest.fields ?? "standard",
         limit: rest.limit ?? 20,
       };

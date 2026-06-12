@@ -38,10 +38,25 @@ export const applyOrientDetail = (
     };
   }
 
+  // Session mode: strip everything the agent doesn't need at session start.
+  //
+  // labels.existing is omitted — the full label inventory is not needed upfront
+  // and is available via detail:"full" when the agent actually needs to assign labels.
+  // Only labels.missing is preserved so vocabulary gaps are still surfaced.
+  //
+  // The top-level missing_options field is redundant with the per-field
+  // missing_options already present in fields.status and fields.priority,
+  // so it is cleared to avoid duplicated noise in a context-constrained response.
   return {
     ...result,
     platform_state: {
       ...result.platform_state,
+      missing_options: [],
+      labels: {
+        existing: [],
+        expected: [],
+        missing: result.platform_state.labels.missing,
+      },
       epics: {
         active: epics,
         total_count: result.platform_state.epics.total_count,

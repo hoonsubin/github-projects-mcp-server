@@ -369,13 +369,15 @@ export interface ItemFieldValue {
   issueFieldValue?: ItemIssueFieldValue | null;
   // Pull requests column (GH.ProjectV2ItemFieldPullRequestValue)
   pullRequests?: {
-    nodes: Array<{
-      number?: number;
-      title?: string | null;
-      url?: string;
-      state?: string;
-      isDraft?: boolean;
-    } | null>;
+    nodes: Array<
+      {
+        number?: number;
+        title?: string | null;
+        url?: string;
+        state?: string;
+        isDraft?: boolean;
+      } | null
+    >;
   };
 }
 

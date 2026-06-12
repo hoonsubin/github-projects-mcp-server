@@ -8,7 +8,13 @@ import type { ItemFieldValue } from "./types.ts";
 
 Deno.test("pullRequestNodesToLinkedArtifacts - maps PR nodes", () => {
   const linked = pullRequestNodesToLinkedArtifacts([
-    { number: 12, title: "Fix bug", url: "https://github.com/o/r/pull/12", state: "OPEN", isDraft: false },
+    {
+      number: 12,
+      title: "Fix bug",
+      url: "https://github.com/o/r/pull/12",
+      state: "OPEN",
+      isDraft: false,
+    },
     null,
   ]);
   assertEquals(linked.length, 1);

@@ -34,7 +34,7 @@ export interface PaginationPolicy {
 }
 
 export const DEFAULT_PAGINATION_POLICY: PaginationPolicy = {
-  maxPages: 20,
+  maxPages: 10_000, // No practical limit — board scan is session-cached after first fetch
   pageSize: 50,
   stopOnRateLimit: true,
 };

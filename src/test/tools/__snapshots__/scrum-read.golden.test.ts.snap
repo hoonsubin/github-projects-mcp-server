@@ -170,6 +170,10 @@ snapshot[`golden: scrum_find_items handler output 1`] = `
       "blocked_by": []
     }
   ],
-  "total_count": 1
+  "total_count": 1,
+  "scope_summary": {
+    "sprint_count": 1,
+    "backlog_count": 0
+  }
 }'
 `;

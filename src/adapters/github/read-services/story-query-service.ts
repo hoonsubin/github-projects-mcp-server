@@ -276,9 +276,7 @@ export class StoryQueryService {
       this.ctx.config,
     );
     const comments = issueData ? buildCommentList(issue.comments?.nodes ?? []) : null;
-    const timelineLinked = issueData
-      ? buildLinkedPrList(issue.timelineItems?.nodes ?? [])
-      : null;
+    const timelineLinked = issueData ? buildLinkedPrList(issue.timelineItems?.nodes ?? []) : null;
     const fieldLinked = extractLinkedPullRequestsFromFieldValues(
       itemData?.node?.fieldValues?.nodes ?? [],
     );
@@ -346,9 +344,7 @@ export class StoryQueryService {
         ? content.repository.nameWithOwner.split("/")[0]
         : this.ctx.owner);
     const repoName = resolved.repository?.name ??
-      (content?.__typename === "PullRequest"
-        ? content.repository.name
-        : this.ctx.repo);
+      (content?.__typename === "PullRequest" ? content.repository.name : this.ctx.repo);
 
     if (resolved.issueNumber !== null && repoOwner && repoName) {
       const { value: prData, warnings: prWarnings } = await catchBackend(() =>

@@ -13,7 +13,7 @@ import {
 import { parseToolText } from "../_mcp_result.ts";
 import { GitHubApiError } from "../../adapters/github/errors.ts";
 import type { ScrumConfig } from "../../domain/config.ts";
-import type { ProjectBackend, PlatformState, StoryUpdates } from "../../scrum/ports.ts";
+import type { PlatformState, ProjectBackend, StoryUpdates } from "../../scrum/ports.ts";
 import type { BackendCallResult } from "../../services/error-enrichment.ts";
 import { SessionCache } from "../../services/session-cache.ts";
 import type { Story, StoryRef } from "../../domain/types.ts";
@@ -61,7 +61,7 @@ const makeAdapterError = (msg: string): GitHubApiError =>
   new GitHubApiError(msg, { code: "RATE_LIMITED", recovery: "Wait and retry" });
 
 /** A successful BackendCallResult for compose methods. */
-const makeStoryResult = (story: Story): BackendCallResult<Story> => ({
+const _makeStoryResult = (story: Story): BackendCallResult<Story> => ({
   value: story,
   warnings: [],
 });

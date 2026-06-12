@@ -105,7 +105,7 @@ const FindItemsSprintSchema = z
     z.string().min(1).transform(toSprintName),
   ])
   .describe(
-    'Sprint filter. "current" | "next" | "backlog" | "all" (every iteration) | "<name>". Omit = entire board.',
+    'Sprint filter. "current" | "next" | "backlog" | "all" (every iteration) | "<name>". Omit = entire board (active items only — Done/terminal items excluded by default; add statuses:["done"] to include them).',
   );
 
 export const OrientSchema = z
@@ -304,7 +304,7 @@ export const CreateStorySchema = z
       .optional()
       .describe(
         "Additional labels to apply. Only pass labels that already exist in the repository - " +
-          "check platform_state.labels.existing from scrum_orient first. " +
+          'call scrum_orient(detail:"full") to see platform_state.labels.existing first. ' +
           "Story type is set via the Type board field, not a label.",
       ),
     epic: EpicRefSchema.optional().describe(
@@ -487,8 +487,8 @@ export const AddVocabularySchema = z
       .string()
       .min(1)
       .describe(
-        'Display name to add. For status_option/priority_option use exact names from config ' +
-          'status_display/priority_display that are listed in missing_options. Labels: any name.',
+        "Display name to add. For status_option/priority_option use exact names from config " +
+          "status_display/priority_display that are listed in missing_options. Labels: any name.",
       ),
   })
   .strict();

@@ -33,7 +33,7 @@ Deno.test("applyFindItemsIntent - search_backlog requires search", () => {
     'intent "search_backlog" requires a non-empty search string.',
   );
   const filter = applyFindItemsIntent({ intent: "search_backlog", search: "OAuth" });
-  assertEquals(filter.sprint, "all");
+  assertEquals(filter.sprint, undefined);
   assertEquals(filter.search, "OAuth");
 });
 

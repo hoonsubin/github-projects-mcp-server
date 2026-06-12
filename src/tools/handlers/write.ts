@@ -91,7 +91,12 @@ export const handleAddVocabulary = async (
     }
   }
 
-  const result = await backend.addVocabulary(params.kind, params.value);
+  let result: Awaited<ReturnType<typeof backend.addVocabulary>>;
+  try {
+    result = await backend.addVocabulary(params.kind, params.value);
+  } catch (err) {
+    return toToolErrorResult(err);
+  }
   sessionCache.invalidateOrient();
   return toMcpTextResult({ ...result, kind: params.kind, value: params.value });
 };

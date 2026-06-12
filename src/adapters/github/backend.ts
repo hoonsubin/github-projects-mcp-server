@@ -162,13 +162,20 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
       if (priorityDisplay[key]) priorityDisplayMap[key] = priorityDisplay[key];
     }
 
-    const liveStatusOptions = Object.keys(this.deps.config.live.statusOptions);
-    const livePriorityOptions = Object.keys(this.deps.config.live.priorityOptions);
-    const missingStatusOptions = Object.values(statusDisplayMap).filter(
-      (v) => !liveStatusOptions.includes(v),
+    // Config-declared display names are the agent-visible option set.
+    // Ghost options (board options not declared in config) are intentionally excluded
+    // so the agent only sees what the config authorises it to use.
+    const configStatusOptions = Object.values(statusDisplayMap);
+    const configPriorityOptions = Object.values(priorityDisplayMap);
+
+    // Live board option names are still needed to compute what's *missing* from the board.
+    const liveStatusOptionNames = Object.keys(this.deps.config.live.statusOptions);
+    const livePriorityOptionNames = Object.keys(this.deps.config.live.priorityOptions);
+    const missingStatusOptions = configStatusOptions.filter(
+      (v) => !liveStatusOptionNames.includes(v),
     );
-    const missingPriorityOptions = Object.values(priorityDisplayMap).filter(
-      (v) => !livePriorityOptions.includes(v),
+    const missingPriorityOptions = configPriorityOptions.filter(
+      (v) => !livePriorityOptionNames.includes(v),
     );
 
     const typeLabels = await this.deps.labelResolver.auditTypeLabels();
@@ -185,14 +192,14 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
       fields: {
         status: {
           exists: !!this.deps.config.live.fields.statusFieldId,
-          options: liveStatusOptions,
+          options: configStatusOptions,
           missingOptions: missingStatusOptions,
         },
         sprint: { exists: !!this.deps.config.live.fields.sprintFieldId },
         story_points: { exists: !!this.deps.config.live.fields.storyPointsFieldId },
         priority: {
           exists: !!this.deps.config.live.fields.priorityFieldId,
-          options: livePriorityOptions,
+          options: configPriorityOptions,
           missingOptions: missingPriorityOptions,
         },
         type: {

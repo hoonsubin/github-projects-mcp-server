@@ -51,7 +51,7 @@ Deno.test("scrum_orient - session cache skips reload on repeat", async () => {
   await handleOrient(backend, boot.scrumConfig, cache);
   const originalReloadMetadata = backend.reloadMetadata.bind(backend);
   let metadataReloads = 0;
-  backend.reloadMetadata = async () => {
+  backend.reloadMetadata = () => {
     metadataReloads++;
     return originalReloadMetadata();
   };

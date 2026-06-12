@@ -17,13 +17,10 @@ import {
 import { z } from "zod";
 import {
   AddVocabularyResultSchema,
-  CreateStoryOutputSchema,
   LogImpedimentResultSchema,
   PlanSprintResultSchema,
-  SetFieldResponseSchema,
   StorySchema,
   UpdateImpedimentResponseSchema,
-  UpdateStoryResponseSchema,
   WriteAckSchema,
 } from "../schemas/scrum-outputs.ts";
 import {
@@ -67,7 +64,7 @@ export const registerScrumWriteTools = (
         - status_option / priority_option → ONLY for values in scrum_orient platform_state.missing_options
           that are declared in .github/scrum/config.yml (status_display / priority_display). Config is
           authoritative — do not invent board options outside config.
-        - label → repository label (fully agent-driven; visible in platform_state.labels.existing)
+        - label → repository label (fully agent-driven; fetch the current list via scrum_orient(detail:"full") → platform_state.labels.existing when needed)
 
         Response: created:true = new value added; created:false + already_exists:true = already present (safe no-op).
 
@@ -175,7 +172,7 @@ export const registerScrumWriteTools = (
                        Call scrum_orient for vocabulary.type to see valid keys for this project
           priority     string - vocabulary display name (e.g. "Must"); call scrum_orient for valid values
           story_points number - Fibonacci estimate (1, 2, 3, 5, 8, 13)
-          labels       string[] - must already exist; check platform_state.labels.existing from scrum_orient
+          labels       string[] - must already exist; call scrum_orient(detail:"full") to see platform_state.labels.existing
           epic         { id: string } - EpicRef from scrum_find_items (type=epic).ref.id
           assignees    string[] - GitHub logins
           sprint       "current" | "next" | "<sprint-name>" - places on board; omit for backlog

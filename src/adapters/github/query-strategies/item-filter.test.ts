@@ -229,7 +229,7 @@ Deno.test("buildItemFilterFn - scope=backlog with explicit statuses bypasses ter
   assertEquals(results[0].ref.id, "term2");
 });
 
-Deno.test("buildItemFilterFn - scope=all does not exclude terminal-status Done items", () => {
+Deno.test("buildItemFilterFn - scope=all excludes terminal-status Done items by default", () => {
   const cfg = makeConfig({
     scrumConfig: {
       project: { name: "Test" },
@@ -278,7 +278,7 @@ Deno.test("buildItemFilterFn - scope=all does not exclude terminal-status Done i
     [],
   );
   const results = [terminal].filter(fn);
-  assertEquals(results.length, 1);
+  assertEquals(results.length, 0);
 });
 
 Deno.test("buildItemFilterFn - scope=sprint with null sprint_ref excludes past-sprint items", () => {

@@ -29,7 +29,7 @@ const isEmptyValue = (key: string, value: unknown): boolean => {
 
   if (key === "scope_summary" && typeof value === "object" && value !== null) {
     const s = value as { sprint_count?: unknown; backlog_count?: unknown };
-    return s.sprint_count == null && s.backlog_count == null;
+    return s.sprint_count === null && s.backlog_count === null;
   }
 
   if (STRIP_EMPTY_OBJECT_KEYS.has(key) && typeof value === "object" && value !== null) {
@@ -40,7 +40,7 @@ const isEmptyValue = (key: string, value: unknown): boolean => {
     const sprint = value as { name?: unknown; ref?: { id?: string } };
     if (sprint.ref?.id === "") {
       const { ref: _ref, ...rest } = sprint as Record<string, unknown>;
-      return Object.values(rest).every((v) => v == null || v === "");
+      return Object.values(rest).every((v) => v === null || v === "");
     }
   }
 
@@ -85,7 +85,7 @@ const AGENT_HINT =
 export const compactForAgentText = (
   payload: unknown,
 ): { readonly payload: unknown; readonly truncated: boolean } => {
-  let current = stripEmpty(payload);
+  const current = stripEmpty(payload);
   let text = JSON.stringify(current);
   if (textByteLength(text) <= MAX_TOOL_TEXT_BYTES) {
     return { payload: current, truncated: false };

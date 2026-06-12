@@ -45,13 +45,12 @@ const shapeSearchResult = (
     ? dependencyMapToArray(value.dependency_map)
     : undefined;
 
-  const includeScopeSummary = value.total_count > resolved.limit ||
-    resolved.scope !== "all";
-
   return {
     items,
     total_count: value.total_count,
-    ...(includeScopeSummary ? { scope_summary: value.scope_summary } : {}),
+    // Always include scope_summary — agents need {sprint_count, backlog_count} to
+    // classify results regardless of scope or result set size. Cost: two integers.
+    scope_summary: value.scope_summary,
     ...(dependency_map ? { dependency_map } : {}),
   };
 };

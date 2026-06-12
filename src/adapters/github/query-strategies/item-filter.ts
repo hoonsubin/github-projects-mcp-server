@@ -92,6 +92,27 @@ export const buildItemFilterFn = (
     }
   }
 
+  // Reverse map: optionId → display name. Used to resolve a raw field value's
+  // optionId to a human-readable status when scanning allItems for blocker status.
+  const optionIdToStatus = new Map<string, string>();
+  for (const [displayName, optionId] of Object.entries(config.live.statusOptions)) {
+    optionIdToStatus.set(optionId, displayName);
+  }
+
+  // key (issue number string) → display status for every item on the board.
+  // Built once at filter-construction time; used in the has_blockers predicate
+  // to determine whether a blocker is still active or has reached a terminal state.
+  const itemKeyStatusMap = new Map<string, string | null>();
+  for (const item of allItems) {
+    const key = (item.content as { number?: number } | null)?.number?.toString();
+    if (!key) continue; // DraftIssue nodes have no number — skip
+    const fv = item.fieldValues.nodes.find(
+      (v) => v.field?.id === config.live.fields.statusFieldId,
+    );
+    const displayName = fv?.optionId ? (optionIdToStatus.get(fv.optionId) ?? null) : null;
+    itemKeyStatusMap.set(key, displayName);
+  }
+
   return (story: Story): boolean => {
     if (keySet) {
       const hasKey = story.kind === "issue" || story.kind === "pr";
@@ -108,12 +129,14 @@ export const buildItemFilterFn = (
         }
       }
       if (filter.scope === "backlog" && story.sprint !== null) return false;
-      // Exclude terminal-status items from sprint and backlog scope when no
-      // explicit statuses filter is provided.  Keys bypass this (keySet path
-      // above) so direct ID/ref lookups always return the item regardless of
-      // status.
+      // Exclude terminal-status (Done) items by default for ALL scopes when no
+      // explicit statuses filter is provided.  This prevents unscoped queries
+      // (type, label, search filters without sprint/scope) from flooding context
+      // with full board history including Done items from past sprints.
+      // To include Done items, pass statuses: ["done"] explicitly.
+      // Keys bypass this entirely (keySet path above) so direct ID/ref lookups
+      // always return the item regardless of status.
       if (
-        (filter.scope === "sprint" || filter.scope === "backlog") &&
         statusSet === null &&
         story.status !== null &&
         terminalStatuses.has(story.status)
@@ -140,8 +163,17 @@ export const buildItemFilterFn = (
     if (resolvedPriority && story.priority !== resolvedPriority) return false;
 
     if (filter.has_blockers !== undefined) {
-      const blocked = story.blocked_by.length > 0;
-      if (filter.has_blockers !== blocked) return false;
+      // An item is considered "actively blocked" only when at least one blocker
+      // has a non-terminal status. Blockers that reached Done are resolved and
+      // should no longer gate sprint entry. If a blocker key is not in the map
+      // (e.g. referenced item was deleted or is outside the board), treat it as
+      // active to fail safe — we don't want to silently drop potentially blocked items.
+      const hasActiveBlocker = story.blocked_by.some((dep) => {
+        const status = itemKeyStatusMap.get(dep.key);
+        // status == null catches both null (no status set) and undefined (key not on board)
+        return status == null || !terminalStatuses.has(status);
+      });
+      if (filter.has_blockers !== hasActiveBlocker) return false;
     }
 
     if (searchQ) {
