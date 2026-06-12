@@ -12,13 +12,13 @@
 import { z } from "zod";
 import type { EpicRef, StoryRef } from "../domain/types.ts";
 import {
+  FIND_ITEMS_INTENTS,
   IMPEDIMENT_STATUSES,
+  LISTING_FIELDS_MODES,
   SCRUM_FIELDS,
   toSprintName,
   VOCABULARY_KINDS,
 } from "../domain/types.ts";
-import { FIND_ITEMS_INTENTS } from "../scrum/find-items-intent.ts";
-import { LISTING_FIELDS_MODES } from "../scrum/ports.ts";
 
 // ── Primitive schemas (shared by multiple tools) ──────────────────────────────
 

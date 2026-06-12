@@ -26,15 +26,27 @@ import type {
   StoryRef,
   TemplateUriMap,
 } from "../domain/types.ts";
-import { SCRUM_FIELDS, SEARCH_SCOPES, VOCABULARY_KINDS } from "../domain/types.ts";
-import type { ScrumField, SearchScope, VocabularyKind } from "../domain/types.ts";
+import {
+  FIND_ITEMS_INTENTS,
+  LISTING_FIELDS_MODES,
+  SCRUM_FIELDS,
+  SEARCH_SCOPES,
+  VOCABULARY_KINDS,
+} from "../domain/types.ts";
+import type {
+  FindItemsIntent,
+  ListingFieldsMode,
+  ScrumField,
+  SearchScope,
+  VocabularyKind,
+} from "../domain/types.ts";
 import type { BackendCallResult } from "../services/error-enrichment.ts";
 import type { ContentLocation } from "../domain/content-location.ts";
 
 // ── Re-exports (domain vocabulary - single source of truth) ─────────────────
 
-export { SCRUM_FIELDS, SEARCH_SCOPES, VOCABULARY_KINDS };
-export type { ScrumField, SearchScope, VocabularyKind };
+export { FIND_ITEMS_INTENTS, LISTING_FIELDS_MODES, SCRUM_FIELDS, SEARCH_SCOPES, VOCABULARY_KINDS };
+export type { FindItemsIntent, ListingFieldsMode, ScrumField, SearchScope, VocabularyKind };
 
 // ── Input types (cross the port boundary) ─────────────────────────────────────
 
@@ -43,16 +55,6 @@ export type { ScrumField, SearchScope, VocabularyKind };
  * All fields are optional - an empty filter returns all items.
  * Defined at the port boundary because it's an input type, not a domain type.
  */
-export const LISTING_FIELDS_MODES = ["compact", "standard", "full"] as const;
-export type ListingFieldsMode = (typeof LISTING_FIELDS_MODES)[number];
-
-export type FindItemsIntent =
-  | "sprint_board"
-  | "backlog_ready"
-  | "readiness_check"
-  | "blocked_items"
-  | "search_backlog"
-  | "by_keys";
 
 export interface ItemFilter {
   readonly intent?: FindItemsIntent;

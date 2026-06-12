@@ -2,16 +2,8 @@
 // src/scrum/find-items-intent.ts - Intent presets → filter fields
 // =============================================================================
 
-import type { FindItemsIntent, ItemFilter, ListingFieldsMode } from "./ports.ts";
-
-export const FIND_ITEMS_INTENTS = [
-  "sprint_board",
-  "backlog_ready",
-  "readiness_check",
-  "blocked_items",
-  "search_backlog",
-  "by_keys",
-] as const satisfies readonly FindItemsIntent[];
+import type { ItemFilter } from "./ports.ts";
+import { type ListingFieldsMode } from "../domain/types.ts";
 
 export interface FindItemsInput extends ItemFilter {}
 

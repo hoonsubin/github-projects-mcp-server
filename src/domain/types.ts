@@ -88,6 +88,21 @@ export const VOCABULARY_KINDS = ["status_option", "priority_option", "label"] as
 
 export type VocabularyKind = (typeof VOCABULARY_KINDS)[number];
 
+/** Listing field projection modes for item responses. */
+export const LISTING_FIELDS_MODES = ["compact", "standard", "full"] as const;
+export type ListingFieldsMode = (typeof LISTING_FIELDS_MODES)[number];
+
+/** Find-items intent presets. */
+export const FIND_ITEMS_INTENTS = [
+  "sprint_board",
+  "backlog_ready",
+  "readiness_check",
+  "blocked_items",
+  "search_backlog",
+  "by_keys",
+] as const;
+export type FindItemsIntent = (typeof FIND_ITEMS_INTENTS)[number];
+
 // ── Output ref (server → agent, listing context only) ────────────────────────
 
 /**

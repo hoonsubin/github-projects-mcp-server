@@ -3,7 +3,7 @@
 // =============================================================================
 
 import type { BacklogItemListing, DependencyPointer, LinkedArtifact } from "../domain/types.ts";
-import type { ListingFieldsMode } from "./ports.ts";
+import type { ListingFieldsMode } from "../domain/types.ts";
 
 export interface CompactItemListing {
   readonly ref: { readonly id: string; readonly key: string };
