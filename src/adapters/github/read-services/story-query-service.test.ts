@@ -12,10 +12,17 @@ import { createGhSpy, makeConfig, makeCtx } from "@test/support/github-client.ts
 import { BoardScanCoordinator } from "./board-scan-coordinator.ts";
 import { GitHubApiError } from "../errors.ts";
 import { toIssueKey } from "../../../domain/types.ts";
-import type { DependencyEntry, EntityRef, ItemType, Story } from "../../../domain/types.ts";
+import type {
+  BacklogItemListing,
+  DependencyEntry,
+  EntityRef,
+  ItemType,
+  Story,
+} from "../../../domain/types.ts";
 import type { IssueStory, ProjectItem } from "../types.ts";
 import { FIXTURE_NODES } from "@test/fixtures/github/index.ts";
 import { buildStoryFromRaw } from "../mappers.ts";
+import { toItemListing } from "../../../scrum/utils/listing-mappers.ts";
 
 // =============================================================================
 // Test helpers (hand-crafted for edge case tests)
@@ -37,11 +44,38 @@ const makeDepEntry = (
   ref: { id: refId ?? `PVTI_dep_${key}` },
 });
 
+const emptyListingFields = {
+  type: TEST_TYPE,
+  story_points: null,
+  priority: null,
+  assignees: [] as string[],
+  labels: [] as string[],
+  sprint: { name: null as string | null, ref: { id: "" } },
+  epic: null,
+  blocks: [] as { id: string; key: string }[],
+  custom_fields: {} as Record<string, string | number | boolean | null>,
+};
+
+const makeListing = (opts: {
+  key: string;
+  refId?: string;
+  title?: string;
+  status?: string | null;
+  sprint?: string | null;
+  blocked_by?: DependencyEntry[];
+}): BacklogItemListing => ({
+  ref: { id: opts.refId ?? `PVTI_${opts.key}`, key: opts.key },
+  title: opts.title ?? `Story ${opts.key}`,
+  status: opts.status ?? "In Progress",
+  ...emptyListingFields,
+  sprint: opts.sprint !== undefined
+    ? { name: opts.sprint, ref: { id: opts.sprint ? "IT_active" : "" } }
+    : emptyListingFields.sprint,
+  blocked_by: opts.blocked_by ?? [],
+});
+
 /**
- * Build a minimal IssueStory for test data.
- * Only includes fields that buildDependencyMap actually reads:
- *   kind, key, ref.id, title, status, sprint, story_points, priority,
- *   epic?.name, blocked_by
+ * Build a minimal IssueStory for error-handling tests.
  */
 const makeIssueStory = (opts: {
   key: string;
@@ -77,7 +111,13 @@ const makeIssueStory = (opts: {
  * Build a minimal ProjectItem (issue content) for the second-pass allItems lookup.
  * Only includes the fields buildStoryFromRaw reads.
  */
-const makeProjectItem = (opts: { id: string; key: string; title: string }): ProjectItem => ({
+const makeProjectItem = (opts: {
+  id: string;
+  key: string;
+  title: string;
+  status?: string;
+  sprint?: string;
+}): ProjectItem => ({
   id: opts.id,
   type: "ISSUE",
   createdAt: "2025-01-01T00:00:00Z",
@@ -96,7 +136,24 @@ const makeProjectItem = (opts: { id: string; key: string; title: string }): Proj
     milestone: null,
     repository: { name: "test", nameWithOwner: "test/test" },
   },
-  fieldValues: { nodes: [] },
+  fieldValues: {
+    nodes: [
+      ...(opts.status
+        ? [{
+          __typename: "ProjectV2ItemFieldSingleSelectValue",
+          field: { id: "PVTF_status", name: "Status" },
+          name: opts.status,
+        }]
+        : []),
+      ...(opts.sprint
+        ? [{
+          __typename: "ProjectV2ItemFieldIterationValue",
+          field: { id: "PVTF_sprint", name: "Sprint" },
+          title: opts.sprint,
+        }]
+        : []),
+    ],
+  },
 });
 
 // =============================================================================
@@ -112,182 +169,122 @@ const realStories: Story[] = allRealItems
   .map((item) => buildStoryFromRaw(item, config))
   .filter((s): s is Story => s !== null);
 
+const configWithTerminalDone = makeConfig({
+  scrumConfig: {
+    project: { name: "Test" },
+    scrum: { priority: [], status: { done: { terminal: true, blocking: false } } },
+    backends: { github: {} },
+  },
+});
+
 // =============================================================================
-// Test cases - edge cases with hand-crafted data
+// Test cases - dependency pointer map
 // =============================================================================
 
-Deno.test("A-bug-1: dependency direction - A blocked by B", () => {
-  // Story 10 is blocked by Story 20
-  const storyA = makeIssueStory({
-    key: "10",
-    refId: "PVTI_10",
-    priority: "Must",
-    blocked_by: [makeDepEntry("20", "Story B", "PVTI_20")],
-  });
-  const storyB = makeIssueStory({
-    key: "20",
-    refId: "PVTI_20",
-    priority: "Should",
-  });
-
-  const stories: Story[] = [storyA, storyB];
-  const allItems: ProjectItem[] = [];
-
-  const map = buildDependencyMap(stories, allItems, makeConfig());
-
-  const keyA = toIssueKey("10");
-  const keyB = toIssueKey("20");
-
-  // A is blocked by B → A.blocked_by = [B_key], A.blocks = []
-  assertEquals(map[keyA].blocked_by, [keyB], "A should be blocked by B");
-  assertEquals(map[keyA].blocks, [], "A should not block anyone");
-  assertFalse(map[keyA].blocks.includes(keyB), "A should not appear to block B");
-
-  // B blocks A → B.blocks = [A_key], B.blocked_by = []
-  assertEquals(map[keyB].blocks, [keyA], "B should block A");
-  assertEquals(map[keyB].blocked_by, [], "B should not be blocked by anyone");
-  assertFalse(map[keyB].blocked_by.includes(keyA), "B should not appear to be blocked by A");
-});
-
-Deno.test("A-bug-1: no dependencies - blocks and blocked_by are empty", () => {
-  const story10 = makeIssueStory({ key: "10" });
-  const story20 = makeIssueStory({ key: "20" });
-
-  const stories: Story[] = [story10, story20];
-  const allItems: ProjectItem[] = [];
-
-  const map = buildDependencyMap(stories, allItems, makeConfig());
-
-  for (const key of ["10", "20"]) {
-    assertEquals(map[toIssueKey(key)].blocks, [], `${key}.blocks should be empty`);
-    assertEquals(map[toIssueKey(key)].blocked_by, [], `${key}.blocked_by should be empty`);
-  }
-});
-
-Deno.test("A-bug-2: cross-repo/off-board dependency → stub node", () => {
-  // Story 10 is blocked by issue 99 which is NOT in allItems
-  const dep = makeDepEntry("99", "External Issue", "PVTI_99");
-  const story10 = makeIssueStory({
-    key: "10",
-    refId: "PVTI_10",
-    blocked_by: [dep],
-  });
-
-  const stories: Story[] = [story10];
-  const allItems: ProjectItem[] = []; // cross-repo: not in allItems
-
-  const map = buildDependencyMap(stories, allItems, makeConfig());
-
-  const stubKey = toIssueKey("99");
-  const stub = map[stubKey];
-
-  // Stub must exist
-  assertEquals(typeof stub, "object", "stub node should exist");
-  assertEquals(stub.key, stubKey);
-  assertEquals(stub.title, "External Issue");
-  assertEquals(stub.status, null, "stub status should be null");
-  assertEquals(stub.sprint, null);
-  assertEquals(stub.epic_name, null);
-  assertEquals(stub.story_points, null);
-  assertEquals(stub.priority, null);
-  assertEquals(stub.resolved, false, "stub should be unresolved");
-  assertEquals(stub.blocks, [toIssueKey("10")], "stub blocks story 10 (third pass)");
-  assertEquals(stub.blocked_by, [], "stub blocked_by should be empty");
-
-  // Story 10 should have the stub in its blocked_by
-  assertEquals(map[toIssueKey("10")].blocked_by, [stubKey]);
-});
-
-Deno.test(
-  "A-bug-2: out-of-scope dependency (in allItems but not in filtered stories) → unresolved node",
-  () => {
-    // Story 10 is blocked by issue 30, which exists in allItems but not in stories
-    const story10 = makeIssueStory({
+Deno.test("buildDependencyMap - omits blocker already in returned items", () => {
+  const items = [
+    makeListing({
       key: "10",
-      refId: "PVTI_10",
-      blocked_by: [makeDepEntry("30", "Out-of-scope Story", "PVTI_30")],
-    });
+      blocked_by: [makeDepEntry("20", "Story B", "PVTI_20")],
+    }),
+    makeListing({ key: "20", title: "Story B", refId: "PVTI_20" }),
+  ];
 
-    const stories: Story[] = [story10];
-    const unresolvedItem = makeProjectItem({
+  const map = buildDependencyMap(items, [], makeConfig());
+
+  assertEquals(Object.keys(map).length, 0, "in-listing blockers are redundant");
+});
+
+Deno.test("buildDependencyMap - includes off-listing active blocker as shallow pointer", () => {
+  const items = [
+    makeListing({
+      key: "10",
+      blocked_by: [makeDepEntry("30", "Out-of-scope Story", "PVTI_30")],
+    }),
+  ];
+  const allItems = [makeProjectItem({ id: "PVTI_30", key: "30", title: "Out-of-scope Story" })];
+
+  const map = buildDependencyMap(items, allItems, makeConfig());
+
+  const pointer = map[toIssueKey("30")];
+  assertEquals(typeof pointer, "object");
+  assertEquals(pointer.key, toIssueKey("30"));
+  assertEquals(pointer.title, "Out-of-scope Story");
+  assertEquals(pointer.ref.id, "PVTI_30");
+  assertEquals(pointer.status, null);
+  assertFalse("blocks" in pointer);
+  assertFalse("blocked_by" in pointer);
+});
+
+Deno.test("buildDependencyMap - includes cross-repo stub with null status", () => {
+  const items = [
+    makeListing({
+      key: "10",
+      blocked_by: [makeDepEntry("99", "External Issue", "PVTI_99")],
+    }),
+  ];
+
+  const map = buildDependencyMap(items, [], makeConfig());
+
+  const pointer = map[toIssueKey("99")];
+  assertEquals(pointer.title, "External Issue");
+  assertEquals(pointer.status, null);
+});
+
+Deno.test("buildDependencyMap - excludes Done blocker not in active sprint", () => {
+  const items = [
+    makeListing({
+      key: "10",
+      blocked_by: [makeDepEntry("30", "Done blocker", "PVTI_30")],
+    }),
+  ];
+  const blockerStory = makeIssueStory({
+    key: "30",
+    refId: "PVTI_30",
+    status: "Done",
+    sprint: null,
+  });
+  const allItems = [
+    makeProjectItem({
       id: "PVTI_30",
       key: "30",
-      title: "Out-of-scope Story",
-    });
-    const allItems: ProjectItem[] = [unresolvedItem];
+      title: "Done blocker",
+      status: "Done",
+    }),
+  ];
 
-    const map = buildDependencyMap(stories, allItems, makeConfig());
+  const map = buildDependencyMap(items, allItems, configWithTerminalDone);
 
-    const key30 = toIssueKey("30");
-    const node = map[key30];
-
-    assertEquals(typeof node, "object", "unresolved node should exist");
-    assertEquals(node.key, key30);
-    assertEquals(node.resolved, false, "out-of-scope node should be unresolved");
-    assertEquals(node.status, null, "no status field in mock config");
-    assertEquals(node.blocks, [toIssueKey("10")], "unresolved node blocks story 10 (third pass)");
-    assertEquals(node.blocked_by, []);
-  },
-);
-
-Deno.test("A-bug-1: circular dependency A↔B - direction is consistent", () => {
-  // Story 10 blocked by 20, AND 20 blocked by 10
-  const story10 = makeIssueStory({
-    key: "10",
-    refId: "PVTI_10",
-    blocked_by: [makeDepEntry("20", "Story B", "PVTI_20")],
-  });
-  const story20 = makeIssueStory({
-    key: "20",
-    refId: "PVTI_20",
-    blocked_by: [makeDepEntry("10", "Story A", "PVTI_10")],
-  });
-
-  const stories: Story[] = [story10, story20];
-  const allItems: ProjectItem[] = [];
-
-  const map = buildDependencyMap(stories, allItems, makeConfig());
-
-  const keyA = toIssueKey("10");
-  const keyB = toIssueKey("20");
-
-  // Both are in each other's blocked_by (upstream deps)
-  assertEquals(map[keyA].blocked_by, [keyB]);
-  assertEquals(map[keyB].blocked_by, [keyA]);
-
-  // Both block each other (downstream)
-  assertEquals(map[keyA].blocks, [keyB]);
-  assertEquals(map[keyB].blocks, [keyA]);
+  assertEquals(Object.keys(map).length, 0);
+  assertEquals(blockerStory.status, "Done");
 });
 
-Deno.test("draft stories are excluded from dependency map", () => {
-  // Draft story should be skipped (kind !== "issue")
-  const draft: Story = {
-    kind: "draft",
-    key: null,
-    ref: makeRef("PVTI_draft"),
-    title: "Draft Story",
-    body: "",
-    type: TEST_TYPE,
-    status: null,
-    sprint: null,
-    story_points: null,
-    priority: null,
-    assignees: [],
-    labels: [],
-    created_at: "2025-01-01T00:00:00Z",
-    updated_at: "2025-01-01T00:00:00Z",
-    url: null,
-    epic: null,
-    blocked_by: [],
-  } as Story;
+Deno.test("buildDependencyMap - includes Done blocker in active sprint", () => {
+  const items = [
+    makeListing({
+      key: "10",
+      blocked_by: [makeDepEntry("30", "Sprint done blocker", "PVTI_30")],
+    }),
+  ];
+  const allItems = [
+    makeProjectItem({
+      id: "PVTI_30",
+      key: "30",
+      title: "Sprint done blocker",
+      status: "Done",
+      sprint: "Sprint 5",
+    }),
+  ];
 
-  const stories: Story[] = [draft];
-  const allItems: ProjectItem[] = [];
+  const map = buildDependencyMap(items, allItems, configWithTerminalDone);
 
-  const map = buildDependencyMap(stories, allItems, makeConfig());
+  assertEquals(typeof map[toIssueKey("30")], "object");
+});
 
-  assertEquals(Object.keys(map).length, 0, "draft stories should not appear in dependency map");
+Deno.test("buildDependencyMap - empty when no blocked_by references", () => {
+  const items = [makeListing({ key: "10" }), makeListing({ key: "20" })];
+  const map = buildDependencyMap(items, [], makeConfig());
+  assertEquals(Object.keys(map).length, 0);
 });
 
 // =============================================================================
@@ -295,61 +292,22 @@ Deno.test("draft stories are excluded from dependency map", () => {
 // =============================================================================
 
 Deno.test({
-  name: "buildDependencyMap - handles all real project items without throwing",
+  name: "buildDependencyMap - handles limited real listings without throwing",
   fn() {
-    // Smoke test: buildStoryFromRaw + buildDependencyMap should not throw
-    // on real API response shapes. This catches runtime errors caused by
-    // schema drift or unexpected null values in live API responses.
     assertEquals(realStories.length > 0, true, "should have real stories from fixtures");
 
-    const map = buildDependencyMap(realStories, allRealItems, makeConfig());
+    const listings = realStories
+      .filter((s) => s.kind === "issue")
+      .slice(0, 25)
+      .map((story) => toItemListing(story));
 
-    // Verify every issue story has a node in the map
-    const issueStories = realStories.filter((s) => s.kind === "issue");
-    for (const story of issueStories) {
-      const key = toIssueKey(story.key!);
-      assertEquals(typeof map[key], "object", `node should exist for issue story ${story.key}`);
-      assertEquals(map[key].resolved, true, `node for ${story.key} should be resolved`);
-    }
+    const map = buildDependencyMap(listings, allRealItems, makeConfig());
+    const returnedKeys = new Set(listings.map((item) => item.ref.key));
 
-    // Verify the map has no orphaned blocks pointing to non-existent nodes
-    for (const [, node] of Object.entries(map)) {
-      for (const depKey of node.blocked_by) {
-        assertEquals(
-          typeof map[depKey],
-          "object",
-          `blocked_by target ${depKey} (from ${node.key}) must exist in map`,
-        );
-      }
-      for (const blockKey of node.blocks) {
-        assertEquals(
-          typeof map[blockKey],
-          "object",
-          `blocks target ${blockKey} (computed for ${node.key}) must exist in map`,
-        );
-      }
-    }
-  },
-});
-
-Deno.test({
-  name: "buildDependencyMap - real items have consistent direction (blocks ↔ blocked_by)",
-  fn() {
-    const map = buildDependencyMap(realStories, allRealItems, makeConfig());
-
-    // For every node: for each depKey in blocked_by, the target's blocks
-    // must include the source node's key.
-    for (const [nodeKey, node] of Object.entries(map)) {
-      for (const depKey of node.blocked_by) {
-        const target = map[depKey];
-        if (target) {
-          assertEquals(
-            target.blocks.includes(toIssueKey(nodeKey)),
-            true,
-            `${depKey}.blocks should include ${nodeKey} because ${nodeKey}.blocked_by includes ${depKey}`,
-          );
-        }
-      }
+    for (const [key, pointer] of Object.entries(map)) {
+      assertEquals(returnedKeys.has(key), false, "map must not repeat returned items");
+      assertEquals(typeof pointer.ref.id, "string");
+      assertFalse("blocks" in pointer);
     }
   },
 });

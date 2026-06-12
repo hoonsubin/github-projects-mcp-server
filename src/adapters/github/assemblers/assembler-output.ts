@@ -10,6 +10,8 @@ import type { GitHubBootState } from "../bootstrap.ts";
 import type { AssemblerOutput } from "./types.ts";
 import type { ResolvedItemFilter } from "../../../scrum/ports.ts";
 import type { BacklogItemListing } from "../../../domain/types.ts";
+import type { ProjectItem } from "../types.ts";
+import { buildDependencyMap } from "../read-services/story-query-service.ts";
 
 /** Backfill sprint.ref.id from iteration config (replaces hardcoded "" in listings). */
 export const backfillSprintRefs = (
@@ -42,7 +44,11 @@ export const finalizeAssemblerOutput = (
   output: AssemblerOutput,
   filter: ResolvedItemFilter,
   config: GitHubBootState,
+  allItems: readonly ProjectItem[] = [],
 ): AssemblerOutput => {
   const items = backfillSprintRefs(output.items, config).slice(0, filter.limit);
-  return { ...output, items };
+  const dependencyMap = filter.include_dependencies
+    ? buildDependencyMap(items, allItems, config)
+    : null;
+  return { ...output, items, dependencyMap };
 };

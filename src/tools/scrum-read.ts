@@ -134,17 +134,18 @@ export const registerScrumReadTools = (
           assignee string - filter by GitHub login
           estimated boolean - true = estimated only; false = unestimated only
           sprint_ref "current" | "next" | "<name>" - filter by sprint (named or historical)
-          include_dependencies boolean (default false) - include dependency_map.
-                   EXPENSIVE: triggers a full graph traversal. Only pass true for ReadinessCheck
-                   (verify all blocked_by items are Done before sprint entry) or SprintReport
-                   (count items with unresolved upstream dependencies). Default false for all other queries.
+          include_dependencies boolean (default false) - include dependency_map: shallow pointers
+                   to active off-listing blockers (not Done, or in the active sprint) referenced by
+                   items[].blocked_by. Blockers already in items[] are omitted. Use for ReadinessCheck
+                   or SprintReport; default false for all other queries.
           limit number (default 50)
 
         Returns: {
           items: BacklogItemListing[],
           total_count: number,           ← top-level field, NOT inside scope_summary
           scope_summary: { sprint_count: number | null, backlog_count: number | null },
-          dependency_map: DependencyMap | null  - populated only when include_dependencies=true
+          dependency_map: DependencyMap | null  - off-listing active blocker pointers only
+                   (key, ref, title, status); null when include_dependencies=false
         }`,
       inputSchema: FindItemsSchema.shape,
       outputSchema: ItemSearchResultSchema.shape,

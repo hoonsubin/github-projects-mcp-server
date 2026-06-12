@@ -1150,12 +1150,15 @@ mutation AddComment($subjectId: ID!, $body: String!) {
 # MUTATIONS - Field management
 # ══════════════════════════════════════════════════════════════════════════════
 
-mutation UpdateField($projectId: ID!, $fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) {
+mutation UpdateField($fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) {
   updateProjectV2Field(input: {
-    projectId: $projectId
     fieldId: $fieldId
     singleSelectOptions: $options
-  }) { projectV2Field { id } }
+  }) {
+    projectV2Field {
+      ... on ProjectV2SingleSelectField { id }
+    }
+  }
 }
 
 mutation ConvertDraftIssue($itemId: ID!, $repositoryId: ID!) {

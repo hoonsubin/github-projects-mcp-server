@@ -12,7 +12,7 @@ import type { AssemblerOutput } from "../assemblers/types.ts";
 import { buildStoryFromRaw, resolveDependencyRefs } from "../mappers.ts";
 import { toItemListing } from "../../../scrum/utils/listing-mappers.ts";
 import type { ItemFieldValue, ProjectItem } from "../types.ts";
-import type { BacklogItemListing, DependencyMap, Story } from "../../../domain/types.ts";
+import type { BacklogItemListing, Story } from "../../../domain/types.ts";
 import { log } from "../../../services/logger.ts";
 
 // Field names that map to canonical top-level properties and must never appear
@@ -136,12 +136,6 @@ export class ResultNormalizer {
     filterFn: (story: Story) => boolean,
     options: {
       readonly allItems: readonly ProjectItem[];
-      readonly includeDependencies: boolean;
-      readonly buildDependencyMap: (
-        stories: readonly Story[],
-        allItems: readonly ProjectItem[],
-        config: GitHubBootState,
-      ) => DependencyMap;
     },
   ): AssemblerOutput {
     const warnings: string[] = [];
@@ -179,15 +173,11 @@ export class ResultNormalizer {
       );
     }
 
-    const dependencyMap = options.includeDependencies
-      ? options.buildDependencyMap(resolvedStories, options.allItems, this.config)
-      : null;
-
     return {
       items: enriched,
       totalCount: filteredStories.length,
       scopeSummary: { sprint_count: sprintCount, backlog_count: backlogCount },
-      dependencyMap,
+      dependencyMap: null,
       warnings,
     };
   }

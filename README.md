@@ -169,7 +169,7 @@ node /path/to/server.mjs --config /path/to/.github/scrum/config.yml --root /path
 
 ### Docker
 
-The project includes a [`docker-compose.yml`](docker-compose.yml) for containerised deployment. The container exposes port 3030 by default.
+The project includes a [`docker-compose.yml`](docker-compose.yml) for containerised deployment. The container exposes port **3000** by default (`3000:3000` in compose).
 
 ```bash
 cp .env.example .env
@@ -177,7 +177,7 @@ cp .env.example .env
 docker compose up -d
 ```
 
-The server health check is available at `http://localhost:3030/health`. You can connect an Open WebUI instance by pointing it at `http://scrum-master-toolkit:3030/mcp`.
+The server health check is available at `http://localhost:3000/health`. Connect an MCP client via Streamable HTTP at `http://scrum-master-toolkit:3000/mcp` (or `http://localhost:3000/mcp` from the host). Clients must send `Accept: application/json, text/event-stream` on every `POST /mcp` request.
 
 ## Deno Tasks
 

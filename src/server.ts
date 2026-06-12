@@ -333,9 +333,15 @@ const runHttp = (): void => {
     const now = Date.now();
     for (const [id, lastActive] of sessionActivity) {
       if (now - lastActive > SESSION_IDLE_TIMEOUT_MS) {
+        const transport = transports[id];
         delete transports[id];
         sessionActivity.delete(id);
         log.info(`session expired: ${id}`);
+        transport?.close().catch((err: unknown) => {
+          log.warn(`session close failed: ${id}`, {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        });
       }
     }
   }, 60_000);
@@ -370,7 +376,7 @@ const runHttp = (): void => {
       const forwarded = req.headers.get("x-forwarded-for");
       if (forwarded) return forwarded.split(",")[0].trim();
     }
-    return (info.remoteAddr as Deno.NetAddr).hostname;
+    return (info.remoteAddr as Deno.NetAddr | undefined)?.hostname ?? "127.0.0.1";
   };
 
   Deno.serve(

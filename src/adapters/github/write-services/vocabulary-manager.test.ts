@@ -22,6 +22,8 @@ Deno.test("addVocabulary - adds project board status option when field is not is
 
   assertEquals(result, { created: true });
   assertStringIncludes(gh.graphqlCalls[1].queryExcerpt, "UpdateField");
+  assertEquals(gh.graphqlCalls[1].variables.projectId, undefined);
+  assertEquals(gh.graphqlCalls[1].variables.fieldId, "PVTF_status");
 });
 
 Deno.test("addVocabulary - adds org issue field option when status is issue-backed", async () => {

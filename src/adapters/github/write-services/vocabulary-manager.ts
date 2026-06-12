@@ -136,7 +136,7 @@ export class VocabularyManager {
     ];
     await this.ctx.gh.graphql(
       UPDATE_FIELD_MUTATION,
-      { projectId: this.ctx.config.live.projectId, fieldId, options: updatedOptions },
+      { fieldId, options: updatedOptions },
     );
     return { created: true };
   }

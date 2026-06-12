@@ -14,7 +14,6 @@ import { ResultNormalizer } from "../query-strategies/result-normalizer.ts";
 import { buildSearchQueryString } from "../query-strategies/search-query-builder.ts";
 import { searchIssuesToProjectItems } from "../query-strategies/search-result-normalizer.ts";
 import { buildItemFilterFn } from "../query-strategies/item-filter.ts";
-import { buildDependencyMap } from "../read-services/story-query-service.ts";
 import { finalizeAssemblerOutput } from "./assembler-output.ts";
 import { SEARCH_ISSUES_QUERY } from "../queries.ts";
 import { searchIssuesExtractor, type SearchIssuesResponse } from "./extractors.ts";
@@ -101,8 +100,6 @@ export class SearchApiAssembler {
     const filterFn = buildItemFilterFn(resolvedFilter, this.config, projectItems);
     const output = this.normalizer.normalize(scopedResult, filterFn, {
       allItems: projectItems,
-      includeDependencies: resolvedFilter.include_dependencies,
-      buildDependencyMap,
     });
 
     const warnings = [...output.warnings];
@@ -113,7 +110,12 @@ export class SearchApiAssembler {
       );
     }
 
-    return finalizeAssemblerOutput({ ...output, warnings }, resolvedFilter, this.config);
+    return finalizeAssemblerOutput(
+      { ...output, warnings },
+      resolvedFilter,
+      this.config,
+      projectItems,
+    );
   }
 }
 

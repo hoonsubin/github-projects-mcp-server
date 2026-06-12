@@ -44,20 +44,14 @@ export const BacklogItemListingSchema = z.object({
   custom_fields: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])),
 }).strict();
 
-const DependencyNodeSchema = z.object({
+const DependencyPointerSchema = z.object({
   key: z.string(),
   title: z.string().nullable(),
   status: z.string().nullable(),
-  sprint: z.string().nullable(),
-  epic_name: z.string().nullable(),
-  story_points: z.number().nullable(),
-  priority: z.string().nullable(),
-  resolved: z.boolean(),
-  blocks: z.array(z.string()),
-  blocked_by: z.array(z.string()),
+  ref: EntityRefSchema,
 }).strict();
 
-const DependencyMapSchema = z.record(z.string(), DependencyNodeSchema);
+const DependencyMapSchema = z.record(z.string(), DependencyPointerSchema);
 
 export const ItemSearchResultSchema = z.object({
   items: z.array(BacklogItemListingSchema),
