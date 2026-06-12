@@ -14,6 +14,38 @@ const GITHUB_API_URL = "https://api.github.com/graphql";
 const REST_API_URL = "https://api.github.com";
 const REQUEST_TIMEOUT_MS = 30_000;
 
+// ── Retry policy ────────────────────────────────────────────────────────────
+
+const MAX_RETRIES = 3;
+/** Backoff delays in ms between attempts (attempt 0→1, 1→2). */
+const RETRY_DELAY_MS = [300, 900];
+
+/**
+ * Returns true for transient TCP errors that are safe to retry:
+ * - ECONNRESET (os error 54 on macOS, 104 on Linux): remote peer sent TCP RST
+ * - ECONNREFUSED: server not yet listening (rare, but safe to retry)
+ * - ETIMEDOUT: connection-phase timeout before HTTP was established
+ * - EPIPE / ECONNABORTED: write to a closed connection
+ *
+ * AbortError (our own 30s timeout) is intentionally NOT retried.
+ */
+const isTransientNetworkError = (err: unknown): boolean => {
+  if (!(err instanceof Error)) return false;
+  const msg = err.message.toLowerCase();
+  return (
+    msg.includes("connection reset") ||
+    msg.includes("connection refused") ||
+    msg.includes("connection aborted") ||
+    msg.includes("econnreset") ||
+    msg.includes("econnrefused") ||
+    msg.includes("etimedout") ||
+    msg.includes("broken pipe") ||
+    msg.includes("epipe") ||
+    // Deno/hyper format: "client error (Connect): ..."
+    (msg.includes("client error") && msg.includes("connect"))
+  );
+};
+
 // ── REST API response wrapper ───────────────────────────────────────────────────
 
 /**
@@ -77,42 +109,72 @@ export const graphql = async <T>(
 
   log.debug(`→ graphql:${op}`, variables);
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let response: Response | undefined;
+  let lastErr: unknown;
 
-  let response: Response;
-  try {
-    response = await fetch(GITHUB_API_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        "User-Agent": "scrum-master-toolkit-server/1.0.0",
-        "X-Github-Next-Global-ID": "1", // opt-in to new global node IDs
-      },
-      body: JSON.stringify({ query, variables }),
-      signal: controller.signal,
-    });
-  } catch (err: unknown) {
-    const ms = Math.round(performance.now() - t0);
-    if (err instanceof Error && err.name === "AbortError") {
-      log.debug(`✗ graphql:${op} timed out after ${ms}ms`);
-      throw new GitHubApiError("GraphQL request timed out after 30s.", {
-        code: "NETWORK_ERROR",
-        recovery:
-          "Check your network connection and retry. If timeouts persist, GitHub may be experiencing an outage.",
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      response = await fetch(GITHUB_API_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "User-Agent": "scrum-master-toolkit-server/1.0.0",
+          "X-Github-Next-Global-ID": "1", // opt-in to new global node IDs
+        },
+        body: JSON.stringify({ query, variables }),
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
+      break; // success — exit retry loop
+    } catch (err: unknown) {
+      clearTimeout(timeout);
+      if (err instanceof Error && err.name === "AbortError") {
+        const ms = Math.round(performance.now() - t0);
+        log.debug(`✗ graphql:${op} timed out after ${ms}ms`);
+        throw new GitHubApiError("GraphQL request timed out after 30s.", {
+          code: "NETWORK_ERROR",
+          recovery:
+            "Check your network connection and retry. If timeouts persist, GitHub may be experiencing an outage.",
+        });
+      }
+      if (isTransientNetworkError(err) && attempt < MAX_RETRIES - 1) {
+        const delay = RETRY_DELAY_MS[attempt];
+        log.debug(
+          `⟳ graphql:${op} transient error on attempt ${attempt + 1}, retrying in ${delay}ms`,
+          err,
+        );
+        await new Promise((r) => setTimeout(r, delay));
+        lastErr = err;
+        continue;
+      }
+      const ms = Math.round(performance.now() - t0);
+      log.debug(`✗ graphql:${op} network error (${ms}ms)`, err);
+      throw new GitHubApiError(
+        `GraphQL network error: ${err instanceof Error ? err.message : String(err)}`,
+        {
+          code: "NETWORK_ERROR",
+          recovery: "Check your network connection and retry.",
+        },
+      );
     }
-    log.debug(`✗ graphql:${op} network error (${ms}ms)`, err);
+  }
+
+  // All retries exhausted with transient errors
+  if (!response) {
+    const ms = Math.round(performance.now() - t0);
+    log.debug(`✗ graphql:${op} failed after ${MAX_RETRIES} attempts (${ms}ms)`, lastErr);
     throw new GitHubApiError(
-      `GraphQL network error: ${err instanceof Error ? err.message : String(err)}`,
+      `GraphQL network error after ${MAX_RETRIES} attempts: ${
+        lastErr instanceof Error ? lastErr.message : String(lastErr)
+      }`,
       {
         code: "NETWORK_ERROR",
         recovery: "Check your network connection and retry.",
       },
     );
-  } finally {
-    clearTimeout(timeout);
   }
 
   const ms = Math.round(performance.now() - t0);
@@ -264,37 +326,69 @@ export const rest = async <T>(
     headers["Content-Type"] = "application/json";
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let response: Response | undefined;
+  let lastErr: unknown;
 
-  let response: Response;
-  try {
-    response = await fetch(url.toString(), {
-      method,
-      headers,
-      body,
-      signal: controller.signal,
-    });
-  } catch (err: unknown) {
-    const ms = Math.round(performance.now() - t0);
-    if (err instanceof Error && err.name === "AbortError") {
-      log.debug(`✗ rest:${method} ${path} timed out after ${ms}ms`);
-      throw new GitHubApiError("REST request timed out after 30s.", {
-        code: "NETWORK_ERROR",
-        recovery:
-          "Check your network connection and retry. If timeouts persist, GitHub may be experiencing an outage.",
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      response = await fetch(url.toString(), {
+        method,
+        headers,
+        body,
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
+      break; // success — exit retry loop
+    } catch (err: unknown) {
+      clearTimeout(timeout);
+      if (err instanceof Error && err.name === "AbortError") {
+        const ms = Math.round(performance.now() - t0);
+        log.debug(`✗ rest:${method} ${path} timed out after ${ms}ms`);
+        throw new GitHubApiError("REST request timed out after 30s.", {
+          code: "NETWORK_ERROR",
+          recovery:
+            "Check your network connection and retry. If timeouts persist, GitHub may be experiencing an outage.",
+        });
+      }
+      if (isTransientNetworkError(err) && attempt < MAX_RETRIES - 1) {
+        const delay = RETRY_DELAY_MS[attempt];
+        log.debug(
+          `⟳ rest:${method} ${path} transient error on attempt ${
+            attempt + 1
+          }, retrying in ${delay}ms`,
+          err,
+        );
+        await new Promise((r) => setTimeout(r, delay));
+        lastErr = err;
+        continue;
+      }
+      const ms = Math.round(performance.now() - t0);
+      log.debug(`✗ rest:${method} ${path} network error (${ms}ms)`, err);
+      throw new GitHubApiError(
+        `REST network error: ${err instanceof Error ? err.message : String(err)}`,
+        {
+          code: "NETWORK_ERROR",
+          recovery: "Check your network connection and retry.",
+        },
+      );
     }
-    log.debug(`✗ rest:${method} ${path} network error (${ms}ms)`, err);
+  }
+
+  // All retries exhausted with transient errors
+  if (!response) {
+    const ms = Math.round(performance.now() - t0);
+    log.debug(`✗ rest:${method} ${path} failed after ${MAX_RETRIES} attempts (${ms}ms)`, lastErr);
     throw new GitHubApiError(
-      `REST network error: ${err instanceof Error ? err.message : String(err)}`,
+      `REST network error after ${MAX_RETRIES} attempts: ${
+        lastErr instanceof Error ? lastErr.message : String(lastErr)
+      }`,
       {
         code: "NETWORK_ERROR",
         recovery: "Check your network connection and retry.",
       },
     );
-  } finally {
-    clearTimeout(timeout);
   }
 
   const ms = Math.round(performance.now() - t0);

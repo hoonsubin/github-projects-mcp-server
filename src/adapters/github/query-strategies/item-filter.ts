@@ -171,7 +171,7 @@ export const buildItemFilterFn = (
       const hasActiveBlocker = story.blocked_by.some((dep) => {
         const status = itemKeyStatusMap.get(dep.key);
         // status == null catches both null (no status set) and undefined (key not on board)
-        return status == null || !terminalStatuses.has(status);
+        return status === null || status === undefined || !terminalStatuses.has(status);
       });
       if (filter.has_blockers !== hasActiveBlocker) return false;
     }

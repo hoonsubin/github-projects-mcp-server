@@ -38,20 +38,19 @@ export const applyOrientDetail = (
     };
   }
 
-  // Session mode: strip everything the agent doesn't need at session start.
+  // Session mode: strip only the heavy API-fetched label inventory, which is not
+  // needed at session start and is available via detail:"full" when required.
   //
-  // labels.existing is omitted — the full label inventory is not needed upfront
-  // and is available via detail:"full" when the agent actually needs to assign labels.
-  // Only labels.missing is preserved so vocabulary gaps are still surfaced.
+  // Config-derived fields (team, DoR, DoD, autonomy) and backend-resolved
+  // template_uris are retained — they are static, small, and needed at every
+  // session start for readiness checks and ceremony flows.
   //
-  // The top-level missing_options field is redundant with the per-field
-  // missing_options already present in fields.status and fields.priority,
-  // so it is cleared to avoid duplicated noise in a context-constrained response.
+  // Null values and empty arrays in the output are pruned by handleOrient before
+  // serialization, so callers never see noise like `team: null` or `missing_options: []`.
   return {
     ...result,
     platform_state: {
       ...result.platform_state,
-      missing_options: [],
       labels: {
         existing: [],
         expected: [],
@@ -61,19 +60,13 @@ export const applyOrientDetail = (
         active: epics,
         total_count: result.platform_state.epics.total_count,
       },
-      template_uris: null,
       iterations: {
         active: result.platform_state.iterations.active,
         next: result.platform_state.iterations.next,
         completed_count: result.platform_state.iterations.completed_count,
       },
+      // template_uris, deadline_field: pass through (config-derived or config-keyed)
     },
-    vocabulary: {
-      ...result.vocabulary,
-      team: null,
-      dor: null,
-      dod: null,
-      autonomy: null,
-    },
+    // vocabulary: all fields pass through — team/dor/dod/autonomy are config-derived
   };
 };

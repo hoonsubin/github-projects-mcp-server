@@ -19,9 +19,7 @@ import {
   AddVocabularyResultSchema,
   LogImpedimentResultSchema,
   PlanSprintResultSchema,
-  StorySchema,
   UpdateImpedimentResponseSchema,
-  WriteAckSchema,
 } from "../schemas/scrum-outputs.ts";
 import {
   handleAddVocabulary,
@@ -75,10 +73,30 @@ export const registerScrumWriteTools = (
           value  display name to add (e.g. config-declared "Blocked", or any label like "test-label")`,
       inputSchema: AddVocabularySchema.shape,
       outputSchema: AddVocabularyResultSchema.shape,
-      annotations: { role: "admin" },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
     },
-    (params: z.infer<typeof AddVocabularySchema>) =>
-      handleAddVocabulary(backend, scrumConfig, sessionCache, params),
+    async (params: z.infer<typeof AddVocabularySchema>) => {
+      const result = await handleAddVocabulary(backend, scrumConfig, sessionCache, params);
+      // When a new vocabulary entry is created, the valid values for downstream
+      // tool calls change. Notify connected clients so they can re-fetch tool
+      // descriptions without a session restart.
+      if (!result.isError) {
+        try {
+          const payload = JSON.parse(result.content[0].text) as { created?: boolean };
+          if (payload.created === true) {
+            await server.sendToolListChanged();
+          }
+        } catch {
+          // Best-effort — never let notification failure affect the tool response.
+        }
+      }
+      return result;
+    },
   );
 
   server.registerTool(
@@ -113,8 +131,12 @@ export const registerScrumWriteTools = (
 
         Returns: WriteAck by default, or Story when response="story".`,
       inputSchema: SetFieldSchema.shape,
-      outputSchema: WriteAckSchema.shape,
-      annotations: { destructiveHint: false, idempotentHint: false },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
     },
     (params: z.input<typeof SetFieldSchema>) => handleSetField(backend, scrumConfig, params),
   );
@@ -147,8 +169,12 @@ export const registerScrumWriteTools = (
 
         Returns: WriteAck by default, or Story when response="story".`,
       inputSchema: UpdateStorySchema.shape,
-      outputSchema: WriteAckSchema.shape,
-      annotations: { role: "admin" },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
     },
     (params: z.input<typeof UpdateStorySchema>) => handleUpdateStory(backend, params),
   );
@@ -179,8 +205,12 @@ export const registerScrumWriteTools = (
 
         Returns: created Story object, or the same fields with partialFailure: true and failedFields[].`,
       inputSchema: CreateStorySchema.shape,
-      outputSchema: StorySchema.shape,
-      annotations: { role: "admin" },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
     },
     (params: z.infer<typeof CreateStorySchema>) => handleCreateStory(backend, params),
   );
@@ -206,7 +236,12 @@ export const registerScrumWriteTools = (
         The operation continues through individual failures - check skipped[] for errors.`,
       inputSchema: PlanSprintSchema.shape,
       outputSchema: PlanSprintResultSchema.shape,
-      annotations: { destructiveHint: true, idempotentHint: false },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
     },
     (params: z.infer<typeof PlanSprintSchema>) => handlePlanSprint(backend, params),
   );
@@ -232,7 +267,12 @@ export const registerScrumWriteTools = (
         Returns: the created impediment Story object.`,
       inputSchema: LogImpedimentSchema.shape,
       outputSchema: LogImpedimentResultSchema.shape,
-      annotations: { role: "admin" },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
     },
     (params: z.infer<typeof LogImpedimentSchema>) =>
       handleLogImpediment(backend, scrumConfig, params),
@@ -253,7 +293,12 @@ export const registerScrumWriteTools = (
         Returns: the updated ImpedimentListing.`,
       inputSchema: UpdateImpedimentSchema.shape,
       outputSchema: UpdateImpedimentResponseSchema.shape,
-      annotations: { role: "admin" },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
     },
     (params: z.infer<typeof UpdateImpedimentSchema>) => handleUpdateImpediment(backend, params),
   );

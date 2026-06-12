@@ -2,12 +2,39 @@
 // src/tools/response-serialize.ts - Compact MCP payloads (omit noise, no pretty-print)
 // =============================================================================
 
+// Empty arrays that add no information when empty — omitted from agent text.
 const STRIP_EMPTY_ARRAY_KEYS = new Set([
   "blocks",
   "dependency_map",
+  "blocked_by",
+  "labels",
+  "assignees",
+  "linked_pull_requests",
+  "acceptance_criteria",
 ]);
 
 const STRIP_EMPTY_OBJECT_KEYS = new Set(["custom_fields"]);
+
+// Nullable fields where null means "not set" — absence is equivalent for agents.
+// Stripped from agent text to reduce noise; structuredContent retains full payload.
+const STRIP_NULL_KEYS = new Set([
+  "type", // item type (null = unset)
+  "sprint", // sprint name string (null = backlog)
+  "story_points", // null = unestimated
+  "priority", // null = unset
+  "kind", // null = unset
+  "key", // null = draft (no issue number string)
+  "url", // null = no URL
+  "epic", // null = not assigned to epic
+  "linked_artifacts", // null = none
+  "comments", // null = none
+  "goal", // sprint/epic goal (null = not set)
+  "description", // null = no description
+  "raised_by", // impediment raiser (null = unknown)
+  "resolved_at", // null = not resolved
+  "completed_at", // null = not completed
+  "number", // null = draft issue (no GitHub issue number assigned yet)
+]);
 
 /** Max bytes for agent-visible tool text; structuredContent keeps the full payload. */
 export const MAX_TOOL_TEXT_BYTES = 100_000;
@@ -15,7 +42,7 @@ export const MAX_TOOL_TEXT_BYTES = 100_000;
 const isEmptyValue = (key: string, value: unknown): boolean => {
   if (value === undefined) return true;
   if (value === "") return true;
-  if (value === null) return false;
+  if (value === null) return STRIP_NULL_KEYS.has(key);
 
   if (Array.isArray(value) && value.length === 0) {
     return STRIP_EMPTY_ARRAY_KEYS.has(key);

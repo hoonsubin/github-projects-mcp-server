@@ -171,7 +171,7 @@ Deno.test("scrum_get_sprint_data - config contract", async () => {
         `status "${item.status}" must be a config display value`,
       );
     }
-    if (item.type !== null) {
+    if (typeof item.type === "string") {
       assertEquals(
         allowedTypes.has(item.type),
         true,

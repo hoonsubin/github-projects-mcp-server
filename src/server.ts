@@ -168,6 +168,7 @@ const createMcpServer = async (): Promise<McpServer> => {
     {
       capabilities: {
         logging: {},
+        tools: { listChanged: true },
       },
       instructions: SCRUM_SERVER_INSTRUCTIONS,
     },

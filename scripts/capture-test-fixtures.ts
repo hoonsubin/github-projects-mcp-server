@@ -91,8 +91,10 @@ const captureConfig = async (configPath: string): Promise<CaptureResult> => {
     labels: [],
     assignee: "",
     estimated: undefined,
+    has_blockers: undefined,
     sprint_ref: null,
     include_dependencies: false,
+    fields: "full",
     limit: 50,
   });
   if (!findResult.value) {

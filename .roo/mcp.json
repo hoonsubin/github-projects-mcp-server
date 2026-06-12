@@ -83,7 +83,8 @@
 			"alwaysAllow": [
 				"fetch_typescript_sdk_docs",
 				"search_typescript_sdk_docs",
-				"search_typescript_sdk_code"
+				"search_typescript_sdk_code",
+				"fetch_generic_url_content"
 			]
 		},
 		"mcp-specs": {

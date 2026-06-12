@@ -87,6 +87,10 @@ Deno.test("applyOrientDetail - session caps epics and strips vocabulary", () => 
   };
   const result = applyOrientDetail(manyEpics, "session");
   assertEquals(result.platform_state.epics.active.length, 5);
-  assertEquals(result.vocabulary.team, null);
-  assertEquals(result.platform_state.template_uris, null);
+  // Session mode preserves config-derived vocabulary fields and template_uris.
+  assertEquals(result.vocabulary.team, [{ name: "Alice", role: "developer" }]);
+  assertEquals(result.platform_state.template_uris, { feature: "scrum://template/feature" });
+  // Labels are stripped to expected/missing arrays only.
+  assertEquals(result.platform_state.labels.existing, []);
+  assertEquals(result.platform_state.labels.missing, []);
 });

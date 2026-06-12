@@ -2,7 +2,6 @@ export const snapshot = {};
 
 snapshot[`golden: scrum_orient handler output 1`] = `
 \`{
-  "warnings": [],
   "platform_state": {
     "fields": {
       "status": {
@@ -14,8 +13,7 @@ snapshot[`golden: scrum_orient handler output 1`] = `
           "In Review",
           "Blocked",
           "Done"
-        ],
-        "missing_options": []
+        ]
       },
       "sprint": {
         "exists": true
@@ -30,19 +28,12 @@ snapshot[`golden: scrum_orient handler output 1`] = `
           "Should",
           "Could",
           "Won't"
-        ],
-        "missing_options": []
+        ]
       },
       "type_field": {
         "exists": true,
         "configured": true
       }
-    },
-    "missing_options": [],
-    "labels": {
-      "existing": [],
-      "expected": [],
-      "missing": []
     },
     "iterations": {
       "active": {
@@ -59,7 +50,6 @@ snapshot[`golden: scrum_orient handler output 1`] = `
       "next": {
         "id": "IT_fake_next",
         "name": "Sprint 2",
-        "goal": null,
         "start_date": "2026-01-15",
         "end_date": "2026-01-29",
         "duration_days": 14,
@@ -76,15 +66,19 @@ snapshot[`golden: scrum_orient handler output 1`] = `
             "id": "MI_fake_epic"
           },
           "name": "Config Epic",
-          "description": null,
           "status": "open",
           "open_item_count": 1
         }
       ],
       "total_count": 1
     },
-    "template_uris": null,
-    "deadline_field": null
+    "template_uris": {
+      "bug": "scrum://template/bug",
+      "tech_debt": "scrum://template/tech_debt",
+      "spike": "scrum://template/spike",
+      "user_story": "scrum://template/user_story",
+      "impediment": "scrum://template/impediment"
+    }
   },
   "vocabulary": {
     "status": {
@@ -123,12 +117,29 @@ snapshot[`golden: scrum_orient handler output 1`] = `
       "velocity_window": 4,
       "length_weeks": 2
     },
-    "team": null,
-    "dor": null,
-    "dod": null,
-    "autonomy": null
-  },
-  "_scrum_glossary": "status = workflow column; sprint = iteration assignment; Product Backlog = sprint:backlog scope; Sprint Backlog = items in the active iteration."
+    "team": [
+      {
+        "name": "Hoon Kim",
+        "role": "product_owner",
+        "contact": "hoon@example.com"
+      }
+    ],
+    "dor": [
+      "Written as a user story (who / what / why)",
+      "Acceptance criteria defined and agreed by the team",
+      "Estimated in story points",
+      "Dependencies identified and de-risked",
+      "Completable within one sprint"
+    ],
+    "dod": [
+      "Code or output reviewed and approved by the team",
+      "All acceptance criteria met and verified",
+      "Documentation updated for the shared knowledge space"
+    ],
+    "autonomy": {
+      "require_confirmation_above_n_items": 5
+    }
+  }
 }\`
 `;
 
@@ -151,8 +162,7 @@ snapshot[`golden: scrum_get_sprint_data handler output 1`] = `
     "remaining_points": 3,
     "blocked_count": 0,
     "unassigned_count": 0
-  },
-  "_scrum_glossary": "status = workflow column; sprint = iteration assignment; Product Backlog = sprint:backlog scope; Sprint Backlog = items in the active iteration."
+  }
 }'
 `;
 
@@ -166,14 +176,14 @@ snapshot[`golden: scrum_find_items handler output 1`] = `
       },
       "title": "Config-shaped fixture story",
       "status": "In Progress",
-      "story_points": 3,
-      "blocked_by": []
+      "story_points": 3
     }
   ],
   "total_count": 1,
   "scope_summary": {
     "sprint_count": 1,
     "backlog_count": 0
-  }
+  },
+  "fields_mode": "compact"
 }'
 `;
