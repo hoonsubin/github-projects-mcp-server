@@ -26,10 +26,10 @@ Deno.test("buildSprintSummary - counts active vs done", () => {
     item({ id: "2", title: "b", status: "Done", story_points: 5, has_blockers: true }),
   ];
   const summary = buildSprintSummary(items, terminal);
-  assertEquals(summary.committed_count, 2);
+  assertEquals(summary.total_count, 2);
   assertEquals(summary.active_count, 1);
   assertEquals(summary.done_count, 1);
-  assertEquals(summary.committed_points, 8);
+  assertEquals(summary.total_points, 8);
   assertEquals(summary.remaining_points, 3);
   assertEquals(summary.blocked_count, 1);
 });

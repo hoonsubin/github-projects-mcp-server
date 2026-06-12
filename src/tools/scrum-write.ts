@@ -176,7 +176,7 @@ export const registerScrumWriteTools = (
         openWorldHint: true,
       },
     },
-    (params: z.input<typeof UpdateStorySchema>) => handleUpdateStory(backend, params),
+    (params: z.input<typeof UpdateStorySchema>) => handleUpdateStory(backend, scrumConfig, params),
   );
 
   server.registerTool(
@@ -212,7 +212,7 @@ export const registerScrumWriteTools = (
         openWorldHint: true,
       },
     },
-    (params: z.infer<typeof CreateStorySchema>) => handleCreateStory(backend, params),
+    (params: z.infer<typeof CreateStorySchema>) => handleCreateStory(backend, scrumConfig, params),
   );
 
   server.registerTool(

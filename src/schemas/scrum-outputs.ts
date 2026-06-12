@@ -68,13 +68,13 @@ const CompactBlockedBySchema = z.object({ key: z.string() }).strict();
 export const CompactItemListingSchema = z.object({
   ref: ItemListingRefSchema,
   title: z.string(),
+  type: z.string().nullable().optional(),
   status: z.string().nullable(),
   story_points: z.number().nullable().optional(),
   blocked_by: z.array(CompactBlockedBySchema).optional(),
 }).strict();
 
 export const StandardItemListingSchema = CompactItemListingSchema.extend({
-  type: z.string().nullable().optional(),
   priority: z.string().nullable().optional(),
   sprint: z.string().nullable().optional(),
   assignees: z.array(z.string()).optional(),
@@ -91,8 +91,8 @@ export const ItemSearchResultSchema = z.object({
     .enum(["compact", "standard", "full"])
     .describe(
       "Projection applied to each item in this response. " +
-        '"compact" = ref, title, status, story_points, blocked_by; ' +
-        '"standard" = compact + type, priority, sprint, assignees, linked_pull_requests; ' +
+        '"compact" = ref, title, type, status, story_points, blocked_by; ' +
+        '"standard" = compact + priority, sprint, assignees, linked_pull_requests; ' +
         '"full" = all fields including labels, epic, custom_fields.',
     ),
   scope_summary: z.object({
@@ -328,10 +328,10 @@ const SprintInfoSchema = z.object({
 }).strict();
 
 export const SprintSummarySchema = z.object({
-  committed_count: z.number(),
+  total_count: z.number(),
   active_count: z.number(),
   done_count: z.number(),
-  committed_points: z.number(),
+  total_points: z.number(),
   done_points: z.number(),
   remaining_points: z.number(),
   blocked_count: z.number(),

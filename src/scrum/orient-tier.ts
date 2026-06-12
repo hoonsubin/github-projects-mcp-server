@@ -6,7 +6,7 @@ import type { EpicSummary, OrientResult } from "../domain/types.ts";
 
 export type OrientDetail = "session" | "full";
 
-const EPIC_DESCRIPTION_MAX = 200;
+export const EPIC_DESCRIPTION_MAX = 100;
 
 const capEpicDescriptions = (epics: readonly EpicSummary[]): EpicSummary[] =>
   epics.map((epic) => {

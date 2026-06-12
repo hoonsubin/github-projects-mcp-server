@@ -196,7 +196,7 @@ Deno.test("handleUpdateStory (ack) - returns warnings when updateStory throws", 
     },
   } as unknown as ProjectBackend;
 
-  const result = await handleUpdateStory(backend, {
+  const result = await handleUpdateStory(backend, stubScrumConfig, {
     ref,
     title: "Updated title",
     body: undefined,
@@ -224,7 +224,7 @@ Deno.test("handleUpdateStory (ack) - returns warnings when addComment throws", a
     },
   } as unknown as ProjectBackend;
 
-  const result = await handleUpdateStory(backend, {
+  const result = await handleUpdateStory(backend, stubScrumConfig, {
     ref,
     title: "Updated",
     body: undefined,
@@ -251,7 +251,7 @@ Deno.test("handleCreateStory - returns partialFailure when createStory throws Ad
     },
   } as unknown as ProjectBackend;
 
-  const result = await handleCreateStory(backend, {
+  const result = await handleCreateStory(backend, stubScrumConfig, {
     title: "New story",
     body: "body",
     type: "feature",
@@ -282,7 +282,7 @@ Deno.test("handleCreateStory - returns partialFailure when composeStorySnapshot 
     },
   } as unknown as ProjectBackend;
 
-  const result = await handleCreateStory(backend, {
+  const result = await handleCreateStory(backend, stubScrumConfig, {
     title: "New story",
     body: "body",
     type: "feature",

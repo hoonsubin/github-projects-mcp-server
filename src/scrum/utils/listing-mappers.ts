@@ -18,7 +18,10 @@ const EMPTY_SPRINT_REF: EntityRef = { id: "" };
  * provides sprint node IDs (P7).
  */
 export const toItemListing = (story: Story): BacklogItemListing => ({
-  ref: { id: story.ref.id, key: story.key ?? story.ref.id },
+  // Draft Issues have no GitHub issue number. Use empty string (not the opaque platform ID)
+  // so agents can distinguish "no key" from a real issue number. content_kind:"draft" in
+  // the standard listing provides an additional signal. See ItemListingRef in domain/types.ts.
+  ref: { id: story.ref.id, key: story.key ?? "" },
   title: story.title,
   type: story.type,
   status: story.status,

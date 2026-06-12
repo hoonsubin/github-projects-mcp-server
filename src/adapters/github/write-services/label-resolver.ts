@@ -135,6 +135,11 @@ export class LabelResolver {
     }
 
     if (unknown.length > 0) {
+      // Invalidate the cache so the next scrum_orient(refresh:true) re-fetches from the
+      // GitHub API and surfaces the actual current label inventory. Without this, a stale
+      // cache (e.g. label present at orient time, deleted externally before create/update)
+      // would keep reporting the deleted label as available in platform_state.labels.existing.
+      this.invalidateLabelCache();
       throw new GitHubApiError(
         `Cannot assign unknown label(s): ${unknown.join(", ")}. ` +
           `Available labels on ${this.ctx.owner}/${this.ctx.repo}: ${

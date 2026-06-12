@@ -3,7 +3,7 @@
 // =============================================================================
 
 import { assertEquals, assertMatch } from "@std/assert";
-import { applyOrientDetail } from "./orient-tier.ts";
+import { applyOrientDetail, EPIC_DESCRIPTION_MAX } from "./orient-tier.ts";
 import type { OrientResult } from "../domain/types.ts";
 
 const longDescription = "x".repeat(500);
@@ -65,7 +65,7 @@ Deno.test("applyOrientDetail - truncates epic descriptions in full tier", () => 
   assertEquals(result.platform_state.epics.active.length, 2);
   const epic = result.platform_state.epics.active[0]!;
   assertMatch(epic.description!, /…$/);
-  assertEquals(epic.description!.length, 201);
+  assertEquals(epic.description!.length, EPIC_DESCRIPTION_MAX + 1);
 });
 
 Deno.test("applyOrientDetail - session caps epics and strips vocabulary", () => {

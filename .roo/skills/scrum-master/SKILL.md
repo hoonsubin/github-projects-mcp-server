@@ -47,6 +47,8 @@ When board health is loaded, surface a brief pre-check: overdue items, type mism
 | `no_ceremony_initiation` | Ceremonies only on explicit human request |
 | `no_ticket_delivery` | Never deliver a ticket — create subtasks or hand off with a brief |
 | `no_undocumented_deadline_change` | Comment on item before updating any deadline field |
+| `ref_resolution` | User named by title → resolve first via `scrum_find_items(search: <title>)`, use returned key as `{ number: key }`; by issue number → `{ number: N }` directly; `{ id }` → only for within-session chained calls where id came from a tool response in the current session |
+| `post_write_verify` | After any write mutation, check the returned `title` matches the intended target; mismatch → do NOT report success — surface the discrepancy and offer retry with the correct reference |
 
 ## Request routing
 
@@ -152,8 +154,13 @@ Write tools: `scrum_create_story`, `scrum_update_story`, `scrum_set_field`, `scr
 
 For any coaching response referencing project metrics, call the relevant read tool first:
 - Burndown, velocity, completion trends → `scrum_get_sprint_data` (returns raw item-level completion data for agent-side computation)
-- Current sprint state → `scrum_find_items(scope: "sprint")` or `scrum_get_sprint_data(sprint_ref: "current")` for completion timestamps
+- Current sprint state → `scrum_find_items(intent: "sprint_board")` or `scrum_get_sprint_data(sprint: "current")` for completion timestamps
 - Board vocabulary, field gaps, item type templates → `scrum_orient`
+
+**Tool-specific notes:**
+- `scrum_plan_sprint` bulk-assigns items to a sprint in one call. If it returns a runtime error, fall back to individual `scrum_set_field(field: "sprint", value: "<sprint_name>")` per item and note the fallback in your response.
+- `intent: "blocked_items"` excludes items whose blockers are ALL in terminal status (Done) — those items are not surfaced even if `has_blockers` is true on the raw listing. When a "blocked" item disappears from this view, check whether its blocker was recently resolved.
+- Templates are accessed via MCP resource protocol (`access_mcp_resource` with the URI from `template_uris` in the `scrum_orient` response) — they are not `scrum_*` tools.
 
 ### Agent-Side Sprint Computations
 
@@ -161,28 +168,28 @@ All sprint metrics are computed by the agent from raw data. The server returns f
 
 #### Burndown series
 
-1. Call `scrum_get_sprint_data(sprint_ref: "current")` → `{ sprint, items[] }`.
-2. `committedPoints` = sum of `item.storyPoints` for all items (treat null as 0).
-3. Walk calendar days from `sprint.startDate` to `min(today, sprint.endDate)`, one entry per day:
+1. Call `scrum_get_sprint_data(sprint: "current", view: "items")` → `{ sprint, items[] }`.
+2. `totalPoints` = sum of `item.story_points` for all items (treat null as 0). This includes Done items — it represents the full sprint scope, not just remaining work.
+3. Walk calendar days from `sprint.start_date` to `min(today, sprint.end_date)`, one entry per day:
    - `endOfDay` = that date at 23:59:59 UTC
-   - `completedByDay` = sum of `item.storyPoints` where `item.completedAt != null` and `item.completedAt ≤ endOfDay`
-   - Series entry: `{ date, remaining_points: committedPoints - completedByDay, completed_points: completedByDay }`
+   - `completedByDay` = sum of `item.story_points` where `item.completed_at != null` and `item.completed_at ≤ endOfDay`
+   - Series entry: `{ date, remaining_points: totalPoints - completedByDay, completed_points: completedByDay }`
 4. Flatline signal: ≥3 consecutive days with zero change in `completed_points` → surface as burndown flatline risk.
 
 #### Ideal burndown line
 
-For each day index `d` from 0 to `sprint.durationDays` (inclusive):
-- `date` = `sprint.startDate + d days`
-- `remaining_points` = `committedPoints × (1 − d / durationDays)`, rounded to one decimal
+For each day index `d` from 0 to `sprint.duration_days` (inclusive):
+- `date` = `sprint.start_date + d days`
+- `remaining_points` = `totalPoints × (1 − d / sprint.duration_days)`, rounded to one decimal
 
 #### Velocity (agent-side)
 
 1. From `scrum_orient`, read `iterations.completed` — sorted newest-first.
 2. For each sprint name in the window (default: `vocabulary.sprint.velocity_window`, fallback 5):
-   - Call `scrum_get_sprint_data(sprint_ref: "<sprint.name>")` → `{ items[] }`
-   - `sprintVelocity` = sum of `item.storyPoints` where `item.completedAt != null`
-3. `avgVelocity` = mean of collected sprint velocities (exclude sprints with zero committed points).
-4. `daysRemaining` = days from today to `sprint.endDate` (floor to 0 if past).
+   - Call `scrum_get_sprint_data(sprint: "<sprint.name>", view: "items")` → `{ items[] }`
+   - `sprintVelocity` = sum of `item.story_points` where `item.completed_at != null`
+3. `avgVelocity` = mean of collected sprint velocities (exclude sprints with zero total points).
+4. `daysRemaining` = days from today to `sprint.end_date` (floor to 0 if past).
 
 #### Sprint risk counts
 
@@ -190,9 +197,9 @@ Derived directly from `SprintRawItem[]` (no additional tool call needed). Exclud
 
 | Risk signal | Condition on SprintRawItem |
 |---|---|
-| Unestimated | `storyPoints == null \|\| storyPoints == 0` |
-| Blocked | `hasBlockers == true` |
-| No assignee | `hasAssignee == false` |
+| Unestimated | `story_points == null \|\| story_points == 0` |
+| Blocked | `has_blockers == true` |
+| No assignee | `has_assignee == false` |
 
 Surface all three counts when loading board health for "Recommendation / ceremony / planning" sessions.
 
@@ -200,7 +207,7 @@ Surface all three counts when loading board health for "Recommendation / ceremon
 
 `SprintRawItem` does not carry the item body, so readiness is assessed from listing data:
 
-1. Call `scrum_find_items(scope: "sprint")` to get full item listings for the current sprint.
+1. Call `scrum_find_items(intent: "sprint_board")` to get item listings for the current sprint.
 2. Load `vocabulary.dor` from `scrum_orient` — these are the project-configured DoR criteria.
 3. For each item, evaluate each configured DoR criterion against the available fields (type set, `story_points > 0`, AC present in listing summary if visible, no open dependencies).
 4. `readinessPct` = `readyCount / totalActiveCount × 100` (exclude Done items).

@@ -5,10 +5,10 @@
 import type { SprintRawItem } from "./ports.ts";
 
 export interface SprintSummary {
-  readonly committed_count: number;
+  readonly total_count: number;
   readonly active_count: number;
   readonly done_count: number;
-  readonly committed_points: number;
+  readonly total_points: number;
   readonly done_points: number;
   readonly remaining_points: number;
   readonly blocked_count: number;
@@ -36,14 +36,14 @@ export const buildSprintSummary = (
   terminalStatuses: ReadonlySet<string>,
 ): SprintSummary => {
   let done_count = 0;
-  let committed_points = 0;
+  let total_points = 0;
   let done_points = 0;
   let blocked_count = 0;
   let unassigned_count = 0;
 
   for (const item of items) {
     const pts = points(item);
-    committed_points += pts;
+    total_points += pts;
     if (item.has_blockers) blocked_count += 1;
     if (!item.has_assignee) unassigned_count += 1;
     if (isTerminalSprintItem(item, terminalStatuses)) {
@@ -52,15 +52,15 @@ export const buildSprintSummary = (
     }
   }
 
-  const committed_count = items.length;
-  const active_count = committed_count - done_count;
-  const remaining_points = committed_points - done_points;
+  const total_count = items.length;
+  const active_count = total_count - done_count;
+  const remaining_points = total_points - done_points;
 
   return {
-    committed_count,
+    total_count,
     active_count,
     done_count,
-    committed_points,
+    total_points,
     done_points,
     remaining_points,
     blocked_count,

@@ -129,7 +129,7 @@ Deno.test("scrum_get_sprint_data - happy path schema", async () => {
   assertEquals(typeof payload.sprint!.id, "string");
   assertEquals(typeof payload.sprint!.duration_days, "number");
   assertExists(payload.summary);
-  assertEquals(typeof payload.summary!.committed_count, "number");
+  assertEquals(typeof payload.summary!.total_count, "number");
 
   const itemsPayload = assertHandlerSchema(
     await handleGetSprintData(backend, boot.scrumConfig, { sprint: "current", view: "items" }),

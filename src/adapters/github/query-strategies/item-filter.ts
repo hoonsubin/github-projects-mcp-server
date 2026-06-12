@@ -59,7 +59,10 @@ export const buildItemFilterFn = (
     );
   }
 
-  const typeSet = filter.types.length > 0 ? new Set(filter.types) : null;
+  // Normalize to lowercase so `type:"Bug"` and `type:"bug"` both match the stored canonical key.
+  const typeSet = filter.types.length > 0
+    ? new Set(filter.types.map((t) => t.toLowerCase()))
+    : null;
   const resolvedStatuses = filter.statuses.map(
     (status) => config.ghConfig.status_display?.[status] ?? status,
   );
@@ -156,7 +159,7 @@ export const buildItemFilterFn = (
 
     if (labelList && !labelList.every((label) => story.labels.includes(label))) return false;
 
-    if (typeSet && (story.type === null || !typeSet.has(story.type))) return false;
+    if (typeSet && (story.type === null || !typeSet.has(story.type.toLowerCase()))) return false;
 
     if (statusSet && (story.status === null || !statusSet.has(story.status))) return false;
 

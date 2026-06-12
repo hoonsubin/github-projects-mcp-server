@@ -115,9 +115,10 @@ export const OrientSchema = z
       .optional()
       .default("session")
       .describe(
-        '"session" (default) = vocabulary (status/priority/type), active sprint, capped epics. ' +
-          "Omits team roster, DoR/DoD, autonomy, and template URIs. " +
-          '"full" = complete platform_state including templates and team roster; use only when needed.',
+        '"session" (default) = vocabulary, sprint, DoR/DoD, team, autonomy, template URIs, ' +
+          "capped epics (up to 5). Strips only labels.existing/expected (label inventory). " +
+          '"full" = everything in session plus complete label inventory and all active epics. ' +
+          "Use full only when you need platform_state.labels.existing (e.g. before assigning labels).",
       ),
     refresh: z
       .boolean()

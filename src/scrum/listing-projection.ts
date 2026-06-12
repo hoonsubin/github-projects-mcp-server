@@ -8,13 +8,13 @@ import type { ListingFieldsMode } from "./ports.ts";
 export interface CompactItemListing {
   readonly ref: { readonly id: string; readonly key: string };
   readonly title: string;
+  readonly type: string | null;
   readonly status: string | null;
   readonly story_points: number | null;
   readonly blocked_by: ReadonlyArray<{ readonly key: string }>;
 }
 
 export interface StandardItemListing extends CompactItemListing {
-  readonly type: string | null;
   readonly priority: string | null;
   readonly sprint: string | null;
   readonly assignees: readonly string[];
@@ -33,6 +33,7 @@ export const projectListing = (
   const compact: CompactItemListing = {
     ref: item.ref,
     title: item.title,
+    type: item.type,
     status: item.status,
     story_points: item.story_points,
     blocked_by: item.blocked_by.map((dep) => ({ key: dep.key })),
@@ -42,7 +43,6 @@ export const projectListing = (
 
   return {
     ...compact,
-    type: item.type,
     priority: item.priority,
     sprint: item.sprint.name,
     assignees: item.assignees,

@@ -97,10 +97,11 @@ Deno.test("scrum_set_field - happy path schema", async () => {
 });
 
 Deno.test("scrum_update_story - happy path schema", async () => {
+  const config = await committedScrumConfigPromise;
   const backend = await committedFakeBackendPromise;
 
   assertHandlerSchema(
-    await handleUpdateStory(backend, {
+    await handleUpdateStory(backend, config.scrumConfig, {
       ref: { id: "PVTI_fake_1" },
       title: "Updated contract-test title",
     }),
@@ -110,12 +111,13 @@ Deno.test("scrum_update_story - happy path schema", async () => {
 });
 
 Deno.test("scrum_create_story - happy path schema", async () => {
+  const config = await committedScrumConfigPromise;
   const profile = await committedConfigProfilePromise;
   const backend = await committedFakeBackendPromise;
   const storyType = (Object.keys(profile.typeDisplay)[0] ?? "user_story") as "user_story";
 
   assertHandlerSchema(
-    await handleCreateStory(backend, {
+    await handleCreateStory(backend, config.scrumConfig, {
       title: "Contract test story",
       body: "- [ ] AC one",
       type: storyType,
@@ -127,13 +129,14 @@ Deno.test("scrum_create_story - happy path schema", async () => {
 });
 
 Deno.test("scrum_create_story - partial failure when post-create setField fails", async () => {
+  const config = await committedScrumConfigPromise;
   const profile = await committedConfigProfilePromise;
   const backend = (await committedFakeBackendPromise as ConfigShapedFakeBackend)
     .withSetFieldFailureOn("sprint");
   const storyType = (Object.keys(profile.typeDisplay)[0] ?? "user_story") as "user_story";
 
   const payload = assertHandlerSchema(
-    await handleCreateStory(backend, {
+    await handleCreateStory(backend, config.scrumConfig, {
       title: "Partial failure story",
       body: "",
       type: storyType,

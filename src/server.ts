@@ -215,6 +215,24 @@ const createMcpServer = async (): Promise<McpServer> => {
   }
 
   const { backend, fileReader, typeTemplatePaths } = backendResult;
+
+  // Hoist the active backend's status_display into the top-level scrumConfig field
+  // so scrum-layer functions (terminal-statuses.ts, write-value-resolve.ts) work
+  // correctly. ScrumConfig.status_display is optional and not populated from YAML
+  // directly — the display mapping lives under backends.<platform>.status_display.
+  //
+  // terminal-statuses.ts already has a fallback to backends.github.status_display,
+  // but hoisting here makes scrumConfig self-consistent for any future callers that
+  // read the top-level field directly.
+  if (!scrumConfig.status_display) {
+    const ghCfg = scrumConfig.backends.github as
+      | { status_display?: Record<string, string> }
+      | undefined;
+    if (ghCfg?.status_display) {
+      scrumConfig.status_display = ghCfg.status_display;
+    }
+  }
+
   const sessionCache = new SessionCache();
 
   registerScrumReadTools(server, backend, scrumConfig, sessionCache);

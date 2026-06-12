@@ -20,6 +20,7 @@ import { pickDefined } from "../../services/pick-defined.ts";
 import { resolveSprintQuery } from "../../scrum/sprint-filter.ts";
 import { resolveWriteFieldValue } from "../../scrum/write-value-resolve.ts";
 import { assertAddVocabularyAllowed } from "../../scrum/validate-add-vocabulary.ts";
+import { stripReservedLabels } from "../../scrum/validate-labels.ts";
 import type { SessionCache } from "../../services/session-cache.ts";
 import type { z } from "zod";
 import { type McpTextResult, toMcpTextResult } from "../_mcp_result.ts";
@@ -138,10 +139,11 @@ export const handleSetField = async (
 
 export const handleUpdateStory = async (
   backend: ProjectBackend,
+  scrumConfig: ScrumConfig,
   params: z.input<typeof UpdateStorySchema>,
 ): Promise<McpTextResult> => {
   const ref = params.ref as StoryRef;
-  const updates = pickDefined(params, [
+  const rawUpdates = pickDefined(params, [
     "title",
     "body",
     "labels",
@@ -149,6 +151,12 @@ export const handleUpdateStory = async (
     "epic",
     "blocked_by",
   ]);
+  const updates = rawUpdates.labels !== undefined
+    ? {
+      ...rawUpdates,
+      labels: stripReservedLabels(rawUpdates.labels as readonly string[], scrumConfig),
+    }
+    : rawUpdates;
   const allWarnings: string[] = [];
 
   const { warnings: w1 } = await catchBackend(
@@ -178,12 +186,18 @@ export const handleUpdateStory = async (
 
 export const handleCreateStory = async (
   backend: ProjectBackend,
+  scrumConfig: ScrumConfig,
   params: z.infer<typeof CreateStorySchema>,
 ): Promise<McpTextResult> => {
   const failedFields: PartialFailureFields = [];
 
+  const rawInput = toCreateStoryInput(params);
+  const input = rawInput.labels
+    ? { ...rawInput, labels: stripReservedLabels(rawInput.labels, scrumConfig) }
+    : rawInput;
+
   const { value: storyRef, warnings: createWarnings } = await catchBackend(
-    () => backend.createStory(toCreateStoryInput(params)),
+    () => backend.createStory(input),
   );
 
   if (!storyRef) {
@@ -280,7 +294,59 @@ export const handlePlanSprint = async (
     }
   }
 
-  const result: Record<string, unknown> = { sprint: params.sprint, assigned, skipped };
+  // Enrich the assigned list with number+title so agents can verify which items
+  // were moved without a follow-up find_items call.
+  //
+  // We do one sprint_board scan after all setField calls complete (not per-item)
+  // then join on PVTI project item ID. Items not yet visible in the board scan
+  // (e.g. added to a future sprint) fall back to the bare ref with no enrichment.
+  let enrichedAssigned: Array<Record<string, unknown>> = assigned.map((ref) => ({ ...ref }));
+  if (assigned.length > 0) {
+    const { scope: boardScope, sprint_ref: boardSprintRef } = resolveSprintQuery(
+      typeof params.sprint === "string" ? params.sprint : "current",
+    );
+    const { value: boardItems } = await backend.findItems({
+      scope: boardScope,
+      sprint_ref: boardSprintRef,
+      keys: [],
+      search: "",
+      types: [],
+      statuses: [],
+      priority: "",
+      epic_id: "",
+      labels: [],
+      assignee: "",
+      estimated: undefined,
+      has_blockers: undefined,
+      include_dependencies: false,
+      fields: "compact",
+      limit: 500,
+    });
+
+    if (boardItems) {
+      const idToItem = new Map(boardItems.items.map((item) => [item.ref.id, item]));
+      enrichedAssigned = assigned.map((ref) => {
+        const id = "id" in ref ? ref.id : undefined;
+        const boardItem = id ? idToItem.get(id) : undefined;
+        if (boardItem) {
+          // Use ref.key (string issue number) consistent with BacklogItemListing.
+          // key is "" for Draft Issues — omit it rather than emit a misleading "".
+          return {
+            id: boardItem.ref.id,
+            ...(boardItem.ref.key ? { key: boardItem.ref.key } : {}),
+            title: boardItem.title,
+          };
+        }
+        return { ...ref };
+      });
+    }
+  }
+
+  const result: Record<string, unknown> = {
+    sprint: params.sprint,
+    assigned: enrichedAssigned,
+    skipped,
+  };
   if (cleared.length > 0) result.cleared = cleared;
   if (params.goal !== undefined) result.goal = params.goal;
 
@@ -313,6 +379,12 @@ export const handleLogImpediment = async (
     body: bodyParts.join("\n"),
     type: "impediment",
     priority: params.priority ?? p0PriorityDisplay,
+    // Force Draft → full Issue promotion so scrum_update_impediment and addComment
+    // lifecycle ops work. Without a label the item stays a Draft Issue (no underlying
+    // GitHub Issue) and any subsequent mutation will throw DRAFT_ISSUE_CONSTRAINT.
+    // "scrum-managed" is a neutral promotion label — it is not a vocabulary term
+    // (not a type key, status key, or priority key) so it will never be stripped.
+    labels: ["scrum-managed"],
   };
   const { listing: impediment, itemRef } = await backend.createImpediment(impedimentInput);
   const impedimentOut = { ...impediment, raised_by: raisedBy ?? impediment.raised_by };

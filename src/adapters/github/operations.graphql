@@ -126,14 +126,18 @@ fragment ItemContent on ProjectV2Item {
 
 # ── ItemContentAggregate ──────────────────────────────────────────────────────
 # Lean content projection for board-wide aggregation scans (burndown, history,
-# sprint completion, impediment cross-ref). Omits labels, assignees, milestone,
-# blockedBy, and repository fields. Pair with ItemFieldValues for board fields.
+# sprint completion, impediment cross-ref). Omits labels, milestone,
+# and repository fields. Pair with ItemFieldValues for board fields.
+#
+# assignees(first: 1) is intentionally minimal — only presence matters for
+# has_assignee; fetching more than one node would waste payload with no benefit.
 
 fragment ItemContentAggregate on ProjectV2Item {
   content {
     __typename
     ... on Issue {
       id number title body state closedAt
+      assignees(first: 1) { nodes { login } }
       blockedBy(first: 10) { nodes { id number title } }
       issueType { id name }
       issueFieldValues(first: 25) {

@@ -51,6 +51,11 @@ export const registerScrumReadTools = (
 
         Example: { "detail": "session" }
 
+        detail:"session" (default) = vocabulary, sprint, DoR/DoD, team, capped epics (up to 5).
+          Strips labels.existing/expected — use detail:"full" when you need the full label list.
+        detail:"full" = everything in session + complete label inventory + all active epics.
+          Only use when you need platform_state.labels.existing (e.g. before assigning labels).
+
         Returns vocabulary maps (canonical → display), active sprint dates, label inventory.
         Use vocabulary.status values for scrum_set_field — never hardcode column names.`,
       inputSchema: OrientSchema.shape,
@@ -103,8 +108,10 @@ export const registerScrumReadTools = (
           sprint_board     — current Sprint Backlog (shows sprint assignment + column)
           backlog_ready    — Product Backlog items with estimates
           readiness_check  — sprint readiness + dependency_map
-          blocked_items    — blocked work in current sprint + dependency_map
-          search_backlog   — keyword search (requires search; do not combine with sprint_board)
+          blocked_items    — items with active (non-Done) blockers in current sprint + dependency_map
+                             (items whose blockers are all Done are excluded — they are no longer blocked)
+          search_backlog   — keyword search across ALL items regardless of sprint (requires search;
+                             do not combine with sprint_board; name is historical, not backlog-only)
           by_keys          — lookup by issue number ["42"]
 
         WHEN NOT TO USE: burndown metrics → scrum_get_sprint_data; full AC on one item → get_item_detail.
@@ -140,7 +147,9 @@ export const registerScrumReadTools = (
 
         view "summary" (default) = counts and points only (small payload).
         view "items" = summary + per-item rows with completed_at timestamps.
-        active_only true (default) = exclude Done/terminal columns.`,
+        active_only true (default) = exclude Done/terminal columns.
+        active_only false = include Done items; total_count will be HIGHER than scrum_find_items
+          (which always excludes Done by default) — use only for burndown/velocity calculations.`,
       inputSchema: GetSprintDataSchema.shape,
       outputSchema: SprintRawDataSchema.shape,
       annotations: {
