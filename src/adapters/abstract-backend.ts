@@ -10,6 +10,7 @@ import type {
   CreateResult,
   CreateStoryInput,
   ImpedimentListing,
+  ItemSearchResultRaw,
   PlatformState,
   ProjectReader,
   ProjectWriter,
@@ -27,7 +28,6 @@ import type {
   EpicListing,
   ImpedimentRef,
   ImpedimentStatus,
-  ItemSearchResult,
   SprintRef,
   Story,
   StoryRef,
@@ -139,7 +139,7 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
    * Unified item search across all PBIs.
    * Replaces getSprintStories() and getBacklogStories().
    */
-  abstract findItems(filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResult>>;
+  abstract findItems(filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResultRaw>>;
 
   // ── ProjectReader - sprint data ──────────────────────────────────────────
 

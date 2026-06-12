@@ -7,7 +7,13 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ProjectBackend } from "../scrum/ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
-import { FindItemsSchema, GetSprintDataSchema, GetStorySchema } from "../schemas/scrum.ts";
+import {
+  FindItemsSchema,
+  GetSprintDataSchema,
+  GetStorySchema,
+  OrientSchema,
+} from "../schemas/scrum.ts";
+import type { SessionCache } from "../services/session-cache.ts";
 import { z } from "zod";
 import {
   ItemDetailResultSchema,
@@ -40,6 +46,7 @@ export const registerScrumReadTools = (
   server: McpServer,
   backend: ProjectBackend,
   scrumConfig: ScrumConfig,
+  sessionCache: SessionCache,
 ): void => {
   // ── scrum_orient ───────────────────────────────────────────────────────────
 
@@ -62,8 +69,12 @@ export const registerScrumReadTools = (
           vocabulary.status - canonical key → display label map; always resolve status values from
             here before passing to scrum_set_field. Never hardcode strings like "Done" or "In Progress".
 
-        No arguments required. Pass {} or omit arguments entirely.`,
-      inputSchema: z.object({ _: z.string().optional() }).shape,
+        Args (all optional):
+          detail  "session" (default) | "full"
+                  session = vocabulary + sprint; omits team/DoR/DoD/autonomy/templates.
+                  full = complete platform_state; use only when templates or team roster are needed.
+          refresh  true = bypass session cache and reload platform metadata`,
+      inputSchema: OrientSchema.shape,
       outputSchema: OrientResultSchema.shape,
       annotations: {
         readOnlyHint: true,
@@ -72,7 +83,8 @@ export const registerScrumReadTools = (
         openWorldHint: true,
       },
     },
-    () => handleOrient(backend, scrumConfig),
+    (params: z.infer<typeof OrientSchema>) =>
+      handleOrient(backend, scrumConfig, sessionCache, params),
   );
 
   // ── scrum_get_item_detail ─────────────────────────────────────────────────
@@ -112,41 +124,26 @@ export const registerScrumReadTools = (
     "scrum_find_items",
     {
       title: "Find Items",
-      description: `Unified item search across all PBIs.
+      description:
+        `Search PBIs. Omit unused filters. Prefer intent presets over manual filter assembly.
 
-        Search by scope, keys, text, type, status, priority, epic, labels, assignee,
-        or sprint. Optionally include the full dependency graph.
-
-        scope vs sprint_ref - two distinct filters, use the right one:
-          scope: "sprint"        → items in the CURRENT active sprint ("what's in this sprint")
-          sprint_ref: "Sprint 3" → items in a named or historical sprint (retro, cross-sprint queries)
-          These are orthogonal. scope sets the query domain; sprint_ref targets a specific iteration.
+        Intents (recommended):
+          sprint_board     current sprint, fields compact
+          backlog_ready    backlog with estimates
+          readiness_check  current sprint + dependency_map (DoR/dependency analysis)
+          blocked_items    current sprint items with blockers + dependency_map
+          by_keys          direct lookup — requires keys: ["42"]
 
         Args:
-          scope  "backlog" | "sprint" | "all" - default: "all"
-          keys   string[] - fetch specific items by issue number; MUST be strings: ["42", "123"] not [42, 123]
-          search string - case-insensitive substring match on title + body
-          types  string[] - filter by item type canonical keys (e.g. ["feature", "bug", "impediment"])
-          statuses string[] - filter by status display names (e.g. ["In Progress"])
-          priority string - filter by priority display name (e.g. "Must")
-          epic_id string - filter by epic/milestone ID
-          labels string[] - require ALL of these labels
-          assignee string - filter by GitHub login
-          estimated boolean - true = estimated only; false = unestimated only
-          sprint_ref "current" | "next" | "<name>" - filter by sprint (named or historical)
-          include_dependencies boolean (default false) - include dependency_map: shallow pointers
-                   to active off-listing blockers (not Done, or in the active sprint) referenced by
-                   items[].blocked_by. Blockers already in items[] are omitted. Use for ReadinessCheck
-                   or SprintReport; default false for all other queries.
-          limit number (default 50)
+          sprint  "current" | "next" | "backlog" | "all" | "<name>" — omit for entire board
+          keys    ["42"] issue numbers as strings
+          has_blockers  true | false — filter by blocked_by presence
+          priority  display name or canonical key (e.g. "Must" or "p0")
+          fields  "compact" (default) | "standard" | "full"
+          include_dependencies  adds dependency_map; unscoped use coerces to readiness_check
+          limit   default 50
 
-        Returns: {
-          items: BacklogItemListing[],
-          total_count: number,           ← top-level field, NOT inside scope_summary
-          scope_summary: { sprint_count: number | null, backlog_count: number | null },
-          dependency_map: DependencyMap | null  - off-listing active blocker pointers only
-                   (key, ref, title, status); null when include_dependencies=false
-        }`,
+        Returns compact listings by default. Verify writes via find_items or get_item_detail.`,
       inputSchema: FindItemsSchema.shape,
       outputSchema: ItemSearchResultSchema.shape,
       annotations: {
@@ -156,7 +153,7 @@ export const registerScrumReadTools = (
         openWorldHint: true,
       },
     },
-    (params: z.infer<typeof FindItemsSchema>) => handleFindItems(backend, params),
+    (params: z.input<typeof FindItemsSchema>) => handleFindItems(backend, params),
   );
 
   // ── scrum_get_sprint_data ──────────────────────────────────────────────────

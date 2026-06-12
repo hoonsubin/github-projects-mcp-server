@@ -11,11 +11,20 @@ import {
 } from "./write.ts";
 import { parseToolText } from "../_mcp_result.ts";
 import { GitHubApiError } from "../../adapters/github/errors.ts";
+import type { ScrumConfig } from "../../domain/config.ts";
 import type { ProjectBackend, StoryUpdates } from "../../scrum/ports.ts";
 import type { Story, StoryRef } from "../../domain/types.ts";
 import type { BackendCallResult } from "../../services/error-enrichment.ts";
 
 // ── Minimal stub factory ──────────────────────────────────────────────────────
+
+const stubScrumConfig = {
+  status_display: {},
+  priority_display: {},
+  scrum: { status: {}, priority: [] },
+} as unknown as ScrumConfig;
+
+type WriteAck = { ref: { id: string }; applied: true; warnings?: string[] };
 
 /** Create a GitHubApiError with RATE_LIMITED code for test assertions. */
 const makeAdapterError = (msg: string): GitHubApiError =>
@@ -42,7 +51,29 @@ Deno.test("toCreateStoryInput - maps story_points to storyPoints", () => {
 
 // ── handleSetField error handling ─────────────────────────────────────────────
 
-Deno.test("handleSetField - returns warnings when composeStoryAfterSetField throws AdapterError", async () => {
+Deno.test("handleSetField (ack) - returns warnings when setField throws", async () => {
+  const ref: StoryRef = { id: "PVTI_test_1" };
+
+  const backend = {
+    setField: () => {
+      throw makeAdapterError("setField failed");
+    },
+  } as unknown as ProjectBackend;
+
+  const result = await handleSetField(backend, stubScrumConfig, {
+    ref,
+    field: "status",
+    value: "Done",
+  });
+
+  const payload = parseToolText<WriteAck>(result);
+  assertEquals(payload.applied, true);
+  assertEquals(Array.isArray(payload.warnings), true);
+  assertEquals(payload.warnings!.length > 0, true);
+  assertEquals(payload.warnings![0].includes("RATE_LIMITED"), true);
+});
+
+Deno.test("handleSetField (story) - returns warnings when composeStoryAfterSetField throws", async () => {
   const ref: StoryRef = { id: "PVTI_test_1" };
 
   const backend = {
@@ -52,10 +83,11 @@ Deno.test("handleSetField - returns warnings when composeStoryAfterSetField thro
     },
   } as unknown as ProjectBackend;
 
-  const result = await handleSetField(backend, {
+  const result = await handleSetField(backend, stubScrumConfig, {
     ref,
     field: "status",
     value: "Done",
+    response: "story",
   });
 
   const payload = parseToolText<Story & { warnings?: string[] }>(result);
@@ -64,7 +96,7 @@ Deno.test("handleSetField - returns warnings when composeStoryAfterSetField thro
   assertEquals(payload.warnings![0].includes("RATE_LIMITED"), true);
 });
 
-Deno.test("handleSetField - returns warnings when both setField and compose throw", async () => {
+Deno.test("handleSetField (story) - returns warnings when both setField and compose throw", async () => {
   const ref: StoryRef = { id: "PVTI_test_2" };
 
   const backend = {
@@ -76,48 +108,27 @@ Deno.test("handleSetField - returns warnings when both setField and compose thro
     },
   } as unknown as ProjectBackend;
 
-  const result = await handleSetField(backend, {
+  const result = await handleSetField(backend, stubScrumConfig, {
     ref,
     field: "status",
     value: "Done",
+    response: "story",
   });
 
   const payload = parseToolText<Story & { warnings?: string[] }>(result);
   assertEquals(Array.isArray(payload.warnings), true);
-  // Two warnings from catchBackend wrapping both calls
   assertEquals(payload.warnings!.length >= 2, true);
 });
 
 // ── handleUpdateStory error handling ──────────────────────────────────────────
 
-Deno.test("handleUpdateStory - returns warnings when updateStory throws AdapterError", async () => {
+Deno.test("handleUpdateStory (ack) - returns warnings when updateStory throws", async () => {
   const ref: StoryRef = { id: "PVTI_test_1" };
-  const story = {
-    ref,
-    title: "Test",
-    body: "",
-    type: "feature",
-    status: "In Progress",
-    sprint: "Sprint 1",
-    story_points: 3,
-    priority: "Must",
-    assignees: [],
-    labels: [],
-    created_at: "2026-01-01T00:00:00Z",
-    updated_at: "2026-01-01T00:00:00Z",
-    blocked_by: [],
-    kind: "issue",
-    key: "1",
-    url: "https://example.com/1",
-    epic: null,
-  } as Story;
 
   const backend = {
     updateStory: (_ref: StoryRef, _updates: StoryUpdates) => {
       throw makeAdapterError("Mutation rejected");
     },
-    composeStoryAfterStoryUpdate: (): Promise<BackendCallResult<Story>> =>
-      Promise.resolve(makeStoryResult(story)),
   } as unknown as ProjectBackend;
 
   const result = await handleUpdateStory(backend, {
@@ -131,41 +142,21 @@ Deno.test("handleUpdateStory - returns warnings when updateStory throws AdapterE
     comment: undefined,
   });
 
-  const payload = parseToolText<Story & { warnings?: string[] }>(result);
+  const payload = parseToolText<WriteAck>(result);
+  assertEquals(payload.applied, true);
   assertEquals(Array.isArray(payload.warnings), true);
   assertEquals(payload.warnings!.length > 0, true);
   assertEquals(payload.warnings![0].includes("RATE_LIMITED"), true);
 });
 
-Deno.test("handleUpdateStory - returns warnings when addComment throws AdapterError", async () => {
+Deno.test("handleUpdateStory (ack) - returns warnings when addComment throws", async () => {
   const ref: StoryRef = { id: "PVTI_test_1" };
-  const story = {
-    ref,
-    title: "Test",
-    body: "",
-    type: "feature",
-    status: "In Progress",
-    sprint: "Sprint 1",
-    story_points: 3,
-    priority: "Must",
-    assignees: [],
-    labels: [],
-    created_at: "2026-01-01T00:00:00Z",
-    updated_at: "2026-01-01T00:00:00Z",
-    blocked_by: [],
-    kind: "issue",
-    key: "1",
-    url: "https://example.com/1",
-    epic: null,
-  } as Story;
 
   const backend = {
     updateStory: (_ref: StoryRef, _updates: StoryUpdates) => {},
     addComment: (_ref: StoryRef, _body: string) => {
       throw makeAdapterError("Comment failed");
     },
-    composeStoryAfterStoryUpdate: (): Promise<BackendCallResult<Story>> =>
-      Promise.resolve(makeStoryResult(story)),
   } as unknown as ProjectBackend;
 
   const result = await handleUpdateStory(backend, {
@@ -179,7 +170,8 @@ Deno.test("handleUpdateStory - returns warnings when addComment throws AdapterEr
     comment: "A comment",
   });
 
-  const payload = parseToolText<Story & { warnings?: string[] }>(result);
+  const payload = parseToolText<WriteAck>(result);
+  assertEquals(payload.applied, true);
   assertEquals(Array.isArray(payload.warnings), true);
   assertEquals(payload.warnings!.length > 0, true);
   assertEquals(payload.warnings![0].includes("RATE_LIMITED"), true);

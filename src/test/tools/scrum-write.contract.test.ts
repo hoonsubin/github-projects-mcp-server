@@ -7,16 +7,17 @@ import {
   committedConfigProfilePromise,
   committedFakeBackendPromise,
   committedScrumConfigPromise,
+  testSessionCache,
 } from "../support/scrum-test-utils.ts";
 import { ConfigShapedFakeBackend } from "../support/fake-backend.ts";
 import {
   AddVocabularyResultSchema,
-  CreateStoryOutputSchema,
   CreateStoryPartialFailureSchema,
   CreateStoryResponseSchema,
   LogImpedimentResultSchema,
   PlanSprintResultSchema,
   SetFieldResponseSchema,
+  StorySchema,
   UpdateImpedimentResponseSchema,
   UpdateStoryResponseSchema,
 } from "../../schemas/scrum-outputs.ts";
@@ -36,7 +37,10 @@ Deno.test("scrum_add_vocabulary - happy path schema", async () => {
   const backend = await committedFakeBackendPromise;
 
   assertHandlerSchema(
-    await handleAddVocabulary(backend, { kind: "label", value: "contract-test-label" }),
+    await handleAddVocabulary(backend, testSessionCache(), {
+      kind: "label",
+      value: "contract-test-label",
+    }),
     AddVocabularyResultSchema,
     "scrum_add_vocabulary",
   );
@@ -48,7 +52,10 @@ Deno.test("scrum_add_vocabulary - status_option variant", async () => {
   const statusDisplay = Object.values(profile.statusDisplay)[0] ?? "Ready";
 
   const payload = assertHandlerSchema(
-    await handleAddVocabulary(backend, { kind: "status_option", value: statusDisplay }),
+    await handleAddVocabulary(backend, testSessionCache(), {
+      kind: "status_option",
+      value: statusDisplay,
+    }),
     AddVocabularyResultSchema,
     "scrum_add_vocabulary (status)",
   );
@@ -56,12 +63,13 @@ Deno.test("scrum_add_vocabulary - status_option variant", async () => {
 });
 
 Deno.test("scrum_set_field - happy path schema", async () => {
+  const boot = await committedScrumConfigPromise;
   const profile = await committedConfigProfilePromise;
   const backend = await committedFakeBackendPromise;
   const itemRef = { id: "PVTI_fake_1" };
 
   assertHandlerSchema(
-    await handleSetField(backend, {
+    await handleSetField(backend, boot.scrumConfig, {
       ref: itemRef,
       field: "status",
       value: profile.statusDisplay.in_progress ?? "In Progress",
@@ -97,7 +105,7 @@ Deno.test("scrum_create_story - happy path schema", async () => {
     }),
     CreateStoryResponseSchema,
     "scrum_create_story",
-    CreateStoryOutputSchema.shape,
+    StorySchema.shape,
   );
 });
 
@@ -116,7 +124,7 @@ Deno.test("scrum_create_story - partial failure when post-create setField fails"
     }),
     CreateStoryResponseSchema,
     "scrum_create_story (partial)",
-    CreateStoryOutputSchema.shape,
+    StorySchema.shape,
   );
 
   const parsed = CreateStoryPartialFailureSchema.safeParse(payload);

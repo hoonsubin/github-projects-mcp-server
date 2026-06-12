@@ -49,8 +49,10 @@ export class EpicService {
       labels: [],
       assignee: "",
       estimated: undefined,
+      has_blockers: undefined,
       sprint_ref: "current",
       include_dependencies: false,
+      fields: "compact",
       limit: 500,
     });
 

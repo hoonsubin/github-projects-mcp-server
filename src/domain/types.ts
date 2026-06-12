@@ -242,7 +242,7 @@ export interface EpicSummary {
  * Enriched listing entry for story collections.
  * Replaces StoryListing from ports.ts.
  *
- * `key` is always present (non-nullable) - Draft Issues get an empty string.
+ * `key` is always present (non-nullable) - Draft Issues fall back to ref.id.
  */
 export interface BacklogItemListing {
   readonly ref: ItemListingRef;
@@ -364,11 +364,11 @@ export interface SprintWindowMeta {
 export interface ItemSearchResult {
   items: readonly BacklogItemListing[];
   total_count: number;
-  scope_summary: {
+  scope_summary?: {
     sprint_count: number | null;
     backlog_count: number | null;
   };
-  dependency_map: DependencyMap | null;
+  dependency_map?: readonly DependencyPointer[];
 }
 
 // ── Story detail output ────────────────────────────────────────────────────────

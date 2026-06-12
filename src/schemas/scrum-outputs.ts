@@ -40,8 +40,10 @@ export const BacklogItemListingSchema = z.object({
   }).strict(),
   epic: EpicRefWithNameSchema.nullable(),
   blocked_by: z.array(DependencyEntrySchema),
-  blocks: z.array(ItemListingRefSchema),
-  custom_fields: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])),
+  blocks: z.array(ItemListingRefSchema).optional(),
+  custom_fields: z
+    .record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))
+    .optional(),
 }).strict();
 
 const DependencyPointerSchema = z.object({
@@ -51,16 +53,33 @@ const DependencyPointerSchema = z.object({
   ref: EntityRefSchema,
 }).strict();
 
-const DependencyMapSchema = z.record(z.string(), DependencyPointerSchema);
+const CompactBlockedBySchema = z.object({ key: z.string() }).strict();
+
+export const CompactItemListingSchema = z.object({
+  ref: ItemListingRefSchema,
+  title: z.string(),
+  status: z.string().nullable(),
+  story_points: z.number().nullable(),
+  blocked_by: z.array(CompactBlockedBySchema),
+}).strict();
+
+export const StandardItemListingSchema = CompactItemListingSchema.extend({
+  type: z.string().nullable(),
+  priority: z.string().nullable(),
+  sprint: z.string().nullable(),
+  assignees: z.array(z.string()),
+}).strict();
 
 export const ItemSearchResultSchema = z.object({
-  items: z.array(BacklogItemListingSchema),
+  items: z.array(
+    z.union([CompactItemListingSchema, StandardItemListingSchema, BacklogItemListingSchema]),
+  ),
   total_count: z.number(),
   scope_summary: z.object({
     sprint_count: z.number().nullable(),
     backlog_count: z.number().nullable(),
-  }).strict(),
-  dependency_map: DependencyMapSchema.nullable(),
+  }).strict().optional(),
+  dependency_map: z.array(DependencyPointerSchema).optional(),
   warnings: z.array(z.string()).optional(),
 }).strict();
 
@@ -120,7 +139,7 @@ export const OrientResultSchema = z.object({
       active: z.array(EpicSummarySchema),
       total_count: z.number(),
     }).strict(),
-    template_uris: z.record(z.string(), z.string()).nullable(),
+    template_uris: z.record(z.string(), z.string()).nullable().optional(),
     deadline_field: z.string().nullable(),
   }).strict(),
   vocabulary: z.object({
@@ -142,12 +161,12 @@ export const OrientResultSchema = z.object({
         role: z.enum(["scrum_master", "product_owner", "developer"]),
         contact: z.string().optional(),
       }).strict(),
-    ).nullable(),
-    dor: z.array(z.string()).nullable(),
-    dod: z.array(z.string()).nullable(),
+    ).nullable().optional(),
+    dor: z.array(z.string()).nullable().optional(),
+    dod: z.array(z.string()).nullable().optional(),
     autonomy: z.object({
       require_confirmation_above_n_items: z.number().nullable(),
-    }).strict().nullable(),
+    }).strict().nullable().optional(),
   }).strict(),
 }).strict();
 
@@ -215,6 +234,7 @@ const StoryRefOutputSchema = z.object({ id: z.string() }).passthrough();
 export const PlanSprintResultSchema = z.object({
   sprint: z.union([z.string(), z.null()]),
   assigned: z.array(StoryRefOutputSchema),
+  cleared: z.array(StoryRefOutputSchema).optional(),
   skipped: z.array(
     z.object({
       ref: StoryRefOutputSchema,
@@ -235,25 +255,41 @@ export const CreateStoryPartialFailureSchema = StorySchema.extend({
   ),
 }).strict();
 
+export const CreateStoryTotalFailureSchema = z.object({
+  partialFailure: z.literal(true),
+  failedFields: z.array(
+    z.object({ field: z.string(), reason: z.string() }).strict(),
+  ),
+}).strict();
+
 export const CreateStoryResponseSchema = z.union([
   CreateStoryPartialFailureSchema,
+  CreateStoryTotalFailureSchema,
   StorySchema,
 ]);
 
-/** MCP outputSchema - success Story or same shape with partialFailure + failedFields set. */
-export const CreateStoryOutputSchema = CreateStoryPartialFailureSchema.partial({
-  partialFailure: true,
-  failedFields: true,
-});
+/** MCP outputSchema - success Story or partial/total failure markers. */
+export const CreateStoryOutputSchema = z.union([
+  StorySchema,
+  CreateStoryPartialFailureSchema,
+  CreateStoryTotalFailureSchema,
+]);
 
 export const LogImpedimentResultSchema = z.object({
   impediment: ImpedimentListingSchema,
   affects: z.unknown().nullable(),
 }).strict();
 
-export const SetFieldResponseSchema = StorySchema;
+export const WriteAckSchema = z.object({
+  ref: EntityRefSchema,
+  applied: z.literal(true),
+  field: z.string().optional(),
+  warnings: z.array(z.string()).optional(),
+}).strict();
 
-export const UpdateStoryResponseSchema = StorySchema;
+export const SetFieldResponseSchema = z.union([WriteAckSchema, StorySchema]);
+
+export const UpdateStoryResponseSchema = z.union([WriteAckSchema, StorySchema]);
 
 export const UpdateImpedimentResponseSchema = ImpedimentListingSchema;
 
@@ -263,9 +299,9 @@ const SprintInfoSchema = z.object({
   id: z.string(),
   name: z.string(),
   goal: z.string().nullable(),
-  startDate: z.string(),
-  durationDays: z.number(),
-  endDate: z.string(),
+  start_date: z.string(),
+  duration_days: z.number(),
+  end_date: z.string(),
 }).strict();
 
 export const SprintRawItemSchema = z.object({
@@ -274,14 +310,14 @@ export const SprintRawItemSchema = z.object({
   title: z.string(),
   type: z.string().nullable(),
   status: z.string().nullable(),
-  storyPoints: z.number().nullable(),
-  hasAssignee: z.boolean(),
-  hasBlockers: z.boolean(),
-  completedAt: z.string().nullable(),
+  story_points: z.number().nullable(),
+  has_assignee: z.boolean(),
+  has_blockers: z.boolean(),
+  completed_at: z.string().nullable(),
 }).strict();
 
 export const SprintRawDataSchema = z.object({
-  sprint: SprintInfoSchema,
+  sprint: SprintInfoSchema.nullable(),
   items: z.array(SprintRawItemSchema),
   warnings: z.array(z.string()).optional(),
 }).strict();

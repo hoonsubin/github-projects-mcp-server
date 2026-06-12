@@ -4,6 +4,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ProjectBackend } from "../scrum/ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
+import type { SessionCache } from "../services/session-cache.ts";
 import {
   AddVocabularySchema,
   CreateStorySchema,
@@ -20,8 +21,10 @@ import {
   LogImpedimentResultSchema,
   PlanSprintResultSchema,
   SetFieldResponseSchema,
+  StorySchema,
   UpdateImpedimentResponseSchema,
   UpdateStoryResponseSchema,
+  WriteAckSchema,
 } from "../schemas/scrum-outputs.ts";
 import {
   handleAddVocabulary,
@@ -53,6 +56,7 @@ export const registerScrumWriteTools = (
   server: McpServer,
   backend: ProjectBackend,
   scrumConfig: ScrumConfig,
+  sessionCache: SessionCache,
 ): void => {
   server.registerTool(
     "scrum_add_vocabulary",
@@ -76,7 +80,8 @@ export const registerScrumWriteTools = (
       outputSchema: AddVocabularyResultSchema.shape,
       annotations: { role: "admin" },
     },
-    (params: z.infer<typeof AddVocabularySchema>) => handleAddVocabulary(backend, params),
+    (params: z.infer<typeof AddVocabularySchema>) =>
+      handleAddVocabulary(backend, sessionCache, params),
   );
 
   server.registerTool(
@@ -87,7 +92,7 @@ export const registerScrumWriteTools = (
         `Set a single board field on a story. The primary write primitive - use this to move
         stories across the board, assign sprints, set points, update priority, assignee, or type.
 
-        Call scrum_get_story first if you need to read the current value before overwriting.
+        Call scrum_get_item_detail first if you need to read the current value before overwriting.
 
         Args:
           ref    { id: string } - story to update (Story.ref.id from any read tool)
@@ -104,12 +109,14 @@ export const registerScrumWriteTools = (
                    type          → canonical key (e.g. "feature", "bug" - see vocabulary.type in scrum_orient)
                  Pass null for any field to clear the value entirely.
 
-        Returns: updated Story object.`,
+        response  "ack" (default) | "story" - ack returns { ref, applied }; story returns full Story.
+
+        Returns: WriteAck by default, or Story when response="story".`,
       inputSchema: SetFieldSchema.shape,
-      outputSchema: SetFieldResponseSchema.shape,
+      outputSchema: WriteAckSchema.shape,
       annotations: { role: "admin" },
     },
-    (params: z.infer<typeof SetFieldSchema>) => handleSetField(backend, params),
+    (params: z.input<typeof SetFieldSchema>) => handleSetField(backend, scrumConfig, params),
   );
 
   server.registerTool(
@@ -136,12 +143,14 @@ export const registerScrumWriteTools = (
           comment    string - Post a comment on the story after updating (omit to skip)
           blocked_by  StoryRef[] - REPLACES all upstream (blocked_by) dependencies; null or [] clears; omit to leave unchanged
 
-        Returns: updated Story object.`,
+        response  "ack" (default) | "story" - ack returns { ref, applied }; story returns full Story.
+
+        Returns: WriteAck by default, or Story when response="story".`,
       inputSchema: UpdateStorySchema.shape,
-      outputSchema: UpdateStoryResponseSchema.shape,
+      outputSchema: WriteAckSchema.shape,
       annotations: { role: "admin" },
     },
-    (params: z.infer<typeof UpdateStorySchema>) => handleUpdateStory(backend, params),
+    (params: z.input<typeof UpdateStorySchema>) => handleUpdateStory(backend, params),
   );
 
   server.registerTool(
@@ -170,7 +179,7 @@ export const registerScrumWriteTools = (
 
         Returns: created Story object, or the same fields with partialFailure: true and failedFields[].`,
       inputSchema: CreateStorySchema.shape,
-      outputSchema: CreateStoryOutputSchema.shape,
+      outputSchema: StorySchema.shape,
       annotations: { role: "admin" },
     },
     (params: z.infer<typeof CreateStorySchema>) => handleCreateStory(backend, params),
@@ -192,7 +201,8 @@ export const registerScrumWriteTools = (
                    true  = CLEAR all current sprint stories first, then assign the list
                            Use with caution - replace:true removes any story not in your list.
 
-        Returns: { sprint, assigned: StoryRef[], skipped: [{ ref, reason }] }
+        Returns: { sprint, assigned: StoryRef[], cleared?: StoryRef[], skipped: [{ ref, reason }] }
+        When replace:true, cleared lists items removed from the sprint before assignment.
         The operation continues through individual failures - check skipped[] for errors.`,
       inputSchema: PlanSprintSchema.shape,
       outputSchema: PlanSprintResultSchema.shape,
@@ -239,6 +249,7 @@ export const registerScrumWriteTools = (
           status           "open" | "in_progress" | "resolved" - new impediment status
           resolution_notes  string (optional) - notes explaining why this impediment was resolved
 
+        Draft issues cannot be updated — promote to a full issue first.
         Returns: the updated ImpedimentListing.`,
       inputSchema: UpdateImpedimentSchema.shape,
       outputSchema: UpdateImpedimentResponseSchema.shape,

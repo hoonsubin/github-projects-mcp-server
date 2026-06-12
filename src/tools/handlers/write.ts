@@ -17,64 +17,101 @@ import {
 } from "../../schemas/scrum.ts";
 import { catchBackend } from "../../services/error-enrichment.ts";
 import { pickDefined } from "../../services/pick-defined.ts";
+import { resolveSprintQuery } from "../../scrum/sprint-filter.ts";
+import { resolveWriteFieldValue } from "../../scrum/write-value-resolve.ts";
+import type { SessionCache } from "../../services/session-cache.ts";
 import type { z } from "zod";
 import { type McpTextResult, toMcpTextResult } from "../_mcp_result.ts";
 
 type PartialFailureFields = Array<{ field: string; reason: string }>;
 
+const storyRefId = (ref: StoryRef): string => "id" in ref ? ref.id : String(ref.number);
+
+const writeAck = (
+  ref: StoryRef,
+  field?: string,
+  warnings: readonly string[] = [],
+): Record<string, unknown> => ({
+  ref: { id: storyRefId(ref) },
+  applied: true as const,
+  ...(field ? { field } : {}),
+  ...(warnings.length > 0 ? { warnings: [...warnings] } : {}),
+});
+
 /** Map MCP tool params (snake_case) to backend CreateStoryInput (camelCase). */
 export const toCreateStoryInput = (
   params: z.infer<typeof CreateStorySchema>,
-): CreateStoryInput => {
-  const sprint: SprintRef | undefined = params.sprint === undefined || params.sprint === "all"
-    ? undefined
-    : params.sprint as SprintRef;
-
-  return {
-    title: params.title,
-    body: params.body,
-    type: params.type,
-    ...(params.priority !== undefined ? { priority: params.priority } : {}),
-    ...(params.story_points !== undefined ? { storyPoints: params.story_points } : {}),
-    ...(params.labels !== undefined ? { labels: params.labels } : {}),
-    ...(params.epic !== undefined ? { epic: params.epic } : {}),
-    ...(params.assignees !== undefined ? { assignees: params.assignees } : {}),
-    ...(sprint !== undefined ? { sprint } : {}),
-  };
-};
+): CreateStoryInput => ({
+  title: params.title,
+  body: params.body,
+  type: params.type,
+  ...(params.priority !== undefined ? { priority: params.priority } : {}),
+  ...(params.story_points !== undefined ? { storyPoints: params.story_points } : {}),
+  ...(params.labels !== undefined ? { labels: params.labels } : {}),
+  ...(params.epic !== undefined ? { epic: params.epic } : {}),
+  ...(params.assignees !== undefined ? { assignees: params.assignees } : {}),
+  ...(params.sprint !== undefined ? { sprint: params.sprint as SprintRef } : {}),
+});
 
 export const resolveP0PriorityDisplay = (scrumConfig: ScrumConfig): string =>
   scrumConfig.priority_display?.[scrumConfig.scrum.priority?.[0]?.key ?? "p0"] ?? "Must";
 
+const resolveRaisedBy = (scrumConfig: ScrumConfig, raisedBy?: string): string | null => {
+  if (raisedBy) return raisedBy;
+  const sm = scrumConfig.project.team?.find((m) => m.role === "scrum_master");
+  return sm?.name ?? null;
+};
+
 export const handleAddVocabulary = async (
   backend: ProjectBackend,
+  sessionCache: SessionCache,
   params: z.infer<typeof AddVocabularySchema>,
 ): Promise<McpTextResult> => {
   const result = await backend.addVocabulary(params.kind, params.value);
+  sessionCache.invalidateOrient();
   return toMcpTextResult({ ...result, kind: params.kind, value: params.value });
 };
 
 export const handleSetField = async (
   backend: ProjectBackend,
-  params: z.infer<typeof SetFieldSchema>,
+  scrumConfig: ScrumConfig,
+  params: z.input<typeof SetFieldSchema>,
 ): Promise<McpTextResult> => {
+  const ref = params.ref as StoryRef;
+  if (params.field === "sprint" && params.value === "all") {
+    throw new Error(
+      '"all" is not a valid sprint target. Use "current", "next", a sprint name, or null.',
+    );
+  }
+
+  const value = resolveWriteFieldValue(scrumConfig, params.field, params.value) as
+    | string
+    | number
+    | SprintRef
+    | null;
+
   const { warnings } = await catchBackend(
-    () => backend.setField(params.ref, params.field, params.value),
+    () => backend.setField(ref, params.field, value),
   );
+
+  if ((params.response ?? "ack") === "ack") {
+    return toMcpTextResult(writeAck(ref, params.field, warnings));
+  }
+
   const { value: composeResult, warnings: composeWarnings } = await catchBackend(
-    () => backend.composeStoryAfterSetField(params.ref, params.field, params.value),
+    () => backend.composeStoryAfterSetField(ref, params.field, value),
   );
   const story = composeResult?.value ?? null;
-  const innerWarnings = composeResult?.warnings ?? [];
-  const allWarnings = [...warnings, ...composeWarnings, ...innerWarnings];
+  const allWarnings = [...warnings, ...composeWarnings, ...(composeResult?.warnings ?? [])];
   const response = allWarnings.length > 0 ? { ...story, warnings: allWarnings } : story;
   return toMcpTextResult(response);
 };
 
 export const handleUpdateStory = async (
   backend: ProjectBackend,
-  params: z.infer<typeof UpdateStorySchema>,
+  params: z.input<typeof UpdateStorySchema>,
 ): Promise<McpTextResult> => {
+  const ref = params.ref as StoryRef;
   const updates = pickDefined(params, [
     "title",
     "body",
@@ -86,24 +123,25 @@ export const handleUpdateStory = async (
   const allWarnings: string[] = [];
 
   const { warnings: w1 } = await catchBackend(
-    () => backend.updateStory(params.ref, updates as StoryUpdates),
+    () => backend.updateStory(ref, updates as StoryUpdates),
   );
   allWarnings.push(...w1);
 
   if (params.comment !== undefined) {
-    const comment = params.comment;
     const { warnings: w2 } = await catchBackend(
-      () => backend.addComment(params.ref, comment),
+      () => backend.addComment(ref, params.comment!),
     );
     allWarnings.push(...w2);
   }
 
+  if ((params.response ?? "ack") === "ack") {
+    return toMcpTextResult(writeAck(ref, undefined, allWarnings));
+  }
+
   const { value: composeResult, warnings: w3 } = await catchBackend(
-    () => backend.composeStoryAfterStoryUpdate(params.ref, updates as StoryUpdates),
+    () => backend.composeStoryAfterStoryUpdate(ref, updates as StoryUpdates),
   );
-  allWarnings.push(...w3);
-  const innerWarnings = composeResult?.warnings ?? [];
-  allWarnings.push(...innerWarnings);
+  allWarnings.push(...w3, ...(composeResult?.warnings ?? []));
   const story = composeResult?.value ?? null;
   const response = allWarnings.length > 0 ? { ...story, warnings: allWarnings } : story;
   return toMcpTextResult(response);
@@ -121,15 +159,14 @@ export const handleCreateStory = async (
 
   if (!storyRef) {
     return toMcpTextResult({
-      partialFailure: true,
+      partialFailure: true as const,
       failedFields: [{ field: "create", reason: createWarnings.join("; ") }],
     });
   }
 
   if (params.sprint !== undefined) {
-    const sprintVal = params.sprint;
     const { warnings: w } = await catchBackend(
-      () => backend.setField(storyRef, "sprint", sprintVal),
+      () => backend.setField(storyRef, "sprint", params.sprint!),
     );
     for (const reason of w) failedFields.push({ field: "sprint", reason });
   }
@@ -138,14 +175,15 @@ export const handleCreateStory = async (
     () => backend.composeStorySnapshot(storyRef),
   );
   for (const reason of readWarnings) failedFields.push({ field: "read", reason });
-  const innerWarnings = composeResult?.warnings ?? [];
-  for (const reason of innerWarnings) failedFields.push({ field: "read", reason });
+  for (const reason of composeResult?.warnings ?? []) {
+    failedFields.push({ field: "read", reason });
+  }
   const storyDetail = composeResult?.value ?? null;
 
   if (failedFields.length > 0) {
     return toMcpTextResult({
       ...(storyDetail as Story),
-      partialFailure: true,
+      partialFailure: true as const,
       failedFields,
     });
   }
@@ -157,17 +195,22 @@ export const handlePlanSprint = async (
   backend: ProjectBackend,
   params: z.infer<typeof PlanSprintSchema>,
 ): Promise<McpTextResult> => {
+  if (params.sprint === "all") {
+    throw new Error(
+      '"all" is not a valid plan_sprint target. Use "current", "next", or a sprint name.',
+    );
+  }
+
   const assigned: StoryRef[] = [];
+  const cleared: StoryRef[] = [];
   const skipped: Array<{ ref: StoryRef; reason: string }> = [];
 
   if (params.replace) {
-    if (params.sprint === "all") {
-      throw new Error(
-        '"all" is not valid for plan_sprint - use "current", "next", null, or an explicit sprint name.',
-      );
-    }
+    const sprintArg = typeof params.sprint === "string" ? params.sprint : "current";
+    const { scope, sprint_ref } = resolveSprintQuery(sprintArg);
     const { value: sprintItems } = await backend.findItems({
-      scope: "sprint",
+      scope,
+      sprint_ref,
       keys: [],
       search: "",
       types: [],
@@ -177,8 +220,9 @@ export const handlePlanSprint = async (
       labels: [],
       assignee: "",
       estimated: undefined,
-      sprint_ref: params.sprint,
+      has_blockers: undefined,
       include_dependencies: false,
+      fields: "compact",
       limit: 500,
     });
     if (!sprintItems) {
@@ -191,7 +235,7 @@ export const handlePlanSprint = async (
       if (w.length > 0) {
         for (const reason of w) skipped.push({ ref: item.ref, reason });
       } else {
-        assigned.push(item.ref);
+        cleared.push(item.ref);
       }
     }
   }
@@ -208,6 +252,7 @@ export const handlePlanSprint = async (
   }
 
   const result: Record<string, unknown> = { sprint: params.sprint, assigned, skipped };
+  if (cleared.length > 0) result.cleared = cleared;
   if (params.goal !== undefined) result.goal = params.goal;
 
   return toMcpTextResult(result);
@@ -219,6 +264,7 @@ export const handleLogImpediment = async (
   params: z.infer<typeof LogImpedimentSchema>,
 ): Promise<McpTextResult> => {
   const p0PriorityDisplay = resolveP0PriorityDisplay(scrumConfig);
+  const raisedBy = resolveRaisedBy(scrumConfig, params.raised_by);
 
   const bodyParts = [params.description];
   if (params.affects) {
@@ -240,6 +286,7 @@ export const handleLogImpediment = async (
     priority: params.priority ?? p0PriorityDisplay,
   };
   const { listing: impediment, itemRef } = await backend.createImpediment(impedimentInput);
+  const impedimentOut = { ...impediment, raised_by: raisedBy ?? impediment.raised_by };
 
   if (params.affects) {
     if ("story" in params.affects) {
@@ -248,7 +295,7 @@ export const handleLogImpediment = async (
         "",
         params.description,
         "",
-        `> Created by ${params.raised_by ?? "agent"}`,
+        `> Created by ${raisedBy ?? "agent"}`,
       ].join("\n");
       await backend.addComment(params.affects.story, affectedComment);
 
@@ -273,7 +320,7 @@ export const handleLogImpediment = async (
     }
   }
 
-  return toMcpTextResult({ impediment, affects: params.affects ?? null });
+  return toMcpTextResult({ impediment: impedimentOut, affects: params.affects ?? null });
 };
 
 export const handleUpdateImpediment = async (

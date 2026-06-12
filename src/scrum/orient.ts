@@ -8,6 +8,7 @@
 import type { ProjectReader, SprintInfo } from "./ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
 import type { EpicSummary, OrientResult, TemplateUriMap, UseCaseResult } from "../domain/types.ts";
+import type { OrientDetail } from "./orient-tier.ts";
 import { ITEM_TYPES } from "../domain/types.ts";
 import { sprintContextFromSprintInfo } from "./utils/sprint-context.ts";
 import { catchBackend } from "../services/error-enrichment.ts";
@@ -41,12 +42,18 @@ const buildTemplateUriMap = (
   return Object.keys(map).length > 0 ? map : null;
 };
 
+export interface OrientOptions {
+  readonly skipMetadataReload?: boolean;
+  readonly detail?: OrientDetail;
+}
+
 /**
  * Orient to the project: return platform state and declared vocabulary.
  */
 export const orientUseCase = async (
   backend: ProjectReader,
   scrumConfig: ScrumConfig,
+  options: OrientOptions = {},
 ): Promise<UseCaseResult<OrientResult>> => {
   const warnings: string[] = [];
 
@@ -55,7 +62,9 @@ export const orientUseCase = async (
   const canonicalPriorityKeys = scrumConfig.scrum.priority.map((p) => p.key);
 
   // ── Hard prerequisites (no catch - let failures propagate) ────────────
-  await backend.reloadMetadata();
+  if (!options.skipMetadataReload) {
+    await backend.reloadMetadata();
+  }
 
   // getPlatformState returns BackendCallResult - warnings are accumulated per
   // sub-field (e.g. NOT_IMPLEMENTED for sprint goal). Fatal errors propagate.

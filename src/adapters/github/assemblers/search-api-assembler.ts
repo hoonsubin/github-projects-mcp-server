@@ -136,7 +136,9 @@ const searchOnlyFilter = (
   labels: profile.labels ?? [],
   assignee: profile.assignee ?? "",
   estimated: undefined,
+  has_blockers: undefined,
   sprint_ref: null,
   include_dependencies: false,
+  fields: "compact" as const,
   limit: 50,
 });

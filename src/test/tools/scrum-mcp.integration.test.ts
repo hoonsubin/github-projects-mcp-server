@@ -9,6 +9,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import {
   committedFakeBackendPromise,
   committedScrumConfigPromise,
+  testSessionCache,
 } from "../support/scrum-test-utils.ts";
 import { registerScrumReadTools } from "../../tools/scrum-read.ts";
 import { registerScrumWriteTools } from "../../tools/scrum-write.ts";
@@ -28,7 +29,7 @@ Deno.test("MCP CallTool: scrum_orient passes server output validation", async ()
   const backend = await committedFakeBackendPromise;
 
   const server = new McpServer({ name: "scrum-test-server", version: "0" });
-  registerScrumReadTools(server, backend, boot.scrumConfig);
+  registerScrumReadTools(server, backend, boot.scrumConfig, testSessionCache());
 
   const client = await connectMcpPair(server);
   try {
@@ -47,7 +48,7 @@ Deno.test("MCP listTools: scrum_update_story blocked_by exposes type array", asy
   const backend = await committedFakeBackendPromise;
 
   const server = new McpServer({ name: "scrum-test-server", version: "0" });
-  registerScrumWriteTools(server, backend, boot.scrumConfig);
+  registerScrumWriteTools(server, backend, boot.scrumConfig, testSessionCache());
 
   const client = await connectMcpPair(server);
   try {
@@ -68,7 +69,7 @@ Deno.test("MCP CallTool: scrum_update_story accepts stringified blocked_by", asy
   const backend = await committedFakeBackendPromise;
 
   const server = new McpServer({ name: "scrum-test-server", version: "0" });
-  registerScrumWriteTools(server, backend, boot.scrumConfig);
+  registerScrumWriteTools(server, backend, boot.scrumConfig, testSessionCache());
 
   const client = await connectMcpPair(server);
   try {
@@ -91,13 +92,13 @@ Deno.test("MCP CallTool: scrum_find_items passes server output validation", asyn
   const backend = await committedFakeBackendPromise;
 
   const server = new McpServer({ name: "scrum-test-server", version: "0" });
-  registerScrumReadTools(server, backend, boot.scrumConfig);
+  registerScrumReadTools(server, backend, boot.scrumConfig, testSessionCache());
 
   const client = await connectMcpPair(server);
   try {
     const result = await client.callTool({
       name: "scrum_find_items",
-      arguments: { scope: "all", include_dependencies: false, limit: 5 },
+      arguments: { include_dependencies: false, limit: 5 },
     });
     assertEquals(result.isError, undefined);
     assertExists(result.structuredContent);
@@ -112,13 +113,13 @@ Deno.test("MCP CallTool: scrum_get_sprint_data passes server output validation",
   const backend = await committedFakeBackendPromise;
 
   const server = new McpServer({ name: "scrum-test-server", version: "0" });
-  registerScrumReadTools(server, backend, boot.scrumConfig);
+  registerScrumReadTools(server, backend, boot.scrumConfig, testSessionCache());
 
   const client = await connectMcpPair(server);
   try {
     const result = await client.callTool({
       name: "scrum_get_sprint_data",
-      arguments: { sprint_ref: "current" },
+      arguments: { sprint: "current" },
     });
     assertEquals(result.isError, undefined);
     assertExists(result.structuredContent);

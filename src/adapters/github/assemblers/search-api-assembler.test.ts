@@ -49,8 +49,10 @@ Deno.test("SearchApiAssembler - falls back to board scan when search returns no 
     labels: [] as string[],
     assignee: "",
     estimated: undefined,
+    has_blockers: undefined,
     sprint_ref: null,
     include_dependencies: false,
+    fields: "full" as const,
     limit: 5,
   };
 

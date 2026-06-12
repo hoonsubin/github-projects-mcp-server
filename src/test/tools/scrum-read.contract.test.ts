@@ -7,6 +7,7 @@ import {
   committedConfigProfilePromise,
   committedFakeBackendPromise,
   committedScrumConfigPromise,
+  testSessionCache,
 } from "../support/scrum-test-utils.ts";
 import {
   assertFindItemsMatchesConfig,
@@ -31,9 +32,10 @@ Deno.test("scrum_orient - happy path schema + config contract", async () => {
   const boot = await committedScrumConfigPromise;
   const profile = await committedConfigProfilePromise;
   const backend = await committedFakeBackendPromise;
+  const cache = testSessionCache();
 
   const payload = assertHandlerSchema(
-    await handleOrient(backend, boot.scrumConfig),
+    await handleOrient(backend, boot.scrumConfig, cache, { detail: "full", refresh: true }),
     OrientResultSchema,
     "scrum_orient",
   );
@@ -41,12 +43,32 @@ Deno.test("scrum_orient - happy path schema + config contract", async () => {
   assertExists(payload.platform_state.iterations.active);
 });
 
+Deno.test("scrum_orient - session cache skips reload on repeat", async () => {
+  const boot = await committedScrumConfigPromise;
+  const backend = await committedFakeBackendPromise;
+  const cache = testSessionCache();
+
+  await handleOrient(backend, boot.scrumConfig, cache);
+  const originalReloadMetadata = backend.reloadMetadata.bind(backend);
+  let metadataReloads = 0;
+  backend.reloadMetadata = async () => {
+    metadataReloads++;
+    return originalReloadMetadata();
+  };
+
+  await handleOrient(backend, boot.scrumConfig, cache, { detail: "session", refresh: false });
+  assertEquals(metadataReloads, 0);
+
+  await handleOrient(backend, boot.scrumConfig, cache, { detail: "session", refresh: true });
+  assertEquals(metadataReloads >= 1, true);
+});
+
 Deno.test("scrum_find_items - happy path schema + config contract", async () => {
   const profile = await committedConfigProfilePromise;
   const backend = await committedFakeBackendPromise;
 
   const payload = assertHandlerSchema(
-    await handleFindItems(backend, { scope: "all", include_dependencies: false, limit: 50 }),
+    await handleFindItems(backend, { include_dependencies: false, limit: 50 }),
     ItemSearchResultSchema,
     "scrum_find_items",
   );
@@ -58,11 +80,12 @@ Deno.test("scrum_find_items - include_dependencies variant", async () => {
   const backend = await committedFakeBackendPromise;
 
   const payload = assertHandlerSchema(
-    await handleFindItems(backend, { scope: "all", include_dependencies: true, limit: 10 }),
+    await handleFindItems(backend, { include_dependencies: true, limit: 10 }),
     ItemSearchResultSchema,
     "scrum_find_items (deps)",
   );
   assertEquals(payload.dependency_map !== null, true);
+  assertEquals(Array.isArray(payload.dependency_map), true);
 });
 
 Deno.test("scrum_get_item_detail - happy path schema", async () => {
@@ -78,8 +101,10 @@ Deno.test("scrum_get_item_detail - happy path schema", async () => {
     labels: [],
     assignee: "",
     estimated: undefined,
+    has_blockers: undefined,
     sprint_ref: null,
     include_dependencies: false,
+    fields: "full",
     limit: 1,
   })).value!.items[0];
 
@@ -95,13 +120,13 @@ Deno.test("scrum_get_sprint_data - happy path schema", async () => {
   const backend = await committedFakeBackendPromise;
 
   const payload = assertHandlerSchema(
-    await handleGetSprintData(backend, { sprint_ref: "current" }),
+    await handleGetSprintData(backend, { sprint: "current" }),
     SprintRawDataSchema,
     "scrum_get_sprint_data",
   );
-  assertEquals(payload.sprint.name, "Sprint 1");
-  assertEquals(typeof payload.sprint.id, "string");
-  assertEquals(typeof payload.sprint.durationDays, "number");
+  assertEquals(payload.sprint!.name, "Sprint 1");
+  assertEquals(typeof payload.sprint!.id, "string");
+  assertEquals(typeof payload.sprint!.duration_days, "number");
   assertEquals(Array.isArray(payload.items), true);
   assertEquals(payload.items.length > 0, true);
 
@@ -109,9 +134,9 @@ Deno.test("scrum_get_sprint_data - happy path schema", async () => {
   assertEquals(typeof item.id, "string");
   assertEquals(typeof item.number, "number");
   assertEquals(typeof item.title, "string");
-  assertEquals(typeof item.hasAssignee, "boolean");
-  assertEquals(typeof item.hasBlockers, "boolean");
-  assertEquals(typeof item.storyPoints, "number");
+  assertEquals(typeof item.has_assignee, "boolean");
+  assertEquals(typeof item.has_blockers, "boolean");
+  assertEquals(typeof item.story_points, "number");
 });
 
 Deno.test("scrum_get_sprint_data - config contract", async () => {
@@ -119,15 +144,13 @@ Deno.test("scrum_get_sprint_data - config contract", async () => {
   const backend = await committedFakeBackendPromise;
 
   const payload = assertHandlerSchema(
-    await handleGetSprintData(backend, { sprint_ref: "current" }),
+    await handleGetSprintData(backend, { sprint: "current" }),
     SprintRawDataSchema,
     "scrum_get_sprint_data (contract)",
   );
 
-  // Sprint name must be a non-empty string (exact names are config-dependent)
-  assertEquals(payload.sprint.name.length > 0, true);
+  assertEquals(payload.sprint!.name.length > 0, true);
 
-  // Item types and statuses must match config vocabulary where set
   const allowedStatuses = new Set(Object.values(profile.statusDisplay));
   const allowedTypes = new Set(Object.keys(profile.typeDisplay));
 
@@ -147,4 +170,16 @@ Deno.test("scrum_get_sprint_data - config contract", async () => {
       );
     }
   }
+});
+
+Deno.test("scrum_get_sprint_data - null sprint returns empty items", async () => {
+  const backend = await committedFakeBackendPromise;
+
+  const payload = assertHandlerSchema(
+    await handleGetSprintData(backend, { sprint: null }),
+    SprintRawDataSchema,
+    "scrum_get_sprint_data (null)",
+  );
+  assertEquals(payload.sprint, null);
+  assertEquals(payload.items.length, 0);
 });

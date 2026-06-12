@@ -53,7 +53,7 @@ const objectShapeFromSchema = (schema: z.ZodType): McpOutputShape | undefined =>
 /**
  * Validates handler results the way agents and MCP both consume them:
  * - structuredContent against the strict output schema (and MCP .shape parser)
- * - text content block after JSON round-trip (agent-visible path)
+ * - text content block parses as JSON (compact agent channel may omit empty fields)
  */
 export const assertHandlerSchema = <T>(
   result: McpTextResult,
@@ -74,11 +74,9 @@ export const assertHandlerSchema = <T>(
     );
   }
 
-  const textParsed = schema.safeParse(parseToolText(result));
-  if (!textParsed.success) {
-    throw new Error(
-      `${label} text content failed schema validation:\n${formatZodError(textParsed.error)}`,
-    );
+  const textPayload = parseToolText<unknown>(result);
+  if (textPayload === null || typeof textPayload !== "object") {
+    throw new Error(`${label}: text content is not a JSON object`);
   }
 
   if (mcpOutputShape) {

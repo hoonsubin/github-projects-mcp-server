@@ -54,8 +54,10 @@ Deno.test({
         labels: [],
         assignee: "",
         estimated: undefined,
+        has_blockers: undefined,
         sprint_ref: null,
         include_dependencies: false,
+        fields: "full" as const,
         limit: 50,
       },
     );
@@ -95,8 +97,10 @@ Deno.test({
         labels: [],
         assignee: "",
         estimated: undefined,
+        has_blockers: undefined,
         sprint_ref: null,
         include_dependencies: false,
+        fields: "full" as const,
         limit: 50,
       },
     );

@@ -40,6 +40,7 @@ import type {
   CreateResult,
   CreateStoryInput,
   ImpedimentListing,
+  ItemSearchResultRaw,
   PlatformState,
   ResolvedItemFilter,
   ScrumField,
@@ -57,7 +58,6 @@ import type {
   EpicListing,
   ImpedimentRef,
   ImpedimentStatus,
-  ItemSearchResult,
   IterationEntry,
   SprintRef,
   Story,
@@ -236,7 +236,7 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
 
   // ── Port methods (P7 - real implementations) ──────────────────────────────
 
-  async findItems(filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResult>> {
+  async findItems(filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResultRaw>> {
     const profile = classifyFilter(filter);
     const { items, totalCount, scopeSummary, dependencyMap, warnings } = await (() => {
       switch (profile.kind) {

@@ -56,7 +56,7 @@ export const assertFindItemsMatchesConfig = (
         `status "${item.status}" must be a config display value`,
       );
     }
-    if (item.priority !== null) {
+    if ("priority" in item && item.priority !== null) {
       assertEquals(
         allowedPriorities.has(item.priority),
         true,

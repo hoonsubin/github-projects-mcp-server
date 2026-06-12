@@ -6,22 +6,23 @@
 import { AbstractProjectBackend } from "../../adapters/abstract-backend.ts";
 import { AdapterError } from "../../domain/errors.ts";
 import { CapabilityStatus, type PlatformCapabilities } from "../../adapters/capabilities.ts";
-import type {
-  BacklogItemListing,
-  EpicListing,
-  ImpedimentRef,
-  ImpedimentStatus,
-  ItemSearchResult,
-  ItemType,
-  SprintRef,
-  Story,
-  StoryRef,
-  SupportedBackend,
+import {
+  type BacklogItemListing,
+  type EpicListing,
+  type ImpedimentRef,
+  type ImpedimentStatus,
+  type ItemType,
+  type SprintRef,
+  type Story,
+  type StoryRef,
+  type SupportedBackend,
+  toIssueKey,
 } from "../../domain/types.ts";
 import type {
   CreateResult,
   CreateStoryInput,
   ImpedimentListing,
+  ItemSearchResultRaw,
   PlatformState,
   ResolvedItemFilter,
   ScrumField,
@@ -236,7 +237,7 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
     return Promise.resolve([...this.epics]);
   }
 
-  findItems(filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResult>> {
+  findItems(filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResultRaw>> {
     this.log("findItems", filter);
     const items = filter.limit > 0 ? this.items.slice(0, filter.limit) : [...this.items];
     return Promise.resolve({
@@ -244,7 +245,16 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
         items,
         total_count: this.items.length,
         scope_summary: { sprint_count: this.items.length, backlog_count: 0 },
-        dependency_map: filter.include_dependencies ? {} : null,
+        dependency_map: filter.include_dependencies
+          ? {
+            "99": {
+              key: toIssueKey("99"),
+              title: "Fixture blocker",
+              status: "Blocked",
+              ref: { id: "PVTI_fake_blocker" },
+            },
+          }
+          : null,
       },
       warnings: [],
     });
@@ -308,10 +318,10 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
         title: "Config-shaped fixture story",
         type: (Object.keys(this.profile.typeDisplay)[0] ?? "user_story") as string,
         status: Object.values(this.profile.statusDisplay)[0] ?? "In Progress",
-        storyPoints: 3,
-        hasAssignee: true,
-        hasBlockers: false,
-        completedAt: null,
+        story_points: 3,
+        has_assignee: true,
+        has_blockers: false,
+        completed_at: null,
       }],
     });
   }

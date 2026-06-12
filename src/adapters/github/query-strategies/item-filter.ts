@@ -39,7 +39,14 @@ export const buildItemFilterFn = (
     );
 
   let sprintItemIds: Set<string> | null = null;
-  if (filter.sprint_ref !== null) {
+  if (filter.sprint_ref === "all") {
+    sprintItemIds = new Set<string>();
+    for (const iteration of config.live.iterations.all) {
+      for (const id of buildSprintItemIds(iteration.id, allItems)) {
+        sprintItemIds.add(id);
+      }
+    }
+  } else if (filter.sprint_ref !== null) {
     const iterationId = resolveSprint(filter.sprint_ref, config);
     if (iterationId === null) {
       return () => false;
@@ -53,7 +60,13 @@ export const buildItemFilterFn = (
   }
 
   const typeSet = filter.types.length > 0 ? new Set(filter.types) : null;
-  const statusSet = filter.statuses.length > 0 ? new Set(filter.statuses) : null;
+  const resolvedStatuses = filter.statuses.map(
+    (status) => config.ghConfig.status_display?.[status] ?? status,
+  );
+  const statusSet = resolvedStatuses.length > 0 ? new Set(resolvedStatuses) : null;
+  const resolvedPriority = filter.priority
+    ? (config.ghConfig.priority_display?.[filter.priority] ?? filter.priority)
+    : "";
   const labelList = filter.labels.length > 0 ? filter.labels : null;
   const searchQ = filter.search ? filter.search.toLowerCase() : null;
 
@@ -122,7 +135,12 @@ export const buildItemFilterFn = (
 
     if (statusSet && (story.status === null || !statusSet.has(story.status))) return false;
 
-    if (filter.priority && story.priority !== filter.priority) return false;
+    if (resolvedPriority && story.priority !== resolvedPriority) return false;
+
+    if (filter.has_blockers !== undefined) {
+      const blocked = story.blocked_by.length > 0;
+      if (filter.has_blockers !== blocked) return false;
+    }
 
     if (searchQ) {
       const titleMatch = story.title.toLowerCase().includes(searchQ);

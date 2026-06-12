@@ -18,7 +18,7 @@ const EMPTY_SPRINT_REF: EntityRef = { id: "" };
  * provides sprint node IDs (P7).
  */
 export const toItemListing = (story: Story): BacklogItemListing => ({
-  ref: { id: story.ref.id, key: story.key ?? "" },
+  ref: { id: story.ref.id, key: story.key ?? story.ref.id },
   title: story.title,
   type: story.type,
   status: story.status,

@@ -26,6 +26,7 @@ import { SCRUM_WRITE_TOOL_NAMES } from "./tools/scrum-write.ts";
 import type { ScrumConfig } from "./domain/config.ts";
 import type { EnvGetter } from "./domain/env.ts";
 import { createRateLimiter } from "./services/rate-limiter.ts";
+import { SessionCache } from "./services/session-cache.ts";
 
 // ── Process-level crash guard ────────────────────────────────────────────────
 //
@@ -211,9 +212,10 @@ const createMcpServer = async (): Promise<McpServer> => {
   }
 
   const { backend, fileReader, typeTemplatePaths } = backendResult;
+  const sessionCache = new SessionCache();
 
-  registerScrumReadTools(server, backend, scrumConfig);
-  registerScrumWriteTools(server, backend, scrumConfig);
+  registerScrumReadTools(server, backend, scrumConfig, sessionCache);
+  registerScrumWriteTools(server, backend, scrumConfig, sessionCache);
 
   if (fileReader) {
     const templateReadCallback = async (uri: URL, variables: Variables) => {

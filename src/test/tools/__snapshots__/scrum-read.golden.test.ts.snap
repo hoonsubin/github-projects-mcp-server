@@ -83,13 +83,7 @@ snapshot[`golden: scrum_orient handler output 1`] = `
       ],
       "total_count": 1
     },
-    "template_uris": {
-      "bug": "scrum://template/bug",
-      "tech_debt": "scrum://template/tech_debt",
-      "spike": "scrum://template/spike",
-      "user_story": "scrum://template/user_story",
-      "impediment": "scrum://template/impediment"
-    },
+    "template_uris": null,
     "deadline_field": null
   },
   "vocabulary": {
@@ -129,28 +123,10 @@ snapshot[`golden: scrum_orient handler output 1`] = `
       "velocity_window": 4,
       "length_weeks": 2
     },
-    "team": [
-      {
-        "name": "Hoon Kim",
-        "role": "product_owner",
-        "contact": "hoon@example.com"
-      }
-    ],
-    "dor": [
-      "Written as a user story (who / what / why)",
-      "Acceptance criteria defined and agreed by the team",
-      "Estimated in story points",
-      "Dependencies identified and de-risked",
-      "Completable within one sprint"
-    ],
-    "dod": [
-      "Code or output reviewed and approved by the team",
-      "All acceptance criteria met and verified",
-      "Documentation updated for the shared knowledge space"
-    ],
-    "autonomy": {
-      "require_confirmation_above_n_items": 5
-    }
+    "team": null,
+    "dor": null,
+    "dod": null,
+    "autonomy": null
   }
 }\`
 `;
@@ -161,9 +137,9 @@ snapshot[`golden: scrum_get_sprint_data handler output 1`] = `
     "id": "IT_fake_active",
     "name": "Sprint 1",
     "goal": "Config-shaped fake sprint",
-    "startDate": "2026-01-01",
-    "durationDays": 14,
-    "endDate": "2026-01-15"
+    "start_date": "2026-01-01",
+    "duration_days": 14,
+    "end_date": "2026-01-15"
   },
   "items": [
     {
@@ -172,10 +148,10 @@ snapshot[`golden: scrum_get_sprint_data handler output 1`] = `
       "title": "Config-shaped fixture story",
       "type": "user_story",
       "status": "Backlog",
-      "storyPoints": 3,
-      "hasAssignee": true,
-      "hasBlockers": false,
-      "completedAt": null
+      "story_points": 3,
+      "has_assignee": true,
+      "has_blockers": false,
+      "completed_at": null
     }
   ]
 }'
@@ -190,31 +166,11 @@ snapshot[`golden: scrum_find_items handler output 1`] = `
         "key": "101"
       },
       "title": "Config-shaped fixture story",
-      "type": "user_story",
       "status": "In Progress",
       "story_points": 3,
-      "priority": "Must",
-      "assignees": [
-        "agent-tester"
-      ],
-      "labels": [],
-      "sprint": {
-        "name": "Sprint 1",
-        "ref": {
-          "id": "IT_fake_active"
-        }
-      },
-      "epic": null,
-      "blocked_by": [],
-      "blocks": [],
-      "custom_fields": {}
+      "blocked_by": []
     }
   ],
-  "total_count": 1,
-  "scope_summary": {
-    "sprint_count": 1,
-    "backlog_count": 0
-  },
-  "dependency_map": null
+  "total_count": 1
 }'
 `;
