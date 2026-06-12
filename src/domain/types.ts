@@ -262,6 +262,10 @@ export interface BacklogItemListing {
   readonly blocked_by: ReadonlyArray<DependencyEntry>;
   /** Keys of items this one blocks (reverse dependency). Populated by adapter. */
   readonly blocks: ReadonlyArray<ItemListingRef>;
+  /** Linked PRs from the board Pull requests column (delivery work for this PBI). */
+  readonly linked_pull_requests?: ReadonlyArray<LinkedArtifact>;
+  /** Underlying platform content. Defaults to issue when omitted. */
+  readonly content_kind?: "issue" | "pr" | "draft";
   readonly custom_fields: Record<string, string | number | boolean | null>;
 }
 

@@ -215,7 +215,7 @@ export class LabelResolver {
     const existingLabels = await this.fetchAllLabels();
     const existingNames: string[] = existingLabels.map((l) => l.name);
     if (existingNames.includes(value)) {
-      return { created: false };
+      return { created: false, already_exists: true };
     }
     const color = this.hashToColor(value);
     const repositoryId = await this.fetchRepoNodeId();

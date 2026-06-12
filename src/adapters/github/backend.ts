@@ -320,19 +320,24 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
 
   // ── Story write delegations ───────────────────────────────────────────────
 
-  createStory(input: CreateStoryInput): Promise<StoryRef> {
-    return this.deps.storyMutationService.createStory(input);
+  async createStory(input: CreateStoryInput): Promise<StoryRef> {
+    const ref = await this.deps.storyMutationService.createStory(input);
+    this.deps.boardScan.invalidate();
+    return ref;
   }
 
-  override createImpediment(
+  override async createImpediment(
     input: CreateStoryInput,
   ): Promise<{ listing: ImpedimentListing; itemRef: StoryRef }> {
-    return this.deps.impedimentService.createImpediment(input);
+    const result = await this.deps.impedimentService.createImpediment(input);
+    this.deps.boardScan.invalidate();
+    return result;
   }
 
   async updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void> {
     const resolved = await this.resolveRef(ref);
-    return this.deps.storyMutationService.updateStory(resolved, updates);
+    await this.deps.storyMutationService.updateStory(resolved, updates);
+    this.deps.boardScan.invalidate();
   }
 
   async setField(
@@ -341,16 +346,22 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
     value: string | number | SprintRef | null,
   ): Promise<void> {
     const resolved = await this.resolveRef(ref);
-    return this.deps.storyMutationService.setField(resolved, field, value);
+    await this.deps.storyMutationService.setField(resolved, field, value);
+    this.deps.boardScan.invalidate();
   }
 
   async addComment(ref: StoryRef, body: string): Promise<void> {
     const resolved = await this.resolveRef(ref);
-    return this.deps.storyMutationService.addComment(resolved, body);
+    await this.deps.storyMutationService.addComment(resolved, body);
+    this.deps.boardScan.invalidate();
   }
 
-  addVocabulary(kind: VocabularyKind, value: string): Promise<CreateResult> {
-    return this.deps.vocabularyManager.addVocabulary(kind, value);
+  async addVocabulary(kind: VocabularyKind, value: string): Promise<CreateResult> {
+    const result = await this.deps.vocabularyManager.addVocabulary(kind, value);
+    if (kind === "label") {
+      this.deps.labelResolver.invalidateLabelCache();
+    }
+    return result;
   }
 
   // ── Impediment delegations ────────────────────────────────────────────────

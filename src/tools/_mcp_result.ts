@@ -8,10 +8,14 @@ import { serializeToolPayload, stripEmpty } from "./response-serialize.ts";
 export interface McpTextResult {
   readonly content: ReadonlyArray<{ readonly type: "text"; readonly text: string }>;
   readonly structuredContent?: Record<string, unknown>;
+  readonly isError?: boolean;
 }
 
-export const toMcpTextResult = (payload: unknown): McpTextResult => {
-  const text = serializeToolPayload(payload);
+export const toMcpTextResult = (
+  payload: unknown,
+  options?: { textPayload?: unknown },
+): McpTextResult => {
+  const text = serializeToolPayload(options?.textPayload ?? payload);
   return {
     content: [{ type: "text", text }],
     structuredContent: payload as Record<string, unknown>,

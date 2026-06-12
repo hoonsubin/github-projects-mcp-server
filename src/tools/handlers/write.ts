@@ -19,9 +19,11 @@ import { catchBackend } from "../../services/error-enrichment.ts";
 import { pickDefined } from "../../services/pick-defined.ts";
 import { resolveSprintQuery } from "../../scrum/sprint-filter.ts";
 import { resolveWriteFieldValue } from "../../scrum/write-value-resolve.ts";
+import { assertAddVocabularyAllowed } from "../../scrum/validate-add-vocabulary.ts";
 import type { SessionCache } from "../../services/session-cache.ts";
 import type { z } from "zod";
 import { type McpTextResult, toMcpTextResult } from "../_mcp_result.ts";
+import { toToolErrorResult } from "../handler-errors.ts";
 
 type PartialFailureFields = Array<{ field: string; reason: string }>;
 
@@ -64,9 +66,31 @@ const resolveRaisedBy = (scrumConfig: ScrumConfig, raisedBy?: string): string | 
 
 export const handleAddVocabulary = async (
   backend: ProjectBackend,
+  scrumConfig: ScrumConfig,
   sessionCache: SessionCache,
   params: z.infer<typeof AddVocabularySchema>,
 ): Promise<McpTextResult> => {
+  if (params.kind !== "label") {
+    const { value: state } = await backend.getPlatformState({
+      canonicalStatusKeys: Object.keys(scrumConfig.scrum.status),
+      canonicalPriorityKeys: scrumConfig.scrum.priority.map((p) => p.key),
+    });
+    if (!state) {
+      throw new Error("getPlatformState returned null without throwing");
+    }
+    try {
+      assertAddVocabularyAllowed(
+        scrumConfig,
+        params.kind,
+        params.value,
+        state.fields.status.missingOptions,
+        state.fields.priority.missingOptions,
+      );
+    } catch (err) {
+      return toToolErrorResult(err);
+    }
+  }
+
   const result = await backend.addVocabulary(params.kind, params.value);
   sessionCache.invalidateOrient();
   return toMcpTextResult({ ...result, kind: params.kind, value: params.value });
@@ -327,11 +351,15 @@ export const handleUpdateImpediment = async (
   backend: ProjectBackend,
   params: z.infer<typeof UpdateImpedimentSchema>,
 ): Promise<McpTextResult> => {
-  const result = await updateImpedimentUseCase(
-    backend,
-    params.ref,
-    params.status,
-    params.resolution_notes,
-  );
-  return toMcpTextResult(result);
+  try {
+    const result = await updateImpedimentUseCase(
+      backend,
+      params.ref,
+      params.status,
+      params.resolution_notes,
+    );
+    return toMcpTextResult(result);
+  } catch (err) {
+    return toToolErrorResult(err);
+  }
 };

@@ -111,6 +111,7 @@ const getQuery = (name: string): string => {
 // at startup - throwing immediately if any expected name is absent.
 
 export const GET_ISSUE_DETAILS_QUERY = getQuery("GetIssueDetails");
+export const GET_PULL_REQUEST_QUERY = getQuery("GetPullRequest");
 export const GET_ITEM_FIELDS_QUERY = getQuery("GetItemFields");
 export const GET_DRAFT_ISSUE_DETAILS_QUERY = getQuery("GetDraftIssueDetails");
 export const GET_REPO_LABELS_QUERY = getQuery("GetRepoLabels");

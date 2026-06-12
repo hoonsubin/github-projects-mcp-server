@@ -19,9 +19,15 @@ import {
   type IssueDetailsInput,
 } from "../mappers.ts";
 import {
+  extractLinkedPullRequestsFromFieldValues,
+  mergeLinkedArtifacts,
+} from "../linked-pull-requests.ts";
+import type { ResolvedStory } from "../infra/resolver.ts";
+import {
   GET_DRAFT_ISSUE_DETAILS_QUERY,
   GET_ISSUE_DETAILS_QUERY,
   GET_ITEM_FIELDS_QUERY,
+  GET_PULL_REQUEST_QUERY,
 } from "../queries.ts";
 import type { GitHubInfraContext } from "../infra/infra-context.ts";
 import type { StoryDetail, StorySnapshotOverrides } from "../../../scrum/ports.ts";
@@ -111,7 +117,7 @@ export const buildDependencyMap = (
 
       if (projectItem) {
         const depStory = buildStoryFromRaw(projectItem, config);
-        if (depStory && depStory.kind === "issue") {
+        if (depStory && (depStory.kind === "issue" || depStory.kind === "pr")) {
           pointer = {
             key: toIssueKey(depStory.key!),
             ref: depStory.ref,
@@ -227,6 +233,10 @@ export class StoryQueryService {
       return { value: null, warnings };
     }
 
+    if (resolved.contentKind === "pull_request") {
+      return this._getPullRequestDetail(resolved, warnings);
+    }
+
     if (!resolved.issueId) {
       return this._getDraftIssueDetail(resolved.itemId);
     }
@@ -266,9 +276,126 @@ export class StoryQueryService {
       this.ctx.config,
     );
     const comments = issueData ? buildCommentList(issue.comments?.nodes ?? []) : null;
-    const linked_artifacts = issueData ? buildLinkedPrList(issue.timelineItems?.nodes ?? []) : null;
+    const timelineLinked = issueData
+      ? buildLinkedPrList(issue.timelineItems?.nodes ?? [])
+      : null;
+    const fieldLinked = extractLinkedPullRequestsFromFieldValues(
+      itemData?.node?.fieldValues?.nodes ?? [],
+    );
+    const linked_artifacts = mergeLinkedArtifacts(timelineLinked, fieldLinked);
 
     return { value: { story, comments, linked_artifacts }, warnings };
+  }
+
+  private async _getPullRequestDetail(
+    resolved: ResolvedStory,
+    warnings: string[],
+  ): Promise<BackendCallResult<StoryDetail>> {
+    interface GetDraftIssueDetailsQueryNode extends ProjectV2ItemRef {
+      content?: unknown;
+      fieldValues?: { nodes: ItemFieldValue[] };
+    }
+    interface GetDraftIssueDetailsResponse {
+      node?: GetDraftIssueDetailsQueryNode | null;
+    }
+
+    const { value: data, warnings: itemWarnings } = await catchBackend(() =>
+      this.ctx.gh.graphql<GetDraftIssueDetailsResponse>(
+        GET_DRAFT_ISSUE_DETAILS_QUERY,
+        { itemId: resolved.itemId },
+      )
+    );
+    warnings.push(...itemWarnings);
+
+    const node = data?.node;
+    if (!node) {
+      throw new GitHubApiError(`Project item ${resolved.itemId} could not be fetched.`, {
+        code: "NOT_FOUND",
+        statusCode: 404,
+        recovery: "Refresh your story list with scrum_orient or scrum_find_items.",
+        context: { itemId: resolved.itemId },
+      });
+    }
+
+    const item: ProjectItem = {
+      id: resolved.itemId,
+      type: (node.type ?? "PULL_REQUEST") as ProjectItem["type"],
+      createdAt: node.createdAt ?? "",
+      updatedAt: node.updatedAt ?? "",
+      isArchived: node.isArchived ?? false,
+      content: node.content as ProjectItem["content"],
+      fieldValues: { nodes: node.fieldValues?.nodes ?? [] },
+    };
+
+    const story = buildStoryFromRaw(item, this.ctx.config);
+    if (!story || story.kind !== "pr") {
+      throw new GitHubApiError(
+        `Project item ${resolved.itemId} is not a readable Pull Request.`,
+        {
+          code: "NOT_FOUND",
+          statusCode: 404,
+          recovery: "Use scrum_find_items to locate a valid project item ref.",
+          context: { itemId: resolved.itemId },
+        },
+      );
+    }
+
+    const content = item.content;
+    const repoOwner = resolved.repository?.owner ??
+      (content?.__typename === "PullRequest"
+        ? content.repository.nameWithOwner.split("/")[0]
+        : this.ctx.owner);
+    const repoName = resolved.repository?.name ??
+      (content?.__typename === "PullRequest"
+        ? content.repository.name
+        : this.ctx.repo);
+
+    if (resolved.issueNumber !== null && repoOwner && repoName) {
+      const { value: prData, warnings: prWarnings } = await catchBackend(() =>
+        this.ctx.gh.graphql<{
+          repository?: {
+            pullRequest?: {
+              body?: string | null;
+              url?: string;
+              reviewDecision?: string | null;
+            } | null;
+          } | null;
+        }>(GET_PULL_REQUEST_QUERY, {
+          owner: repoOwner,
+          name: repoName,
+          number: resolved.issueNumber,
+        })
+      );
+      warnings.push(...prWarnings);
+      const pr = prData?.repository?.pullRequest;
+      if (pr) {
+        return {
+          value: {
+            story: {
+              ...story,
+              body: pr.body ?? story.body,
+              url: pr.url ?? story.url,
+            },
+            comments: null,
+            linked_artifacts: mergeLinkedArtifacts(
+              extractLinkedPullRequestsFromFieldValues(item.fieldValues.nodes),
+            ),
+          },
+          warnings,
+        };
+      }
+    }
+
+    return {
+      value: {
+        story,
+        comments: null,
+        linked_artifacts: mergeLinkedArtifacts(
+          extractLinkedPullRequestsFromFieldValues(item.fieldValues.nodes),
+        ),
+      },
+      warnings,
+    };
   }
 
   private async _getDraftIssueDetail(itemId: string): Promise<BackendCallResult<StoryDetail>> {

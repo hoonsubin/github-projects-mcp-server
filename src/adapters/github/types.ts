@@ -367,6 +367,16 @@ export interface ItemFieldValue {
   repository?: FieldValueRepository;
   // Issue field (GH.ProjectV2ItemIssueFieldValue) - wraps org-level issue field values
   issueFieldValue?: ItemIssueFieldValue | null;
+  // Pull requests column (GH.ProjectV2ItemFieldPullRequestValue)
+  pullRequests?: {
+    nodes: Array<{
+      number?: number;
+      title?: string | null;
+      url?: string;
+      state?: string;
+      isDraft?: boolean;
+    } | null>;
+  };
 }
 
 // ── Board extraction types (absorbed from raw-types.ts) ──────────────────────
@@ -416,10 +426,10 @@ export interface DraftStory extends StoryBase {
   blocked_by: DependencyEntry[]; // always [] - Draft Issues have no tracked dependencies
 }
 
-/** A real GitHub Issue (or PR) promoted to a project item. */
+/** A real GitHub Issue or Pull Request promoted to a project item. */
 export interface IssueStory extends StoryBase {
-  kind: "issue";
-  key: string; // human-readable issue number, e.g. "42"
+  kind: "issue" | "pr";
+  key: string; // human-readable issue/PR number, e.g. "42"
   url: string; // canonical URL in the backend UI
   epic: { ref: EpicRef; name: string } | null;
 }

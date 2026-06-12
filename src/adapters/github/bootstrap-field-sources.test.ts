@@ -53,6 +53,22 @@ Deno.test("buildOptionMaps - merges priority options from org when project optio
   assertEquals(maps.statusOptions, { Done: "opt_done" });
 });
 
+Deno.test("buildOptionMaps - includes board options beyond config vocabulary", () => {
+  const fields: BootstrapFieldNode[] = [
+    {
+      id: "PVTSSF_status",
+      name: "Status",
+      dataType: "SINGLE_SELECT",
+      options: [
+        { id: "opt_done", name: "Done", color: "GREEN", description: "" },
+        { id: "opt_hold", name: "On Hold", color: "GRAY", description: "" },
+      ],
+    },
+  ];
+  const maps = buildOptionMaps(fields, ghConfig, []);
+  assertEquals(maps.statusOptions, { Done: "opt_done", "On Hold": "opt_hold" });
+});
+
 Deno.test("isCanonicalSingleSelectUnavailable - false when project has options", () => {
   assertEquals(
     isCanonicalSingleSelectUnavailable("Status", projectFields, [], false),

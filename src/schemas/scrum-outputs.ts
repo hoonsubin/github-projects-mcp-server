@@ -20,6 +20,14 @@ const DependencyEntrySchema = z.object({
   ref: EntityRefSchema,
 }).strict();
 
+const LinkedArtifactSchema = z.object({
+  number: z.number(),
+  title: z.string(),
+  url: z.string(),
+  state: z.string(),
+  is_draft: z.boolean(),
+}).strict();
+
 const EpicRefWithNameSchema = z.object({
   ref: EntityRefSchema,
   name: z.string(),
@@ -41,6 +49,8 @@ export const BacklogItemListingSchema = z.object({
   epic: EpicRefWithNameSchema.nullable(),
   blocked_by: z.array(DependencyEntrySchema),
   blocks: z.array(ItemListingRefSchema).optional(),
+  linked_pull_requests: z.array(LinkedArtifactSchema).optional(),
+  content_kind: z.enum(["issue", "pr", "draft"]).optional(),
   custom_fields: z
     .record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))
     .optional(),
@@ -68,6 +78,8 @@ export const StandardItemListingSchema = CompactItemListingSchema.extend({
   priority: z.string().nullable(),
   sprint: z.string().nullable(),
   assignees: z.array(z.string()),
+  linked_pull_requests: z.array(LinkedArtifactSchema).optional(),
+  content_kind: z.enum(["issue", "pr", "draft"]).optional(),
 }).strict();
 
 export const ItemSearchResultSchema = z.object({
@@ -168,6 +180,7 @@ export const OrientResultSchema = z.object({
       require_confirmation_above_n_items: z.number().nullable(),
     }).strict().nullable().optional(),
   }).strict(),
+  _scrum_glossary: z.string().optional(),
 }).strict();
 
 export const StorySchema = z.object({
@@ -198,14 +211,6 @@ const StoryCommentSchema = z.object({
   url: z.string(),
 }).strict();
 
-const LinkedArtifactSchema = z.object({
-  number: z.number(),
-  title: z.string(),
-  url: z.string(),
-  state: z.string(),
-  is_draft: z.boolean(),
-}).strict();
-
 export const ItemDetailResultSchema = z.object({
   story: StorySchema.omit({ warnings: true }),
   comments: z.array(StoryCommentSchema).nullable(),
@@ -225,6 +230,7 @@ export const ImpedimentListingSchema = z.object({
 
 export const AddVocabularyResultSchema = z.object({
   created: z.boolean(),
+  already_exists: z.boolean().optional(),
   kind: z.string(),
   value: z.string(),
 }).strict();
@@ -304,9 +310,20 @@ const SprintInfoSchema = z.object({
   end_date: z.string(),
 }).strict();
 
+export const SprintSummarySchema = z.object({
+  committed_count: z.number(),
+  active_count: z.number(),
+  done_count: z.number(),
+  committed_points: z.number(),
+  done_points: z.number(),
+  remaining_points: z.number(),
+  blocked_count: z.number(),
+  unassigned_count: z.number(),
+}).strict();
+
 export const SprintRawItemSchema = z.object({
   id: z.string(),
-  number: z.number(),
+  number: z.number().nullable(),
   title: z.string(),
   type: z.string().nullable(),
   status: z.string().nullable(),
@@ -318,6 +335,8 @@ export const SprintRawItemSchema = z.object({
 
 export const SprintRawDataSchema = z.object({
   sprint: SprintInfoSchema.nullable(),
-  items: z.array(SprintRawItemSchema),
+  summary: SprintSummarySchema.nullable().optional(),
+  items: z.array(SprintRawItemSchema).optional(),
   warnings: z.array(z.string()).optional(),
+  _scrum_glossary: z.string().optional(),
 }).strict();

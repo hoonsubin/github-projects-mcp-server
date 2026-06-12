@@ -134,6 +134,7 @@ fragment ItemContentAggregate on ProjectV2Item {
     __typename
     ... on Issue {
       id number title body state closedAt
+      blockedBy(first: 10) { nodes { id number title } }
       issueType { id name }
       issueFieldValues(first: 25) {
         nodes {
@@ -224,6 +225,21 @@ fragment ItemFieldValues on ProjectV2Item {
             value
           }
         }
+      }
+      ... on ProjectV2ItemFieldPullRequestValue {
+        pullRequests(first: 10) {
+          nodes {
+            number
+            title
+            url
+            state
+            isDraft
+          }
+        }
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldReviewerValue {
+        field { ... on ProjectV2FieldCommon { id name } }
       }
     }
   }
@@ -799,6 +815,11 @@ query GetProjectItemById($itemId: ID!) {
         __typename
         ... on Issue { id number }
         ... on DraftIssue { id }
+        ... on PullRequest {
+          id
+          number
+          repository { name nameWithOwner }
+        }
       }
     }
   }

@@ -23,11 +23,12 @@ Deno.test("golden: scrum_orient handler output", async (t) => {
 });
 
 Deno.test("golden: scrum_get_sprint_data handler output", async (t) => {
+  const boot = await committedScrumConfigPromise;
   const backend = await committedFakeBackendPromise;
 
   const payload = normalizeSnapshot(
     parseHandlerPayload(
-      await handleGetSprintData(backend, { sprint: "current" }),
+      await handleGetSprintData(backend, boot.scrumConfig, { sprint: "current" }),
     ),
   );
   await assertSnapshot(t, JSON.stringify(payload, null, 2));

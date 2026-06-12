@@ -2,7 +2,7 @@
 // src/scrum/listing-projection.ts - compact / standard / full listing shapes
 // =============================================================================
 
-import type { BacklogItemListing, DependencyPointer } from "../domain/types.ts";
+import type { BacklogItemListing, DependencyPointer, LinkedArtifact } from "../domain/types.ts";
 import type { ListingFieldsMode } from "./ports.ts";
 
 export interface CompactItemListing {
@@ -18,6 +18,8 @@ export interface StandardItemListing extends CompactItemListing {
   readonly priority: string | null;
   readonly sprint: string | null;
   readonly assignees: readonly string[];
+  readonly linked_pull_requests?: ReadonlyArray<LinkedArtifact>;
+  readonly content_kind?: "issue" | "pr" | "draft";
 }
 
 export type ProjectedItemListing = CompactItemListing | StandardItemListing | BacklogItemListing;
@@ -44,6 +46,12 @@ export const projectListing = (
     priority: item.priority,
     sprint: item.sprint.name,
     assignees: item.assignees,
+    ...((item.linked_pull_requests?.length ?? 0) > 0
+      ? { linked_pull_requests: item.linked_pull_requests }
+      : {}),
+    ...(item.content_kind && item.content_kind !== "issue"
+      ? { content_kind: item.content_kind }
+      : {}),
   };
 };
 

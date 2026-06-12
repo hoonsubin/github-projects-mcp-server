@@ -13,6 +13,7 @@ import { buildStoryFromRaw, resolveDependencyRefs } from "../mappers.ts";
 import { toItemListing } from "../../../scrum/utils/listing-mappers.ts";
 import type { ItemFieldValue, ProjectItem } from "../types.ts";
 import type { BacklogItemListing, Story } from "../../../domain/types.ts";
+import { extractLinkedPullRequestsFromFieldValues } from "../linked-pull-requests.ts";
 import { log } from "../../../services/logger.ts";
 
 // Field names that map to canonical top-level properties and must never appear
@@ -29,6 +30,8 @@ const CANONICAL_FIELD_NAMES = new Set([
   "Story Points",
   "Sprint",
   "Type",
+  "Pull requests",
+  "Reviewers",
 ]);
 
 /**
@@ -110,6 +113,8 @@ const enrichListingCustomFields = (
   const isNonCanonical = buildNonCanonicalFieldPredicate(config);
 
   for (const fv of item.fieldValues.nodes) {
+    if (fv.__typename === "ProjectV2ItemFieldPullRequestValue") continue;
+    if (fv.__typename === "ProjectV2ItemFieldReviewerValue") continue;
     if (!fv.field?.name) {
       log.debug("result-normalizer: unresolvable field name", {
         itemId: item.id,
@@ -121,7 +126,15 @@ const enrichListingCustomFields = (
     customFields[fv.field.name] = JSON.stringify(serializeFieldValuePayload(fv));
   }
 
-  return { ...listing, custom_fields: customFields };
+  const linkedPullRequests = extractLinkedPullRequestsFromFieldValues(item.fieldValues.nodes);
+
+  return {
+    ...listing,
+    custom_fields: customFields,
+    linked_pull_requests: linkedPullRequests.length > 0
+      ? linkedPullRequests
+      : (listing.linked_pull_requests ?? []),
+  };
 };
 
 /**

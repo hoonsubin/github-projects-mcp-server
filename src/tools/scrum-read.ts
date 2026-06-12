@@ -1,7 +1,5 @@
 // =============================================================================
 // src/tools/scrum-read.ts - Thin tool handlers delegating to use-case functions
-//
-// No handler imports graphql, rest, loadConfig, resolveSprint, or any GitHub raw type.
 // =============================================================================
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -28,19 +26,12 @@ import {
   handleOrient,
 } from "./handlers/read.ts";
 
-// ── Tool name constants ────────────────────────────────────────────────────────
-// Single source of truth for every tool this module registers.
-// Imported by src/server.ts for degraded-mode stub registration.
-
 export const SCRUM_READ_TOOL_NAMES = [
-  // Active tools
   "scrum_orient",
   "scrum_find_items",
   "scrum_get_item_detail",
   "scrum_get_sprint_data",
 ] as const;
-
-// ── Tool registration ──────────────────────────────────────────────────────────
 
 export const registerScrumReadTools = (
   server: McpServer,
@@ -48,32 +39,20 @@ export const registerScrumReadTools = (
   scrumConfig: ScrumConfig,
   sessionCache: SessionCache,
 ): void => {
-  // ── scrum_orient ───────────────────────────────────────────────────────────
-
   server.registerTool(
     "scrum_orient",
     {
       title: "Orient to Project",
       description:
-        `Entry point - call this FIRST when connecting to a project or starting any workflow.
+        `Call FIRST at session start. Loads team Scrum vocabulary, DoR/DoD, and active sprint window.
 
-        Returns the current platform state (active sprint dates, field IDs, iteration list)
-        and the declared Scrum vocabulary for this project (status options, priority tiers,
-        sprint names). The vocabulary values returned here are the exact strings you must
-        pass to write tools - they are project-specific and cannot be guessed.
+        WHEN TO USE: every new session; before any write that needs status/priority vocabulary.
+        WHEN NOT TO USE: mid-session item lookups (use find_items / get_item_detail).
 
-        Key fields to cache for the session:
-          platform_state.deadline_field - null when the project does not track deadlines via a
-            custom field. When non-null, it is the exact key to use when reading deadline values
-            from item.custom_fields[deadline_field]. Do not re-orient just to retrieve this value.
-          vocabulary.status - canonical key → display label map; always resolve status values from
-            here before passing to scrum_set_field. Never hardcode strings like "Done" or "In Progress".
+        Example: { "detail": "session" }
 
-        Args (all optional):
-          detail  "session" (default) | "full"
-                  session = vocabulary + sprint; omits team/DoR/DoD/autonomy/templates.
-                  full = complete platform_state; use only when templates or team roster are needed.
-          refresh  true = bypass session cache and reload platform metadata`,
+        Returns vocabulary maps (canonical → display), active sprint dates, label inventory.
+        Use vocabulary.status values for scrum_set_field — never hardcode column names.`,
       inputSchema: OrientSchema.shape,
       outputSchema: OrientResultSchema.shape,
       annotations: {
@@ -87,23 +66,20 @@ export const registerScrumReadTools = (
       handleOrient(backend, scrumConfig, sessionCache, params),
   );
 
-  // ── scrum_get_item_detail ─────────────────────────────────────────────────
-
   server.registerTool(
     "scrum_get_item_detail",
     {
       title: "Get Item Detail",
       description:
-        `Return full details for a single backlog item: content, all board fields, comments,
-        linked PRs, and acceptance criteria.
+        `DoR / deep inspection on a single PBI: body, acceptance criteria, comments, dependencies.
 
-        Args:
-          ref  { number: integer } | { id: string }
-               At least one of number or id is required.
-               number = visible issue number (e.g. 42) - use for direct user-driven lookups
-               id = opaque board item ID from a previous tool response - use this when already held
+        WHEN TO USE: DoR check, content edit prep, verifying one item before sprint commitment.
+        WHEN NOT TO USE: listing many items (use scrum_find_items); burndown (use get_sprint_data).
 
-        Returns: Story object with full body, comments array, and linked PR list.`,
+        Example: { "ref": { "number": 42 }, "detail": "dor" }
+
+        detail "dor" (default) = truncated body + latest comment + AC.
+        detail "full" = complete history — only when editing body/comments.`,
       inputSchema: GetStorySchema.shape,
       outputSchema: ItemDetailResultSchema.shape,
       annotations: {
@@ -113,37 +89,30 @@ export const registerScrumReadTools = (
         openWorldHint: true,
       },
     },
-    (params: z.infer<typeof GetStorySchema>) => handleGetItemDetail(backend, params),
+    (params: z.input<typeof GetStorySchema>) => handleGetItemDetail(backend, params),
   );
 
-  // ── scrum_find_items ───────────────────────────────────────────────────────
-
-  // todo: improve this tool so epic can be a search scope
-  // the search argument and method should also be improved so it's more generalized and flexible
   server.registerTool(
     "scrum_find_items",
     {
       title: "Find Items",
       description:
-        `Search PBIs. Omit unused filters. Prefer intent presets over manual filter assembly.
+        `Search the Product Backlog and Sprint Backlog. Prefer intent presets (Scrum views).
 
-        Intents (recommended):
-          sprint_board     current sprint, fields compact
-          backlog_ready    backlog with estimates
-          readiness_check  current sprint + dependency_map (DoR/dependency analysis)
-          blocked_items    current sprint items with blockers + dependency_map
-          by_keys          direct lookup — requires keys: ["42"]
+        Intents:
+          sprint_board     — current Sprint Backlog (shows sprint assignment + column)
+          backlog_ready    — Product Backlog items with estimates
+          readiness_check  — sprint readiness + dependency_map
+          blocked_items    — blocked work in current sprint + dependency_map
+          search_backlog   — keyword search (requires search; do not combine with sprint_board)
+          by_keys          — lookup by issue number ["42"]
 
-        Args:
-          sprint  "current" | "next" | "backlog" | "all" | "<name>" — omit for entire board
-          keys    ["42"] issue numbers as strings
-          has_blockers  true | false — filter by blocked_by presence
-          priority  display name or canonical key (e.g. "Must" or "p0")
-          fields  "compact" (default) | "standard" | "full"
-          include_dependencies  adds dependency_map; unscoped use coerces to readiness_check
-          limit   default 50
+        WHEN NOT TO USE: burndown metrics → scrum_get_sprint_data; full AC on one item → get_item_detail.
 
-        Returns compact listings by default. Verify writes via find_items or get_item_detail.`,
+        Example: { "intent": "blocked_items" }
+        Example: { "intent": "search_backlog", "search": "OAuth" }
+
+        Writes: verify with find_items (compact) after scrum_set_field(response:"ack").`,
       inputSchema: FindItemsSchema.shape,
       outputSchema: ItemSearchResultSchema.shape,
       annotations: {
@@ -156,16 +125,22 @@ export const registerScrumReadTools = (
     (params: z.input<typeof FindItemsSchema>) => handleFindItems(backend, params),
   );
 
-  // ── scrum_get_sprint_data ──────────────────────────────────────────────────
-
   server.registerTool(
     "scrum_get_sprint_data",
     {
       title: "Get Sprint Data",
-      description: `Returns raw sprint items with completion timestamps — flat per-item facts, ` +
-        `no aggregation, no burndown series, no health computation. ` +
-        `Use this tool when you need sprint-level raw data to compute your own ` +
-        `burndown, velocity, readiness, or risk metrics.`,
+      description:
+        `Sprint health metrics and optional per-item completion facts for burndown/velocity.
+
+        WHEN TO USE: sprint review metrics, burndown input, remaining scope in points.
+        WHEN NOT TO USE: board overview (use find_items intent sprint_board); DoR on one item.
+
+        Example: { "view": "summary" }
+        Example: { "view": "items", "active_only": true }
+
+        view "summary" (default) = counts and points only (small payload).
+        view "items" = summary + per-item rows with completed_at timestamps.
+        active_only true (default) = exclude Done/terminal columns.`,
       inputSchema: GetSprintDataSchema.shape,
       outputSchema: SprintRawDataSchema.shape,
       annotations: {
@@ -175,11 +150,11 @@ export const registerScrumReadTools = (
         openWorldHint: true,
       },
     },
-    (params: z.infer<typeof GetSprintDataSchema>) => handleGetSprintData(backend, params),
+    (params: z.input<typeof GetSprintDataSchema>) =>
+      handleGetSprintData(backend, scrumConfig, params),
   );
 };
 
-// Re-export handlers for contract tests
 export {
   handleFindItems,
   handleGetItemDetail,

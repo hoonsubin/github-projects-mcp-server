@@ -4,6 +4,7 @@
 
 import { assertEquals } from "@std/assert";
 import {
+  handleAddVocabulary,
   handleCreateStory,
   handleSetField,
   handleUpdateStory,
@@ -12,17 +13,46 @@ import {
 import { parseToolText } from "../_mcp_result.ts";
 import { GitHubApiError } from "../../adapters/github/errors.ts";
 import type { ScrumConfig } from "../../domain/config.ts";
-import type { ProjectBackend, StoryUpdates } from "../../scrum/ports.ts";
-import type { Story, StoryRef } from "../../domain/types.ts";
+import type { ProjectBackend, PlatformState, StoryUpdates } from "../../scrum/ports.ts";
 import type { BackendCallResult } from "../../services/error-enrichment.ts";
+import { SessionCache } from "../../services/session-cache.ts";
+import type { Story, StoryRef } from "../../domain/types.ts";
 
 // ── Minimal stub factory ──────────────────────────────────────────────────────
 
 const stubScrumConfig = {
-  status_display: {},
-  priority_display: {},
-  scrum: { status: {}, priority: [] },
+  status_display: { backlog: "Backlog" },
+  priority_display: { p0: "Must" },
+  scrum: {
+    status: { backlog: { terminal: false, blocking: false } },
+    priority: [{ key: "p0" }],
+  },
 } as unknown as ScrumConfig;
+
+const emptyPlatformState = (): PlatformState => ({
+  fields: {
+    status: { exists: true, options: [], missingOptions: [] },
+    sprint: { exists: true },
+    story_points: { exists: true },
+    priority: { exists: true, options: [], missingOptions: [] },
+    type: { exists: true, configured: true },
+  },
+  labels: { existing: [], expected: [], missing: [] },
+  iterations: {
+    active: null,
+    next: null,
+    completed: [],
+    completedCount: 0,
+  },
+  vocabulary: {
+    statusDisplay: null,
+    priorityDisplay: null,
+    typeDisplay: null,
+    typeTemplatePaths: {},
+  },
+  epics: { active: [], totalCount: 0 },
+  templateUris: null,
+});
 
 type WriteAck = { ref: { id: string }; applied: true; warnings?: string[] };
 
@@ -34,6 +64,41 @@ const makeAdapterError = (msg: string): GitHubApiError =>
 const makeStoryResult = (story: Story): BackendCallResult<Story> => ({
   value: story,
   warnings: [],
+});
+
+// ── handleAddVocabulary policy ───────────────────────────────────────────────
+
+Deno.test("handleAddVocabulary - rejects status_option not in missing_options", async () => {
+  const backend = {
+    getPlatformState: (): Promise<BackendCallResult<PlatformState>> =>
+      Promise.resolve({ value: emptyPlatformState(), warnings: [] }),
+    addVocabulary: () => Promise.resolve({ created: true }),
+  } as unknown as ProjectBackend;
+
+  const result = await handleAddVocabulary(
+    backend,
+    stubScrumConfig,
+    new SessionCache(),
+    { kind: "status_option", value: "Backlog" },
+  );
+
+  assertEquals(result.isError, true);
+  assertEquals(result.content[0]?.text.includes("VOCABULARY_NOT_MISSING"), true);
+});
+
+Deno.test("handleAddVocabulary - allows labels without platform state gate", async () => {
+  const backend = {
+    addVocabulary: () => Promise.resolve({ created: true }),
+  } as unknown as ProjectBackend;
+
+  const result = await handleAddVocabulary(
+    backend,
+    stubScrumConfig,
+    new SessionCache(),
+    { kind: "label", value: "agent-label" },
+  );
+
+  assertEquals(result.isError, undefined);
 });
 
 // ── toCreateStoryInput tests ──────────────────────────────────────────────────

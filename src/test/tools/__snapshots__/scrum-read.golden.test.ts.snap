@@ -127,7 +127,8 @@ snapshot[`golden: scrum_orient handler output 1`] = `
     "dor": null,
     "dod": null,
     "autonomy": null
-  }
+  },
+  "_scrum_glossary": "status = workflow column; sprint = iteration assignment; Product Backlog = sprint:backlog scope; Sprint Backlog = items in the active iteration."
 }\`
 `;
 
@@ -141,19 +142,17 @@ snapshot[`golden: scrum_get_sprint_data handler output 1`] = `
     "duration_days": 14,
     "end_date": "2026-01-15"
   },
-  "items": [
-    {
-      "id": "PVTI_fake_1",
-      "number": 101,
-      "title": "Config-shaped fixture story",
-      "type": "user_story",
-      "status": "Backlog",
-      "story_points": 3,
-      "has_assignee": true,
-      "has_blockers": false,
-      "completed_at": null
-    }
-  ]
+  "summary": {
+    "committed_count": 1,
+    "active_count": 1,
+    "done_count": 0,
+    "committed_points": 3,
+    "done_points": 0,
+    "remaining_points": 3,
+    "blocked_count": 0,
+    "unassigned_count": 0
+  },
+  "_scrum_glossary": "status = workflow column; sprint = iteration assignment; Product Backlog = sprint:backlog scope; Sprint Backlog = items in the active iteration."
 }'
 `;
 

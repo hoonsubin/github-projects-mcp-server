@@ -52,6 +52,7 @@ export type FindItemsIntent =
   | "backlog_ready"
   | "readiness_check"
   | "blocked_items"
+  | "search_backlog"
   | "by_keys";
 
 export interface ItemFilter {
@@ -215,7 +216,8 @@ export interface SprintDataQuery {
  */
 export interface SprintRawItem {
   readonly id: string;
-  readonly number: number;
+  /** null for draft PBIs not yet promoted to a numbered issue */
+  readonly number: number | null;
   readonly title: string;
   readonly type: string | null;
   readonly status: string | null;
@@ -274,7 +276,11 @@ export interface StoryUpdates {
 }
 
 /** Result of an idempotent create operation. */
-export type CreateResult = { readonly created: boolean };
+export type CreateResult = {
+  readonly created: boolean;
+  /** True when the value was already present (idempotent no-op). */
+  readonly already_exists?: boolean;
+};
 
 // ── Listing types (SprintSnapshot items) ────────────────────────────────────────
 

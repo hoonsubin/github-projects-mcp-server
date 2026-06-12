@@ -103,6 +103,7 @@ Deno.test("MCP CallTool: scrum_find_items passes server output validation", asyn
     assertEquals(result.isError, undefined);
     assertExists(result.structuredContent);
     assertEquals(Array.isArray(result.structuredContent!.items), true);
+    assertEquals(result.structuredContent!.items.length > 0, true);
   } finally {
     await client.close();
   }
@@ -124,7 +125,8 @@ Deno.test("MCP CallTool: scrum_get_sprint_data passes server output validation",
     assertEquals(result.isError, undefined);
     assertExists(result.structuredContent);
     assertEquals(typeof result.structuredContent!.sprint, "object");
-    assertEquals(Array.isArray(result.structuredContent!.items), true);
+    assertEquals(typeof result.structuredContent!.summary, "object");
+    assertEquals(result.structuredContent!.summary !== null, true);
     assertEquals(result.content.length > 0, true);
   } finally {
     await client.close();

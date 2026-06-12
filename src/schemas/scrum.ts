@@ -173,6 +173,14 @@ export const GetStorySchema = z
       "Reference to the story to fetch. Supply the Story.ref.id value returned by " +
         "scrum_orient, scrum_find_items, or a previous write tool.",
     ),
+    detail: z
+      .enum(["dor", "full"])
+      .optional()
+      .default("dor")
+      .describe(
+        '"dor" (default) = DoR/readiness slice: truncated body, latest comment, AC. ' +
+          '"full" = complete body and comment history — use only when editing content.',
+      ),
   })
   .strict();
 
@@ -185,12 +193,13 @@ export const FindItemsSchema = z
       .enum(FIND_ITEMS_INTENTS)
       .optional()
       .describe(
-        "Preset filter bundle. " +
-          '"sprint_board" = current sprint compact board; ' +
-          '"backlog_ready" = estimated backlog items; ' +
-          '"readiness_check" = current sprint + dependency_map for blocker analysis; ' +
-          '"blocked_items" = current sprint items with blockers + dependency_map; ' +
-          '"by_keys" = direct lookup (requires keys). Omit to use explicit filters below.',
+        "Preset filter bundle (Scrum views). " +
+          '"sprint_board" = current Sprint Backlog (iteration-assigned, standard fields); ' +
+          '"backlog_ready" = Product Backlog groomed items with estimates; ' +
+          '"readiness_check" = Sprint readiness + dependency_map; ' +
+          '"blocked_items" = blocked work in current sprint + dependency_map; ' +
+          '"search_backlog" = keyword search (requires search; default scope all); ' +
+          '"by_keys" = lookup by issue number (requires keys). Omit to use explicit filters below.',
       ),
     sprint: FindItemsSprintSchema.optional(),
     keys: z
@@ -235,7 +244,7 @@ export const FindItemsSchema = z
   })
   .strict();
 
-// scrum_get_sprint_data - raw sprint items with completion timestamps
+// scrum_get_sprint_data - sprint metrics and optional per-item facts
 export const GetSprintDataSchema = z
   .object({
     sprint: z
@@ -243,6 +252,21 @@ export const GetSprintDataSchema = z
       .optional()
       .describe(
         'Sprint to fetch. Omit or "current" for active sprint; "next", sprint name; null for empty result.',
+      ),
+    view: z
+      .enum(["summary", "items"])
+      .optional()
+      .default("summary")
+      .describe(
+        '"summary" (default) = Scrum metrics only (counts, points, blocked). ' +
+          '"items" = summary plus per-item facts for burndown/velocity computation.',
+      ),
+    active_only: z
+      .boolean()
+      .optional()
+      .default(true)
+      .describe(
+        "When true (default), exclude Done/terminal-status items from summary and item lists.",
       ),
   })
   .strict();
@@ -454,18 +478,17 @@ export const AddVocabularySchema = z
     kind: z
       .enum(VOCABULARY_KINDS)
       .describe(
-        '"status_option" = add a new column/state to the Status field; ' +
-          '"priority_option" = add a new tier to the Priority field; ' +
-          '"label" = add a new repo label. ' +
-          "IMPORTANT: this tool cannot create new project fields - only options within " +
-          "existing fields. Creating a new field requires a human to act in the GitHub Projects UI.",
+        '"status_option" = add a config-declared Status display name missing from the board; ' +
+          '"priority_option" = add a config-declared Priority display name missing from the board; ' +
+          '"label" = add a new repo label (agent-driven, not config-gated). ' +
+          "status_option and priority_option require the value to appear in scrum_orient missing_options.",
       ),
     value: z
       .string()
       .min(1)
       .describe(
-        'Display name of the option or label to add (e.g. "Blocked", "Critical", "tech_debt"). ' +
-          "Safe to call if the value already exists - operation is idempotent.",
+        'Display name to add. For status_option/priority_option use exact names from config ' +
+          'status_display/priority_display that are listed in missing_options. Labels: any name.',
       ),
   })
   .strict();

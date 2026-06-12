@@ -9,6 +9,7 @@ export const FIND_ITEMS_INTENTS = [
   "backlog_ready",
   "readiness_check",
   "blocked_items",
+  "search_backlog",
   "by_keys",
 ] as const satisfies readonly FindItemsIntent[];
 
@@ -47,7 +48,7 @@ export const applyFindItemsIntent = (input: FindItemsInput): ItemFilter => {
       return {
         ...rest,
         sprint: rest.sprint ?? "current",
-        fields: rest.fields ?? "compact",
+        fields: rest.fields ?? "standard",
         limit: rest.limit ?? 50,
       };
     case "backlog_ready":
@@ -74,6 +75,16 @@ export const applyFindItemsIntent = (input: FindItemsInput): ItemFilter => {
         include_dependencies: true,
         fields: rest.fields ?? "standard",
         limit: rest.limit ?? 50,
+      };
+    case "search_backlog":
+      if (!rest.search?.trim()) {
+        throw new Error('intent "search_backlog" requires a non-empty search string.');
+      }
+      return {
+        ...rest,
+        sprint: rest.sprint ?? "all",
+        fields: rest.fields ?? "standard",
+        limit: rest.limit ?? 20,
       };
     case "by_keys":
       if (!rest.keys?.length) {

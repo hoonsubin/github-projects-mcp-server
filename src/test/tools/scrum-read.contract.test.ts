@@ -109,7 +109,7 @@ Deno.test("scrum_get_item_detail - happy path schema", async () => {
   })).value!.items[0];
 
   const payload = assertHandlerSchema(
-    await handleGetItemDetail(backend, { ref: { id: listing.ref.id } }),
+    await handleGetItemDetail(backend, { ref: { id: listing.ref.id }, detail: "dor" }),
     ItemDetailResultSchema,
     "scrum_get_item_detail",
   );
@@ -117,20 +117,28 @@ Deno.test("scrum_get_item_detail - happy path schema", async () => {
 });
 
 Deno.test("scrum_get_sprint_data - happy path schema", async () => {
+  const boot = await committedScrumConfigPromise;
   const backend = await committedFakeBackendPromise;
 
   const payload = assertHandlerSchema(
-    await handleGetSprintData(backend, { sprint: "current" }),
+    await handleGetSprintData(backend, boot.scrumConfig, { sprint: "current" }),
     SprintRawDataSchema,
     "scrum_get_sprint_data",
   );
   assertEquals(payload.sprint!.name, "Sprint 1");
   assertEquals(typeof payload.sprint!.id, "string");
   assertEquals(typeof payload.sprint!.duration_days, "number");
-  assertEquals(Array.isArray(payload.items), true);
-  assertEquals(payload.items.length > 0, true);
+  assertExists(payload.summary);
+  assertEquals(typeof payload.summary!.committed_count, "number");
 
-  const item = payload.items[0];
+  const itemsPayload = assertHandlerSchema(
+    await handleGetSprintData(backend, boot.scrumConfig, { sprint: "current", view: "items" }),
+    SprintRawDataSchema,
+    "scrum_get_sprint_data items",
+  );
+  assertEquals(Array.isArray(itemsPayload.items), true);
+  assertEquals(itemsPayload.items!.length > 0, true);
+  const item = itemsPayload.items![0];
   assertEquals(typeof item.id, "string");
   assertEquals(typeof item.number, "number");
   assertEquals(typeof item.title, "string");
@@ -141,10 +149,11 @@ Deno.test("scrum_get_sprint_data - happy path schema", async () => {
 
 Deno.test("scrum_get_sprint_data - config contract", async () => {
   const profile = await committedConfigProfilePromise;
+  const boot = await committedScrumConfigPromise;
   const backend = await committedFakeBackendPromise;
 
   const payload = assertHandlerSchema(
-    await handleGetSprintData(backend, { sprint: "current" }),
+    await handleGetSprintData(backend, boot.scrumConfig, { sprint: "current", view: "items" }),
     SprintRawDataSchema,
     "scrum_get_sprint_data (contract)",
   );
@@ -154,7 +163,7 @@ Deno.test("scrum_get_sprint_data - config contract", async () => {
   const allowedStatuses = new Set(Object.values(profile.statusDisplay));
   const allowedTypes = new Set(Object.keys(profile.typeDisplay));
 
-  for (const item of payload.items) {
+  for (const item of payload.items ?? []) {
     if (item.status !== null) {
       assertEquals(
         allowedStatuses.has(item.status),
@@ -173,13 +182,15 @@ Deno.test("scrum_get_sprint_data - config contract", async () => {
 });
 
 Deno.test("scrum_get_sprint_data - null sprint returns empty items", async () => {
+  const boot = await committedScrumConfigPromise;
   const backend = await committedFakeBackendPromise;
 
   const payload = assertHandlerSchema(
-    await handleGetSprintData(backend, { sprint: null }),
+    await handleGetSprintData(backend, boot.scrumConfig, { sprint: null }),
     SprintRawDataSchema,
     "scrum_get_sprint_data (null)",
   );
   assertEquals(payload.sprint, null);
-  assertEquals(payload.items.length, 0);
+  assertEquals(payload.summary, null);
+  assertEquals(payload.items?.length ?? 0, 0);
 });

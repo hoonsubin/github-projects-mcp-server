@@ -23,9 +23,7 @@ export const applyOrientDetail = (
   detail: OrientDetail,
 ): OrientResult => {
   const cappedEpics = capEpicDescriptions(result.platform_state.epics.active);
-  const epics = detail === "full"
-    ? cappedEpics
-    : cappedEpics.slice(0, 5);
+  const epics = detail === "full" ? cappedEpics : cappedEpics.slice(0, 5);
 
   if (detail === "full") {
     return {

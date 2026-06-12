@@ -45,7 +45,9 @@ export type UseCaseErrorCode =
   | "YAML_PARSE_ERROR"
   | "MISSING_SECTION"
   | "UNSUPPORTED_EXTENSION"
-  | "UNKNOWN_PLATFORM";
+  | "UNKNOWN_PLATFORM"
+  | "VOCABULARY_NOT_DECLARED"
+  | "VOCABULARY_NOT_MISSING";
 
 /** Config loading failure with machine-readable code and human-readable recovery hint. */
 export class ConfigError extends Error {

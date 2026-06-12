@@ -108,6 +108,11 @@ export const buildOptionMaps = (
       fieldNodes,
       orgIssueFieldNodes,
     );
+    // Include every live board/org option so scrum_add_vocabulary additions survive reload.
+    for (const [displayName, id] of map.entries()) {
+      statusOptions[displayName] = id;
+    }
+    // Ensure config-declared display names remain keyed even if the catalog is sparse.
     for (const displayName of Object.values(status_display)) {
       const id = map.get(displayName);
       if (id) statusOptions[displayName] = id;
@@ -119,6 +124,9 @@ export const buildOptionMaps = (
       fieldNodes,
       orgIssueFieldNodes,
     );
+    for (const [displayName, id] of map.entries()) {
+      priorityOptions[displayName] = id;
+    }
     for (const displayName of Object.values(priority_display)) {
       const id = map.get(displayName);
       if (id) priorityOptions[displayName] = id;

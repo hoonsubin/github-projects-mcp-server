@@ -34,10 +34,11 @@ import {
 } from "../../tools/scrum-write.ts";
 
 Deno.test("scrum_add_vocabulary - happy path schema", async () => {
+  const boot = await committedScrumConfigPromise;
   const backend = await committedFakeBackendPromise;
 
   assertHandlerSchema(
-    await handleAddVocabulary(backend, testSessionCache(), {
+    await handleAddVocabulary(backend, boot.scrumConfig, testSessionCache(), {
       kind: "label",
       value: "contract-test-label",
     }),
@@ -46,15 +47,31 @@ Deno.test("scrum_add_vocabulary - happy path schema", async () => {
   );
 });
 
-Deno.test("scrum_add_vocabulary - status_option variant", async () => {
-  const profile = await committedConfigProfilePromise;
+Deno.test("scrum_add_vocabulary - rejects undeclared status option", async () => {
+  const boot = await committedScrumConfigPromise;
   const backend = await committedFakeBackendPromise;
-  const statusDisplay = Object.values(profile.statusDisplay)[0] ?? "Ready";
+
+  const result = await handleAddVocabulary(backend, boot.scrumConfig, testSessionCache(), {
+    kind: "status_option",
+    value: "On Hold",
+  });
+
+  assertEquals(result.isError, true);
+  assertEquals(result.content[0]?.text.includes("VOCABULARY_NOT_DECLARED"), true);
+});
+
+Deno.test("scrum_add_vocabulary - status_option when missing on platform", async () => {
+  const boot = await committedScrumConfigPromise;
+  const profile = await committedConfigProfilePromise;
+  const missingStatus = profile.statusDisplay.blocked ?? "Blocked";
+  const backend = ConfigShapedFakeBackend.fromBoot(boot, {
+    missingStatusOptions: [missingStatus],
+  });
 
   const payload = assertHandlerSchema(
-    await handleAddVocabulary(backend, testSessionCache(), {
+    await handleAddVocabulary(backend, boot.scrumConfig, testSessionCache(), {
       kind: "status_option",
-      value: statusDisplay,
+      value: missingStatus,
     }),
     AddVocabularyResultSchema,
     "scrum_add_vocabulary (status)",

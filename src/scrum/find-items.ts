@@ -75,7 +75,9 @@ export const findItemsUseCase = async (
     value.items.length === 0
   ) {
     mergedWarnings.push(
-      `No items matched keys [${normalized.keys!.join(", ")}]. Verify issue numbers exist on the board.`,
+      `No items matched keys [${
+        normalized.keys!.join(", ")
+      }]. Verify issue numbers exist on the board.`,
     );
   }
 

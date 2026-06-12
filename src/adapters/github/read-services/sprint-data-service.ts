@@ -138,7 +138,7 @@ export class SprintDataService {
 
     return {
       id: agg.id,
-      number: agg.issueNumber ?? 0,
+      number: agg.issueNumber,
       title: agg.title ?? "",
       type: agg.type,
       status: agg.status,

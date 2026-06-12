@@ -61,6 +61,10 @@ export interface ConfigShapedFakeBackendOptions {
   storyDetail?: StoryDetail;
   /** When set, setField throws for this field (partial-failure contract tests). */
   setFieldFailureOn?: ScrumField;
+  /** Config-declared status display names absent from the platform (orient gaps). */
+  missingStatusOptions?: readonly string[];
+  /** Config-declared priority display names absent from the platform (orient gaps). */
+  missingPriorityOptions?: readonly string[];
 }
 
 const DEFAULT_SPRINT: SprintInfo = {
@@ -147,11 +151,15 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
   private epics: readonly EpicListing[];
   private storyDetail: StoryDetail;
   private setFieldFailureOn?: ScrumField;
+  private missingStatusOptions: readonly string[];
+  private missingPriorityOptions: readonly string[];
 
   constructor(profile: ConfigProfile, options: ConfigShapedFakeBackendOptions = {}) {
     super();
     this.profile = profile;
     this.items = options.items ?? buildCanonicalListingItems(profile);
+    this.missingStatusOptions = options.missingStatusOptions ?? [];
+    this.missingPriorityOptions = options.missingPriorityOptions ?? [];
     this.epics = options.epics ?? [{
       ref: { id: "MI_fake_epic" },
       name: "Config Epic",
@@ -182,6 +190,8 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
       epics: this.epics,
       storyDetail: this.storyDetail,
       setFieldFailureOn: field,
+      missingStatusOptions: this.missingStatusOptions,
+      missingPriorityOptions: this.missingPriorityOptions,
     });
   }
 
@@ -200,16 +210,28 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
   }): Promise<BackendCallResult<PlatformState>> {
     this.log("getPlatformState", _declaredVocabulary);
     const p = this.profile;
-    const statusOptions = Object.values(p.statusDisplay);
-    const priorityOptions = Object.values(p.priorityDisplay);
+    const statusOptions = Object.values(p.statusDisplay).filter(
+      (name) => !this.missingStatusOptions.includes(name),
+    );
+    const priorityOptions = Object.values(p.priorityDisplay).filter(
+      (name) => !this.missingPriorityOptions.includes(name),
+    );
 
     return Promise.resolve({
       value: {
         fields: {
-          status: { exists: true, options: statusOptions, missingOptions: [] },
+          status: {
+            exists: true,
+            options: statusOptions,
+            missingOptions: [...this.missingStatusOptions],
+          },
           sprint: { exists: true },
           story_points: { exists: true },
-          priority: { exists: true, options: priorityOptions, missingOptions: [] },
+          priority: {
+            exists: true,
+            options: priorityOptions,
+            missingOptions: [...this.missingPriorityOptions],
+          },
           type: { exists: true, configured: Object.keys(p.typeDisplay).length > 0 },
         },
         labels: { existing: [], expected: [], missing: [] },

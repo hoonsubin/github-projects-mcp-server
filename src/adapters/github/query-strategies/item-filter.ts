@@ -94,7 +94,8 @@ export const buildItemFilterFn = (
 
   return (story: Story): boolean => {
     if (keySet) {
-      if (story.kind !== "issue" || !keySet.has(story.key!)) return false;
+      const hasKey = story.kind === "issue" || story.kind === "pr";
+      if (!hasKey || !keySet.has(story.key!)) return false;
     }
 
     if (!hasKeys) {
@@ -124,7 +125,8 @@ export const buildItemFilterFn = (
     if (sprintItemIds !== null && !sprintItemIds.has(story.ref.id)) return false;
 
     if (filter.epic_id) {
-      if (story.kind !== "issue" || story.epic?.ref.id !== filter.epic_id) return false;
+      const hasEpic = story.kind === "issue" || story.kind === "pr";
+      if (!hasEpic || story.epic?.ref.id !== filter.epic_id) return false;
     }
 
     if (filter.assignee && !story.assignees.includes(filter.assignee)) return false;

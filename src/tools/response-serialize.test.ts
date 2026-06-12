@@ -29,5 +29,8 @@ Deno.test("compactForAgentText - passes through small payloads", () => {
   const payload = { items: [{ ref: { id: "1", key: "1" } }], total_count: 1 };
   const { truncated } = compactForAgentText(payload);
   assertEquals(truncated, false);
-  assertEquals(JSON.stringify(compactForAgentText(payload).payload).length < MAX_TOOL_TEXT_BYTES, true);
+  assertEquals(
+    JSON.stringify(compactForAgentText(payload).payload).length < MAX_TOOL_TEXT_BYTES,
+    true,
+  );
 });

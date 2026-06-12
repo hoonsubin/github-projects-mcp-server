@@ -27,6 +27,7 @@ import type { ScrumConfig } from "./domain/config.ts";
 import type { EnvGetter } from "./domain/env.ts";
 import { createRateLimiter } from "./services/rate-limiter.ts";
 import { SessionCache } from "./services/session-cache.ts";
+import { SCRUM_SERVER_INSTRUCTIONS } from "./scrum/server-instructions.ts";
 
 // ── Process-level crash guard ────────────────────────────────────────────────
 //
@@ -168,6 +169,7 @@ const createMcpServer = async (): Promise<McpServer> => {
       capabilities: {
         logging: {},
       },
+      instructions: SCRUM_SERVER_INSTRUCTIONS,
     },
   );
 

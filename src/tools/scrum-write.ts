@@ -62,26 +62,26 @@ export const registerScrumWriteTools = (
     "scrum_add_vocabulary",
     {
       title: "Add Vocabulary Entry",
-      description: `Idempotently add a new option to an existing board field, or a new repo label.
+      description: `Idempotently add vocabulary. Three kinds behave differently:
 
-        IMPORTANT CONSTRAINT: this tool can only add options to fields that already exist
-        (status, priority). It cannot create new project fields - that requires a human to
-        act in the platform UI.
+        - status_option / priority_option → ONLY for values in scrum_orient platform_state.missing_options
+          that are declared in .github/scrum/config.yml (status_display / priority_display). Config is
+          authoritative — do not invent board options outside config.
+        - label → repository label (fully agent-driven; visible in platform_state.labels.existing)
 
-        Use this when scrum_set_field or scrum_create_story fails because a vocabulary value
-        is not found. Call scrum_orient first to see what values already exist before adding duplicates.
+        Response: created:true = new value added; created:false + already_exists:true = already present (safe no-op).
+
+        Cannot create new project fields — only options within existing Status/Priority fields.
 
         Args:
           kind   "status_option" | "priority_option" | "label"
-          value  display name to add (e.g. "Blocked", "Critical", "tech_debt")
-
-        Safe to call if the value already exists - operation is idempotent.`,
+          value  display name to add (e.g. config-declared "Blocked", or any label like "test-label")`,
       inputSchema: AddVocabularySchema.shape,
       outputSchema: AddVocabularyResultSchema.shape,
       annotations: { role: "admin" },
     },
     (params: z.infer<typeof AddVocabularySchema>) =>
-      handleAddVocabulary(backend, sessionCache, params),
+      handleAddVocabulary(backend, scrumConfig, sessionCache, params),
   );
 
   server.registerTool(
@@ -92,7 +92,10 @@ export const registerScrumWriteTools = (
         `Set a single board field on a story. The primary write primitive - use this to move
         stories across the board, assign sprints, set points, update priority, assignee, or type.
 
-        Call scrum_get_item_detail first if you need to read the current value before overwriting.
+        Call scrum_get_item_detail(detail:"dor") first if you need the current value before overwriting.
+        Confirm story points, priority, and sprint changes with the human before writing.
+
+        Example: { "ref": { "id": "..." }, "field": "status", "value": "In Progress", "response": "ack" }
 
         Args:
           ref    { id: string } - story to update (Story.ref.id from any read tool)
@@ -109,12 +112,12 @@ export const registerScrumWriteTools = (
                    type          → canonical key (e.g. "feature", "bug" - see vocabulary.type in scrum_orient)
                  Pass null for any field to clear the value entirely.
 
-        response  "ack" (default) | "story" - ack returns { ref, applied }; story returns full Story.
+        response  "ack" (default) | "story" — prefer ack; verify with find_items when needed.
 
         Returns: WriteAck by default, or Story when response="story".`,
       inputSchema: SetFieldSchema.shape,
       outputSchema: WriteAckSchema.shape,
-      annotations: { role: "admin" },
+      annotations: { destructiveHint: false, idempotentHint: false },
     },
     (params: z.input<typeof SetFieldSchema>) => handleSetField(backend, scrumConfig, params),
   );
@@ -206,7 +209,7 @@ export const registerScrumWriteTools = (
         The operation continues through individual failures - check skipped[] for errors.`,
       inputSchema: PlanSprintSchema.shape,
       outputSchema: PlanSprintResultSchema.shape,
-      annotations: { role: "admin" },
+      annotations: { destructiveHint: true, idempotentHint: false },
     },
     (params: z.infer<typeof PlanSprintSchema>) => handlePlanSprint(backend, params),
   );
