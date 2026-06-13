@@ -128,7 +128,7 @@ export class VocabularyManager {
     );
     const currentOptions = fieldData.node?.options ?? [];
     if (currentOptions.some((opt) => opt.name === value)) {
-      return { created: false };
+      return { created: false, already_exists: true };
     }
     const updatedOptions = [
       ...currentOptions,
@@ -136,7 +136,7 @@ export class VocabularyManager {
     ];
     await this.ctx.gh.graphql(
       UPDATE_FIELD_MUTATION,
-      { projectId: this.ctx.config.live.projectId, fieldId, options: updatedOptions },
+      { fieldId, options: updatedOptions },
     );
     return { created: true };
   }
@@ -159,7 +159,7 @@ export class VocabularyManager {
         currentOptions,
         optionMapKey,
       );
-      return { created: false };
+      return { created: false, already_exists: true };
     }
 
     const updatedOptions = [

@@ -15,9 +15,7 @@ Deno.test("ProjectItemsQueryBuilder - aggregate query uses ItemContentAggregate"
   assertStringIncludes(query, "...ItemContentAggregate");
   assertStringIncludes(query, "fragment ItemContentAggregate on ProjectV2Item");
   assertStringIncludes(query, "...ItemFieldValues");
-  if (query.includes("blockedBy(first:")) {
-    throw new Error("aggregate query must not fetch blockedBy");
-  }
+  assertStringIncludes(query, "blockedBy(first:");
 });
 
 Deno.test("ProjectItemsQueryBuilder - all queries use first: 50 page size", () => {

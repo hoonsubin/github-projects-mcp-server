@@ -40,6 +40,7 @@ import type {
   CreateResult,
   CreateStoryInput,
   ImpedimentListing,
+  ItemSearchResultRaw,
   PlatformState,
   ResolvedItemFilter,
   ScrumField,
@@ -57,7 +58,6 @@ import type {
   EpicListing,
   ImpedimentRef,
   ImpedimentStatus,
-  ItemSearchResult,
   IterationEntry,
   SprintRef,
   Story,
@@ -162,13 +162,20 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
       if (priorityDisplay[key]) priorityDisplayMap[key] = priorityDisplay[key];
     }
 
-    const liveStatusOptions = Object.keys(this.deps.config.live.statusOptions);
-    const livePriorityOptions = Object.keys(this.deps.config.live.priorityOptions);
-    const missingStatusOptions = Object.values(statusDisplayMap).filter(
-      (v) => !liveStatusOptions.includes(v),
+    // Config-declared display names are the agent-visible option set.
+    // Ghost options (board options not declared in config) are intentionally excluded
+    // so the agent only sees what the config authorises it to use.
+    const configStatusOptions = Object.values(statusDisplayMap);
+    const configPriorityOptions = Object.values(priorityDisplayMap);
+
+    // Live board option names are still needed to compute what's *missing* from the board.
+    const liveStatusOptionNames = Object.keys(this.deps.config.live.statusOptions);
+    const livePriorityOptionNames = Object.keys(this.deps.config.live.priorityOptions);
+    const missingStatusOptions = configStatusOptions.filter(
+      (v) => !liveStatusOptionNames.includes(v),
     );
-    const missingPriorityOptions = Object.values(priorityDisplayMap).filter(
-      (v) => !livePriorityOptions.includes(v),
+    const missingPriorityOptions = configPriorityOptions.filter(
+      (v) => !livePriorityOptionNames.includes(v),
     );
 
     const typeLabels = await this.deps.labelResolver.auditTypeLabels();
@@ -185,14 +192,14 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
       fields: {
         status: {
           exists: !!this.deps.config.live.fields.statusFieldId,
-          options: liveStatusOptions,
+          options: configStatusOptions,
           missingOptions: missingStatusOptions,
         },
         sprint: { exists: !!this.deps.config.live.fields.sprintFieldId },
         story_points: { exists: !!this.deps.config.live.fields.storyPointsFieldId },
         priority: {
           exists: !!this.deps.config.live.fields.priorityFieldId,
-          options: livePriorityOptions,
+          options: configPriorityOptions,
           missingOptions: missingPriorityOptions,
         },
         type: {
@@ -236,7 +243,7 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
 
   // ── Port methods (P7 - real implementations) ──────────────────────────────
 
-  async findItems(filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResult>> {
+  async findItems(filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResultRaw>> {
     const profile = classifyFilter(filter);
     const { items, totalCount, scopeSummary, dependencyMap, warnings } = await (() => {
       switch (profile.kind) {
@@ -320,19 +327,24 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
 
   // ── Story write delegations ───────────────────────────────────────────────
 
-  createStory(input: CreateStoryInput): Promise<StoryRef> {
-    return this.deps.storyMutationService.createStory(input);
+  async createStory(input: CreateStoryInput): Promise<StoryRef> {
+    const ref = await this.deps.storyMutationService.createStory(input);
+    this.deps.boardScan.invalidate();
+    return ref;
   }
 
-  override createImpediment(
+  override async createImpediment(
     input: CreateStoryInput,
   ): Promise<{ listing: ImpedimentListing; itemRef: StoryRef }> {
-    return this.deps.impedimentService.createImpediment(input);
+    const result = await this.deps.impedimentService.createImpediment(input);
+    this.deps.boardScan.invalidate();
+    return result;
   }
 
   async updateStory(ref: StoryRef, updates: StoryUpdates): Promise<void> {
     const resolved = await this.resolveRef(ref);
-    return this.deps.storyMutationService.updateStory(resolved, updates);
+    await this.deps.storyMutationService.updateStory(resolved, updates);
+    this.deps.boardScan.invalidate();
   }
 
   async setField(
@@ -341,16 +353,22 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
     value: string | number | SprintRef | null,
   ): Promise<void> {
     const resolved = await this.resolveRef(ref);
-    return this.deps.storyMutationService.setField(resolved, field, value);
+    await this.deps.storyMutationService.setField(resolved, field, value);
+    this.deps.boardScan.invalidate();
   }
 
   async addComment(ref: StoryRef, body: string): Promise<void> {
     const resolved = await this.resolveRef(ref);
-    return this.deps.storyMutationService.addComment(resolved, body);
+    await this.deps.storyMutationService.addComment(resolved, body);
+    this.deps.boardScan.invalidate();
   }
 
-  addVocabulary(kind: VocabularyKind, value: string): Promise<CreateResult> {
-    return this.deps.vocabularyManager.addVocabulary(kind, value);
+  async addVocabulary(kind: VocabularyKind, value: string): Promise<CreateResult> {
+    const result = await this.deps.vocabularyManager.addVocabulary(kind, value);
+    if (kind === "label") {
+      this.deps.labelResolver.invalidateLabelCache();
+    }
+    return result;
   }
 
   // ── Impediment delegations ────────────────────────────────────────────────

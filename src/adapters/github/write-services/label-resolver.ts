@@ -135,6 +135,11 @@ export class LabelResolver {
     }
 
     if (unknown.length > 0) {
+      // Invalidate the cache so the next scrum_orient(refresh:true) re-fetches from the
+      // GitHub API and surfaces the actual current label inventory. Without this, a stale
+      // cache (e.g. label present at orient time, deleted externally before create/update)
+      // would keep reporting the deleted label as available in platform_state.labels.existing.
+      this.invalidateLabelCache();
       throw new GitHubApiError(
         `Cannot assign unknown label(s): ${unknown.join(", ")}. ` +
           `Available labels on ${this.ctx.owner}/${this.ctx.repo}: ${
@@ -143,7 +148,7 @@ export class LabelResolver {
         {
           code: "OPTION_NOT_FOUND",
           recovery:
-            `Call scrum_orient to see all existing repo labels in platform_state.labels.existing. ` +
+            `Call scrum_orient(detail:"full") to see all existing repo labels in platform_state.labels.existing. ` +
             `If you need to create a new label, use scrum_add_vocabulary with kind: "label" first, ` +
             `then assign it to the story.`,
           context: { unknown, available: existingLabels.map((l) => l.name) },
@@ -215,14 +220,27 @@ export class LabelResolver {
     const existingLabels = await this.fetchAllLabels();
     const existingNames: string[] = existingLabels.map((l) => l.name);
     if (existingNames.includes(value)) {
-      return { created: false };
+      return { created: false, already_exists: true };
     }
     const color = this.hashToColor(value);
     const repositoryId = await this.fetchRepoNodeId();
-    await this.ctx.gh.graphql(
+    const createResult = await this.ctx.gh.graphql<{
+      createLabel?: { label?: { id: string } } | null;
+    }>(
       CREATE_LABEL_MUTATION,
       { repositoryId, name: value, color },
     );
+    if (!createResult.createLabel?.label?.id) {
+      throw new GitHubApiError(
+        `Label creation mutation succeeded but returned no label node for "${value}".`,
+        {
+          code: "MUTATION_FAILED",
+          recovery: "Retry the label creation. If the issue persists, the GitHub API " +
+            "may be returning an unexpected shape — check GitHub status.",
+          context: { name: value, repositoryId, responseShape: JSON.stringify(createResult) },
+        },
+      );
+    }
     this.invalidateLabelCache();
     return { created: true };
   }

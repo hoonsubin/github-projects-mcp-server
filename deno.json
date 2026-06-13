@@ -22,7 +22,7 @@
     "docker:scan": "trivy image --severity CRITICAL,HIGH scrum-master-toolkit",
     "docker:build": "docker compose build",
     "docker:up": "docker compose up --build -d",
-    "docker:test": "docker compose up --build --wait && curl -sf http://localhost:3000/health && echo '' && curl -sf -X POST http://localhost:3000/mcp -H 'Content-Type: application/json' -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}' | head -c 200"
+    "docker:test": "docker compose up --build --wait && curl -sf http://localhost:3000/health && test \"$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{},\"clientInfo\":{\"name\":\"docker-test\",\"version\":\"0\"}}}')\" = \"200\" && echo 'MCP initialize OK'"
   },
   "imports": {
     "@anthropic-ai/mcpb": "npm:@anthropic-ai/mcpb@^2.1.2",

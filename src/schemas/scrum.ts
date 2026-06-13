@@ -12,9 +12,10 @@
 import { z } from "zod";
 import type { EpicRef, StoryRef } from "../domain/types.ts";
 import {
+  FIND_ITEMS_INTENTS,
   IMPEDIMENT_STATUSES,
+  LISTING_FIELDS_MODES,
   SCRUM_FIELDS,
-  SEARCH_SCOPES,
   toSprintName,
   VOCABULARY_KINDS,
 } from "../domain/types.ts";
@@ -82,25 +83,57 @@ const EpicRefSchema: z.ZodType<EpicRef> = z.object({
     ),
 });
 
-// Sprint targeting: "current", "next", "all", null (= backlog / clear sprint), or explicit sprint name.
-// NOTE: "all" is intentionally excluded from SprintRef because it is a query-mode flag,
-// not a sprint reference. Other tools that accept SprintRef will resolve "all" to null.
+// Sprint targeting for writes and sprint data (not multi-sprint search).
 const SprintRefSchema = z
   .union([
     z.literal("current"),
     z.literal("next"),
-    z.literal("all"),
     z.null(),
     z.string().min(1).transform(toSprintName),
   ])
   .describe(
-    'Which sprint to target. "current" = the active sprint, ' +
-      '"next" = the upcoming sprint, ' +
-      '"all" = active sprint + next sprint + completed sprints (up to limit), ' +
-      "null = backlog / clear sprint assignment, " +
-      'or an exact sprint name string (e.g. "Sprint 5"). ' +
-      "Use scrum_orient to see all valid sprint names. " +
-      'NOTE: "all" is only meaningful for scrum_find_items; other tools resolve it to null.',
+    'Which sprint to target. "current" = active sprint, "next" = upcoming sprint, ' +
+      "null = backlog / clear sprint, or an exact sprint name from scrum_orient.",
+  );
+
+const FindItemsSprintSchema = z
+  .union([
+    z.literal("current"),
+    z.literal("next"),
+    z.literal("backlog"),
+    z.literal("all"),
+    z.string().min(1).transform(toSprintName),
+  ])
+  .describe(
+    'Sprint filter. "current" | "next" | "backlog" | "all" (every iteration) | "<name>". Omit = entire board (active items only — Done/terminal items excluded by default; add statuses:["done"] to include them).',
+  );
+
+export const OrientSchema = z
+  .object({
+    detail: z
+      .enum(["session", "full"])
+      .optional()
+      .default("session")
+      .describe(
+        '"session" (default) = vocabulary, sprint, DoR/DoD, team, autonomy, template URIs, ' +
+          "capped epics (up to 5). Strips only labels.existing/expected (label inventory). " +
+          '"full" = everything in session plus complete label inventory and all active epics. ' +
+          "Use full only when you need platform_state.labels.existing (e.g. before assigning labels).",
+      ),
+    refresh: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe("When true, bypass session cache and reload metadata from the platform."),
+  })
+  .strict();
+
+const WriteResponseSchema = z
+  .enum(["ack", "story"])
+  .optional()
+  .default("ack")
+  .describe(
+    '"ack" (default) = minimal confirmation. "story" = full Story snapshot after the write.',
   );
 
 // The six board fields the agent can write via scrum_set_field.
@@ -141,6 +174,14 @@ export const GetStorySchema = z
       "Reference to the story to fetch. Supply the Story.ref.id value returned by " +
         "scrum_orient, scrum_find_items, or a previous write tool.",
     ),
+    detail: z
+      .enum(["dor", "full"])
+      .optional()
+      .default("dor")
+      .describe(
+        '"dor" (default) = DoR/readiness slice: truncated body, latest comment, AC. ' +
+          '"full" = complete body and comment history — use only when editing content.',
+      ),
   })
   .strict();
 
@@ -149,74 +190,85 @@ export const GetStorySchema = z
 // scrum_find_items - unified item search across all PBIs
 export const FindItemsSchema = z
   .object({
-    scope: z
-      .enum(SEARCH_SCOPES)
+    intent: z
+      .enum(FIND_ITEMS_INTENTS)
       .optional()
-      .default("all")
-      .describe('Scope to search. Defaults to "all".'),
+      .describe(
+        "Preset filter bundle (Scrum views). " +
+          '"sprint_board" = current Sprint Backlog (iteration-assigned, standard fields); ' +
+          '"backlog_ready" = Product Backlog groomed items with estimates; ' +
+          '"readiness_check" = Sprint readiness + dependency_map; ' +
+          '"blocked_items" = blocked work in current sprint + dependency_map; ' +
+          '"search_backlog" = keyword search (requires search; default scope all); ' +
+          '"by_keys" = lookup by issue number (requires keys). Omit to use explicit filters below.',
+      ),
+    sprint: FindItemsSprintSchema.optional(),
     keys: z
       .array(z.string().regex(/^\d+$/, "Must be a numeric string"))
       .optional()
-      .describe('Numeric issue keys to fetch directly, e.g. ["42", "123"].'),
-    search: z
-      .string()
-      .optional()
-      .describe("Case-insensitive substring match against story title and body."),
-    types: z
-      .array(z.string())
-      .optional()
-      .describe('Filter by item type canonical keys (e.g. ["feature", "bug"]).'),
-    statuses: z
-      .array(z.string())
-      .optional()
-      .describe('Filter by status display names (e.g. ["In Progress", "Done"]).'),
+      .describe('Direct lookup by issue number, e.g. ["42"]. Omit unused filters entirely.'),
+    search: z.string().optional(),
+    types: z.array(z.string()).optional(),
+    statuses: z.array(z.string()).optional(),
     priority: z
       .string()
       .optional()
-      .describe('Filter by priority display name, e.g. "Must".'),
-    epic_id: z
-      .string()
-      .optional()
-      .describe("Filter by epic/milestone ID."),
-    labels: z
-      .array(z.string())
-      .optional()
-      .describe("Return only stories carrying ALL of these labels."),
-    assignee: z
-      .string()
-      .optional()
-      .describe("Filter by assignee GitHub login."),
-    estimated: z
+      .describe(
+        'Priority filter. Accepts display name ("Must") or canonical key ("p0"). ' +
+          "Resolve from vocabulary.priority in scrum_orient when unsure.",
+      ),
+    has_blockers: z
       .boolean()
       .optional()
-      .describe("true = only estimated; false = only unestimated; omit = all."),
-    sprint_ref: SprintRefSchema.optional().describe(
-      'Filter by sprint. Pass "current", "next", or an explicit sprint name.',
-    ),
+      .describe(
+        "When true, only items with blocked_by entries; when false, only items without blockers. " +
+          'intent "blocked_items" sets this to true by default.',
+      ),
+    epic_id: z.string().optional(),
+    labels: z.array(z.string()).optional(),
+    assignee: z.string().optional(),
+    estimated: z.boolean().optional(),
     include_dependencies: z
       .boolean()
       .optional()
       .default(false)
-      .describe("Resolve and include the full dependency graph in the response."),
-    limit: z
-      .number()
-      .int()
-      .positive()
+      .describe(
+        "Include off-listing active blocker pointers referenced by blocked_by. " +
+          "Requires sprint or intent — unscoped use is coerced to readiness_check on current sprint.",
+      ),
+    fields: z
+      .enum(LISTING_FIELDS_MODES)
       .optional()
-      .default(50)
-      .describe("Maximum number of items to return."),
+      .default("compact")
+      .describe('"compact" (default) | "standard" | "full" listing projection.'),
+    limit: z.number().int().positive().optional().default(50),
   })
   .strict();
 
-// scrum_get_sprint_data - raw sprint items with completion timestamps
+// scrum_get_sprint_data - sprint metrics and optional per-item facts
 export const GetSprintDataSchema = z
   .object({
-    sprint_ref: SprintRefSchema.describe(
-      'Sprint to fetch raw data for. "current" = active sprint; "next" = upcoming sprint; ' +
-        'null = returns empty result; or an explicit sprint name string (e.g. "Sprint 5"). ' +
-        'Note: "all" is accepted but resolves to null (empty result) — this tool returns data for one sprint at a time. ' +
-        'Defaults to "current".',
-    ).default("current"),
+    sprint: z
+      .union([SprintRefSchema, z.null()])
+      .optional()
+      .describe(
+        'Sprint to fetch. Omit or "current" for active sprint; "next", sprint name; null for empty result.',
+      ),
+    view: z
+      .enum(["summary", "items"])
+      .optional()
+      .default("summary")
+      .describe(
+        '"summary" (default) = Scrum metrics only (counts, points, blocked). ' +
+          '"items" = summary plus per-item facts for burndown/velocity computation.',
+      ),
+    active_only: z
+      .boolean()
+      .optional()
+      .default(true)
+      .describe(
+        "When true (default), exclude Done/terminal-status items from summary and item lists.",
+      ),
   })
   .strict();
 
@@ -253,7 +305,7 @@ export const CreateStorySchema = z
       .optional()
       .describe(
         "Additional labels to apply. Only pass labels that already exist in the repository - " +
-          "check platform_state.labels.existing from scrum_orient first. " +
+          'call scrum_orient(detail:"full") to see platform_state.labels.existing first. ' +
           "Story type is set via the Type board field, not a label.",
       ),
     epic: EpicRefSchema.optional().describe(
@@ -311,7 +363,8 @@ export const UpdateStorySchema = z
           "Can be combined with content fields (title, body, etc.) in one call. " +
           "Use with only { ref, comment } to post a comment without changing story content.",
       ),
-    blocked_by: BlockedByInputSchema,
+    blocked_by: BlockedByInputSchema.optional(),
+    response: WriteResponseSchema,
   })
   .strict();
 
@@ -323,16 +376,10 @@ export const SetFieldSchema = z
     value: z
       .union([z.string(), z.number(), SprintRefSchema, z.null()])
       .describe(
-        "Value for the field. Shape depends on field: " +
-          'status → string display name (e.g. "In Progress", "Done"); ' +
-          'sprint → "current" | "next" | "<sprint-name>" | null; ' +
-          "story_points → number (e.g. 3, 5, 8); " +
-          'priority → string display name (e.g. "Must", "Should"); ' +
-          'assignee → GitHub login string (e.g. "hoonsubin"); ' +
-          'type → canonical key string (e.g. "feature", "bug" - see vocabulary.type in scrum_orient). ' +
-          "Pass null to clear a field. Exception: on org-owned projects using organization issue types, " +
-          "type cannot be cleared - set an explicit type key instead.",
+        "Field value. status/priority accept canonical keys (e.g. done, p0) or display names. " +
+          'sprint → "current" | "next" | "<name>" | null. Pass null to clear.',
       ),
+    response: WriteResponseSchema,
   })
   .strict();
 
@@ -432,18 +479,17 @@ export const AddVocabularySchema = z
     kind: z
       .enum(VOCABULARY_KINDS)
       .describe(
-        '"status_option" = add a new column/state to the Status field; ' +
-          '"priority_option" = add a new tier to the Priority field; ' +
-          '"label" = add a new repo label. ' +
-          "IMPORTANT: this tool cannot create new project fields - only options within " +
-          "existing fields. Creating a new field requires a human to act in the GitHub Projects UI.",
+        '"status_option" = add a config-declared Status display name missing from the board; ' +
+          '"priority_option" = add a config-declared Priority display name missing from the board; ' +
+          '"label" = add a new repo label (agent-driven, not config-gated). ' +
+          "status_option and priority_option require the value to appear in scrum_orient missing_options.",
       ),
     value: z
       .string()
       .min(1)
       .describe(
-        'Display name of the option or label to add (e.g. "Blocked", "Critical", "tech_debt"). ' +
-          "Safe to call if the value already exists - operation is idempotent.",
+        "Display name to add. For status_option/priority_option use exact names from config " +
+          "status_display/priority_display that are listed in missing_options. Labels: any name.",
       ),
   })
   .strict();

@@ -18,6 +18,10 @@ import { CAPTURED } from "@test/fixtures/port/index.ts";
 import { type ConfigProfile, deriveConfigProfile } from "./config-profile.ts";
 import { CapturedDataBackend } from "./captured-backend.ts";
 import { ConfigShapedFakeBackend } from "./fake-backend.ts";
+import { SessionCache } from "../../services/session-cache.ts";
+
+/** Fresh session cache for handler contract tests (no cross-test pollution). */
+export const testSessionCache = (): SessionCache => new SessionCache();
 
 // ── Type template paths ───────────────────────────────────────────────────────
 

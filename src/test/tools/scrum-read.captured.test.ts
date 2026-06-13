@@ -7,6 +7,7 @@ import { CAPTURED } from "@test/fixtures/port/index.ts";
 import {
   capturedBackendPromise,
   committedScrumConfigPromise,
+  testSessionCache,
 } from "../support/scrum-test-utils.ts";
 import { assertHandlerSchema } from "../support/handler-assertions.ts";
 import { ItemSearchResultSchema, OrientResultSchema } from "../../schemas/scrum-outputs.ts";
@@ -17,7 +18,7 @@ Deno.test("scrum_orient - captured board data schema", async () => {
   const backend = await capturedBackendPromise;
 
   const payload = assertHandlerSchema(
-    await handleOrient(backend, boot.scrumConfig),
+    await handleOrient(backend, boot.scrumConfig, testSessionCache()),
     OrientResultSchema,
     "scrum_orient (captured)",
   );
@@ -29,7 +30,7 @@ Deno.test("scrum_find_items - captured board data schema", async () => {
   const captured = CAPTURED.profiles["config"].findItems;
 
   const payload = assertHandlerSchema(
-    await handleFindItems(backend, { scope: "all", include_dependencies: false, limit: 50 }),
+    await handleFindItems(backend, { include_dependencies: false, limit: 50, fields: "full" }),
     ItemSearchResultSchema,
     "scrum_find_items (captured)",
   );

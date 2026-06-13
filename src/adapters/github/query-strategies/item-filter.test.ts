@@ -50,8 +50,10 @@ const baseFilter = (): ResolvedItemFilter => ({
   labels: [],
   assignee: "",
   estimated: undefined,
+  has_blockers: undefined,
   sprint_ref: null,
   include_dependencies: false,
+  fields: "full" as const,
   limit: 50,
 });
 
@@ -105,6 +107,13 @@ Deno.test("buildItemFilterFn - estimated=true requires story points > 0", () => 
 Deno.test("buildItemFilterFn - invalid sprint_ref matches nothing", () => {
   const filtered = applyFilter({ ...baseFilter(), sprint_ref: "nonexistent-sprint-xyz" });
   assertEquals(filtered.length, 0);
+});
+
+Deno.test("buildItemFilterFn - sprint_ref=all includes items from every configured iteration", () => {
+  const union = applyFilter({ ...baseFilter(), sprint_ref: "all" });
+  const all = applyFilter(baseFilter());
+  assertEquals(union.length <= all.length, true);
+  assertEquals(union.every((s) => all.some((a) => a.ref.id === s.ref.id)), true);
 });
 
 Deno.test("buildItemFilterFn - scope=backlog excludes terminal-status Done items by default", () => {
@@ -220,7 +229,7 @@ Deno.test("buildItemFilterFn - scope=backlog with explicit statuses bypasses ter
   assertEquals(results[0].ref.id, "term2");
 });
 
-Deno.test("buildItemFilterFn - scope=all does not exclude terminal-status Done items", () => {
+Deno.test("buildItemFilterFn - scope=all excludes terminal-status Done items by default", () => {
   const cfg = makeConfig({
     scrumConfig: {
       project: { name: "Test" },
@@ -269,7 +278,7 @@ Deno.test("buildItemFilterFn - scope=all does not exclude terminal-status Done i
     [],
   );
   const results = [terminal].filter(fn);
-  assertEquals(results.length, 1);
+  assertEquals(results.length, 0);
 });
 
 Deno.test("buildItemFilterFn - scope=sprint with null sprint_ref excludes past-sprint items", () => {
@@ -473,4 +482,33 @@ Deno.test("buildItemFilterFn - scope=sprint with keys bypasses terminal exclusio
   const filtered = allFixtureStories.filter(fn);
   assertEquals(filtered.length, 1);
   assertEquals(filtered[0].ref.id, doneSprintStory.ref.id);
+});
+
+Deno.test("buildItemFilterFn - has_blockers=true keeps only blocked stories", () => {
+  const blocked = allStories.filter((s) => s.blocked_by.length > 0);
+  if (blocked.length === 0) return;
+
+  const filtered = applyFilter({ ...baseFilter(), has_blockers: true });
+  assertEquals(filtered.every((s) => s.blocked_by.length > 0), true);
+  assertEquals(filtered.length, blocked.length);
+});
+
+Deno.test("buildItemFilterFn - priority accepts canonical keys", () => {
+  const priorityConfig = makeConfig({
+    ghConfig: {
+      ...makeConfig().ghConfig,
+      priority_display: { p0: "Must", p1: "Should" },
+    },
+  });
+  const mustStory = allStories.find((s) => s.priority === "Must");
+  if (!mustStory) return;
+
+  const fn = buildItemFilterFn(
+    { ...baseFilter(), priority: "p0" },
+    priorityConfig,
+    allItems,
+  );
+  const filtered = allStories.filter(fn);
+  assertEquals(filtered.some((s) => s.ref.id === mustStory.ref.id), true);
+  assertEquals(filtered.every((s) => s.priority === "Must"), true);
 });

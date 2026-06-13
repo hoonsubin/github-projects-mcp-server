@@ -12,7 +12,6 @@ import type { AssemblerOutput } from "./types.ts";
 import type { BoardScanCoordinator } from "../read-services/board-scan-coordinator.ts";
 import { ResultNormalizer } from "../query-strategies/result-normalizer.ts";
 import { buildItemFilterFn } from "../query-strategies/item-filter.ts";
-import { buildDependencyMap } from "../read-services/story-query-service.ts";
 import { finalizeAssemblerOutput } from "./assembler-output.ts";
 
 /**
@@ -44,14 +43,10 @@ export class ProjectItemsAssembler {
         pagesConsumed: 1,
       },
       filterFn,
-      {
-        allItems,
-        includeDependencies: filter.include_dependencies,
-        buildDependencyMap,
-      },
+      { allItems },
     );
 
-    return finalizeAssemblerOutput(output, filter, this.config);
+    return finalizeAssemblerOutput(output, filter, this.config, allItems);
   }
 
   /** Exposed for tests that need raw project items without listing normalization. */

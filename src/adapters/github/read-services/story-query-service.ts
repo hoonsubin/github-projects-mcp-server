@@ -19,22 +19,29 @@ import {
   type IssueDetailsInput,
 } from "../mappers.ts";
 import {
+  extractLinkedPullRequestsFromFieldValues,
+  mergeLinkedArtifacts,
+} from "../linked-pull-requests.ts";
+import type { ResolvedStory } from "../infra/resolver.ts";
+import {
   GET_DRAFT_ISSUE_DETAILS_QUERY,
   GET_ISSUE_DETAILS_QUERY,
   GET_ITEM_FIELDS_QUERY,
+  GET_PULL_REQUEST_QUERY,
 } from "../queries.ts";
 import type { GitHubInfraContext } from "../infra/infra-context.ts";
 import type { StoryDetail, StorySnapshotOverrides } from "../../../scrum/ports.ts";
 import type { ItemFieldValue, ProjectItem, ProjectV2ItemRef } from "../types.ts";
 import type {
+  BacklogItemListing,
   DependencyMap,
-  DependencyNode,
+  DependencyPointer,
   EntityRef,
-  IssueKey,
   Story,
   StoryRef,
 } from "../../../domain/types.ts";
 import { toIssueKey } from "../../../domain/types.ts";
+import type { GitHubBootState } from "../bootstrap.ts";
 
 // ── Response types ─────────────────────────────────────────────────────────────
 
@@ -51,94 +58,83 @@ interface GetItemFieldsResponse {
 
 // ── Dependency map builder (standalone pure function) ──────────────────────────
 
+const terminalStatusDisplayNames = (config: GitHubBootState): Set<string> => {
+  const names = new Set<string>();
+  for (const [canonical, semantics] of Object.entries(config.scrumConfig.scrum.status)) {
+    if (semantics.terminal && config.ghConfig.status_display[canonical]) {
+      names.add(config.ghConfig.status_display[canonical]);
+    }
+  }
+  return names;
+};
+
+/** Active = not terminal Done, or assigned to the current active sprint. */
+const isActiveBlocker = (
+  status: string | null,
+  sprintName: string | null,
+  config: GitHubBootState,
+  terminalStatuses: Set<string>,
+): boolean => {
+  const activeSprintTitle = config.live.iterations.active?.title ?? null;
+  const inActiveSprint = activeSprintTitle !== null && sprintName === activeSprintTitle;
+  if (status !== null && terminalStatuses.has(status) && !inActiveSprint) {
+    return false;
+  }
+  return true;
+};
+
 /**
- * Build a DependencyMap from a filtered story set + all project items.
- * Exported for ResultNormalizer injection.
+ * Supplementary pointers for off-listing active blockers referenced by returned items.
+ * Scoped to the limited items[] slice; omits blockers already in items and reverse edges.
  */
 export const buildDependencyMap = (
-  stories: readonly Story[],
+  items: readonly BacklogItemListing[],
   allItems: readonly ProjectItem[],
-  config: GitHubInfraContext["config"],
+  config: GitHubBootState,
 ): DependencyMap => {
-  const map: Record<string, DependencyNode> = {};
-
-  const storyById = new Map<string, Story>();
-  for (const story of stories) {
-    storyById.set(story.ref.id, story);
-  }
+  const map: Record<string, DependencyPointer> = {};
+  const returnedKeys = new Set(
+    items.map((item) => item.ref.key).filter((key) => key.length > 0),
+  );
+  const terminalStatuses = terminalStatusDisplayNames(config);
 
   const allItemsById = new Map<string, ProjectItem>();
   for (const item of allItems) {
     allItemsById.set(item.id, item);
   }
 
-  for (const story of stories) {
-    if (story.kind !== "issue") continue;
+  for (const item of items) {
+    for (const dep of item.blocked_by) {
+      if (!dep.key || returnedKeys.has(dep.key) || map[dep.key]) continue;
 
-    const key = toIssueKey(story.key!);
-    const blocked_by_keys: IssueKey[] = [];
+      const projectItem = dep.ref.id ? allItemsById.get(dep.ref.id) : undefined;
+      let pointer: DependencyPointer = {
+        key: toIssueKey(dep.key),
+        ref: dep.ref,
+        title: dep.title,
+        status: null,
+      };
 
-    for (const dep of story.blocked_by) {
-      blocked_by_keys.push(toIssueKey(dep.key));
-    }
-
-    map[key] = {
-      key,
-      title: story.title,
-      status: story.status,
-      sprint: story.sprint,
-      epic_name: story.epic?.name ?? null,
-      story_points: story.story_points,
-      priority: story.priority,
-      resolved: true,
-      blocks: [],
-      blocked_by: blocked_by_keys,
-    };
-  }
-
-  for (const story of stories) {
-    if (story.kind !== "issue") continue;
-    for (const dep of story.blocked_by) {
-      if (map[dep.key]) continue;
-      const item = allItemsById.get(dep.ref.id);
-      if (!item) {
-        map[dep.key] = {
-          key: toIssueKey(dep.key),
-          title: dep.title ?? null,
-          status: null,
-          sprint: null,
-          epic_name: null,
-          story_points: null,
-          priority: null,
-          resolved: false,
-          blocks: [],
-          blocked_by: [],
-        };
+      if (projectItem) {
+        const depStory = buildStoryFromRaw(projectItem, config);
+        if (depStory && (depStory.kind === "issue" || depStory.kind === "pr")) {
+          pointer = {
+            key: toIssueKey(depStory.key!),
+            ref: depStory.ref,
+            title: depStory.title,
+            status: depStory.status,
+          };
+          if (
+            !isActiveBlocker(depStory.status, depStory.sprint, config, terminalStatuses)
+          ) {
+            continue;
+          }
+        }
+      } else if (!isActiveBlocker(null, null, config, terminalStatuses)) {
         continue;
       }
-      const depStory = buildStoryFromRaw(item, config);
-      if (!depStory || depStory.kind !== "issue") continue;
-      const key = toIssueKey(depStory.key!);
-      map[key] = {
-        key,
-        title: depStory.title,
-        status: depStory.status,
-        sprint: depStory.sprint,
-        epic_name: depStory.epic?.name ?? null,
-        story_points: depStory.story_points,
-        priority: depStory.priority,
-        resolved: false,
-        blocks: [],
-        blocked_by: [],
-      };
-    }
-  }
 
-  for (const [nodeKey, node] of Object.entries(map)) {
-    for (const depKey of node.blocked_by) {
-      if (map[depKey]) {
-        map[depKey].blocks.push(toIssueKey(nodeKey));
-      }
+      map[pointer.key] = pointer;
     }
   }
 
@@ -237,6 +233,10 @@ export class StoryQueryService {
       return { value: null, warnings };
     }
 
+    if (resolved.contentKind === "pull_request") {
+      return this._getPullRequestDetail(resolved, warnings);
+    }
+
     if (!resolved.issueId) {
       return this._getDraftIssueDetail(resolved.itemId);
     }
@@ -276,9 +276,122 @@ export class StoryQueryService {
       this.ctx.config,
     );
     const comments = issueData ? buildCommentList(issue.comments?.nodes ?? []) : null;
-    const linked_artifacts = issueData ? buildLinkedPrList(issue.timelineItems?.nodes ?? []) : null;
+    const timelineLinked = issueData ? buildLinkedPrList(issue.timelineItems?.nodes ?? []) : null;
+    const fieldLinked = extractLinkedPullRequestsFromFieldValues(
+      itemData?.node?.fieldValues?.nodes ?? [],
+    );
+    const linked_artifacts = mergeLinkedArtifacts(timelineLinked, fieldLinked);
 
     return { value: { story, comments, linked_artifacts }, warnings };
+  }
+
+  private async _getPullRequestDetail(
+    resolved: ResolvedStory,
+    warnings: string[],
+  ): Promise<BackendCallResult<StoryDetail>> {
+    interface GetDraftIssueDetailsQueryNode extends ProjectV2ItemRef {
+      content?: unknown;
+      fieldValues?: { nodes: ItemFieldValue[] };
+    }
+    interface GetDraftIssueDetailsResponse {
+      node?: GetDraftIssueDetailsQueryNode | null;
+    }
+
+    const { value: data, warnings: itemWarnings } = await catchBackend(() =>
+      this.ctx.gh.graphql<GetDraftIssueDetailsResponse>(
+        GET_DRAFT_ISSUE_DETAILS_QUERY,
+        { itemId: resolved.itemId },
+      )
+    );
+    warnings.push(...itemWarnings);
+
+    const node = data?.node;
+    if (!node) {
+      throw new GitHubApiError(`Project item ${resolved.itemId} could not be fetched.`, {
+        code: "NOT_FOUND",
+        statusCode: 404,
+        recovery: "Refresh your story list with scrum_orient or scrum_find_items.",
+        context: { itemId: resolved.itemId },
+      });
+    }
+
+    const item: ProjectItem = {
+      id: resolved.itemId,
+      type: (node.type ?? "PULL_REQUEST") as ProjectItem["type"],
+      createdAt: node.createdAt ?? "",
+      updatedAt: node.updatedAt ?? "",
+      isArchived: node.isArchived ?? false,
+      content: node.content as ProjectItem["content"],
+      fieldValues: { nodes: node.fieldValues?.nodes ?? [] },
+    };
+
+    const story = buildStoryFromRaw(item, this.ctx.config);
+    if (!story || story.kind !== "pr") {
+      throw new GitHubApiError(
+        `Project item ${resolved.itemId} is not a readable Pull Request.`,
+        {
+          code: "NOT_FOUND",
+          statusCode: 404,
+          recovery: "Use scrum_find_items to locate a valid project item ref.",
+          context: { itemId: resolved.itemId },
+        },
+      );
+    }
+
+    const content = item.content;
+    const repoOwner = resolved.repository?.owner ??
+      (content?.__typename === "PullRequest"
+        ? content.repository.nameWithOwner.split("/")[0]
+        : this.ctx.owner);
+    const repoName = resolved.repository?.name ??
+      (content?.__typename === "PullRequest" ? content.repository.name : this.ctx.repo);
+
+    if (resolved.issueNumber !== null && repoOwner && repoName) {
+      const { value: prData, warnings: prWarnings } = await catchBackend(() =>
+        this.ctx.gh.graphql<{
+          repository?: {
+            pullRequest?: {
+              body?: string | null;
+              url?: string;
+              reviewDecision?: string | null;
+            } | null;
+          } | null;
+        }>(GET_PULL_REQUEST_QUERY, {
+          owner: repoOwner,
+          name: repoName,
+          number: resolved.issueNumber,
+        })
+      );
+      warnings.push(...prWarnings);
+      const pr = prData?.repository?.pullRequest;
+      if (pr) {
+        return {
+          value: {
+            story: {
+              ...story,
+              body: pr.body ?? story.body,
+              url: pr.url ?? story.url,
+            },
+            comments: null,
+            linked_artifacts: mergeLinkedArtifacts(
+              extractLinkedPullRequestsFromFieldValues(item.fieldValues.nodes),
+            ),
+          },
+          warnings,
+        };
+      }
+    }
+
+    return {
+      value: {
+        story,
+        comments: null,
+        linked_artifacts: mergeLinkedArtifacts(
+          extractLinkedPullRequestsFromFieldValues(item.fieldValues.nodes),
+        ),
+      },
+      warnings,
+    };
   }
 
   private async _getDraftIssueDetail(itemId: string): Promise<BackendCallResult<StoryDetail>> {

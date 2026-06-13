@@ -14,6 +14,7 @@ import type { BackendCallResult } from "../../services/error-enrichment.ts";
 import type {
   CreateStoryInput,
   ImpedimentListing,
+  ItemSearchResultRaw,
   PlatformState,
   ResolvedItemFilter,
   ScrumField,
@@ -25,13 +26,7 @@ import type {
   StoryUpdates,
   VocabularyKind,
 } from "../../scrum/ports.ts";
-import type {
-  EpicListing,
-  ItemSearchResult,
-  SprintRef,
-  Story,
-  StoryRef,
-} from "../../domain/types.ts";
+import type { EpicListing, SprintRef, Story, StoryRef } from "../../domain/types.ts";
 
 // ── CAPTURED_CAPABILITIES ───────────────────────────────────────────────────────
 
@@ -178,17 +173,20 @@ export class CapturedDataBackend extends AbstractProjectBackend {
         title: item.title,
         type: item.type,
         status: item.status,
-        storyPoints: item.story_points,
-        hasAssignee: item.assignees.length > 0,
-        hasBlockers: item.blocked_by.length > 0,
-        completedAt: null,
+        story_points: item.story_points,
+        has_assignee: item.assignees.length > 0,
+        has_blockers: item.blocked_by.length > 0,
+        completed_at: null,
       }));
 
     return Promise.resolve({ sprint, items });
   }
 
-  findItems(_filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResult>> {
-    return Promise.resolve({ value: this.profile.findItems, warnings: [] });
+  findItems(_filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResultRaw>> {
+    return Promise.resolve({
+      value: this.profile.findItems as unknown as ItemSearchResultRaw,
+      warnings: [],
+    });
   }
 
   // ── ProjectReader - impediments ──────────────────────────────────────────

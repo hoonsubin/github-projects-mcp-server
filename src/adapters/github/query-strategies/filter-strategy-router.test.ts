@@ -19,8 +19,10 @@ const baseFilter = (): ResolvedItemFilter => ({
   labels: [],
   assignee: "",
   estimated: undefined,
+  has_blockers: undefined,
   sprint_ref: null,
   include_dependencies: false,
+  fields: "full" as const,
   limit: 50,
 });
 

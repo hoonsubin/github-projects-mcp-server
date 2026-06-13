@@ -2,7 +2,6 @@ export const snapshot = {};
 
 snapshot[`golden: scrum_orient handler output 1`] = `
 \`{
-  "warnings": [],
   "platform_state": {
     "fields": {
       "status": {
@@ -14,8 +13,7 @@ snapshot[`golden: scrum_orient handler output 1`] = `
           "In Review",
           "Blocked",
           "Done"
-        ],
-        "missing_options": []
+        ]
       },
       "sprint": {
         "exists": true
@@ -30,19 +28,12 @@ snapshot[`golden: scrum_orient handler output 1`] = `
           "Should",
           "Could",
           "Won't"
-        ],
-        "missing_options": []
+        ]
       },
       "type_field": {
         "exists": true,
         "configured": true
       }
-    },
-    "missing_options": [],
-    "labels": {
-      "existing": [],
-      "expected": [],
-      "missing": []
     },
     "iterations": {
       "active": {
@@ -59,7 +50,6 @@ snapshot[`golden: scrum_orient handler output 1`] = `
       "next": {
         "id": "IT_fake_next",
         "name": "Sprint 2",
-        "goal": null,
         "start_date": "2026-01-15",
         "end_date": "2026-01-29",
         "duration_days": 14,
@@ -76,7 +66,6 @@ snapshot[`golden: scrum_orient handler output 1`] = `
             "id": "MI_fake_epic"
           },
           "name": "Config Epic",
-          "description": null,
           "status": "open",
           "open_item_count": 1
         }
@@ -89,8 +78,7 @@ snapshot[`golden: scrum_orient handler output 1`] = `
       "spike": "scrum://template/spike",
       "user_story": "scrum://template/user_story",
       "impediment": "scrum://template/impediment"
-    },
-    "deadline_field": null
+    }
   },
   "vocabulary": {
     "status": {
@@ -161,23 +149,20 @@ snapshot[`golden: scrum_get_sprint_data handler output 1`] = `
     "id": "IT_fake_active",
     "name": "Sprint 1",
     "goal": "Config-shaped fake sprint",
-    "startDate": "2026-01-01",
-    "durationDays": 14,
-    "endDate": "2026-01-15"
+    "start_date": "2026-01-01",
+    "duration_days": 14,
+    "end_date": "2026-01-15"
   },
-  "items": [
-    {
-      "id": "PVTI_fake_1",
-      "number": 101,
-      "title": "Config-shaped fixture story",
-      "type": "user_story",
-      "status": "Backlog",
-      "storyPoints": 3,
-      "hasAssignee": true,
-      "hasBlockers": false,
-      "completedAt": null
-    }
-  ]
+  "summary": {
+    "total_count": 1,
+    "active_count": 1,
+    "done_count": 0,
+    "total_points": 3,
+    "done_points": 0,
+    "remaining_points": 3,
+    "blocked_count": 0,
+    "unassigned_count": 0
+  }
 }'
 `;
 
@@ -192,22 +177,7 @@ snapshot[`golden: scrum_find_items handler output 1`] = `
       "title": "Config-shaped fixture story",
       "type": "user_story",
       "status": "In Progress",
-      "story_points": 3,
-      "priority": "Must",
-      "assignees": [
-        "agent-tester"
-      ],
-      "labels": [],
-      "sprint": {
-        "name": "Sprint 1",
-        "ref": {
-          "id": "IT_fake_active"
-        }
-      },
-      "epic": null,
-      "blocked_by": [],
-      "blocks": [],
-      "custom_fields": {}
+      "story_points": 3
     }
   ],
   "total_count": 1,
@@ -215,6 +185,6 @@ snapshot[`golden: scrum_find_items handler output 1`] = `
     "sprint_count": 1,
     "backlog_count": 0
   },
-  "dependency_map": null
+  "fields_mode": "compact"
 }'
 `;

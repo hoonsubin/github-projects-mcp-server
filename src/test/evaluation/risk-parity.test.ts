@@ -39,9 +39,9 @@ function agentCountSprintRisks(
 ): SprintRiskCounts {
   const active = items.filter((i) => i.status !== doneStatusDisplayName);
   return {
-    unestimated_count: active.filter((i) => i.storyPoints === null || i.storyPoints === 0).length,
-    blocked_count: active.filter((i) => i.hasBlockers).length,
-    no_assignee_count: active.filter((i) => !i.hasAssignee).length,
+    unestimated_count: active.filter((i) => i.story_points === null || i.story_points === 0).length,
+    blocked_count: active.filter((i) => i.has_blockers).length,
+    no_assignee_count: active.filter((i) => !i.has_assignee).length,
   };
 }
 
@@ -122,10 +122,10 @@ const RAW_ITEMS: SprintRawItem[] = [
     title: "A",
     type: "user_story",
     status: "In Progress",
-    storyPoints: 3,
-    hasAssignee: true,
-    hasBlockers: false,
-    completedAt: null,
+    story_points: 3,
+    has_assignee: true,
+    has_blockers: false,
+    completed_at: null,
   },
   // Unestimated
   {
@@ -134,10 +134,10 @@ const RAW_ITEMS: SprintRawItem[] = [
     title: "B",
     type: "user_story",
     status: "Backlog",
-    storyPoints: null,
-    hasAssignee: true,
-    hasBlockers: false,
-    completedAt: null,
+    story_points: null,
+    has_assignee: true,
+    has_blockers: false,
+    completed_at: null,
   },
   // No assignee
   {
@@ -146,22 +146,22 @@ const RAW_ITEMS: SprintRawItem[] = [
     title: "C",
     type: "bug",
     status: "Backlog",
-    storyPoints: 2,
-    hasAssignee: false,
-    hasBlockers: false,
-    completedAt: null,
+    story_points: 2,
+    has_assignee: false,
+    has_blockers: false,
+    completed_at: null,
   },
-  // Blocked (hasBlockers: true)
+  // Blocked (has_blockers: true)
   {
     id: "i4",
     number: 4,
     title: "D",
     type: "user_story",
     status: BLOCKED,
-    storyPoints: 5,
-    hasAssignee: true,
-    hasBlockers: true,
-    completedAt: null,
+    story_points: 5,
+    has_assignee: true,
+    has_blockers: true,
+    completed_at: null,
   },
   // Unestimated AND no assignee (counts in two buckets)
   {
@@ -170,10 +170,10 @@ const RAW_ITEMS: SprintRawItem[] = [
     title: "E",
     type: "user_story",
     status: "Backlog",
-    storyPoints: 0,
-    hasAssignee: false,
-    hasBlockers: false,
-    completedAt: null,
+    story_points: 0,
+    has_assignee: false,
+    has_blockers: false,
+    completed_at: null,
   },
   // Done — excluded from risk counts
   {
@@ -182,10 +182,10 @@ const RAW_ITEMS: SprintRawItem[] = [
     title: "F",
     type: "user_story",
     status: DONE,
-    storyPoints: 3,
-    hasAssignee: true,
-    hasBlockers: false,
-    completedAt: "2026-01-08T10:00:00Z",
+    story_points: 3,
+    has_assignee: true,
+    has_blockers: false,
+    completed_at: "2026-01-08T10:00:00Z",
   },
 ];
 
@@ -193,9 +193,9 @@ const RAW_ITEMS: SprintRawItem[] = [
 const SERVER_STORIES: ServerStoryProxy[] = RAW_ITEMS
   .filter((i) => i.status !== DONE)
   .map((i) => ({
-    story_points: i.storyPoints,
+    story_points: i.story_points,
     status: i.status,
-    assignees: i.hasAssignee ? ["someone"] : [],
+    assignees: i.has_assignee ? ["someone"] : [],
   }));
 
 // BacklogItemListing proxies for readiness assessment

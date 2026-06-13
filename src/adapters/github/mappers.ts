@@ -260,9 +260,10 @@ export const buildStoryFromRaw = (
 
   const body = "body" in content ? (content.body ?? "") : "";
   const url = "url" in content && content.url ? content.url : "";
+  const contentKind = content.__typename === "PullRequest" ? "pr" as const : "issue" as const;
 
   const issue: IssueStory = {
-    kind: "issue",
+    kind: contentKind,
     ref: { id: item.id },
     key: content.number.toString(),
     title: content.title,

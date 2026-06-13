@@ -39,7 +39,14 @@ export const buildItemFilterFn = (
     );
 
   let sprintItemIds: Set<string> | null = null;
-  if (filter.sprint_ref !== null) {
+  if (filter.sprint_ref === "all") {
+    sprintItemIds = new Set<string>();
+    for (const iteration of config.live.iterations.all) {
+      for (const id of buildSprintItemIds(iteration.id, allItems)) {
+        sprintItemIds.add(id);
+      }
+    }
+  } else if (filter.sprint_ref !== null) {
     const iterationId = resolveSprint(filter.sprint_ref, config);
     if (iterationId === null) {
       return () => false;
@@ -52,8 +59,17 @@ export const buildItemFilterFn = (
     );
   }
 
-  const typeSet = filter.types.length > 0 ? new Set(filter.types) : null;
-  const statusSet = filter.statuses.length > 0 ? new Set(filter.statuses) : null;
+  // Normalize to lowercase so `type:"Bug"` and `type:"bug"` both match the stored canonical key.
+  const typeSet = filter.types.length > 0
+    ? new Set(filter.types.map((t) => t.toLowerCase()))
+    : null;
+  const resolvedStatuses = filter.statuses.map(
+    (status) => config.ghConfig.status_display?.[status] ?? status,
+  );
+  const statusSet = resolvedStatuses.length > 0 ? new Set(resolvedStatuses) : null;
+  const resolvedPriority = filter.priority
+    ? (config.ghConfig.priority_display?.[filter.priority] ?? filter.priority)
+    : "";
   const labelList = filter.labels.length > 0 ? filter.labels : null;
   const searchQ = filter.search ? filter.search.toLowerCase() : null;
 
@@ -79,9 +95,31 @@ export const buildItemFilterFn = (
     }
   }
 
+  // Reverse map: optionId → display name. Used to resolve a raw field value's
+  // optionId to a human-readable status when scanning allItems for blocker status.
+  const optionIdToStatus = new Map<string, string>();
+  for (const [displayName, optionId] of Object.entries(config.live.statusOptions)) {
+    optionIdToStatus.set(optionId, displayName);
+  }
+
+  // key (issue number string) → display status for every item on the board.
+  // Built once at filter-construction time; used in the has_blockers predicate
+  // to determine whether a blocker is still active or has reached a terminal state.
+  const itemKeyStatusMap = new Map<string, string | null>();
+  for (const item of allItems) {
+    const key = (item.content as { number?: number } | null)?.number?.toString();
+    if (!key) continue; // DraftIssue nodes have no number — skip
+    const fv = item.fieldValues.nodes.find(
+      (v) => v.field?.id === config.live.fields.statusFieldId,
+    );
+    const displayName = fv?.optionId ? (optionIdToStatus.get(fv.optionId) ?? null) : null;
+    itemKeyStatusMap.set(key, displayName);
+  }
+
   return (story: Story): boolean => {
     if (keySet) {
-      if (story.kind !== "issue" || !keySet.has(story.key!)) return false;
+      const hasKey = story.kind === "issue" || story.kind === "pr";
+      if (!hasKey || !keySet.has(story.key!)) return false;
     }
 
     if (!hasKeys) {
@@ -94,12 +132,14 @@ export const buildItemFilterFn = (
         }
       }
       if (filter.scope === "backlog" && story.sprint !== null) return false;
-      // Exclude terminal-status items from sprint and backlog scope when no
-      // explicit statuses filter is provided.  Keys bypass this (keySet path
-      // above) so direct ID/ref lookups always return the item regardless of
-      // status.
+      // Exclude terminal-status (Done) items by default for ALL scopes when no
+      // explicit statuses filter is provided.  This prevents unscoped queries
+      // (type, label, search filters without sprint/scope) from flooding context
+      // with full board history including Done items from past sprints.
+      // To include Done items, pass statuses: ["done"] explicitly.
+      // Keys bypass this entirely (keySet path above) so direct ID/ref lookups
+      // always return the item regardless of status.
       if (
-        (filter.scope === "sprint" || filter.scope === "backlog") &&
         statusSet === null &&
         story.status !== null &&
         terminalStatuses.has(story.status)
@@ -111,18 +151,33 @@ export const buildItemFilterFn = (
     if (sprintItemIds !== null && !sprintItemIds.has(story.ref.id)) return false;
 
     if (filter.epic_id) {
-      if (story.kind !== "issue" || story.epic?.ref.id !== filter.epic_id) return false;
+      const hasEpic = story.kind === "issue" || story.kind === "pr";
+      if (!hasEpic || story.epic?.ref.id !== filter.epic_id) return false;
     }
 
     if (filter.assignee && !story.assignees.includes(filter.assignee)) return false;
 
     if (labelList && !labelList.every((label) => story.labels.includes(label))) return false;
 
-    if (typeSet && (story.type === null || !typeSet.has(story.type))) return false;
+    if (typeSet && (story.type === null || !typeSet.has(story.type.toLowerCase()))) return false;
 
     if (statusSet && (story.status === null || !statusSet.has(story.status))) return false;
 
-    if (filter.priority && story.priority !== filter.priority) return false;
+    if (resolvedPriority && story.priority !== resolvedPriority) return false;
+
+    if (filter.has_blockers !== undefined) {
+      // An item is considered "actively blocked" only when at least one blocker
+      // has a non-terminal status. Blockers that reached Done are resolved and
+      // should no longer gate sprint entry. If a blocker key is not in the map
+      // (e.g. referenced item was deleted or is outside the board), treat it as
+      // active to fail safe — we don't want to silently drop potentially blocked items.
+      const hasActiveBlocker = story.blocked_by.some((dep) => {
+        const status = itemKeyStatusMap.get(dep.key);
+        // status == null catches both null (no status set) and undefined (key not on board)
+        return status === null || status === undefined || !terminalStatuses.has(status);
+      });
+      if (filter.has_blockers !== hasActiveBlocker) return false;
+    }
 
     if (searchQ) {
       const titleMatch = story.title.toLowerCase().includes(searchQ);

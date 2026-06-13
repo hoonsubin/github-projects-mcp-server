@@ -138,14 +138,14 @@ export class SprintDataService {
 
     return {
       id: agg.id,
-      number: agg.issueNumber ?? 0,
+      number: agg.issueNumber,
       title: agg.title ?? "",
       type: agg.type,
       status: agg.status,
-      storyPoints: agg.storyPoints,
-      hasAssignee: agg.hasAssignee,
-      hasBlockers: agg.hasBlockers,
-      completedAt: agg.issueNumber !== null ? (completions.get(agg.issueNumber) ?? null) : null,
+      story_points: agg.storyPoints,
+      has_assignee: agg.hasAssignee,
+      has_blockers: agg.hasBlockers,
+      completed_at: agg.issueNumber !== null ? (completions.get(agg.issueNumber) ?? null) : null,
     };
   }
 }

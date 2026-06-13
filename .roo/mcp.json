@@ -12,8 +12,8 @@
 			"timeout": 300,
 			"alwaysAllow": [
 				"scrum_orient",
-				"scrum_get_board_health",
 				"scrum_find_items",
+				"scrum_get_sprint_data",
 				"scrum_get_item_detail"
 			]
 		},
@@ -83,7 +83,8 @@
 			"alwaysAllow": [
 				"fetch_typescript_sdk_docs",
 				"search_typescript_sdk_docs",
-				"search_typescript_sdk_code"
+				"search_typescript_sdk_code",
+				"fetch_generic_url_content"
 			]
 		},
 		"mcp-specs": {

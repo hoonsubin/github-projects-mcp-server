@@ -22,10 +22,16 @@ import { GET_PROJECT_ITEM_BY_ID_QUERY } from "../queries.ts";
  * Write tools that require a real Issue (e.g. addComment) must guard on null
  * and throw a clear error rather than crashing.
  */
-interface ResolvedStory {
+export type StoryContentKind = "issue" | "draft" | "pull_request";
+
+export interface ResolvedStory {
   itemId: GitHubItemId;
+  /** Issue or Pull Request node ID; null for DraftIssue items. */
   issueId: GitHubIssueId | null;
-  issueNumber: number | null; // user-facing issue number, null for DraftIssues
+  issueNumber: number | null; // user-facing issue/PR number, null for DraftIssues
+  contentKind: StoryContentKind;
+  /** Populated for pull_request items — used to fetch PR detail. */
+  repository?: { owner: string; name: string };
 }
 
 /** Minimal GitHub client interface - matches what server.ts passes in. */
@@ -39,6 +45,7 @@ interface ItemByIdQueryNode extends Required<Pick<GH.ProjectV2Item, "id">> {
     __typename: string;
     id: string;
     number?: number;
+    repository?: { name: string; nameWithOwner: string };
   } | null;
 }
 interface ItemByIdResponse {
@@ -186,20 +193,19 @@ export const resolveStory = async (
       itemId: node.id as GitHubItemId,
       issueId: null,
       issueNumber: null,
+      contentKind: "draft",
     };
   }
 
   if (content.__typename === "PullRequest") {
-    throw new GitHubApiError(
-      `Project item "${ref.id}" is a Pull Request, not a Story.`,
-      {
-        code: "WRONG_CONTENT_TYPE",
-        statusCode: 400,
-        recovery: "Only Issues and Draft Issues are supported as Stories. " +
-          "Use a Story ref from scrum_orient or scrum_find_items.",
-        context: { itemId: ref.id, contentType: "PullRequest" },
-      },
-    );
+    const [owner, name] = (content.repository?.nameWithOwner ?? "").split("/");
+    return {
+      itemId: node.id as GitHubItemId,
+      issueId: content.id as GitHubIssueId,
+      issueNumber: content.number ?? null,
+      contentKind: "pull_request",
+      repository: owner && name ? { owner, name } : undefined,
+    };
   }
 
   // Issue - has id and number
@@ -207,5 +213,6 @@ export const resolveStory = async (
     itemId: node.id as GitHubItemId,
     issueId: content.id as GitHubIssueId,
     issueNumber: content.number ?? null,
+    contentKind: "issue",
   };
 };

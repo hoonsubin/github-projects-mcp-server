@@ -6,22 +6,23 @@
 import { AbstractProjectBackend } from "../../adapters/abstract-backend.ts";
 import { AdapterError } from "../../domain/errors.ts";
 import { CapabilityStatus, type PlatformCapabilities } from "../../adapters/capabilities.ts";
-import type {
-  BacklogItemListing,
-  EpicListing,
-  ImpedimentRef,
-  ImpedimentStatus,
-  ItemSearchResult,
-  ItemType,
-  SprintRef,
-  Story,
-  StoryRef,
-  SupportedBackend,
+import {
+  type BacklogItemListing,
+  type EpicListing,
+  type ImpedimentRef,
+  type ImpedimentStatus,
+  type ItemType,
+  type SprintRef,
+  type Story,
+  type StoryRef,
+  type SupportedBackend,
+  toIssueKey,
 } from "../../domain/types.ts";
 import type {
   CreateResult,
   CreateStoryInput,
   ImpedimentListing,
+  ItemSearchResultRaw,
   PlatformState,
   ResolvedItemFilter,
   ScrumField,
@@ -60,6 +61,10 @@ export interface ConfigShapedFakeBackendOptions {
   storyDetail?: StoryDetail;
   /** When set, setField throws for this field (partial-failure contract tests). */
   setFieldFailureOn?: ScrumField;
+  /** Config-declared status display names absent from the platform (orient gaps). */
+  missingStatusOptions?: readonly string[];
+  /** Config-declared priority display names absent from the platform (orient gaps). */
+  missingPriorityOptions?: readonly string[];
 }
 
 const DEFAULT_SPRINT: SprintInfo = {
@@ -146,11 +151,15 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
   private epics: readonly EpicListing[];
   private storyDetail: StoryDetail;
   private setFieldFailureOn?: ScrumField;
+  private missingStatusOptions: readonly string[];
+  private missingPriorityOptions: readonly string[];
 
   constructor(profile: ConfigProfile, options: ConfigShapedFakeBackendOptions = {}) {
     super();
     this.profile = profile;
     this.items = options.items ?? buildCanonicalListingItems(profile);
+    this.missingStatusOptions = options.missingStatusOptions ?? [];
+    this.missingPriorityOptions = options.missingPriorityOptions ?? [];
     this.epics = options.epics ?? [{
       ref: { id: "MI_fake_epic" },
       name: "Config Epic",
@@ -181,6 +190,8 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
       epics: this.epics,
       storyDetail: this.storyDetail,
       setFieldFailureOn: field,
+      missingStatusOptions: this.missingStatusOptions,
+      missingPriorityOptions: this.missingPriorityOptions,
     });
   }
 
@@ -199,16 +210,28 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
   }): Promise<BackendCallResult<PlatformState>> {
     this.log("getPlatformState", _declaredVocabulary);
     const p = this.profile;
-    const statusOptions = Object.values(p.statusDisplay);
-    const priorityOptions = Object.values(p.priorityDisplay);
+    const statusOptions = Object.values(p.statusDisplay).filter(
+      (name) => !this.missingStatusOptions.includes(name),
+    );
+    const priorityOptions = Object.values(p.priorityDisplay).filter(
+      (name) => !this.missingPriorityOptions.includes(name),
+    );
 
     return Promise.resolve({
       value: {
         fields: {
-          status: { exists: true, options: statusOptions, missingOptions: [] },
+          status: {
+            exists: true,
+            options: statusOptions,
+            missingOptions: [...this.missingStatusOptions],
+          },
           sprint: { exists: true },
           story_points: { exists: true },
-          priority: { exists: true, options: priorityOptions, missingOptions: [] },
+          priority: {
+            exists: true,
+            options: priorityOptions,
+            missingOptions: [...this.missingPriorityOptions],
+          },
           type: { exists: true, configured: Object.keys(p.typeDisplay).length > 0 },
         },
         labels: { existing: [], expected: [], missing: [] },
@@ -236,7 +259,7 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
     return Promise.resolve([...this.epics]);
   }
 
-  findItems(filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResult>> {
+  findItems(filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResultRaw>> {
     this.log("findItems", filter);
     const items = filter.limit > 0 ? this.items.slice(0, filter.limit) : [...this.items];
     return Promise.resolve({
@@ -244,7 +267,16 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
         items,
         total_count: this.items.length,
         scope_summary: { sprint_count: this.items.length, backlog_count: 0 },
-        dependency_map: filter.include_dependencies ? {} : null,
+        dependency_map: filter.include_dependencies
+          ? {
+            "99": {
+              key: toIssueKey("99"),
+              title: "Fixture blocker",
+              status: "Blocked",
+              ref: { id: "PVTI_fake_blocker" },
+            },
+          }
+          : null,
       },
       warnings: [],
     });
@@ -308,10 +340,10 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
         title: "Config-shaped fixture story",
         type: (Object.keys(this.profile.typeDisplay)[0] ?? "user_story") as string,
         status: Object.values(this.profile.statusDisplay)[0] ?? "In Progress",
-        storyPoints: 3,
-        hasAssignee: true,
-        hasBlockers: false,
-        completedAt: null,
+        story_points: 3,
+        has_assignee: true,
+        has_blockers: false,
+        completed_at: null,
       }],
     });
   }

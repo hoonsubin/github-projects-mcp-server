@@ -26,6 +26,8 @@ import { SCRUM_WRITE_TOOL_NAMES } from "./tools/scrum-write.ts";
 import type { ScrumConfig } from "./domain/config.ts";
 import type { EnvGetter } from "./domain/env.ts";
 import { createRateLimiter } from "./services/rate-limiter.ts";
+import { SessionCache } from "./services/session-cache.ts";
+import { SCRUM_SERVER_INSTRUCTIONS } from "./scrum/server-instructions.ts";
 
 // ── Process-level crash guard ────────────────────────────────────────────────
 //
@@ -166,7 +168,9 @@ const createMcpServer = async (): Promise<McpServer> => {
     {
       capabilities: {
         logging: {},
+        tools: { listChanged: true },
       },
+      instructions: SCRUM_SERVER_INSTRUCTIONS,
     },
   );
 
@@ -212,8 +216,27 @@ const createMcpServer = async (): Promise<McpServer> => {
 
   const { backend, fileReader, typeTemplatePaths } = backendResult;
 
-  registerScrumReadTools(server, backend, scrumConfig);
-  registerScrumWriteTools(server, backend, scrumConfig);
+  // Hoist the active backend's status_display into the top-level scrumConfig field
+  // so scrum-layer functions (terminal-statuses.ts, write-value-resolve.ts) work
+  // correctly. ScrumConfig.status_display is optional and not populated from YAML
+  // directly — the display mapping lives under backends.<platform>.status_display.
+  //
+  // terminal-statuses.ts already has a fallback to backends.github.status_display,
+  // but hoisting here makes scrumConfig self-consistent for any future callers that
+  // read the top-level field directly.
+  if (!scrumConfig.status_display) {
+    const ghCfg = scrumConfig.backends.github as
+      | { status_display?: Record<string, string> }
+      | undefined;
+    if (ghCfg?.status_display) {
+      scrumConfig.status_display = ghCfg.status_display;
+    }
+  }
+
+  const sessionCache = new SessionCache();
+
+  registerScrumReadTools(server, backend, scrumConfig, sessionCache);
+  registerScrumWriteTools(server, backend, scrumConfig, sessionCache);
 
   if (fileReader) {
     const templateReadCallback = async (uri: URL, variables: Variables) => {
@@ -333,9 +356,15 @@ const runHttp = (): void => {
     const now = Date.now();
     for (const [id, lastActive] of sessionActivity) {
       if (now - lastActive > SESSION_IDLE_TIMEOUT_MS) {
+        const transport = transports[id];
         delete transports[id];
         sessionActivity.delete(id);
         log.info(`session expired: ${id}`);
+        transport?.close().catch((err: unknown) => {
+          log.warn(`session close failed: ${id}`, {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        });
       }
     }
   }, 60_000);
@@ -370,7 +399,7 @@ const runHttp = (): void => {
       const forwarded = req.headers.get("x-forwarded-for");
       if (forwarded) return forwarded.split(",")[0].trim();
     }
-    return (info.remoteAddr as Deno.NetAddr).hostname;
+    return (info.remoteAddr as Deno.NetAddr | undefined)?.hostname ?? "127.0.0.1";
   };
 
   Deno.serve(

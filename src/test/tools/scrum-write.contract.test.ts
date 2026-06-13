@@ -7,16 +7,17 @@ import {
   committedConfigProfilePromise,
   committedFakeBackendPromise,
   committedScrumConfigPromise,
+  testSessionCache,
 } from "../support/scrum-test-utils.ts";
 import { ConfigShapedFakeBackend } from "../support/fake-backend.ts";
 import {
   AddVocabularyResultSchema,
-  CreateStoryOutputSchema,
   CreateStoryPartialFailureSchema,
   CreateStoryResponseSchema,
   LogImpedimentResultSchema,
   PlanSprintResultSchema,
   SetFieldResponseSchema,
+  StorySchema,
   UpdateImpedimentResponseSchema,
   UpdateStoryResponseSchema,
 } from "../../schemas/scrum-outputs.ts";
@@ -33,22 +34,45 @@ import {
 } from "../../tools/scrum-write.ts";
 
 Deno.test("scrum_add_vocabulary - happy path schema", async () => {
+  const boot = await committedScrumConfigPromise;
   const backend = await committedFakeBackendPromise;
 
   assertHandlerSchema(
-    await handleAddVocabulary(backend, { kind: "label", value: "contract-test-label" }),
+    await handleAddVocabulary(backend, boot.scrumConfig, testSessionCache(), {
+      kind: "label",
+      value: "contract-test-label",
+    }),
     AddVocabularyResultSchema,
     "scrum_add_vocabulary",
   );
 });
 
-Deno.test("scrum_add_vocabulary - status_option variant", async () => {
-  const profile = await committedConfigProfilePromise;
+Deno.test("scrum_add_vocabulary - rejects undeclared status option", async () => {
+  const boot = await committedScrumConfigPromise;
   const backend = await committedFakeBackendPromise;
-  const statusDisplay = Object.values(profile.statusDisplay)[0] ?? "Ready";
+
+  const result = await handleAddVocabulary(backend, boot.scrumConfig, testSessionCache(), {
+    kind: "status_option",
+    value: "On Hold",
+  });
+
+  assertEquals(result.isError, true);
+  assertEquals(result.content[0]?.text.includes("VOCABULARY_NOT_DECLARED"), true);
+});
+
+Deno.test("scrum_add_vocabulary - status_option when missing on platform", async () => {
+  const boot = await committedScrumConfigPromise;
+  const profile = await committedConfigProfilePromise;
+  const missingStatus = profile.statusDisplay.blocked ?? "Blocked";
+  const backend = ConfigShapedFakeBackend.fromBoot(boot, {
+    missingStatusOptions: [missingStatus],
+  });
 
   const payload = assertHandlerSchema(
-    await handleAddVocabulary(backend, { kind: "status_option", value: statusDisplay }),
+    await handleAddVocabulary(backend, boot.scrumConfig, testSessionCache(), {
+      kind: "status_option",
+      value: missingStatus,
+    }),
     AddVocabularyResultSchema,
     "scrum_add_vocabulary (status)",
   );
@@ -56,12 +80,13 @@ Deno.test("scrum_add_vocabulary - status_option variant", async () => {
 });
 
 Deno.test("scrum_set_field - happy path schema", async () => {
+  const boot = await committedScrumConfigPromise;
   const profile = await committedConfigProfilePromise;
   const backend = await committedFakeBackendPromise;
   const itemRef = { id: "PVTI_fake_1" };
 
   assertHandlerSchema(
-    await handleSetField(backend, {
+    await handleSetField(backend, boot.scrumConfig, {
       ref: itemRef,
       field: "status",
       value: profile.statusDisplay.in_progress ?? "In Progress",
@@ -72,10 +97,11 @@ Deno.test("scrum_set_field - happy path schema", async () => {
 });
 
 Deno.test("scrum_update_story - happy path schema", async () => {
+  const config = await committedScrumConfigPromise;
   const backend = await committedFakeBackendPromise;
 
   assertHandlerSchema(
-    await handleUpdateStory(backend, {
+    await handleUpdateStory(backend, config.scrumConfig, {
       ref: { id: "PVTI_fake_1" },
       title: "Updated contract-test title",
     }),
@@ -85,30 +111,32 @@ Deno.test("scrum_update_story - happy path schema", async () => {
 });
 
 Deno.test("scrum_create_story - happy path schema", async () => {
+  const config = await committedScrumConfigPromise;
   const profile = await committedConfigProfilePromise;
   const backend = await committedFakeBackendPromise;
   const storyType = (Object.keys(profile.typeDisplay)[0] ?? "user_story") as "user_story";
 
   assertHandlerSchema(
-    await handleCreateStory(backend, {
+    await handleCreateStory(backend, config.scrumConfig, {
       title: "Contract test story",
       body: "- [ ] AC one",
       type: storyType,
     }),
     CreateStoryResponseSchema,
     "scrum_create_story",
-    CreateStoryOutputSchema.shape,
+    StorySchema.shape,
   );
 });
 
 Deno.test("scrum_create_story - partial failure when post-create setField fails", async () => {
+  const config = await committedScrumConfigPromise;
   const profile = await committedConfigProfilePromise;
   const backend = (await committedFakeBackendPromise as ConfigShapedFakeBackend)
     .withSetFieldFailureOn("sprint");
   const storyType = (Object.keys(profile.typeDisplay)[0] ?? "user_story") as "user_story";
 
   const payload = assertHandlerSchema(
-    await handleCreateStory(backend, {
+    await handleCreateStory(backend, config.scrumConfig, {
       title: "Partial failure story",
       body: "",
       type: storyType,
@@ -116,7 +144,7 @@ Deno.test("scrum_create_story - partial failure when post-create setField fails"
     }),
     CreateStoryResponseSchema,
     "scrum_create_story (partial)",
-    CreateStoryOutputSchema.shape,
+    StorySchema.shape,
   );
 
   const parsed = CreateStoryPartialFailureSchema.safeParse(payload);

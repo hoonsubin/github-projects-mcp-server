@@ -11,7 +11,6 @@ import type { PaginationResult } from "../query-pipeline/execution-engine.ts";
 import { fetchProjectItemsByIssueNumbers } from "../query-strategies/resolve-issue-number.ts";
 import { ResultNormalizer } from "../query-strategies/result-normalizer.ts";
 import { buildItemFilterFn } from "../query-strategies/item-filter.ts";
-import { buildDependencyMap } from "../read-services/story-query-service.ts";
 import { finalizeAssemblerOutput } from "./assembler-output.ts";
 
 /** Direct issue-number lookups via GetIssueProjectItem (no board scan). */
@@ -39,11 +38,9 @@ export class DirectLookupAssembler {
     const filterFn = buildItemFilterFn(resolvedFilter, this.config, projectItems);
     const output = this.normalizer.normalize(paginationResult, filterFn, {
       allItems: projectItems,
-      includeDependencies: resolvedFilter.include_dependencies,
-      buildDependencyMap,
     });
 
-    return finalizeAssemblerOutput(output, resolvedFilter, this.config);
+    return finalizeAssemblerOutput(output, resolvedFilter, this.config, projectItems);
   }
 
   private fetchProjectItemsForKeys(keys: readonly string[]): Promise<ProjectItem[]> {

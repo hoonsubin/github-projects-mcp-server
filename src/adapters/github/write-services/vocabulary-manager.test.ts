@@ -22,6 +22,8 @@ Deno.test("addVocabulary - adds project board status option when field is not is
 
   assertEquals(result, { created: true });
   assertStringIncludes(gh.graphqlCalls[1].queryExcerpt, "UpdateField");
+  assertEquals(gh.graphqlCalls[1].variables.projectId, undefined);
+  assertEquals(gh.graphqlCalls[1].variables.fieldId, "PVTF_status");
 });
 
 Deno.test("addVocabulary - adds org issue field option when status is issue-backed", async () => {
@@ -74,7 +76,7 @@ Deno.test("addVocabulary - issue-backed idempotent add syncs in-memory option ma
 
   const result = await manager.addVocabulary("status_option", "Done");
 
-  assertEquals(result, { created: false });
+  assertEquals(result, { created: false, already_exists: true });
   assertEquals(ctx.config.live.issueBackedFields["PVTF_status"]?.options?.Done, "IFSO_done");
   assertEquals(ctx.config.live.statusOptions.Done, "IFSO_done");
 });
@@ -94,6 +96,6 @@ Deno.test("addVocabulary - issue-backed option add is idempotent", async () => {
 
   const result = await manager.addVocabulary("status_option", "Done");
 
-  assertEquals(result, { created: false });
+  assertEquals(result, { created: false, already_exists: true });
   assertEquals(gh.graphqlCalls.length, 1);
 });

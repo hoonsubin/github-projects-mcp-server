@@ -1,0 +1,476 @@
+<|im_start|>system
+# Tools
+
+You have access to the following functions:
+
+<tools>
+{"type": "function", "function": {"name": "scrum_orient", "description": "Call FIRST at session start. Loads team Scrum vocabulary, DoR/DoD, and active sprint window.\n\n        WHEN TO USE: every new session; before any write that needs status/priority vocabulary.\n        WHEN NOT TO USE: mid-session item lookups (use find_items / get_item_detail).\n\n        Example: { \"detail\": \"session\" }\n\n        Returns vocabulary maps (canonical → display), active sprint dates, label inventory.\n        Use vocabulary.status values for scrum_set_field — never hardcode column names.", "parameters": {"type": "object", "properties": {"detail": {"default": "session", "description": "\"session\" (default) = vocabulary (status/priority/type), active sprint, capped epics. Omits team roster, DoR/DoD, autonomy, and template URIs. \"full\" = complete platform_state including templates and team roster; use only when needed.", "type": "string", "enum": ["session", "full"]}, "refresh": {"default": false, "description": "When true, bypass session cache and reload metadata from the platform.", "type": "boolean"}}}}}
+{"type": "function", "function": {"name": "scrum_get_item_detail", "description": "DoR / deep inspection on a single PBI: body, acceptance criteria, comments, dependencies.\n\n        WHEN TO USE: DoR check, content edit prep, verifying one item before sprint commitment.\n        WHEN NOT TO USE: listing many items (use scrum_find_items); burndown (use get_sprint_data).\n\n        Example: { \"ref\": { \"number\": 42 }, \"detail\": \"dor\" }\n\n        detail \"dor\" (default) = truncated body + latest comment + AC.\n        detail \"full\" = complete history — only when editing body/comments.", "parameters": {"type": "object", "properties": {"ref": {"anyOf": [{"type": "object", "properties": {"id": {"type": "string", "description": "Opaque project-item handle returned by any read tool (scrum_orient, scrum_find_items, scrum_get_item_detail, scrum_create_story, etc.). Always present in Story.ref.id. Use scrum_orient or scrum_find_items first if you do not yet have the id for the story you want to act on."}}, "required": ["id"]}, {"type": "object", "properties": {"number": {"type": "number", "description": "Human-readable issue number (e.g. 42). The backend resolves this to an opaque project-item handle. Use when you know the issue number but do not yet have its 'id'."}}, "required": ["number"]}], "description": "Reference to the story to fetch. Supply the Story.ref.id value returned by scrum_orient, scrum_find_items, or a previous write tool."}, "detail": {"default": "dor", "description": "\"dor\" (default) = DoR/readiness slice: truncated body, latest comment, AC. \"full\" = complete body and comment history — use only when editing content.", "type": "string", "enum": ["dor", "full"]}}, "required": ["ref"]}}}
+{"type": "function", "function": {"name": "scrum_find_items", "description": "Search the Product Backlog and Sprint Backlog. Prefer intent presets (Scrum views).\n\n        Intents:\n          sprint_board     — current Sprint Backlog (shows sprint assignment + column)\n          backlog_ready    — Product Backlog items with estimates\n          readiness_check  — sprint readiness + dependency_map\n          blocked_items    — blocked work in current sprint + dependency_map\n          search_backlog   — keyword search (requires search; do not combine with sprint_board)\n          by_keys          — lookup by issue number [\"42\"]\n\n        WHEN NOT TO USE: burndown metrics → scrum_get_sprint_data; full AC on one item → get_item_detail.\n\n        Example: { \"intent\": \"blocked_items\" }\n        Example: { \"intent\": \"search_backlog\", \"search\": \"OAuth\" }\n\n        Writes: verify with find_items (compact) after scrum_set_field(response:\"ack\").", "parameters": {"type": "object", "properties": {"intent": {"description": "Preset filter bundle (Scrum views). \"sprint_board\" = current Sprint Backlog (iteration-assigned, standard fields); \"backlog_ready\" = Product Backlog groomed items with estimates; \"readiness_check\" = Sprint readiness + dependency_map; \"blocked_items\" = blocked work in current sprint + dependency_map; \"search_backlog\" = keyword search (requires search; default scope all); \"by_keys\" = lookup by issue number (requires keys). Omit to use explicit filters below.", "type": "string", "enum": ["sprint_board", "backlog_ready", "readiness_check", "blocked_items", "search_backlog", "by_keys"]}, "sprint": {"anyOf": [{"type": "string", "const": "current"}, {"type": "string", "const": "next"}, {"type": "string", "const": "backlog"}, {"type": "string", "const": "all"}, {"type": "string", "minLength": 1}], "description": "Sprint filter. \"current\" | \"next\" | \"backlog\" | \"all\" (every iteration) | \"<name>\". Omit = entire board (active items only — Done/terminal items excluded by default; add statuses:[\"done\"] to include them)."}, "keys": {"description": "Direct lookup by issue number, e.g. [\"42\"]. Omit unused filters entirely.", "type": "array", "items": {"type": "string", "pattern": "^\\d+$"}}, "search": {"type": "string"}, "types": {"type": "array", "items": {"type": "string"}}, "statuses": {"type": "array", "items": {"type": "string"}}, "priority": {"description": "Priority filter. Accepts display name (\"Must\") or canonical key (\"p0\"). Resolve from vocabulary.priority in scrum_orient when unsure.", "type": "string"}, "has_blockers": {"description": "When true, only items with blocked_by entries; when false, only items without blockers. intent \"blocked_items\" sets this to true by default.", "type": "boolean"}, "epic_id": {"type": "string"}, "labels": {"type": "array", "items": {"type": "string"}}, "assignee": {"type": "string"}, "estimated": {"type": "boolean"}, "include_dependencies": {"default": false, "description": "Include off-listing active blocker pointers referenced by blocked_by. Requires sprint or intent — unscoped use is coerced to readiness_check on current sprint.", "type": "boolean"}, "fields": {"default": "compact", "description": "\"compact\" (default) | \"standard\" | \"full\" listing projection.", "type": "string", "enum": ["compact", "standard", "full"]}, "limit": {"default": 50, "type": "integer", "exclusiveMinimum": 0, "maximum": 9007199254740991}}}}}
+{"type": "function", "function": {"name": "scrum_get_sprint_data", "description": "Sprint health metrics and optional per-item completion facts for burndown/velocity.\n\n        WHEN TO USE: sprint review metrics, burndown input, remaining scope in points.\n        WHEN NOT TO USE: board overview (use find_items intent sprint_board); DoR on one item.\n\n        Example: { \"view\": \"summary\" }\n        Example: { \"view\": \"items\", \"active_only\": true }\n\n        view \"summary\" (default) = counts and points only (small payload).\n        view \"items\" = summary + per-item rows with completed_at timestamps.\n        active_only true (default) = exclude Done/terminal columns.", "parameters": {"type": "object", "properties": {"sprint": {"description": "Sprint to fetch. Omit or \"current\" for active sprint; \"next\", sprint name; null for empty result.", "anyOf": [{"anyOf": [{"type": "string", "const": "current"}, {"type": "string", "const": "next"}, {"type": "null"}, {"type": "string", "minLength": 1}], "description": "Which sprint to target. \"current\" = active sprint, \"next\" = upcoming sprint, null = backlog / clear sprint, or an exact sprint name from scrum_orient."}, {"type": "null"}]}, "view": {"default": "summary", "description": "\"summary\" (default) = Scrum metrics only (counts, points, blocked). \"items\" = summary plus per-item facts for burndown/velocity computation.", "type": "string", "enum": ["summary", "items"]}, "active_only": {"default": true, "description": "When true (default), exclude Done/terminal-status items from summary and item lists.", "type": "boolean"}}}}}
+{"type": "function", "function": {"name": "scrum_add_vocabulary", "description": "Idempotently add vocabulary. Three kinds behave differently:\n\n        - status_option / priority_option → ONLY for values in scrum_orient platform_state.missing_options\n          that are declared in .github/scrum/config.yml (status_display / priority_display). Config is\n          authoritative — do not invent board options outside config.\n        - label → repository label (fully agent-driven; fetch the current list via scrum_orient(detail:\"full\") → platform_state.labels.existing when needed)\n\n        Response: created:true = new value added; created:false + already_exists:true = already present (safe no-op).\n\n        Cannot create new project fields — only options within existing Status/Priority fields.\n\n        Args:\n          kind   \"status_option\" | \"priority_option\" | \"label\"\n          value  display name to add (e.g. config-declared \"Blocked\", or any label like \"test-label\")", "parameters": {"type": "object", "properties": {"kind": {"type": "string", "enum": ["status_option", "priority_option", "label"], "description": "\"status_option\" = add a config-declared Status display name missing from the board; \"priority_option\" = add a config-declared Priority display name missing from the board; \"label\" = add a new repo label (agent-driven, not config-gated). status_option and priority_option require the value to appear in scrum_orient missing_options."}, "value": {"type": "string", "minLength": 1, "description": "Display name to add. For status_option/priority_option use exact names from config status_display/priority_display that are listed in missing_options. Labels: any name."}}, "required": ["kind", "value"]}}}
+{"type": "function", "function": {"name": "scrum_set_field", "description": "Set a single board field on a story. The primary write primitive - use this to move\n        stories across the board, assign sprints, set points, update priority, assignee, or type.\n\n        Call scrum_get_item_detail(detail:\"dor\") first if you need the current value before overwriting.\n        Confirm story points, priority, and sprint changes with the human before writing.\n\n        Example: { \"ref\": { \"id\": \"...\" }, \"field\": \"status\", \"value\": \"In Progress\", \"response\": \"ack\" }\n\n        Args:\n          ref    { id: string } - story to update (Story.ref.id from any read tool)\n          field  one of: \"status\" | \"sprint\" | \"story_points\" | \"priority\" | \"assignee\" | \"type\"\n          value  shape depends on field:\n                   status        → MUST be resolved from vocabulary.status in scrum_orient.\n                                   Never pass display names like \"Done\" or \"In Progress\" literally -\n                                   the project may use \"Completed\", \"Closed\", or any custom label.\n                                   Always resolve: vocabulary.status[\"done\"] → pass that exact string.\n                   sprint        → \"current\" | \"next\" | \"<sprint-name>\" | null  (null clears)\n                   story_points  → number (e.g. 3, 5, 8)\n                   priority      → string display name from vocabulary.priority in scrum_orient\n                   assignee      → GitHub login string (e.g. \"hoonsubin\")\n                   type          → canonical key (e.g. \"feature\", \"bug\" - see vocabulary.type in scrum_orient)\n                 Pass null for any field to clear the value entirely.\n\n        response  \"ack\" (default) | \"story\" — prefer ack; verify with find_items when needed.\n\n        Returns: WriteAck by default, or Story when response=\"story\".", "parameters": {"type": "object", "properties": {"ref": {"anyOf": [{"type": "object", "properties": {"id": {"type": "string", "description": "Opaque project-item handle returned by any read tool (scrum_orient, scrum_find_items, scrum_get_item_detail, scrum_create_story, etc.). Always present in Story.ref.id. Use scrum_orient or scrum_find_items first if you do not yet have the id for the story you want to act on."}}, "required": ["id"]}, {"type": "object", "properties": {"number": {"type": "number", "description": "Human-readable issue number (e.g. 42). The backend resolves this to an opaque project-item handle. Use when you know the issue number but do not yet have its 'id'."}}, "required": ["number"]}]}, "field": {"type": "string", "enum": ["status", "sprint", "story_points", "priority", "assignee", "type"], "description": "Board field to update. \"status\" = workflow column (string display name, e.g. \"In Progress\"); \"sprint\" = iteration (SprintRef: \"current\" | \"next\" | \"<name>\" | null); \"story_points\" = effort estimate (number, e.g. 5); \"priority\" = urgency tier (string display name, e.g. \"Must\"); \"assignee\" = GitHub login of the owner (string, e.g. \"hoonsubin\"); \"type\" = story type canonical key (e.g. \"feature\", \"bug\" - see vocabulary.type in scrum_orient). Call scrum_orient to see all valid vocabulary values."}, "value": {"anyOf": [{"type": "string"}, {"type": "number"}, {"anyOf": [{"type": "string", "const": "current"}, {"type": "string", "const": "next"}, {"type": "null"}, {"type": "string", "minLength": 1}], "description": "Which sprint to target. \"current\" = active sprint, \"next\" = upcoming sprint, null = backlog / clear sprint, or an exact sprint name from scrum_orient."}, {"type": "null"}], "description": "Field value. status/priority accept canonical keys (e.g. done, p0) or display names. sprint → \"current\" | \"next\" | \"<name>\" | null. Pass null to clear."}, "response": {"default": "ack", "description": "\"ack\" (default) = minimal confirmation. \"story\" = full Story snapshot after the write.", "type": "string", "enum": ["ack", "story"]}}, "required": ["ref", "field", "value"]}}}
+{"type": "function", "function": {"name": "scrum_update_story", "description": "Edit the content fields of a story: title, body, labels, assignees, epic, or dependencies.\n        For board fields (status, sprint, story_points, priority, assignee) use scrum_set_field.\n\n        WARNING - labels and assignees REPLACE the full existing set, they do not append.\n        To add one label without losing the rest: call scrum_get_item_detail first, merge the\n        new label into the existing labels array, then pass the merged set here.\n        Same applies to assignees - always read first unless intent is to replace wholesale.\n        body also replaces the entire body - read first if you intend to append content.\n\n        Args:\n          ref        { number: integer } | { id: string } - story to update\n          title      string - new title (omit to leave unchanged)\n          body       string - replacement markdown body (omit to leave unchanged)\n          labels     string[] - REPLACES all existing labels (omit to leave unchanged)\n          assignees  string[] - REPLACES all existing assignees, GitHub logins (omit to leave unchanged)\n          epic       { id: string } | null - EpicRef to assign, or null to detach from epic (omit to leave unchanged)\n          comment    string - Post a comment on the story after updating (omit to skip)\n          blocked_by  StoryRef[] - REPLACES all upstream (blocked_by) dependencies; null or [] clears; omit to leave unchanged\n\n        response  \"ack\" (default) | \"story\" - ack returns { ref, applied }; story returns full Story.\n\n        Returns: WriteAck by default, or Story when response=\"story\".", "parameters": {"type": "object", "properties": {"ref": {"anyOf": [{"type": "object", "properties": {"id": {"type": "string", "description": "Opaque project-item handle returned by any read tool (scrum_orient, scrum_find_items, scrum_get_item_detail, scrum_create_story, etc.). Always present in Story.ref.id. Use scrum_orient or scrum_find_items first if you do not yet have the id for the story you want to act on."}}, "required": ["id"]}, {"type": "object", "properties": {"number": {"type": "number", "description": "Human-readable issue number (e.g. 42). The backend resolves this to an opaque project-item handle. Use when you know the issue number but do not yet have its 'id'."}}, "required": ["number"]}]}, "title": {"description": "Replacement title. Omit to leave unchanged.", "type": "string"}, "body": {"description": "Replacement markdown body - REPLACES the entire body, does not append. Call scrum_get_item_detail first if you want to add to the existing body.", "type": "string"}, "labels": {"description": "Replacement label set - REPLACES ALL existing labels. Call scrum_get_item_detail first to read current labels if you want to add without removing.", "type": "array", "items": {"type": "string"}}, "assignees": {"description": "Replacement assignee list of GitHub logins - REPLACES ALL existing assignees. Call scrum_get_item_detail first to read current assignees if you want to add without removing.", "type": "array", "items": {"type": "string"}}, "epic": {"description": "Epic reference ({ id: string }) to assign to, or null to detach from the current epic. Pass the EpicRef.id from scrum_find_items (type=epic).ref.id. Omit entirely to leave unchanged.", "anyOf": [{"type": "object", "properties": {"id": {"type": "string", "description": "Opaque Milestone node ID returned by scrum_find_items (type=epic).ref.id or scrum_get_item_detail on a story with an epic field."}}, "required": ["id"]}, {"type": "null"}]}, "comment": {"description": "Post a comment on the story after updating. Can be combined with content fields (title, body, etc.) in one call. Use with only { ref, comment } to post a comment without changing story content.", "type": "string"}, "blocked_by": {"description": "Replace the full list of stories that block this story. Each entry is a StoryRef ({ id }) obtained from a previous read tool. Pass null or [] to clear all upstream dependencies. Omit to leave dependencies unchanged.", "type": "array", "items": {"anyOf": [{"type": "object", "properties": {"id": {"type": "string", "description": "Opaque project-item handle returned by any read tool (scrum_orient, scrum_find_items, scrum_get_item_detail, scrum_create_story, etc.). Always present in Story.ref.id. Use scrum_orient or scrum_find_items first if you do not yet have the id for the story you want to act on."}}, "required": ["id"]}, {"type": "object", "properties": {"number": {"type": "number", "description": "Human-readable issue number (e.g. 42). The backend resolves this to an opaque project-item handle. Use when you know the issue number but do not yet have its 'id'."}}, "required": ["number"]}]}}, "response": {"default": "ack", "description": "\"ack\" (default) = minimal confirmation. \"story\" = full Story snapshot after the write.", "type": "string", "enum": ["ack", "story"]}}, "required": ["ref"]}}}
+{"type": "function", "function": {"name": "scrum_create_story", "description": "Create a new story on the project board and optionally assign it to a sprint in one call.\n\n        Stories are created as Draft Issues first. If labels or an epic are supplied the draft is\n        automatically promoted to a full Issue so those fields can be applied - this is transparent\n        to the caller. Board fields (type, priority, sprint, story_points) are applied after creation;\n        if a board field fails the story is still created - check 'partialFailure' in the response.\n\n        Args:\n          title        string (required) - concise one-sentence title\n          body         string (required) - full markdown body; use user-story format + AC checklist\n          type         canonical key (e.g. \"feature\", \"bug\") - set via the Type board field\n                       Call scrum_orient for vocabulary.type to see valid keys for this project\n          priority     string - vocabulary display name (e.g. \"Must\"); call scrum_orient for valid values\n          story_points number - Fibonacci estimate (1, 2, 3, 5, 8, 13)\n          labels       string[] - must already exist; call scrum_orient(detail:\"full\") to see platform_state.labels.existing\n          epic         { id: string } - EpicRef from scrum_find_items (type=epic).ref.id\n          assignees    string[] - GitHub logins\n          sprint       \"current\" | \"next\" | \"<sprint-name>\" - places on board; omit for backlog\n\n        Returns: created Story object, or the same fields with partialFailure: true and failedFields[].", "parameters": {"type": "object", "properties": {"title": {"type": "string", "minLength": 1, "description": "Story title. Keep concise - one sentence describing the deliverable."}, "body": {"type": "string", "description": "Full markdown body. Recommended format: user-story opener (\"As a [user], I want [goal], so that [benefit].\") followed by an Acceptance Criteria checklist. Required - pass an empty string if minimal."}, "type": {"type": "string", "minLength": 1, "description": "Canonical type key declared in type_mapping in config.yml. Common examples: \"feature\", \"bug\", \"tech_debt\", \"spike\", \"impediment\", \"user_story\". Call scrum_orient to read vocabulary.type for the exact keys valid in this project. NOTE: use scrum_log_impediment for impediment stories - it handles the full workflow."}, "priority": {"description": "Priority vocabulary display name (e.g. \"Must\", \"Should\", \"Could\"). Must match an existing priority option - call scrum_orient to see valid values.", "type": "string"}, "story_points": {"description": "Effort estimate using your team's scale (commonly Fibonacci: 1, 2, 3, 5, 8, 13).", "type": "number"}, "labels": {"description": "Additional labels to apply. Only pass labels that already exist in the repository - call scrum_orient(detail:\"full\") to see platform_state.labels.existing first. Story type is set via the Type board field, not a label.", "type": "array", "items": {"type": "string"}}, "epic": {"description": "Epic reference ({ id: string }) from scrum_find_items (type=epic).ref.id. Associates the new story with the corresponding Milestone.", "type": "object", "properties": {"id": {"type": "string", "description": "Opaque Milestone node ID returned by scrum_find_items (type=epic).ref.id or scrum_get_item_detail on a story with an epic field."}}, "required": ["id"]}, "assignees": {"description": "GitHub logins to assign (e.g. [\"hoonsubin\"]).", "type": "array", "items": {"type": "string"}}, "sprint": {"description": "Place the story in this sprint immediately after creation. Omit to leave in the backlog. \"current\" or \"next\" are the most common values.", "anyOf": [{"type": "string", "const": "current"}, {"type": "string", "const": "next"}, {"type": "null"}, {"type": "string", "minLength": 1}]}}, "required": ["title", "body", "type"]}}}
+{"type": "function", "function": {"name": "scrum_plan_sprint", "description": "Bulk-assign stories to a sprint. More efficient than calling scrum_set_field per story\n        when planning a sprint or moving multiple items at once.\n\n        Args:\n          sprint   \"current\" | \"next\" | \"<sprint-name>\" - target sprint\n          stories  StoryRef[] (min 1) - each entry must supply Story.ref.id\n          replace  boolean, default false\n                   false = add the listed stories; existing sprint items are untouched\n                   true  = CLEAR all current sprint stories first, then assign the list\n                           Use with caution - replace:true removes any story not in your list.\n\n        Returns: { sprint, assigned: StoryRef[], cleared?: StoryRef[], skipped: [{ ref, reason }] }\n        When replace:true, cleared lists items removed from the sprint before assignment.\n        The operation continues through individual failures - check skipped[] for errors.", "parameters": {"type": "object", "properties": {"sprint": {"anyOf": [{"type": "string", "const": "current"}, {"type": "string", "const": "next"}, {"type": "null"}, {"type": "string", "minLength": 1}], "description": "Target sprint. \"current\", \"next\", or an exact sprint name string."}, "stories": {"minItems": 1, "type": "array", "items": {"anyOf": [{"type": "object", "properties": {"id": {"type": "string", "description": "Opaque project-item handle returned by any read tool (scrum_orient, scrum_find_items, scrum_get_item_detail, scrum_create_story, etc.). Always present in Story.ref.id. Use scrum_orient or scrum_find_items first if you do not yet have the id for the story you want to act on."}}, "required": ["id"]}, {"type": "object", "properties": {"number": {"type": "number", "description": "Human-readable issue number (e.g. 42). The backend resolves this to an opaque project-item handle. Use when you know the issue number but do not yet have its 'id'."}}, "required": ["number"]}]}, "description": "Stories to assign to the sprint. At least one required. Each entry must supply the Story.ref.id value from a read tool."}, "replace": {"default": false, "description": "false (default) = add the listed stories to the sprint without touching existing items. true = CLEAR all current sprint stories first, then assign the list. Use replace:true only when fully replanning a sprint.", "type": "boolean"}, "goal": {"description": "Sprint goal - a short statement of what the team aims to achieve this sprint.", "type": "string"}}, "required": ["sprint", "stories"]}}}
+{"type": "function", "function": {"name": "scrum_log_impediment", "description": "Log a blocking impediment: creates a spike story tagged 'impediment', posts a warning\n        comment on the affected story, and cross-links the two stories.\n\n        Use this instead of scrum_create_story when logging something that blocks another story.\n        The impediment will appear in scrum_find_items results filterable by the 'impediment' label.\n\n        Args:\n          description  string (required) - full description of the blocker; becomes the story body\n                       and the comment posted to the affected story\n          affects      { story: { id } } | { sprint: string } - optional; omit to log a project-level orphan\n          raised_by    string - GitHub login of the person raising it; defaults to Scrum Master\n          priority     string - vocabulary display name (e.g. \"Must\"); defaults to highest tier\n\n        Returns: the created impediment Story object.", "parameters": {"type": "object", "properties": {"description": {"type": "string", "minLength": 1, "description": "Full description of the blocker. Be specific - this becomes the impediment story body and the comment posted to the affected story."}, "affects": {"description": "The story or sprint this impediment affects. Omit to log a project-level orphan.", "anyOf": [{"type": "object", "properties": {"story": {"anyOf": [{"type": "object", "properties": {"id": {"type": "string", "description": "Opaque project-item handle returned by any read tool (scrum_orient, scrum_find_items, scrum_get_item_detail, scrum_create_story, etc.). Always present in Story.ref.id. Use scrum_orient or scrum_find_items first if you do not yet have the id for the story you want to act on."}}, "required": ["id"]}, {"type": "object", "properties": {"number": {"type": "number", "description": "Human-readable issue number (e.g. 42). The backend resolves this to an opaque project-item handle. Use when you know the issue number but do not yet have its 'id'."}}, "required": ["number"]}]}}, "required": ["story"]}, {"type": "object", "properties": {"sprint": {"anyOf": [{"type": "string", "const": "current"}, {"type": "string", "const": "next"}, {"type": "null"}, {"type": "string", "minLength": 1}], "description": "Which sprint to target. \"current\" = active sprint, \"next\" = upcoming sprint, null = backlog / clear sprint, or an exact sprint name from scrum_orient."}}, "required": ["sprint"]}]}, "raised_by": {"description": "GitHub login of the team member raising the impediment (e.g. \"hoonsubin\"). Defaults to the Scrum Master configured in config.yml.", "type": "string"}, "priority": {"description": "Urgency vocabulary display name (e.g. \"Must\"). Defaults to the highest-tier priority value. Call scrum_orient to see valid priority values.", "type": "string"}}, "required": ["description"]}}}
+{"type": "function", "function": {"name": "scrum_update_impediment", "description": "Update an impediment's status and optionally add resolution notes.\n\n        Args:\n          ref              { id } - impediment project item ID from scrum_find_items\n          status           \"open\" | \"in_progress\" | \"resolved\" - new impediment status\n          resolution_notes  string (optional) - notes explaining why this impediment was resolved\n\n        Draft issues cannot be updated — promote to a full issue first.\n        Returns: the updated ImpedimentListing.", "parameters": {"type": "object", "properties": {"ref": {"type": "object", "properties": {"id": {"type": "string", "description": "Impediment ID as returned by scrum_find_items(types: ['impediment']).items[].ref.id."}}, "required": ["id"], "description": "Reference to the impediment to update."}, "status": {"type": "string", "enum": ["open", "in_progress", "resolved"], "description": "New impediment status."}, "resolution_notes": {"description": "Notes explaining why this impediment was resolved.", "type": "string"}}, "required": ["ref", "status"]}}}
+{"type": "function", "function": {"name": "sequentialthinking", "description": "A detailed tool for dynamic and reflective problem-solving through thoughts.\nThis tool helps analyze problems through a flexible thinking process that can adapt and evolve.\nEach thought can build on, question, or revise previous insights as understanding deepens.\n\nWhen to use this tool:\n- Breaking down complex problems into steps\n- Planning and design with room for revision\n- Analysis that might need course correction\n- Problems where the full scope might not be clear initially\n- Problems that require a multi-step solution\n- Tasks that need to maintain context over multiple steps\n- Situations where irrelevant information needs to be filtered out\n\nKey features:\n- You can adjust total_thoughts up or down as you progress\n- You can question or revise previous thoughts\n- You can add more thoughts even after reaching what seemed like the end\n- You can express uncertainty and explore alternative approaches\n- Not every thought needs to build linearly - you can branch or backtrack\n- Generates a solution hypothesis\n- Verifies the hypothesis based on the Chain of Thought steps\n- Repeats the process until satisfied\n- Provides a correct answer\n\nParameters explained:\n- thought: Your current thinking step, which can include:\n  * Regular analytical steps\n  * Revisions of previous thoughts\n  * Questions about previous decisions\n  * Realizations about needing more analysis\n  * Changes in approach\n  * Hypothesis generation\n  * Hypothesis verification\n- nextThoughtNeeded: True if you need more thinking, even if at what seemed like the end\n- thoughtNumber: Current number in sequence (can go beyond initial total if needed)\n- totalThoughts: Current estimate of thoughts needed (can be adjusted up/down)\n- isRevision: A boolean indicating if this thought revises previous thinking\n- revisesThought: If is_revision is true, which thought number is being reconsidered\n- branchFromThought: If branching, which thought number is the branching point\n- branchId: Identifier for the current branch (if any)\n- needsMoreThoughts: If reaching end but realizing more thoughts needed\n\nYou should:\n1. Start with an initial estimate of needed thoughts, but be ready to adjust\n2. Feel free to question or revise previous thoughts\n3. Don't hesitate to add more thoughts if needed, even at the \"end\"\n4. Express uncertainty when present\n5. Mark thoughts that revise previous thinking or branch into new paths\n6. Ignore information that is irrelevant to the current step\n7. Generate a solution hypothesis when appropriate\n8. Verify the hypothesis based on the Chain of Thought steps\n9. Repeat the process until satisfied with the solution\n10. Provide a single, ideally correct answer as the final output\n11. Only set nextThoughtNeeded to false when truly done and a satisfactory answer is reached", "parameters": {"type": "object", "properties": {"thought": {"type": "string", "description": "Your current thinking step"}, "nextThoughtNeeded": {"type": "boolean", "description": "Whether another thought step is needed"}, "thoughtNumber": {"type": "integer", "minimum": 1, "maximum": 9007199254740991, "description": "Current thought number (numeric value, e.g., 1, 2, 3)"}, "totalThoughts": {"type": "integer", "minimum": 1, "maximum": 9007199254740991, "description": "Estimated total thoughts needed (numeric value, e.g., 5, 10)"}, "isRevision": {"description": "Whether this revises previous thinking", "type": "boolean"}, "revisesThought": {"description": "Which thought is being reconsidered", "type": "integer", "minimum": 1, "maximum": 9007199254740991}, "branchFromThought": {"description": "Branching point thought number", "type": "integer", "minimum": 1, "maximum": 9007199254740991}, "branchId": {"description": "Branch identifier", "type": "string"}, "needsMoreThoughts": {"description": "If more thoughts are needed", "type": "boolean"}}, "required": ["thought", "nextThoughtNeeded", "thoughtNumber", "totalThoughts"]}}}
+{"type": "function", "function": {"name": "create_entities", "description": "Create multiple new entities in the knowledge graph", "parameters": {"type": "object", "properties": {"entities": {"type": "array", "items": {"type": "object", "properties": {"name": {"type": "string", "description": "The name of the entity"}, "entityType": {"type": "string", "description": "The type of the entity"}, "observations": {"type": "array", "items": {"type": "string"}, "description": "An array of observation contents associated with the entity"}}, "required": ["name", "entityType", "observations"]}}}, "required": ["entities"]}}}
+{"type": "function", "function": {"name": "create_relations", "description": "Create multiple new relations between entities in the knowledge graph. Relations should be in active voice", "parameters": {"type": "object", "properties": {"relations": {"type": "array", "items": {"type": "object", "properties": {"from": {"type": "string", "description": "The name of the entity where the relation starts"}, "to": {"type": "string", "description": "The name of the entity where the relation ends"}, "relationType": {"type": "string", "description": "The type of the relation"}}, "required": ["from", "to", "relationType"]}}}, "required": ["relations"]}}}
+{"type": "function", "function": {"name": "add_observations", "description": "Add new observations to existing entities in the knowledge graph", "parameters": {"type": "object", "properties": {"observations": {"type": "array", "items": {"type": "object", "properties": {"entityName": {"type": "string", "description": "The name of the entity to add the observations to"}, "contents": {"type": "array", "items": {"type": "string"}, "description": "An array of observation contents to add"}}, "required": ["entityName", "contents"]}}}, "required": ["observations"]}}}
+{"type": "function", "function": {"name": "delete_entities", "description": "Delete multiple entities and their associated relations from the knowledge graph", "parameters": {"type": "object", "properties": {"entityNames": {"type": "array", "items": {"type": "string"}, "description": "An array of entity names to delete"}}, "required": ["entityNames"]}}}
+{"type": "function", "function": {"name": "delete_observations", "description": "Delete specific observations from entities in the knowledge graph", "parameters": {"type": "object", "properties": {"deletions": {"type": "array", "items": {"type": "object", "properties": {"entityName": {"type": "string", "description": "The name of the entity containing the observations"}, "observations": {"type": "array", "items": {"type": "string"}, "description": "An array of observations to delete"}}, "required": ["entityName", "observations"]}}}, "required": ["deletions"]}}}
+{"type": "function", "function": {"name": "delete_relations", "description": "Delete multiple relations from the knowledge graph", "parameters": {"type": "object", "properties": {"relations": {"type": "array", "items": {"type": "object", "properties": {"from": {"type": "string", "description": "The name of the entity where the relation starts"}, "to": {"type": "string", "description": "The name of the entity where the relation ends"}, "relationType": {"type": "string", "description": "The type of the relation"}}, "required": ["from", "to", "relationType"]}, "description": "An array of relations to delete"}}, "required": ["relations"]}}}
+{"type": "function", "function": {"name": "read_graph", "description": "Read the entire knowledge graph", "parameters": {"type": "object", "properties": {}}}}
+{"type": "function", "function": {"name": "search_nodes", "description": "Search for nodes in the knowledge graph based on a query", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "The search query to match against entity names, types, and observation content"}}, "required": ["query"]}}}
+{"type": "function", "function": {"name": "open_nodes", "description": "Open specific nodes in the knowledge graph by their names", "parameters": {"type": "object", "properties": {"names": {"type": "array", "items": {"type": "string"}, "description": "An array of entity names to retrieve"}}, "required": ["names"]}}}
+</tools>
+
+If you choose to call a function ONLY reply in the following format with NO suffix:
+
+<tool_call>
+<function=example_function_name>
+<parameter=example_parameter_1>
+value_1
+</parameter>
+<parameter=example_parameter_2>
+This is the value for the second parameter
+that can span
+multiple lines
+</parameter>
+</function>
+</tool_call>
+
+<IMPORTANT>
+Reminder:
+- Function calls MUST follow the specified format: an inner <function=...></function> block must be nested within <tool_call></tool_call> XML tags
+- Required parameters MUST be specified
+- You may provide optional reasoning for your function call in natural language BEFORE the function call, but NOT after
+- If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls
+</IMPORTANT>
+
+You are a diagnostic agent acting as a Scrum Master. You have access to a set of `scrum_*` MCP tools. Your task is to work through a series of Scrum Master scenarios using only these tools, then report on two things for each scenario:
+
+1. **Functional result** — did you accomplish the goal? did the tools work?
+2. **Clarity assessment** — were the tool descriptions, parameter names, and return values self-explanatory? or did you have to guess, infer, or work around anything?
+
+**Ground rules:**
+
+- Use the tools as a Scrum Master would in a real workflow. Let the tool descriptions guide you — do not rely on prior knowledge of the implementation.
+- Pick up to 6 real items from the board to use across all tests. Reuse them rather than pulling new items per test.
+- For write tests: record the pre-change state, apply the change, verify it took effect, then revert. If you cannot revert, flag it as a permanent side effect.
+- Flag every anomaly using this format:
+
+  > ⚠️ **Insight #N — [short title]**
+  > What you tried, what happened, what you expected. Classify as [Functional] (the tool didn't work) or [Clarity] (the tool worked but was confusing to use).
+
+- At the end, emit a Test Summary (see template at the bottom).
+
+---
+
+### PHASE 1 — GET YOUR BEARINGS
+
+**Scenario 1.1 — Orient to the project**
+You've just connected to this project for the first time. Use whichever tool is designed to give you a session overview. After calling it, answer: Do you have everything you need to start working? Specifically — do you know the valid status values, priority tiers, item types, active sprint dates, and any DoR/DoD criteria? Flag anything that was missing or unclear from a single orient call.
+
+**Scenario 1.2 — Vocabulary completeness**
+From your orient result, check whether any expected vocabulary values are flagged as missing (e.g. required status options that don't exist on the board). If any are missing, what would you need to do to add them? Try to add one using the appropriate tool — does the tool description make the process clear? Verify idempotency by adding the same value twice.
+
+---
+
+### PHASE 2 — FIND ITEMS
+
+**Scenario 2.1 — What's in the current sprint?**
+Find all items in the current sprint. Does the response give you enough to understand sprint state at a glance — types, statuses, story points, assignees? Note whether the response is appropriately scoped (sprint items only, not the full backlog).
+
+**Scenario 2.2 — What's in the backlog?**
+Find items not yet assigned to a sprint. Can you tell these apart from sprint items without additional filtering? Are the scope boundaries what you'd expect?
+
+**Scenario 2.3 — Find a specific item type**
+Using a type key from your orient result, find all items of that type. Verify the filter behaves as described. Then apply a second filter on top (e.g. unestimated items of that type). Does combining filters work intuitively?
+
+**Scenario 2.4 — Check blocked items**
+Find items that have upstream dependencies. Can you see the full dependency picture — what blocks what, and whether blockers are resolved? Assess whether the dependency data is sufficient to make a sprint entry decision.
+
+**Scenario 2.5 — Search by keyword**
+Search for items by a keyword you know appears in the board. Does text search work? Does it feel like a useful SM tool or does it return too much / too little?
+
+---
+
+### PHASE 3 — INSPECT AN ITEM
+
+**Scenario 3.1 — Pull full detail on an item**
+Pick one item from your sprint search. Get its full detail — body, comments, linked pull requests, acceptance criteria. Is all the information a Scrum Master needs for a DoR check present in one call? Note any fields that were missing or unexpectedly absent.
+
+**Scenario 3.2 — Look up an item by number**
+You've been given an issue number verbally (e.g. "take a look at #42"). Look it up using only the number. Is this possible without knowing the opaque internal ID first? Flag if the lookup path is unclear from the tool descriptions.
+
+---
+
+### PHASE 4 — SPRINT DATA
+
+**Scenario 4.1 — Get raw sprint data**
+Retrieve the raw per-item data for the current sprint. What does the response give you that the search tool doesn't? Is it clear from the tool descriptions when you'd use this over `scrum_find_items`? Assess whether the data is sufficient to compute your own burndown or readiness score without additional calls.
+
+**Scenario 4.2 — Target a different sprint**
+Retrieve data for a sprint other than the current one — either the next sprint or a completed sprint by name. Does the targeting feel natural? Is the `sprint_ref` parameter consistent with how sprint targeting works in other tools?
+
+---
+
+### PHASE 5 — WRITE OPERATIONS
+
+> For every write test: record the pre-change state → make the change → verify it took effect → revert. If a revert fails or is impossible, flag it as a permanent side effect.
+
+**Scenario 5.1 — Move an item through the board**
+Pick a sprint item. Update its status to a different value, verify the change, then revert. Use only the vocabulary you got from Phase 1 — do not hardcode status strings. Does the tool description make it clear where valid values come from? Flag if you had to guess the right tool or parameter for this operation.
+
+**Scenario 5.2 — Estimate an item**
+Pick an unestimated item. Set story points on it, verify, then revert. Is the right tool and field obvious for this operation?
+
+**Scenario 5.3 — Update story content**
+On the same item, update the title. Verify the change, then revert. Then post a comment on the item. Verify the comment appears when you fetch full detail. Note: comments are permanent — this is an expected side effect.
+
+**Scenario 5.4 — Assign a sprint item**
+Move a backlog item into the current sprint. Verify it appears in sprint scope. Then move it back to the backlog. Is there one clear tool for this, or do multiple tools overlap?
+
+**Scenario 5.5 — Create and close a test story**
+Create a new story with a title, body, and type. Verify it appears on the board. Then close it via status update. Is the creation → placement → status flow clear from the tool descriptions alone? Check for any partial failure signals in the response and report them.
+
+**Scenario 5.6 — Log an impediment**
+Log a blocking impediment (orphan — not linked to a specific story). Verify it appears when searching for impediments. Then progress it through its full lifecycle: open → in progress → resolved. Is the impediment workflow clearly separated from the general story workflow, and does it feel natural for a SM to use?
+
+**Scenario 5.7 — Bulk sprint planning**
+Pick 2–3 backlog items. Assign them to the current sprint in one call. Verify all are assigned. Then revert each back to the backlog. Does the bulk tool feel more efficient than calling the single-field setter per item?
+
+---
+
+### PHASE 6 — TEMPLATES & RESOURCES
+
+**Scenario 6.1 — Use a template**
+From your orient result, check whether templates are configured. If yes, read a template for one item type. Is the template content useful? Is reading it via a resource URI intuitive, or would you expect this to come back from a tool call instead?
+
+---
+
+### TEST SUMMARY
+
+After completing all phases, emit this report:
+
+---
+
+**Functional Results**
+
+| Scenario | Tools Used | Passed | Notes |
+|---|---|---|---|
+| 1.1 | `scrum_orient` | ✅ / ❌ | |
+| 1.2 | `scrum_add_vocabulary` | ✅ / ❌ | |
+| ... | | | |
+
+**Clarity Assessment**
+
+For each tool used during the session, rate it:
+
+| Tool                   | Description Clear? | Params Obvious? | Response Useful? | Issues |
+| ---------------------- | ------------------ | --------------- | ---------------- | ------ |
+| `scrum_orient`         | ✅ / ⚠️ / ❌         | ✅ / ⚠️ / ❌      | ✅ / ⚠️ / ❌       |        |
+| `scrum_find_items`     |                    |                 |                  |        |
+| `scrum_*`              |                    |                 |                  |        |
+
+
+**All Insights:**
+- ⚠️ #1 — [title] [Functional / Clarity] — one-sentence summary
+
+**Permanent Side Effects:**
+List any changes that could not be reverted (comments, labels, closed stories, etc.)
+
+**Overall verdict:**
+One paragraph: does this tool surface feel like a coherent Scrum Master assistant, or does it feel like a raw API with Scrum terminology bolted on? What's the single most important improvement?<|im_end|>
+<|im_start|>user
+systematically test the scrum master tools. Start with phase 1 of the test. Only move to the next phase when told to.<|im_end|>
+<|im_start|>assistant
+The user wants me to systematically test the Scrum Master tools, starting with Phase 1. Let me begin with Scenario 1.1 - orienting to the project using `scrum_orient`.
+
+I'll start by calling `scrum_orient` with "session" detail (the default) to get the vocabulary and active sprint information.
+
+# PHASE 1 — GET YOUR BEARINGS
+
+## Scenario 1.1 — Orient to the project
+
+Let me call the session orient tool:
+
+<tool_call>
+<function=scrum_orient>
+<parameter=detail>
+session
+</parameter>
+</function>
+</tool_call><|im_end|>
+<|im_start|>user
+<tool_response>
+[{"type":"text","text":"{\"warnings\":[\"[github] NOT_IMPLEMENTED: \\\"sprint goal\\\" is not supported by the GitHub adapter.\\n  Details: {\\\"reason\\\":\\\"GitHub Projects API does not expose iteration goals\\\"}\\n  → This feature is not yet available via the GitHub Projects API. No action is required - the field will be null in the response.\"],\"platform_state\":{\"fields\":{\"status\":{\"exists\":true,\"options\":[\"Backlog\",\"Ready\",\"In Progress\",\"In Review\",\"Blocked\",\"Done\"],\"missing_options\":[]},\"sprint\":{\"exists\":true},\"story_points\":{\"exists\":true},\"priority\":{\"exists\":true,\"options\":[\"Must\",\"Should\",\"Could\",\"Won't\"],\"missing_options\":[]},\"type_field\":{\"exists\":true,\"configured\":true}},\"missing_options\":[],\"labels\":{\"existing\":[],\"expected\":[],\"missing\":[]},\"iterations\":{\"active\":{\"id\":\"07155ad6\",\"name\":\"Sprint 4\",\"goal\":null,\"start_date\":\"2026-06-02\",\"end_date\":\"2026-06-13\",\"duration_days\":11,\"days_elapsed\":10,\"days_remaining\":1,\"time_elapsed_pct\":91},\"next\":{\"id\":\"771466e5\",\"name\":\"Sprint 5\",\"goal\":null,\"start_date\":\"2026-06-13\",\"end_date\":\"2026-06-27\",\"duration_days\":14,\"days_elapsed\":0,\"days_remaining\":14,\"time_elapsed_pct\":0},\"completed_count\":3},\"epics\":{\"active\":[{\"ref\":{\"id\":\"MI_kwDOSJo3Ms4A88i4\"},\"name\":\"Streamable HTTP Transport Mode with Per-Connection Config Override\",\"description\":\"**Goal:** The MCP server should support HTTP mode for multi-client deployments. Each connecting client can optionally supply its own config path, which fully overrides the server's default config for …\",\"status\":\"open\",\"open_item_count\":2},{\"ref\":{\"id\":\"MI_kwDOSJo3Ms4A9EBd\"},\"name\":\"Clean Architecture Remediation\",\"description\":\"Complete adapter-layer refactoring — extract services, focused ports, pure domain layer\",\"status\":\"open\",\"open_item_count\":0},{\"ref\":{\"id\":\"MI_kwDOSJo3Ms4A9EBe\"},\"name\":\"Scrum Process & Agent Rule Hardening\",\"description\":\"Impediment management, sprint planning, ceremony playbook improvements\",\"status\":\"open\",\"open_item_count\":5},{\"ref\":{\"id\":\"MI_kwDOSJo3Ms4A9EBk\"},\"name\":\"Bug Fixes & Diagnostics\",\"description\":\"Security and correctness bug fixes\",\"status\":\"open\",\"open_item_count\":6},{\"ref\":{\"id\":\"MI_kwDOSJo3Ms4A9J0x\"},\"name\":\"MCP Tool Surface Modernization for Scrum Theory Alignment\",\"description\":\"Redesign the agent-tool contract to align with core Scrum principles (single Product Backlog as the source of truth; sprints as the time dimension; epics as the space/thematic dimension) across four c…\",\"status\":\"open\",\"open_item_count\":7}],\"total_count\":11},\"template_uris\":null,\"deadline_field\":null},\"vocabulary\":{\"status\":{\"backlog\":\"Backlog\",\"ready\":\"Ready\",\"in_progress\":\"In Progress\",\"in_review\":\"In Review\",\"blocked\":\"Blocked\",\"done\":\"Done\"},\"priority\":{\"p0\":\"Must\",\"p1\":\"Should\",\"p2\":\"Could\",\"p3\":\"Won't\"},\"type\":{\"user_story\":\"User Story\",\"bug\":\"Bug\",\"tech_debt\":\"Tech Debt\",\"spike\":\"Spike\",\"impediment\":\"Impediment\"},\"story_points\":{\"scale\":\"fibonacci\",\"values\":[1,2,3,5,8]},\"sprint\":{\"duration_days\":14,\"velocity_window\":4,\"length_weeks\":2},\"team\":null,\"dor\":null,\"dod\":null,\"autonomy\":null},\"_scrum_glossary\":\"status = workflow column; sprint = iteration assignment; Product Backlog = sprint:backlog scope; Sprint Backlog = items in the active iteration.\"}"}]
+</tool_response><|im_end|>
+<|im_start|>assistant
+Good, I got a comprehensive response. Let me analyze what's present and missing from this single `scrum_orient` call with "session" detail:
+
+**Present:**
+- Status options: Backlog, Ready, In Progress, In Review, Blocked, Done ✅
+- Priority tiers: Must (p0), Should (p1), Could (p2), Won't (p3) ✅
+- Type keys: user_story, bug, tech_debt, spike, impediment ✅
+- Story points scale: fibonacci [1, 2, 3, 5, 8] ✅
+- Active sprint: Sprint 4 (June 2-13, 2026) - 91% elapsed ⚠️
+- Next sprint: Sprint 5 (June 13-27, 2026)
+- Completed sprints count: 3
+- Active epics with counts ✅
+- Vocabulary maps for status/priority/type ✅
+
+**Missing from "session" detail:**
+- Team roster (team: null) ⚠️
+- DoR criteria (dor: null) ⚠️
+- DoD criteria (dod: null) ⚠️
+- Autonomy rules (autonomy: null) ⚠️
+- Template URIs (template_uris: null) ⚠️
+
+**Warnings:**
+- Sprint goal not supported by GitHub adapter - this is a known limitation, not really an issue.
+
+So from the "session" detail call, I'm missing DoR/DoD criteria and team roster. The tool description says "session" omits these intentionally, so I'd need to call with "full" if I needed them. That's actually clear behavior - the session view is lighter weight.
+
+
+Now I should check whether any vocabulary values are flagged as missing in the platform_state.missing_options array.
+
+## Scenario 1.2 — Vocabulary completeness
+
+From the orient result, `missing_options` is empty across all fields (status, priority, labels). No vocabulary gaps to fix. Let me verify idempotency by adding a label twice:
+
+<tool_call>
+<function=scrum_add_vocabulary>
+<parameter=kind>
+label
+</parameter>
+<parameter=value>
+test-idempotency-check
+</parameter>
+</function>
+</tool_call><|im_end|>
+<|im_start|>user
+<tool_response>
+[{"type":"text","text":"{\"created\":true,\"kind\":\"label\",\"value\":\"test-idempotency-check\"}"}]
+</tool_response><|im_end|>
+<|im_start|>assistant
+Good, the label was created. Now let me add it again to verify idempotency works correctly.
+
+Now adding it a second time:
+
+<tool_call>
+<function=scrum_add_vocabulary>
+<parameter=kind>
+label
+</parameter>
+<parameter=value>
+test-idempotency-check
+</parameter>
+</function>
+</tool_call><|im_end|>
+<|im_start|>user
+<tool_response>
+[{"type":"text","text":"{\"created\":false,\"already_exists\":true,\"kind\":\"label\",\"value\":\"test-idempotency-check\"}"}]
+</tool_response><|im_end|>
+<|im_start|>assistant
+The idempotency check worked correctly - the second call returned created:false with already_exists:true. Now I should clean up by removing this test label, but I don't see a delete_vocabulary tool available. Let me note that as an observation and move on to Phase 2.
+
+Actually, wait - I need to reconsider my approach here. The user asked me to start with Phase 1 only and not proceed further until told to do so. So I should wrap up Phase 1 and report back rather than continuing into the next phases.
+
+## Phase 1 Results
+
+### Scenario 1.1 — Orient to the project ✅
+
+**What worked:** The `scrum_orient` call returned a comprehensive view including:
+- **Status vocabulary**: Backlog, Ready, In Progress, In Review, Blocked, Done (with canonical keys)
+- **Priority tiers**: Must (p0), Should (p1), Could (p2), Won't (p3)
+- **Type keys**: user_story, bug, tech_debt, spike, impediment
+- **Story points scale**: Fibonacci [1, 2, 3, 5, 8]
+- **Active sprint**: Sprint 4 (June 2–13, 2026) — 91% elapsed, only 1 day remaining ⚠️
+- **Next sprint**: Sprint 5 (June 13–27, 2026)
+- **Epics**: 5 active epics with open item counts
+
+**What was missing from "session" detail:**
+- Team roster (`team: null`) — requires `detail: "full"`
+- DoR criteria (`dor: null`) — requires `detail: "full"`
+- DoD criteria (`dod: null`) — requires `detail: "full"`
+
+**Insight #1 — Clarity** — The distinction between `"session"` and `"full"` detail levels is documented in the tool description, but I had to read it carefully. A first-time user might not realize that DoR/DoD aren't available without explicitly requesting full mode.
+
+### Scenario 1.2 — Vocabulary completeness ✅
+
+`missing_options` was empty for all fields — no vocabulary gaps on this board. The idempotency test worked correctly:
+- First call → `created: true`
+- Second call → `created: false, already_exists: true` (safe no-op)
+
+**Insight #2 — Clarity** — The tool description clearly explains the three kinds of vocabulary additions and their constraints. However, there's no corresponding "delete" or "remove" operation for labels I created during testing. This means test artifacts may persist permanently unless manually cleaned up elsewhere.
+
+---
+
+Ready to proceed to **Phase 2 — Find Items** when you say go.<|im_end|>
+<|im_start|>user
+proceed<|im_end|>
+<|im_start|>assistant
+The user wants me to continue with Phase 2 - finding items on the board. I'll work through scenarios 2.1 through 2.5, using the vocabulary and context from my initial orient call. Let me start by pulling the current sprint board to see what's active.
+
+## PHASE 2 — FIND ITEMS
+
+### Scenario 2.1 — What's in the current sprint?
+
+<tool_call>
+<function=scrum_find_items>
+<parameter=intent>
+sprint_board
+</parameter>
+</function>
+</tool_call><|im_end|>
+<|im_start|>user
+<tool_response>
+[{"type":"text","text":"{\"items\":[{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgvD6Mk\",\"key\":\"PVTI_lAHOAmfLjc4BWiTtzgvD6Mk\"},\"title\":\"test draft issue\",\"status\":\"Backlog\",\"story_points\":1,\"blocked_by\":[]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzguSudU\",\"key\":\"214\"},\"title\":\"[BUG UPDATED]: estimated:false filter returns PRs and Done items as unestimated backlog\",\"status\":\"Ready\",\"story_points\":1,\"blocked_by\":[]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzguSug0\",\"key\":\"218\"},\"title\":\"[Bug]: scrum_find_items serializes two structurally misleading empty fields — dependency_map: null and sprint.ref.id: \\\"\\\"\",\"status\":\"Ready\",\"story_points\":2,\"blocked_by\":[]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgt_T0w\",\"key\":\"209\"},\"title\":\"Impediment: Epic CRUD operations are incomplete\",\"status\":\"Backlog\",\"story_points\":5,\"blocked_by\":[]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzguSvrg\",\"key\":\"222\"},\"title\":\"[Story]: Agent can mark two items as \\\"related\\\" without implying a hard blocking dependency\",\"status\":\"Ready\",\"story_points\":3,\"blocked_by\":[]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgt_P2U\",\"key\":\"192\"},\"title\":\"[User Story]: Developer has PlatformVocabularyMap interface + GitHub implementation — all Scrum concepts mapped to/from GitHub primitives\",\"status\":\"Ready\",\"story_points\":2,\"blocked_by\":[{\"key\":\"195\"},{\"key\":\"191\"}]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzguSuho\",\"key\":\"219\"},\"title\":\"[Story]: Agent can request a minimal listing projection from scrum_find_items for bulk-scan use cases\",\"status\":\"Ready\",\"story_points\":3,\"blocked_by\":[{\"key\":\"184\"}]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgu54pw\",\"key\":\"261\"},\"title\":\"[Tech Debt]: SKILL.md missing ref-resolution preference rule and post-write title verification rule\",\"status\":\"Ready\",\"story_points\":1,\"blocked_by\":[]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgs_Y0w\",\"key\":\"69\"},\"title\":\"[Bug]: Board item comments land on wrong GitHub issue when project spans multiple repositories\",\"status\":\"Backlog\",\"story_points\":3,\"blocked_by\":[]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgu58Bw\",\"key\":\"263\"},\"title\":\"[Bug]: scrum_find_items always emits two zero-value noise fields — custom_fields.__typename and blocks:[]\",\"status\":\"Backlog\",\"story_points\":1,\"blocked_by\":[{\"key\":\"218\"}]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgvGe5k\",\"key\":\"279\"},\"title\":\"[Bug]: scrum_update_impediment fails on draft issues — write operations not kind-agnostic\",\"status\":\"Backlog\",\"story_points\":3,\"blocked_by\":[]}],\"total_count\":11,\"scope_summary\":{\"sprint_count\":11,\"backlog_count\":0}}"}]
+</tool_response><|im_end|>
+<|im_start|>assistant
+The sprint_board intent returned 11 items, but the scope summary shows backlog_count: 0 and sprint_count: 11. This is confusing because several items have status "Backlog" — so they're in the Sprint Backlog view but not assigned to a sprint iteration. I need to clarify whether "sprint_board" means items currently in an active sprint or just all non-done items on the board.
+
+Looking at the data, I notice some items are blocked by others (like 192 blocked by 195 and 191), but those blockers aren't showing up in this result set. The response includes ref.id, key, title, status, story_points, and blocked_by fields — which is useful for a quick overview.
+
+Now I'm moving to the backlog view to see what's unassigned.
+
+### Scenario 2.2 — What's in the backlog?
+
+<tool_call>
+<function=scrum_find_items>
+<parameter=intent>
+backlog_ready
+</parameter>
+</function>
+</tool_call><|im_end|>
+<|im_start|>user
+<tool_response>
+[{"type":"text","text":"{\"items\":[{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgtL7Y4\",\"key\":\"94\"},\"title\":\"Per-connection config override in Streamable HTTP mode\",\"status\":\"Backlog\",\"story_points\":3,\"blocked_by\":[{\"key\":\"93\"}]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgs11Rg\",\"key\":\"52\"},\"title\":\"[Story]: scrum_plan_sprint — add goal field\",\"status\":\"Backlog\",\"story_points\":1,\"blocked_by\":[]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgtaJ5Y\",\"key\":\"134\"},\"title\":\"Per-Item Start Dates & Delivery Deadlines with Extension Tracking\",\"status\":\"Backlog\",\"story_points\":3,\"blocked_by\":[]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgt_QEo\",\"key\":\"194\"},\"title\":\"[Spike]: Implement Trello PlatformVocabularyMap + Assembler — reference implementation proving abstraction generalizes\",\"status\":\"Backlog\",\"story_points\":8,\"blocked_by\":[{\"key\":\"192\"},{\"key\":\"191\"}]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzguSnGM\",\"key\":\"211\"},\"title\":\"[Story]: OAuth 2.1 Authorization for Streamable HTTP mode\",\"status\":\"Backlog\",\"story_points\":5,\"blocked_by\":[{\"key\":\"93\"}]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgugBms\",\"key\":\"229\"},\"title\":\"[Spike]: Investigate sprint goal field feasibility on GitHub API\",\"status\":\"Backlog\",\"story_points\":2,\"blocked_by\":[]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgui3CA\",\"key\":\"238\"},\"title\":\"[Bug]: scrum_find_items blocks field always empty — downstream dependency impact invisible, dead field on every item\",\"status\":\"Backlog\",\"story_points\":2,\"blocked_by\":[]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgu53Wc\",\"key\":\"259\"},\"title\":\"[Bug]: sprint_ref:\\\"current\\\" combined with statuses filter fails with misleading \\\"no active sprint\\\" error\",\"status\":\"Backlog\",\"story_points\":2,\"blocked_by\":[]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgu54oQ\",\"key\":\"260\"},\"title\":\"[Tech Debt]: Write tool ref parameter descriptions should prefer { number } over opaque IDs to prevent write-target confusion\",\"status\":\"Backlog\",\"story_points\":2,\"blocked_by\":[]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgs12Q8\",\"key\":\"54\"},\"title\":\"[Story]: getOrphanImpediments() — implement in backend\",\"status\":\"Backlog\",\"story_points\":2,\"blocked_by\":[]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgu582k\",\"key\":\"264\"},\"title\":\"[Tech Debt]: scrum_orient includes full epic descriptions — 350+ tokens of context budget consumed on every session start\",\"status\":\"Backlog\",\"story_points\":1,\"blocked_by\":[]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgu59lM\",\"key\":\"265\"},\"title\":\"[Bug]: scrum_update_story requires blocked_by even for comment-only calls — forces callers to pass []\",\"status\":\"Backlog\",\"story_points\":1,\"blocked_by\":[]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgvGZxM\",\"key\":\"277\"},\"title\":\"[Bug]: scrum_find_items keys-based lookup crashes when referenced issue numbers don't exist on the board\",\"status\":\"Backlog\",\"story_points\":2,\"blocked_by\":[]}],\"total_count\":13,\"scope_summary\":{\"sprint_count\":0,\"backlog_count\":13}}"}]
+</tool_response><|im_end|>
+<|im_start|>assistant
+The backlog view shows 13 items with no sprint assignments, which is what I'd expect. Now let me move on to scenario 2.3 - finding items by type. From my orient call, the valid types are user_story, bug, tech_debt, spike, and impediment. Let me search for bugs specifically.
+### Scenario 2.3 — Find a specific item type
+
+<tool_call>
+<function=scrum_find_items>
+<parameter=intent>
+search_backlog
+</parameter>
+<parameter=search>
+bug
+</parameter>
+<parameter=types>
+["bug"]
+</parameter>
+</function>
+</tool_call><|im_end|>
+<|im_start|>user
+continue<|im_end|>
+<|im_start|>assistant
+The user wants me to continue with the remaining scenarios in Phase 2. I've completed 2.1 and 2.2, so now I need to work through 2.3 (find by type), 2.4 (check blocked items), and 2.5 (search by keyword). Let me proceed with these systematically.
+
+### Scenario 2.3 — Find a specific item type
+
+<tool_call>
+<function=scrum_find_items>
+<parameter=intent>
+search_backlog
+</parameter>
+<parameter=search>
+bug
+</parameter>
+<parameter=types>
+["bug"]
+</parameter>
+</function>
+</tool_call><|im_end|>
+<|im_start|>user
+<tool_response>
+[{"type":"text","text":"{\"items\":[{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzguSudU\",\"key\":\"214\"},\"title\":\"[BUG UPDATED]: estimated:false filter returns PRs and Done items as unestimated backlog\",\"status\":\"Ready\",\"story_points\":1,\"blocked_by\":[]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgs_Y0w\",\"key\":\"69\"},\"title\":\"[Bug]: Board item comments land on wrong GitHub issue when project spans multiple repositories\",\"status\":\"Backlog\",\"story_points\":3,\"blocked_by\":[]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgui3CA\",\"key\":\"238\"},\"title\":\"[Bug]: scrum_find_items blocks field always empty — downstream dependency impact invisible, dead field on every item\",\"status\":\"Backlog\",\"story_points\":2,\"blocked_by\":[]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgu53Wc\",\"key\":\"259\"},\"title\":\"[Bug]: sprint_ref:\\\"current\\\" combined with statuses filter fails with misleading \\\"no active sprint\\\" error\",\"status\":\"Backlog\",\"story_points\":2,\"blocked_by\":[]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgu58Bw\",\"key\":\"263\"},\"title\":\"[Bug]: scrum_find_items always emits two zero-value noise fields — custom_fields.__typename and blocks:[]\",\"status\":\"Backlog\",\"story_points\":1,\"blocked_by\":[{\"key\":\"218\"}]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgu59lM\",\"key\":\"265\"},\"title\":\"[Bug]: scrum_update_story requires blocked_by even for comment-only calls — forces callers to pass []\",\"status\":\"Backlog\",\"story_points\":1,\"blocked_by\":[]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgvGZxM\",\"key\":\"277\"},\"title\":\"[Bug]: scrum_find_items keys-based lookup crashes when referenced issue numbers don't exist on the board\",\"status\":\"Backlog\",\"story_points\":2,\"blocked_by\":[]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgvGe5k\",\"key\":\"279\"},\"title\":\"[Bug]: scrum_update_impediment fails on draft issues — write operations not kind-agnostic\",\"status\":\"Backlog\",\"story_points\":3,\"blocked_by\":[]}],\"total_count\":8}"}]
+</tool_response><|im_end|>
+<|im_start|>assistant
+The search returned 8 bug items, which is a reasonable result. Now I need to test combining filters by adding the estimated parameter to find unestimated bugs specifically.
+
+Good — 8 bugs found with type filter applied. Now let me combine with an additional filter:
+
+### Scenario 2.3 (continued) — Combining filters
+
+<tool_call>
+<function=scrum_find_items>
+<parameter=intent>
+search_backlog
+</parameter>
+<parameter=search>
+bug
+</parameter>
+<parameter=types>
+["bug"]
+</parameter>
+<parameter=estimated>
+False
+</parameter>
+</function>
+</tool_call><|im_end|>
+<|im_start|>user
+<tool_response>
+[{"type":"text","text":"{\"items\":[],\"total_count\":0}"}]
+</tool_response><|im_end|>
+<|im_start|>assistant
+The estimated:false filter returned 0 results, which is interesting. Looking at the previous bug search, all items had story_points values (1, 3, 2, etc.), so there are no unestimated bugs on this board. That makes sense — the tool worked correctly, it just found nothing because everything's already estimated.
+
+Now I need to move on to scenario 2.4 about blocked items.
+### Scenario 2.4 — Check blocked items
+
+<tool_call>
+<function=scrum_find_items>
+<parameter=intent>
+blocked_items
+</parameter>
+</function>
+</tool_call><|im_end|>
+<|im_start|>user
+continue<|im_end|>
+<|im_start|>assistant
+<think>
+
+</think>
+
+The user wants me to continue with the remaining scenarios in Phase 2. I've completed 2.1, 2.2, and 2.3 (including the combined filter test). Now I need to work through 2.4 (blocked items), 2.5 (keyword search), and then move on to Phase 3. Let me proceed with these systematically.
+
+### Scenario 2.4 — Check blocked items
+
+<tool_call>
+<function=scrum_find_items>
+<parameter=intent>
+blocked_items
+</parameter>
+</function>
+</tool_call><|im_end|>
+<|im_start|>user
+<tool_response>
+[{"type":"text","text":"{\"items\":[{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgt_P2U\",\"key\":\"192\"},\"title\":\"[User Story]: Developer has PlatformVocabularyMap interface + GitHub implementation — all Scrum concepts mapped to/from GitHub primitives\",\"status\":\"Ready\",\"story_points\":2,\"blocked_by\":[{\"key\":\"195\"},{\"key\":\"191\"}]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzguSuho\",\"key\":\"219\"},\"title\":\"[Story]: Agent can request a minimal listing projection from scrum_find_items for bulk-scan use cases\",\"status\":\"Ready\",\"story_points\":3,\"blocked_by\":[{\"key\":\"184\"}]},{\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgu58Bw\",\"key\":\"263\"},\"title\":\"[Bug]: scrum_find_items always emits two zero-value noise fields — custom_fields.__typename and blocks:[]\",\"status\":\"Backlog\",\"story_points\":1,\"blocked_by\":[{\"key\":\"218\"}]}],\"total_count\":3,\"scope_summary\":{\"sprint_count\":3,\"backlog_count\":0},\"dependency_map\":[{\"key\":\"184\",\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgt_ODQ\"},\"title\":\"[Tech Debt]: Separate query building from pagination infrastructure — extract `buildItemsQuery()` from `PaginatedProjectItemFetcher`\",\"status\":\"Done\"},{\"key\":\"191\",\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgt_PuI\"},\"title\":\"[User Story]: Developer adding a new backend has AbstractAssembler with port method defaults — only implements assembly and normalization\",\"status\":\"Done\"},{\"key\":\"195\",\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzgt_QOc\"},\"title\":\"[User Story]: Agent receives factual capability statements — NATIVE/EMULATED/UNAVAILABLE for every operation\",\"status\":\"Done\"},{\"key\":\"218\",\"ref\":{\"id\":\"PVTI_lAHOAmfLjc4BWiTtzguSug0\"},\"title\":\"[Bug]: scrum_find_items serializes two structurally misleading empty fields — dependency_map: null and sprint.ref.id: \\\"\\\"\",\"status\":\"Ready\"}]}"}]
+</tool_response><|im_end|>
+<|im_start|>assistant
+<think>
+
+</think>
+
+The blocked items view is working well - it shows 3 blocked items with their blockers, plus a dependency map that reveals the status of each blocker. I notice something interesting: item 184 (blocking 219) and items 191/195 (both blocking 192) are all marked as Done, which means those blocks should theoretically be resolved. But item 218 (blocking 263) is still in Ready status, so that's a genuine active block. This suggests the blocked_items view might not be filtering out items whose blockers have already been completed - it's showing them anyway because they're technically still marked as blocked_by entries.
+
+Now I'm moving on to test keyword search functionality with scenario 2.5.
+### Scenario 2.5 — Search by keyword
+
+<tool_call>
+<function=scrum_find_items>
+<parameter=intent>
+search_backlog
+</parameter>
+<parameter=search>
+OAuth
+</parameter>
+</function>
+</tool_call>

@@ -11,13 +11,14 @@
 // =============================================================================
 
 import type {
+  BacklogItemListing,
+  DependencyMap,
   EpicListing,
   EpicRef,
   EpicRefWithName,
   EpicSummary,
   ImpedimentRef,
   ImpedimentStatus,
-  ItemSearchResult,
   LinkedArtifact,
   SprintRef,
   Story,
@@ -25,15 +26,27 @@ import type {
   StoryRef,
   TemplateUriMap,
 } from "../domain/types.ts";
-import { SCRUM_FIELDS, SEARCH_SCOPES, VOCABULARY_KINDS } from "../domain/types.ts";
-import type { ScrumField, SearchScope, VocabularyKind } from "../domain/types.ts";
+import {
+  FIND_ITEMS_INTENTS,
+  LISTING_FIELDS_MODES,
+  SCRUM_FIELDS,
+  SEARCH_SCOPES,
+  VOCABULARY_KINDS,
+} from "../domain/types.ts";
+import type {
+  FindItemsIntent,
+  ListingFieldsMode,
+  ScrumField,
+  SearchScope,
+  VocabularyKind,
+} from "../domain/types.ts";
 import type { BackendCallResult } from "../services/error-enrichment.ts";
 import type { ContentLocation } from "../domain/content-location.ts";
 
 // ── Re-exports (domain vocabulary - single source of truth) ─────────────────
 
-export { SCRUM_FIELDS, SEARCH_SCOPES, VOCABULARY_KINDS };
-export type { ScrumField, SearchScope, VocabularyKind };
+export { FIND_ITEMS_INTENTS, LISTING_FIELDS_MODES, SCRUM_FIELDS, SEARCH_SCOPES, VOCABULARY_KINDS };
+export type { FindItemsIntent, ListingFieldsMode, ScrumField, SearchScope, VocabularyKind };
 
 // ── Input types (cross the port boundary) ─────────────────────────────────────
 
@@ -42,8 +55,11 @@ export type { ScrumField, SearchScope, VocabularyKind };
  * All fields are optional - an empty filter returns all items.
  * Defined at the port boundary because it's an input type, not a domain type.
  */
+
 export interface ItemFilter {
-  readonly scope?: SearchScope;
+  readonly intent?: FindItemsIntent;
+  /** Unified sprint filter: current | next | backlog | all | "<sprint name>". Omit = entire board. */
+  readonly sprint?: string;
   readonly keys?: readonly string[];
   readonly search?: string;
   readonly types?: readonly string[];
@@ -53,8 +69,10 @@ export interface ItemFilter {
   readonly labels?: readonly string[];
   readonly assignee?: string;
   readonly estimated?: boolean;
-  readonly sprint_ref?: string | null;
+  /** When true, only items with blocked_by entries; when false, only items without blockers. */
+  readonly has_blockers?: boolean;
   readonly include_dependencies?: boolean;
+  readonly fields?: ListingFieldsMode;
   readonly limit?: number;
 }
 
@@ -63,6 +81,17 @@ export interface ItemFilter {
  * All fields are guaranteed non-optional - use the defaults from the handler
  * before calling the port method.
  */
+/** Adapter-internal search result before listing projection and dependency_map array shaping. */
+export interface ItemSearchResultRaw {
+  readonly items: readonly BacklogItemListing[];
+  readonly total_count: number;
+  readonly scope_summary: {
+    readonly sprint_count: number | null;
+    readonly backlog_count: number | null;
+  };
+  readonly dependency_map: DependencyMap | null;
+}
+
 export interface ResolvedItemFilter {
   readonly scope: SearchScope;
   readonly keys: readonly string[];
@@ -74,8 +103,10 @@ export interface ResolvedItemFilter {
   readonly labels: readonly string[];
   readonly assignee: string;
   readonly estimated: boolean | undefined;
+  readonly has_blockers: boolean | undefined;
   readonly sprint_ref: string | null;
   readonly include_dependencies: boolean;
+  readonly fields: ListingFieldsMode;
   readonly limit: number;
 }
 
@@ -186,14 +217,15 @@ export interface SprintDataQuery {
  */
 export interface SprintRawItem {
   readonly id: string;
-  readonly number: number;
+  /** null for draft PBIs not yet promoted to a numbered issue */
+  readonly number: number | null;
   readonly title: string;
   readonly type: string | null;
   readonly status: string | null;
-  readonly storyPoints: number | null;
-  readonly hasAssignee: boolean;
-  readonly hasBlockers: boolean;
-  readonly completedAt: string | null; // ISO-8601 from completionsFromBoardItems
+  readonly story_points: number | null;
+  readonly has_assignee: boolean;
+  readonly has_blockers: boolean;
+  readonly completed_at: string | null;
 }
 
 /**
@@ -202,8 +234,8 @@ export interface SprintRawItem {
  * No burndown series, no health metrics — the agent computes those.
  */
 export interface SprintRawData {
-  readonly sprint: SprintInfo;
-  readonly items: SprintRawItem[];
+  readonly sprint: SprintInfo | null;
+  readonly items: readonly SprintRawItem[];
 }
 
 /** Fields known from a just-completed mutation (merged over a snapshot fetch). */
@@ -245,7 +277,11 @@ export interface StoryUpdates {
 }
 
 /** Result of an idempotent create operation. */
-export type CreateResult = { readonly created: boolean };
+export type CreateResult = {
+  readonly created: boolean;
+  /** True when the value was already present (idempotent no-op). */
+  readonly already_exists?: boolean;
+};
 
 // ── Listing types (SprintSnapshot items) ────────────────────────────────────────
 
@@ -305,7 +341,7 @@ export interface StoryPort {
  * Replaces SprintPort.getSprintStories() and BacklogPort.getBacklogStories().
  */
 export interface FindItemsPort {
-  findItems(filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResult>>;
+  findItems(filter: ResolvedItemFilter): Promise<BackendCallResult<ItemSearchResultRaw>>;
 }
 
 /**

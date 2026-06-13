@@ -4,6 +4,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ProjectBackend } from "../scrum/ports.ts";
 import type { ScrumConfig } from "../domain/config.ts";
+import type { SessionCache } from "../services/session-cache.ts";
 import {
   AddVocabularySchema,
   CreateStorySchema,
@@ -16,12 +17,9 @@ import {
 import { z } from "zod";
 import {
   AddVocabularyResultSchema,
-  CreateStoryOutputSchema,
   LogImpedimentResultSchema,
   PlanSprintResultSchema,
-  SetFieldResponseSchema,
   UpdateImpedimentResponseSchema,
-  UpdateStoryResponseSchema,
 } from "../schemas/scrum-outputs.ts";
 import {
   handleAddVocabulary,
@@ -53,30 +51,52 @@ export const registerScrumWriteTools = (
   server: McpServer,
   backend: ProjectBackend,
   scrumConfig: ScrumConfig,
+  sessionCache: SessionCache,
 ): void => {
   server.registerTool(
     "scrum_add_vocabulary",
     {
       title: "Add Vocabulary Entry",
-      description: `Idempotently add a new option to an existing board field, or a new repo label.
+      description: `Idempotently add vocabulary. Three kinds behave differently:
 
-        IMPORTANT CONSTRAINT: this tool can only add options to fields that already exist
-        (status, priority). It cannot create new project fields - that requires a human to
-        act in the platform UI.
+        - status_option / priority_option → ONLY for values in scrum_orient platform_state.missing_options
+          that are declared in .github/scrum/config.yml (status_display / priority_display). Config is
+          authoritative — do not invent board options outside config.
+        - label → repository label (fully agent-driven; fetch the current list via scrum_orient(detail:"full") → platform_state.labels.existing when needed)
 
-        Use this when scrum_set_field or scrum_create_story fails because a vocabulary value
-        is not found. Call scrum_orient first to see what values already exist before adding duplicates.
+        Response: created:true = new value added; created:false + already_exists:true = already present (safe no-op).
+
+        Cannot create new project fields — only options within existing Status/Priority fields.
 
         Args:
           kind   "status_option" | "priority_option" | "label"
-          value  display name to add (e.g. "Blocked", "Critical", "tech_debt")
-
-        Safe to call if the value already exists - operation is idempotent.`,
+          value  display name to add (e.g. config-declared "Blocked", or any label like "test-label")`,
       inputSchema: AddVocabularySchema.shape,
       outputSchema: AddVocabularyResultSchema.shape,
-      annotations: { role: "admin" },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
     },
-    (params: z.infer<typeof AddVocabularySchema>) => handleAddVocabulary(backend, params),
+    async (params: z.infer<typeof AddVocabularySchema>) => {
+      const result = await handleAddVocabulary(backend, scrumConfig, sessionCache, params);
+      // When a new vocabulary entry is created, the valid values for downstream
+      // tool calls change. Notify connected clients so they can re-fetch tool
+      // descriptions without a session restart.
+      if (!result.isError) {
+        try {
+          const payload = JSON.parse(result.content[0].text) as { created?: boolean };
+          if (payload.created === true) {
+            await server.sendToolListChanged();
+          }
+        } catch {
+          // Best-effort — never let notification failure affect the tool response.
+        }
+      }
+      return result;
+    },
   );
 
   server.registerTool(
@@ -87,7 +107,10 @@ export const registerScrumWriteTools = (
         `Set a single board field on a story. The primary write primitive - use this to move
         stories across the board, assign sprints, set points, update priority, assignee, or type.
 
-        Call scrum_get_story first if you need to read the current value before overwriting.
+        Call scrum_get_item_detail(detail:"dor") first if you need the current value before overwriting.
+        Confirm story points, priority, and sprint changes with the human before writing.
+
+        Example: { "ref": { "id": "..." }, "field": "status", "value": "In Progress", "response": "ack" }
 
         Args:
           ref    { id: string } - story to update (Story.ref.id from any read tool)
@@ -104,12 +127,18 @@ export const registerScrumWriteTools = (
                    type          → canonical key (e.g. "feature", "bug" - see vocabulary.type in scrum_orient)
                  Pass null for any field to clear the value entirely.
 
-        Returns: updated Story object.`,
+        response  "ack" (default) | "story" — prefer ack; verify with find_items when needed.
+
+        Returns: WriteAck by default, or Story when response="story".`,
       inputSchema: SetFieldSchema.shape,
-      outputSchema: SetFieldResponseSchema.shape,
-      annotations: { role: "admin" },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
     },
-    (params: z.infer<typeof SetFieldSchema>) => handleSetField(backend, params),
+    (params: z.input<typeof SetFieldSchema>) => handleSetField(backend, scrumConfig, params),
   );
 
   server.registerTool(
@@ -136,12 +165,18 @@ export const registerScrumWriteTools = (
           comment    string - Post a comment on the story after updating (omit to skip)
           blocked_by  StoryRef[] - REPLACES all upstream (blocked_by) dependencies; null or [] clears; omit to leave unchanged
 
-        Returns: updated Story object.`,
+        response  "ack" (default) | "story" - ack returns { ref, applied }; story returns full Story.
+
+        Returns: WriteAck by default, or Story when response="story".`,
       inputSchema: UpdateStorySchema.shape,
-      outputSchema: UpdateStoryResponseSchema.shape,
-      annotations: { role: "admin" },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
     },
-    (params: z.infer<typeof UpdateStorySchema>) => handleUpdateStory(backend, params),
+    (params: z.input<typeof UpdateStorySchema>) => handleUpdateStory(backend, scrumConfig, params),
   );
 
   server.registerTool(
@@ -163,17 +198,21 @@ export const registerScrumWriteTools = (
                        Call scrum_orient for vocabulary.type to see valid keys for this project
           priority     string - vocabulary display name (e.g. "Must"); call scrum_orient for valid values
           story_points number - Fibonacci estimate (1, 2, 3, 5, 8, 13)
-          labels       string[] - must already exist; check platform_state.labels.existing from scrum_orient
+          labels       string[] - must already exist; call scrum_orient(detail:"full") to see platform_state.labels.existing
           epic         { id: string } - EpicRef from scrum_find_items (type=epic).ref.id
           assignees    string[] - GitHub logins
           sprint       "current" | "next" | "<sprint-name>" - places on board; omit for backlog
 
         Returns: created Story object, or the same fields with partialFailure: true and failedFields[].`,
       inputSchema: CreateStorySchema.shape,
-      outputSchema: CreateStoryOutputSchema.shape,
-      annotations: { role: "admin" },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
     },
-    (params: z.infer<typeof CreateStorySchema>) => handleCreateStory(backend, params),
+    (params: z.infer<typeof CreateStorySchema>) => handleCreateStory(backend, scrumConfig, params),
   );
 
   server.registerTool(
@@ -192,11 +231,17 @@ export const registerScrumWriteTools = (
                    true  = CLEAR all current sprint stories first, then assign the list
                            Use with caution - replace:true removes any story not in your list.
 
-        Returns: { sprint, assigned: StoryRef[], skipped: [{ ref, reason }] }
+        Returns: { sprint, assigned: StoryRef[], cleared?: StoryRef[], skipped: [{ ref, reason }] }
+        When replace:true, cleared lists items removed from the sprint before assignment.
         The operation continues through individual failures - check skipped[] for errors.`,
       inputSchema: PlanSprintSchema.shape,
       outputSchema: PlanSprintResultSchema.shape,
-      annotations: { role: "admin" },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
     },
     (params: z.infer<typeof PlanSprintSchema>) => handlePlanSprint(backend, params),
   );
@@ -222,7 +267,12 @@ export const registerScrumWriteTools = (
         Returns: the created impediment Story object.`,
       inputSchema: LogImpedimentSchema.shape,
       outputSchema: LogImpedimentResultSchema.shape,
-      annotations: { role: "admin" },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
     },
     (params: z.infer<typeof LogImpedimentSchema>) =>
       handleLogImpediment(backend, scrumConfig, params),
@@ -239,10 +289,16 @@ export const registerScrumWriteTools = (
           status           "open" | "in_progress" | "resolved" - new impediment status
           resolution_notes  string (optional) - notes explaining why this impediment was resolved
 
+        Draft issues cannot be updated — promote to a full issue first.
         Returns: the updated ImpedimentListing.`,
       inputSchema: UpdateImpedimentSchema.shape,
       outputSchema: UpdateImpedimentResponseSchema.shape,
-      annotations: { role: "admin" },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
     },
     (params: z.infer<typeof UpdateImpedimentSchema>) => handleUpdateImpediment(backend, params),
   );

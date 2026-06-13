@@ -14,9 +14,19 @@
 // crypto, ReadableStream).
 // =============================================================================
 
+import type { IncomingMessage } from "node:http";
 import process from "node:process";
 import { readFile } from "node:fs/promises";
 import { serve as honoServe } from "@hono/node-server";
+
+/** Minimal Deno.ServeHandlerInfo shape used by server.ts for rate-limit keys. */
+interface ServeHandlerInfo {
+  remoteAddr: { hostname: string };
+}
+
+const remoteAddrFromIncoming = (incoming: IncomingMessage): ServeHandlerInfo => ({
+  remoteAddr: { hostname: incoming.socket.remoteAddress ?? "127.0.0.1" },
+});
 
 // ── addEventListener ───────────────────────────────────────────────────────
 // `addEventListener` is a browser/Deno global that does not exist in Node.js.
@@ -88,6 +98,12 @@ export const Deno = {
     },
   },
 
+  // ── Signal handlers ────────────────────────────────────────────────────────
+  // Used by runHttp() to clear the idle-session sweep interval on shutdown.
+  addSignalListener: (signal: "SIGINT" | "SIGTERM" | string, handler: () => void): void => {
+    process.on(signal, handler);
+  },
+
   // ── HTTP server ────────────────────────────────────────────────────────────
   // Bridges the Web Standard Request/Response interface expected by
   // WebStandardStreamableHTTPServerTransport to Node.js's http module.
@@ -95,9 +111,14 @@ export const Deno = {
   // own Node.js transport wrapper, so the SSE streaming behaviour is identical.
   serve: (
     options: { port?: number; hostname?: string },
-    handler: (req: Request) => Response | Promise<Response>,
+    handler: (req: Request, info: ServeHandlerInfo) => Response | Promise<Response>,
   ): void => {
     const port = options.port ?? 3000;
-    honoServe({ fetch: handler, port });
+    honoServe({
+      fetch: (req, env) =>
+        handler(req, remoteAddrFromIncoming((env as { incoming: IncomingMessage }).incoming)),
+      port,
+      hostname: options.hostname,
+    });
   },
 };

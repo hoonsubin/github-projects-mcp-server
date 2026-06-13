@@ -2,16 +2,25 @@
 // src/tools/_mcp_result.ts - MCP tool response helpers for contract tests
 // =============================================================================
 
+import { serializeToolPayload } from "./response-serialize.ts";
+
 /** Shape returned by scrum tool handlers before MCP SDK wrapping. */
 export interface McpTextResult {
   readonly content: ReadonlyArray<{ readonly type: "text"; readonly text: string }>;
   readonly structuredContent?: Record<string, unknown>;
+  readonly isError?: boolean;
 }
 
-export const toMcpTextResult = (payload: unknown): McpTextResult => ({
-  content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
-  structuredContent: payload as Record<string, unknown>,
-});
+export const toMcpTextResult = (
+  payload: unknown,
+  options?: { textPayload?: unknown },
+): McpTextResult => {
+  const text = serializeToolPayload(options?.textPayload ?? payload);
+  return {
+    content: [{ type: "text", text }],
+    structuredContent: payload as Record<string, unknown>,
+  };
+};
 
 /** Parse the JSON payload from a tool handler's text content block. */
 export const parseToolText = <T>(result: McpTextResult): T => {

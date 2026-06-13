@@ -88,6 +88,21 @@ export const VOCABULARY_KINDS = ["status_option", "priority_option", "label"] as
 
 export type VocabularyKind = (typeof VOCABULARY_KINDS)[number];
 
+/** Listing field projection modes for item responses. */
+export const LISTING_FIELDS_MODES = ["compact", "standard", "full"] as const;
+export type ListingFieldsMode = (typeof LISTING_FIELDS_MODES)[number];
+
+/** Find-items intent presets. */
+export const FIND_ITEMS_INTENTS = [
+  "sprint_board",
+  "backlog_ready",
+  "readiness_check",
+  "blocked_items",
+  "search_backlog",
+  "by_keys",
+] as const;
+export type FindItemsIntent = (typeof FIND_ITEMS_INTENTS)[number];
+
 // ── Output ref (server → agent, listing context only) ────────────────────────
 
 /**
@@ -184,7 +199,7 @@ export type SprintRef = "current" | "next" | null | SprintName;
 /**
  * Branded string for human-readable issue identifiers (e.g. "42", "PROJ-123").
  * Always present - unlike nullable `ref.id`, `IssueKey` is guaranteed non-null.
- * Used as the key in `DependencyMap` and `DependencyNode`.
+ * Used as the key in `DependencyMap`.
  */
 export type IssueKey = string & { readonly _brand: "IssueKey" };
 
@@ -242,7 +257,7 @@ export interface EpicSummary {
  * Enriched listing entry for story collections.
  * Replaces StoryListing from ports.ts.
  *
- * `key` is always present (non-nullable) - Draft Issues get an empty string.
+ * `key` is always present (non-nullable) - Draft Issues fall back to ref.id.
  */
 export interface BacklogItemListing {
   readonly ref: ItemListingRef;
@@ -262,36 +277,32 @@ export interface BacklogItemListing {
   readonly blocked_by: ReadonlyArray<DependencyEntry>;
   /** Keys of items this one blocks (reverse dependency). Populated by adapter. */
   readonly blocks: ReadonlyArray<ItemListingRef>;
+  /** Linked PRs from the board Pull requests column (delivery work for this PBI). */
+  readonly linked_pull_requests?: ReadonlyArray<LinkedArtifact>;
+  /** Underlying platform content. Defaults to issue when omitted. */
+  readonly content_kind?: "issue" | "pr" | "draft";
   readonly custom_fields: Record<string, string | number | boolean | null>;
 }
 
-// ── Dependency graph ───────────────────────────────────────────────────────────
+// ── Dependency pointers (supplementary blockers) ───────────────────────────────
 
 /**
- * Graph node for dependency resolution, keyed by IssueKey (not nullable ref.id).
- * Includes inline state signals so callers don't need a second lookup.
+ * Shallow pointer to an upstream blocker not already present in items[].
+ * Keyed by IssueKey in `DependencyMap`. Reverse `blocks` edges and blockers
+ * already listed in items[].blocked_by are omitted as redundant.
  */
-export interface DependencyNode {
-  key: IssueKey;
-  title: string | null; // null for unknown/out-of-project items
-  status: string | null;
-  sprint: string | null;
-  epic_name: string | null;
-  story_points: number | null;
-  priority: string | null;
-  /** True when this node has a full listing in the items[] array. */
-  resolved: boolean;
-  /** Stories that this node blocks (reverse dependency). */
-  blocks: IssueKey[];
-  /** Keys of items this node depends on. */
-  blocked_by: IssueKey[];
+export interface DependencyPointer {
+  readonly key: IssueKey;
+  readonly ref: EntityRef;
+  readonly title: string | null;
+  readonly status: string | null;
 }
 
 /**
- * Full dependency graph, keyed by IssueKey.
- * Opt-in - not paid on every list call.
+ * Supplementary active blockers for returned items, keyed by IssueKey.
+ * Opt-in — only off-listing blockers that are not Done (or are in the active sprint).
  */
-export type DependencyMap = Record<string, DependencyNode>;
+export type DependencyMap = Record<string, DependencyPointer>;
 
 // ── Story entity ──────────────────────────────────────────────────────────────
 
@@ -376,7 +387,7 @@ export interface ItemSearchResult {
     sprint_count: number | null;
     backlog_count: number | null;
   };
-  dependency_map: DependencyMap | null;
+  dependency_map?: readonly DependencyPointer[];
 }
 
 // ── Story detail output ────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@
 
 import { assertEquals } from "@std/assert";
 import {
+  handleAddVocabulary,
   handleCreateStory,
   handleSetField,
   handleUpdateStory,
@@ -11,20 +12,93 @@ import {
 } from "./write.ts";
 import { parseToolText } from "../_mcp_result.ts";
 import { GitHubApiError } from "../../adapters/github/errors.ts";
-import type { ProjectBackend, StoryUpdates } from "../../scrum/ports.ts";
-import type { Story, StoryRef } from "../../domain/types.ts";
+import type { ScrumConfig } from "../../domain/config.ts";
+import type { PlatformState, ProjectBackend, StoryUpdates } from "../../scrum/ports.ts";
 import type { BackendCallResult } from "../../services/error-enrichment.ts";
+import { SessionCache } from "../../services/session-cache.ts";
+import type { Story, StoryRef } from "../../domain/types.ts";
 
 // ── Minimal stub factory ──────────────────────────────────────────────────────
+
+const stubScrumConfig = {
+  status_display: { backlog: "Backlog" },
+  priority_display: { p0: "Must" },
+  scrum: {
+    status: { backlog: { terminal: false, blocking: false } },
+    priority: [{ key: "p0" }],
+  },
+} as unknown as ScrumConfig;
+
+const emptyPlatformState = (): PlatformState => ({
+  fields: {
+    status: { exists: true, options: [], missingOptions: [] },
+    sprint: { exists: true },
+    story_points: { exists: true },
+    priority: { exists: true, options: [], missingOptions: [] },
+    type: { exists: true, configured: true },
+  },
+  labels: { existing: [], expected: [], missing: [] },
+  iterations: {
+    active: null,
+    next: null,
+    completed: [],
+    completedCount: 0,
+  },
+  vocabulary: {
+    statusDisplay: null,
+    priorityDisplay: null,
+    typeDisplay: null,
+    typeTemplatePaths: {},
+  },
+  epics: { active: [], totalCount: 0 },
+  templateUris: null,
+});
+
+type WriteAck = { ref: { id: string }; applied: true; warnings?: string[] };
 
 /** Create a GitHubApiError with RATE_LIMITED code for test assertions. */
 const makeAdapterError = (msg: string): GitHubApiError =>
   new GitHubApiError(msg, { code: "RATE_LIMITED", recovery: "Wait and retry" });
 
 /** A successful BackendCallResult for compose methods. */
-const makeStoryResult = (story: Story): BackendCallResult<Story> => ({
+const _makeStoryResult = (story: Story): BackendCallResult<Story> => ({
   value: story,
   warnings: [],
+});
+
+// ── handleAddVocabulary policy ───────────────────────────────────────────────
+
+Deno.test("handleAddVocabulary - rejects status_option not in missing_options", async () => {
+  const backend = {
+    getPlatformState: (): Promise<BackendCallResult<PlatformState>> =>
+      Promise.resolve({ value: emptyPlatformState(), warnings: [] }),
+    addVocabulary: () => Promise.resolve({ created: true }),
+  } as unknown as ProjectBackend;
+
+  const result = await handleAddVocabulary(
+    backend,
+    stubScrumConfig,
+    new SessionCache(),
+    { kind: "status_option", value: "Backlog" },
+  );
+
+  assertEquals(result.isError, true);
+  assertEquals(result.content[0]?.text.includes("VOCABULARY_NOT_MISSING"), true);
+});
+
+Deno.test("handleAddVocabulary - allows labels without platform state gate", async () => {
+  const backend = {
+    addVocabulary: () => Promise.resolve({ created: true }),
+  } as unknown as ProjectBackend;
+
+  const result = await handleAddVocabulary(
+    backend,
+    stubScrumConfig,
+    new SessionCache(),
+    { kind: "label", value: "agent-label" },
+  );
+
+  assertEquals(result.isError, undefined);
 });
 
 // ── toCreateStoryInput tests ──────────────────────────────────────────────────
@@ -42,7 +116,29 @@ Deno.test("toCreateStoryInput - maps story_points to storyPoints", () => {
 
 // ── handleSetField error handling ─────────────────────────────────────────────
 
-Deno.test("handleSetField - returns warnings when composeStoryAfterSetField throws AdapterError", async () => {
+Deno.test("handleSetField (ack) - returns warnings when setField throws", async () => {
+  const ref: StoryRef = { id: "PVTI_test_1" };
+
+  const backend = {
+    setField: () => {
+      throw makeAdapterError("setField failed");
+    },
+  } as unknown as ProjectBackend;
+
+  const result = await handleSetField(backend, stubScrumConfig, {
+    ref,
+    field: "status",
+    value: "Done",
+  });
+
+  const payload = parseToolText<WriteAck>(result);
+  assertEquals(payload.applied, true);
+  assertEquals(Array.isArray(payload.warnings), true);
+  assertEquals(payload.warnings!.length > 0, true);
+  assertEquals(payload.warnings![0].includes("RATE_LIMITED"), true);
+});
+
+Deno.test("handleSetField (story) - returns warnings when composeStoryAfterSetField throws", async () => {
   const ref: StoryRef = { id: "PVTI_test_1" };
 
   const backend = {
@@ -52,10 +148,11 @@ Deno.test("handleSetField - returns warnings when composeStoryAfterSetField thro
     },
   } as unknown as ProjectBackend;
 
-  const result = await handleSetField(backend, {
+  const result = await handleSetField(backend, stubScrumConfig, {
     ref,
     field: "status",
     value: "Done",
+    response: "story",
   });
 
   const payload = parseToolText<Story & { warnings?: string[] }>(result);
@@ -64,7 +161,7 @@ Deno.test("handleSetField - returns warnings when composeStoryAfterSetField thro
   assertEquals(payload.warnings![0].includes("RATE_LIMITED"), true);
 });
 
-Deno.test("handleSetField - returns warnings when both setField and compose throw", async () => {
+Deno.test("handleSetField (story) - returns warnings when both setField and compose throw", async () => {
   const ref: StoryRef = { id: "PVTI_test_2" };
 
   const backend = {
@@ -76,51 +173,30 @@ Deno.test("handleSetField - returns warnings when both setField and compose thro
     },
   } as unknown as ProjectBackend;
 
-  const result = await handleSetField(backend, {
+  const result = await handleSetField(backend, stubScrumConfig, {
     ref,
     field: "status",
     value: "Done",
+    response: "story",
   });
 
   const payload = parseToolText<Story & { warnings?: string[] }>(result);
   assertEquals(Array.isArray(payload.warnings), true);
-  // Two warnings from catchBackend wrapping both calls
   assertEquals(payload.warnings!.length >= 2, true);
 });
 
 // ── handleUpdateStory error handling ──────────────────────────────────────────
 
-Deno.test("handleUpdateStory - returns warnings when updateStory throws AdapterError", async () => {
+Deno.test("handleUpdateStory (ack) - returns warnings when updateStory throws", async () => {
   const ref: StoryRef = { id: "PVTI_test_1" };
-  const story = {
-    ref,
-    title: "Test",
-    body: "",
-    type: "feature",
-    status: "In Progress",
-    sprint: "Sprint 1",
-    story_points: 3,
-    priority: "Must",
-    assignees: [],
-    labels: [],
-    created_at: "2026-01-01T00:00:00Z",
-    updated_at: "2026-01-01T00:00:00Z",
-    blocked_by: [],
-    kind: "issue",
-    key: "1",
-    url: "https://example.com/1",
-    epic: null,
-  } as Story;
 
   const backend = {
     updateStory: (_ref: StoryRef, _updates: StoryUpdates) => {
       throw makeAdapterError("Mutation rejected");
     },
-    composeStoryAfterStoryUpdate: (): Promise<BackendCallResult<Story>> =>
-      Promise.resolve(makeStoryResult(story)),
   } as unknown as ProjectBackend;
 
-  const result = await handleUpdateStory(backend, {
+  const result = await handleUpdateStory(backend, stubScrumConfig, {
     ref,
     title: "Updated title",
     body: undefined,
@@ -131,44 +207,24 @@ Deno.test("handleUpdateStory - returns warnings when updateStory throws AdapterE
     comment: undefined,
   });
 
-  const payload = parseToolText<Story & { warnings?: string[] }>(result);
+  const payload = parseToolText<WriteAck>(result);
+  assertEquals(payload.applied, true);
   assertEquals(Array.isArray(payload.warnings), true);
   assertEquals(payload.warnings!.length > 0, true);
   assertEquals(payload.warnings![0].includes("RATE_LIMITED"), true);
 });
 
-Deno.test("handleUpdateStory - returns warnings when addComment throws AdapterError", async () => {
+Deno.test("handleUpdateStory (ack) - returns warnings when addComment throws", async () => {
   const ref: StoryRef = { id: "PVTI_test_1" };
-  const story = {
-    ref,
-    title: "Test",
-    body: "",
-    type: "feature",
-    status: "In Progress",
-    sprint: "Sprint 1",
-    story_points: 3,
-    priority: "Must",
-    assignees: [],
-    labels: [],
-    created_at: "2026-01-01T00:00:00Z",
-    updated_at: "2026-01-01T00:00:00Z",
-    blocked_by: [],
-    kind: "issue",
-    key: "1",
-    url: "https://example.com/1",
-    epic: null,
-  } as Story;
 
   const backend = {
     updateStory: (_ref: StoryRef, _updates: StoryUpdates) => {},
     addComment: (_ref: StoryRef, _body: string) => {
       throw makeAdapterError("Comment failed");
     },
-    composeStoryAfterStoryUpdate: (): Promise<BackendCallResult<Story>> =>
-      Promise.resolve(makeStoryResult(story)),
   } as unknown as ProjectBackend;
 
-  const result = await handleUpdateStory(backend, {
+  const result = await handleUpdateStory(backend, stubScrumConfig, {
     ref,
     title: "Updated",
     body: undefined,
@@ -179,7 +235,8 @@ Deno.test("handleUpdateStory - returns warnings when addComment throws AdapterEr
     comment: "A comment",
   });
 
-  const payload = parseToolText<Story & { warnings?: string[] }>(result);
+  const payload = parseToolText<WriteAck>(result);
+  assertEquals(payload.applied, true);
   assertEquals(Array.isArray(payload.warnings), true);
   assertEquals(payload.warnings!.length > 0, true);
   assertEquals(payload.warnings![0].includes("RATE_LIMITED"), true);
@@ -194,7 +251,7 @@ Deno.test("handleCreateStory - returns partialFailure when createStory throws Ad
     },
   } as unknown as ProjectBackend;
 
-  const result = await handleCreateStory(backend, {
+  const result = await handleCreateStory(backend, stubScrumConfig, {
     title: "New story",
     body: "body",
     type: "feature",
@@ -225,7 +282,7 @@ Deno.test("handleCreateStory - returns partialFailure when composeStorySnapshot 
     },
   } as unknown as ProjectBackend;
 
-  const result = await handleCreateStory(backend, {
+  const result = await handleCreateStory(backend, stubScrumConfig, {
     title: "New story",
     body: "body",
     type: "feature",
