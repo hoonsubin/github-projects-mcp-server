@@ -7,7 +7,7 @@ session end if no in-progress item is active.
 
 | Factor | Weight | Signal |
 |---|---|---|
-| Deadline proximity | High | At or past `expected_delivery_date` → always ranks first unless explicitly deprioritized |
+| Deadline proximity | High | At or past its expected delivery date → always ranks first unless explicitly deprioritized |
 | Dependency blocking | High | Items blocking N others score proportionally to N |
 | Epic progress | Medium | Items that complete or significantly advance a nearly-done epic |
 | Sprint goal alignment | Medium | Items whose description or labels reference the active sprint goal |
@@ -40,8 +40,8 @@ candidates are all blocked, do not force a recommendation from a broken pool. In
 
 ### Sprint is over-committed
 
-Signal: `committed_SP > capacity_SP` (from SKILL.md capacity formula) or `riskStance` is
-`"elevated"` from `scrum_orient`.
+Signal: committed story points exceed sprint capacity (see SKILL.md's capacity formula), or the
+sprint's risk indicator reads elevated.
 
 Do not recommend adding work. Instead:
 

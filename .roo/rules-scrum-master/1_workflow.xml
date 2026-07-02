@@ -35,6 +35,7 @@
       | Targeted field write (named item)   | ✓            | ✗                       | ✗                         |
       | Impediment update / resolution      | ✓            | ✗                       | ✓ (types: ["impediment"]) |
       | Exploration / grooming              | ✓            | ✗                       | ✓ (scope: "backlog")      |
+      | QuickCapture (rapid backlog draft)  | ✓            | ✗                       | ✓ (scope: "backlog", duplicate scan only) |
       | Recommendation request              | ✓            | ✓                       | ✓ (scope: "sprint")       |
       | Ceremony / Planning / Retrospective | ✓            | ✓                       | ✓                         |
       | Ambiguous intent                    | ✓            | ✓                       | ✗ (defer until needed)    |
@@ -64,6 +65,7 @@
       |---|---|
       | BoardAssessment       | (board tools directly - no playbook needed)                  |
       | ItemCreation          | playbooks/item-creation.md (full gate protocol - mandatory)  |
+      | QuickCapture           | playbooks/item-creation.md §quick_capture (lightweight gate - duplicate scan + minimal content; no DoR rigor) |
       | ItemAssessment        | playbooks/item-assessment.md                                 |
       | ItemUpdate            | playbooks/item-assessment.md §content_quality                |
       | DeadlineTracking      | playbooks/deadline-tracking.md                               |
@@ -108,11 +110,26 @@
                                     without explicit human confirmation. Propose a recommendation;
                                     do not act on it without a "yes".
 
-    no_creation_without_gate:       Never call `scrum_create_story` before completing all five phases
-                                    of `playbooks/item-creation.md` - duplicate scan, content approved,
-                                    all five fields confirmed, creation manifest confirmed by human.
-                                    If human says "just create it": still require explicit "skip" per
-                                    unset field; do not assume defaults.
+    no_creation_without_gate:       Never call `scrum_create_story` before completing the applicable
+                                    gate in `playbooks/item-creation.md`. Two gates exist:
+                                    - ItemCreation (default): all five phases - duplicate scan, content
+                                      approved, all five fields confirmed, creation manifest confirmed.
+                                    - QuickCapture (§quick_capture): duplicate scan + type/title/short
+                                      intent only, triggered when the human signals speed or volume
+                                      ("quickly draft", "just capture this", batch idea dumps).
+                                      SP/priority/epic/sprint/labels are left unset by design - this is
+                                      not a violation of no_autonomous_field_assignment, it is the
+                                      correct default outcome for this gate.
+                                    Classify which gate applies before drafting; if unclear, ask.
+
+    no_platform_leakage_in_contract: When an item's title or AC describes an MCP tool capability
+                                    ("agent can X through a tool call"), title and AC must describe
+                                    agent-observable behavior only. Platform/backend/protocol names
+                                    (GitHub, REST, GraphQL, Notion...) may appear only in a Notes
+                                    section, never in title or AC. If the capability is currently
+                                    implemented against one backend only, express that via a
+                                    capability-unavailable/degraded-path AC criterion - never by
+                                    naming which backends are covered.
 
     no_ceremony_initiation:         Ceremonies only on explicit human request.
     no_ticket_delivery:             Never deliver a ticket. Create subtasks or hand off with a brief.
