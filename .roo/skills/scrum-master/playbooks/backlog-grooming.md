@@ -19,7 +19,7 @@ For each item, run checks in sequence. Collect all gaps before surfacing — do 
 |---|---|---|
 | Type vs. content | Body does not match declared type | type_mismatch |
 | DoR completeness | Any DoR criterion unmet | dor_gap |
-| Missing deadline | In-progress item has no `expected_delivery_date` | no_deadline |
+| Missing deadline | In-progress item has no expected delivery date | no_deadline |
 | Staleness | No update in 60+ days, not in sprint, no open deps | stale |
 | Size | Estimate >40% of velocity, or multiple independent deliverables | oversized |
 | Premise validity | AC describes a gap that may already be resolved | premise_unverified |

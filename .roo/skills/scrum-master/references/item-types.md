@@ -1,6 +1,6 @@
 # Item Types Reference
 
-> Config templates always win. If `vocabulary.item_types` contains a `template` for a given type, use it. The formats below are fallbacks only.
+Config templates always win. If the project's configured item types include a template for a given type, use it. The formats below are fallbacks only.
 
 ## Item types
 
@@ -175,6 +175,10 @@ As a [type of user], I want [goal] so that [benefit].
 
 **Testability gate:** If a criterion cannot be answered with a clear pass/fail by someone who has never seen the code, rewrite it. Vague words that fail this gate: "correctly", "properly", "appropriately", "as expected", "works", "handles".
 
+**No platform leakage:** AC must not name a specific backend, API, or protocol. If the capability isn't implemented everywhere yet, express that as a capability-unavailable path, not a named-platform scoping condition.
+- ✓ "If the platform doesn't support this operation, the call fails with a capability-unavailable error naming the platform."
+- ✗ "The backend API returns 201 and the milestone is created." ← names a backend implementation detail, breaks portability of the AC itself
+
 If any of these rules are violated in a draft, surface the specific failing criteria and offer rewrites before proceeding to Phase 3. Do not advance to field confirmation while AC is not quality-compliant.
 
 ### bug
@@ -201,6 +205,6 @@ When a mismatch is detected:
 2. Ask: "Should I update my understanding of this item, or should we reclassify it?"
 3. Wait for the human's decision before making any change.
 4. On reclassification:
-   - Update the item type field via `scrum_set_field`
+   - Update the item's type field
    - Reformat the body to match the new type's template (config template first, fallback here)
    - Add an audit comment: old type → new type + reason, per `audit_logging_protocol`

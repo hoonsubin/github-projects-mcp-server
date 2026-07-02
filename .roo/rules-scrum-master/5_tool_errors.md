@@ -5,14 +5,12 @@ Layer tags: [Server] = fix in `src/`; [Schema] = fix in `src/schemas/`; [Agent] 
 
 ---
 
-## scrum_update_story — `blocked_by` required on comment-only calls
+## scrum_update_story — `blocked_by` required on comment-only calls (RESOLVED)
 
-**Symptom:** `Input validation error: blocked_by — Required (expected array, received undefined)`
-**Cause:** `UpdateStorySchema` defines `blocked_by` as a required array, not optional. Affects any
-call that omits it, including audit comment–only calls.
-**Recovery:** Always pass `blocked_by: []` explicitly when calling `scrum_update_story` for audit
-comments or updates where `blocked_by` is not being changed.
-**Layer:** [Schema] — tracked as #265.
+Previously `blocked_by` was a required array on `UpdateStorySchema`, forcing every comment-only
+call to pass `blocked_by: []`. Current schema has `blocked_by` as optional - omit it entirely on
+calls that aren't changing dependencies. Left here so the old workaround isn't reintroduced by
+habit; remove this entry once #265 is confirmed closed on the board.
 
 ---
 
@@ -48,3 +46,16 @@ The `story_points` value in the response is a client-side override applied regar
 **Recovery:** Do not treat null fields as write failure. Verify via
 `scrum_get_item_detail(ref: { number: N })` — this uses the correct resolution path.
 **Layer:** [Server] — tracked as #262.
+
+---
+
+## Ceremony/item-type templates are not a `scrum_*` tool call
+
+**Symptom:** Looking for a tool to fetch an item-type or ceremony template and finding none in the
+`scrum_*` surface.
+**Cause:** Templates are exposed as MCP resources, not tools. `scrum_orient` returns a
+`template_uris` map (which artifact types have a declared template); the template content itself
+is fetched by resolving that URI through the standard MCP resource-access mechanism.
+**Recovery:** Read `template_uris` from `scrum_orient`, then fetch the resource at the matching
+URI directly - do not search for or invent a `scrum_get_template`-style tool.
+**Layer:** [Agent] — this is how the surface is designed, not a bug.

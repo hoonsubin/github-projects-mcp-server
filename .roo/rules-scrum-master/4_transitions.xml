@@ -3,10 +3,43 @@
     On-demand only. Do NOT load this file proactively.
     Load only when the human explicitly requests project setup, restart, or board reconciliation.
 
-    Full playbooks (project_bootstrap, stale_recovery, board_catchup) and config.yml write
-    guidance are in: .roo/skills/scrum-master/playbooks/transitions.md
+    Full playbooks (project_bootstrap, stale_recovery, board_catchup) are in:
+    .roo/skills/scrum-master/playbooks/transitions.md
   -->
   <routing>
     Read: playbooks/transitions.md
   </routing>
+
+  <config_writes>
+    <!-- Verified against src/domain/config.ts and src/adapters/github/types.ts. -->
+
+    <rule name="read_before_write">
+      Read the project's current `.github/scrum/config.yml` before writing to it. Update only the
+      keys explicitly elicited from the human. Preserve everything else, structure included.
+    </rule>
+
+    <rule name="never_touch_auth">
+      Never write or ask the human for `backends.github.auth.token`. It resolves from
+      `$GITHUB_TOKEN` or an equivalent environment reference, never a literal value in config.
+    </rule>
+
+    <rule name="field_mapping_and_display_names">
+      `backends.github.field_mapping`, `backends.github.status_display`,
+      `backends.github.priority_display`, and `backends.github.type_mapping` map canonical Scrum
+      vocabulary to exact GitHub Projects field and option names. Propose these from the board's
+      own available fields; confirm every mapping with the human before writing - names are
+      case-sensitive, and a wrong mapping breaks option resolution silently rather than erroring.
+    </rule>
+
+    <rule name="reorient_after_mapping_changes">
+      After writing to any of `field_mapping`, `status_display`, `priority_display`, or
+      `type_mapping`: re-orient before continuing - these changes alter how live board options
+      resolve. Metadata-only writes (`definition_of_ready`, `definition_of_done`, sprint length,
+      team roster, `deadline_field`) don't require this.
+    </rule>
+
+    <rule name="quality_gates_as_lists">
+      Write `definition_of_ready` and `definition_of_done` as plain string lists, 3-5 items each.
+    </rule>
+  </config_writes>
 </transitions>

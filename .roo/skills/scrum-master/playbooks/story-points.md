@@ -11,7 +11,7 @@ dimensions. If human conflates them, surface the distinction before proceeding.
    > straightforward but the API integration has an unknown around rate-limiting."
 3. State what pushes estimate higher (unknowns, cross-cutting concern, new tech) and lower
    (clear AC, precedent in codebase, isolated scope).
-4. Human commits the final value. Call `scrum_set_field` to record it only after confirmation.
+4. Human commits the final value. Record it only after confirmation.
 
 ## §guard
 
