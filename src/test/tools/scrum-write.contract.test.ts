@@ -265,12 +265,12 @@ Deno.test("scrum_update_epic - happy path returns EpicListing", async () => {
     backend,
     boot.scrumConfig,
     testSessionCache(),
-    { ref: { id: "MI_fake_1", number: 1 }, name: "Renamed Epic", status: "done" },
+    { ref: { id: "MI_fake_epic" }, name: "Renamed Epic", status: "done" },
   );
 
   assertHandlerSchema(result, UpdateEpicResultSchema, "scrum_update_epic");
   const payload = JSON.parse(result.content[0].text);
-  assertEquals(payload.ref.id, "MI_fake_1");
+  assertEquals(payload.ref.id, "MI_fake_epic");
   assertEquals(payload.name, "Renamed Epic");
   assertEquals(payload.status, "done");
 });
@@ -282,7 +282,7 @@ Deno.test("scrum_update_epic - partial update (name only)", async () => {
     backend,
     boot.scrumConfig,
     testSessionCache(),
-    { ref: { id: "MI_fake_1" }, name: "Name-Only Update" },
+    { ref: { id: "MI_fake_epic" }, name: "Name-Only Update" },
   );
 
   const payload = JSON.parse(result.content[0].text);
@@ -297,7 +297,7 @@ Deno.test("scrum_update_epic - status open → done", async () => {
     backend,
     boot.scrumConfig,
     testSessionCache(),
-    { ref: { id: "MI_fake_1" }, status: "done" },
+    { ref: { id: "MI_fake_epic" }, status: "done" },
   );
 
   const payload = JSON.parse(result.content[0].text);
@@ -313,6 +313,22 @@ Deno.test("scrum_update_epic - ref is required (Zod)", async () => {
     caught = true;
   }
   assertEquals(caught, true);
+});
+
+Deno.test("scrum_update_epic - resolves ref.number internally via getEpics", async () => {
+  const boot = await committedScrumConfigPromise;
+  const backend = await committedFakeBackendPromise;
+
+  // MI_fake_epic is the default epic in the fake backend's getEpics() response.
+  const result = await handleUpdateEpic(backend, boot.scrumConfig, testSessionCache(), {
+    ref: { id: "MI_fake_epic" },
+    name: "Resolved Internally",
+  });
+
+  const payload = JSON.parse(result.content[0].text);
+  assertEquals(payload.name, "Resolved Internally");
+  assertEquals(payload.ref.id, "MI_fake_epic");
+  assertEquals(payload.ref.number, 1);
 });
 
 Deno.test("scrum_update_epic - empty name rejected (Zod)", async () => {

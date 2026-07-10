@@ -63,7 +63,8 @@ snapshot[`golden: scrum_orient handler output 1`] = `
       "active": [
         {
           "ref": {
-            "id": "MI_fake_epic"
+            "id": "MI_fake_epic",
+            "number": 1
           },
           "name": "Config Epic",
           "status": "open",

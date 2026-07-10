@@ -457,7 +457,19 @@ export const handleUpdateEpic = async (
   sessionCache: SessionCache,
   params: z.infer<typeof UpdateEpicSchema>,
 ): Promise<McpTextResult> => {
-  const ref: EpicRef = params.ref;
+  let ref: EpicRef = params.ref;
+
+  if (!ref.number) {
+    const epics = await backend.getEpics();
+    const match = epics.find((e) => e.ref.id === ref.id);
+    if (!match?.ref.number) {
+      return toToolErrorResult(
+        new Error(`Epic not found or missing number for ref.id=${ref.id}.`),
+      );
+    }
+    ref = { ...ref, number: match.ref.number };
+  }
+
   const updates: EpicUpdates = pickDefined(
     { name: params.name, description: params.description, status: params.status },
     ["name", "description", "status"],

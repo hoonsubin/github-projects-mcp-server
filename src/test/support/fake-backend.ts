@@ -166,7 +166,7 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
     this.missingStatusOptions = options.missingStatusOptions ?? [];
     this.missingPriorityOptions = options.missingPriorityOptions ?? [];
     this.epics = options.epics ?? [{
-      ref: { id: "MI_fake_epic" },
+      ref: { id: "MI_fake_epic", number: 1 },
       name: "Config Epic",
       description: null,
       priority: profile.expectedP0Display,
