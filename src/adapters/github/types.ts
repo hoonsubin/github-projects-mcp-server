@@ -165,8 +165,8 @@ export type PrState = GH.PullRequestState;
 /** Issue state enum (OPEN | CLOSED). */
 export type IssueState = GH.IssueState;
 
-/** Minimal milestone reference (id + title). */
-export type MilestoneRef = Required<Pick<GH.Milestone, "id" | "title">>;
+/** Minimal milestone reference (id + number + title). */
+export type MilestoneRef = Required<Pick<GH.Milestone, "id" | "number" | "title">>;
 
 /** Issue reference stub (id + number + title) for dependency connections. */
 export type IssueRef = Required<Pick<GH.Issue, "id" | "number" | "title">>;

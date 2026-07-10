@@ -400,6 +400,20 @@ export interface ProjectReader
   reloadMetadata(): Promise<void>;
 }
 
+/** Input for creating a new epic (milestone). */
+export interface CreateEpicInput {
+  readonly name: string;
+  readonly description?: string;
+}
+
+/** Fields that can be updated on an existing epic. */
+export interface EpicUpdates {
+  readonly name?: string;
+  readonly description?: string;
+  /** "open" or "done". Platform mapping: GitHub → MilestoneState OPEN/CLOSED; Trello → UNAVAILABLE. */
+  readonly status?: "open" | "done";
+}
+
 /**
  * Project writer - all mutation operations.
  * Used by: scrum-write tools
@@ -424,6 +438,12 @@ export interface ProjectWriter {
     kind: VocabularyKind,
     value: string,
   ): Promise<CreateResult>;
+
+  /** Create a new epic. Returns the created EpicRef (with id and number). */
+  createEpic(input: CreateEpicInput): Promise<EpicRef>;
+
+  /** Update epic fields. Returns the updated EpicListing with current item counts. */
+  updateEpic(ref: EpicRef, updates: EpicUpdates): Promise<EpicListing>;
 }
 
 /**

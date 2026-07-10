@@ -74,7 +74,8 @@
 			"alwaysAllow": [
 				"fetch_github_mcp_server_docs",
 				"search_github_mcp_server_docs",
-				"search_github_mcp_server_code"
+				"search_github_mcp_server_code",
+				"fetch_generic_url_content"
 			]
 		},
 		"mcp-ts-sdk": {

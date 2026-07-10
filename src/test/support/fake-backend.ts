@@ -47,6 +47,8 @@ const FAKE_CAPABILITIES: PlatformCapabilities = {
     dependencies: CapabilityStatus.NATIVE,
     fileReader: CapabilityStatus.UNAVAILABLE,
     stableItemKeys: CapabilityStatus.NATIVE,
+    epicDescriptions: CapabilityStatus.NATIVE,
+    epicStatusTracking: CapabilityStatus.NATIVE,
   },
 };
 

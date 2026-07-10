@@ -7,8 +7,10 @@
 
 import type { PlatformCapabilities } from "./capabilities.ts";
 import type {
+  CreateEpicInput,
   CreateResult,
   CreateStoryInput,
+  EpicUpdates,
   ImpedimentListing,
   ItemSearchResultRaw,
   PlatformState,
@@ -26,6 +28,7 @@ import type {
 import type { BackendCallResult } from "../services/error-enrichment.ts";
 import type {
   EpicListing,
+  EpicRef,
   ImpedimentRef,
   ImpedimentStatus,
   SprintRef,
@@ -208,6 +211,26 @@ export abstract class AbstractProjectBackend implements ProjectReader, ProjectWr
     _resolutionNotes?: string,
   ): Promise<ImpedimentListing> {
     throw new UnsupportedCapabilityError(this.capabilities.platform, "updateImpediment");
+  }
+
+  /**
+   * Create a new epic (milestone).
+   *
+   * Default: throws {@link UnsupportedCapabilityError}.
+   * Override in adapters that support epic creation (e.g. GitHub REST milestones).
+   */
+  createEpic(_input: CreateEpicInput): Promise<EpicRef> {
+    throw new UnsupportedCapabilityError(this.capabilities.platform, "createEpic");
+  }
+
+  /**
+   * Update an epic's name, description, or state.
+   *
+   * Default: throws {@link UnsupportedCapabilityError}.
+   * Override in adapters that support epic updates (e.g. GitHub REST milestones).
+   */
+  updateEpic(_ref: EpicRef, _updates: EpicUpdates): Promise<EpicListing> {
+    throw new UnsupportedCapabilityError(this.capabilities.platform, "updateEpic");
   }
 
   // ── Internal helpers (not part of the port interface) ────────────────────

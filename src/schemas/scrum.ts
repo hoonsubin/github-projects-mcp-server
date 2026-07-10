@@ -74,12 +74,22 @@ const BlockedByInputSchema = z.preprocess(
 // Accepted as input by any tool that references an epic (Milestone).
 // Derived from the domain EpicRef type to maintain a single source of truth.
 // Every read tool returns EpicRef.id - pass that value here.
-const EpicRefSchema: z.ZodType<EpicRef> = z.object({
+export const EpicRefSchema: z.ZodType<EpicRef> = z.object({
   id: z
     .string()
     .describe(
       "Opaque Milestone node ID returned by scrum_find_items (type=epic).ref.id " +
         "or scrum_get_item_detail on a story with an epic field.",
+    ),
+  number: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .describe(
+      "Milestone number for REST write endpoints. " +
+        "Returned by scrum_orient and scrum_find_items(type=epic). " +
+        "Optional — omit when assigning a story to an epic.",
     ),
 });
 

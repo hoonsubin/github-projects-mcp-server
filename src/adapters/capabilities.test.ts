@@ -19,6 +19,8 @@ const makeCap = (status: CapabilityStatus): PlatformCapabilities => ({
     dependencies: status,
     fileReader: status,
     stableItemKeys: status,
+    epicDescriptions: status,
+    epicStatusTracking: status,
   },
 });
 
@@ -38,6 +40,8 @@ Deno.test("getCapabilities reflects status updates immediately", () => {
       dependencies: CapabilityStatus.UNAVAILABLE,
       fileReader: CapabilityStatus.NATIVE,
       stableItemKeys: CapabilityStatus.EMULATED,
+      epicDescriptions: CapabilityStatus.NATIVE,
+      epicStatusTracking: CapabilityStatus.NATIVE,
     },
   };
   const map = getCapabilities(cap);

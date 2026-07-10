@@ -6,6 +6,7 @@
 
 import { z } from "zod";
 import { IMPEDIMENT_STATUSES } from "../domain/types.ts";
+import { EpicRefSchema } from "./scrum.ts";
 
 const EntityRefSchema = z.object({ id: z.string() }).strict();
 
@@ -116,7 +117,7 @@ const SprintContextSchema = z.object({
 }).strict();
 
 const EpicSummarySchema = z.object({
-  ref: EntityRefSchema,
+  ref: EpicRefSchema,
   name: z.string(),
   description: z.string().nullable().optional(),
   status: z.enum(["open", "in_progress", "done"]).nullable().optional(),
