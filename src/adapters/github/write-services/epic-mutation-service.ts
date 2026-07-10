@@ -11,10 +11,12 @@ import type { EpicRef } from "../../../domain/types.ts";
 import type { GitHubInfraContext } from "../infra/infra-context.ts";
 
 interface MilestoneResponse {
-  /** Milestone number — used as REST path param and returned as EpicRef.number */
+  /** Internal database ID — NOT the milestone number. Use `number` for the sequential milestone number. */
   id: number;
   /** GraphQL node ID (MI_...) — returned as EpicRef.id */
   node_id: string;
+  /** Sequential milestone number (e.g. 1, 2, 3) — returned as EpicRef.number */
+  number: number;
   title: string;
   description: string | null;
   state: "open" | "closed";
@@ -50,6 +52,6 @@ export class EpicMutationService {
       },
     );
 
-    return { id: data.node_id, number: data.id };
+    return { id: data.node_id, number: data.number };
   }
 }
