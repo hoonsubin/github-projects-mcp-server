@@ -74,12 +74,22 @@ const BlockedByInputSchema = z.preprocess(
 // Accepted as input by any tool that references an epic (Milestone).
 // Derived from the domain EpicRef type to maintain a single source of truth.
 // Every read tool returns EpicRef.id - pass that value here.
-const EpicRefSchema: z.ZodType<EpicRef> = z.object({
+export const EpicRefSchema: z.ZodType<EpicRef> = z.object({
   id: z
     .string()
     .describe(
       "Opaque Milestone node ID returned by scrum_find_items (type=epic).ref.id " +
         "or scrum_get_item_detail on a story with an epic field.",
+    ),
+  number: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .describe(
+      "Milestone number for REST write endpoints. " +
+        "Returned by scrum_orient and scrum_find_items(type=epic). " +
+        "Optional — omit when assigning a story to an epic.",
     ),
 });
 
@@ -447,6 +457,45 @@ export const LogImpedimentSchema = z
         'Urgency vocabulary display name (e.g. "Must"). ' +
           "Defaults to the highest-tier priority value. " +
           "Call scrum_orient to see valid priority values.",
+      ),
+  })
+  .strict();
+
+// scrum_create_epic - create a new epic (GitHub: milestone) via REST API
+export const CreateEpicSchema = z
+  .object({
+    name: z
+      .string()
+      .min(1, "Epic name is required.")
+      .describe("Epic name. Keep concise — one line describing the initiative."),
+    description: z
+      .string()
+      .optional()
+      .describe("Optional markdown description of the epic scope."),
+  })
+  .strict();
+
+// scrum_update_epic - update an epic's name, description, or status (open / done)
+export const UpdateEpicSchema = z
+  .object({
+    ref: EpicRefSchema.describe(
+      "Epic to update. Pass the EpicRef.id from scrum_find_items (type=epic).ref.id.",
+    ),
+    name: z
+      .string()
+      .min(1, "Epic name must not be empty.")
+      .optional()
+      .describe("New name for the epic. Omit to leave unchanged."),
+    description: z
+      .string()
+      .optional()
+      .describe("New markdown description for the epic. Omit to leave unchanged."),
+    status: z
+      .enum(["open", "done"])
+      .optional()
+      .describe(
+        'Closure state. "open" = active, "done" = closed. ' +
+          "Omit to leave unchanged.",
       ),
   })
   .strict();

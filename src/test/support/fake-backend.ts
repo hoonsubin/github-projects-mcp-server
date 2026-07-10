@@ -9,6 +9,7 @@ import { CapabilityStatus, type PlatformCapabilities } from "../../adapters/capa
 import {
   type BacklogItemListing,
   type EpicListing,
+  type EpicRef,
   type ImpedimentRef,
   type ImpedimentStatus,
   type ItemType,
@@ -19,8 +20,10 @@ import {
   toIssueKey,
 } from "../../domain/types.ts";
 import type {
+  CreateEpicInput,
   CreateResult,
   CreateStoryInput,
+  EpicUpdates,
   ImpedimentListing,
   ItemSearchResultRaw,
   PlatformState,
@@ -47,6 +50,8 @@ const FAKE_CAPABILITIES: PlatformCapabilities = {
     dependencies: CapabilityStatus.NATIVE,
     fileReader: CapabilityStatus.UNAVAILABLE,
     stableItemKeys: CapabilityStatus.NATIVE,
+    epicDescriptions: CapabilityStatus.NATIVE,
+    epicStatusTracking: CapabilityStatus.NATIVE,
   },
 };
 
@@ -161,7 +166,7 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
     this.missingStatusOptions = options.missingStatusOptions ?? [];
     this.missingPriorityOptions = options.missingPriorityOptions ?? [];
     this.epics = options.epics ?? [{
-      ref: { id: "MI_fake_epic" },
+      ref: { id: "MI_fake_epic", number: 1 },
       name: "Config Epic",
       description: null,
       priority: profile.expectedP0Display,
@@ -377,6 +382,27 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
   createStory(input: CreateStoryInput): Promise<StoryRef> {
     this.log("createStory", input);
     return Promise.resolve({ id: "PVTI_fake_new" });
+  }
+
+  override createEpic(input: CreateEpicInput): Promise<EpicRef> {
+    this.log("createEpic", input);
+    return Promise.resolve({ id: "MI_fake_new_epic", number: 99 });
+  }
+
+  override updateEpic(
+    ref: EpicRef,
+    updates: EpicUpdates,
+  ): Promise<EpicListing> {
+    this.log("updateEpic", ref, updates);
+    return Promise.resolve({
+      ref: { id: ref.id, number: ref.number ?? 99 },
+      name: updates.name ?? "Config-shaped Epic",
+      description: updates.description ?? "Default fake description",
+      priority: null,
+      status: updates.status ?? "open",
+      story_count: 3,
+      open_item_count: 1,
+    });
   }
 
   override createImpediment(

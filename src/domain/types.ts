@@ -46,7 +46,7 @@ export type StoryRef = EntityRef | { readonly number: number };
  *
  * On GitHub: id is the Milestone node ID (MI_...).
  */
-export type EpicRef = EntityRef;
+export type EpicRef = EntityRef & { readonly number?: number };
 
 /** Epic reference bundled with its display name. */
 export type EpicRefWithName = { readonly ref: EpicRef; readonly name: string };
@@ -244,7 +244,7 @@ export interface SprintContext extends SprintWindowMeta {
  * Contains only the fields needed for the executive summary - no child stories.
  */
 export interface EpicSummary {
-  ref: EntityRef;
+  ref: EpicRef;
   name: string;
   description: string | null;
   status: EpicStatus | null;

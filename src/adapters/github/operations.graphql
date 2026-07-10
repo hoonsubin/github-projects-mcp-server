@@ -617,6 +617,7 @@ query ListMilestones($owner: String!, $repo: String!) {
     milestones(first: 100, states: [OPEN, CLOSED]) {
       nodes {
         id
+        number
         title
         description
         state

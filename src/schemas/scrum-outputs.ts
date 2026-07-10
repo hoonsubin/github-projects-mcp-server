@@ -6,6 +6,7 @@
 
 import { z } from "zod";
 import { IMPEDIMENT_STATUSES } from "../domain/types.ts";
+import { EpicRefSchema } from "./scrum.ts";
 
 const EntityRefSchema = z.object({ id: z.string() }).strict();
 
@@ -116,7 +117,7 @@ const SprintContextSchema = z.object({
 }).strict();
 
 const EpicSummarySchema = z.object({
-  ref: EntityRefSchema,
+  ref: EpicRefSchema,
   name: z.string(),
   description: z.string().nullable().optional(),
   status: z.enum(["open", "in_progress", "done"]).nullable().optional(),
@@ -315,6 +316,17 @@ export const SetFieldResponseSchema = z.union([WriteAckSchema, StorySchema]);
 export const UpdateStoryResponseSchema = z.union([WriteAckSchema, StorySchema]);
 
 export const UpdateImpedimentResponseSchema = ImpedimentListingSchema;
+
+// scrum_update_epic - full EpicListing after mutation
+export const UpdateEpicResultSchema = z.object({
+  ref: EpicRefSchema,
+  name: z.string(),
+  description: z.string().nullable(),
+  priority: z.string().nullable(),
+  status: z.enum(["open", "in_progress", "done"]).nullable(),
+  story_count: z.number().int().nonnegative(),
+  open_item_count: z.number().int().nonnegative(),
+}).strict();
 
 // scrum_get_sprint_data output schemas
 

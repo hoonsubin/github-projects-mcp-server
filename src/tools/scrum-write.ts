@@ -7,10 +7,12 @@ import type { ScrumConfig } from "../domain/config.ts";
 import type { SessionCache } from "../services/session-cache.ts";
 import {
   AddVocabularySchema,
+  CreateEpicSchema,
   CreateStorySchema,
   LogImpedimentSchema,
   PlanSprintSchema,
   SetFieldSchema,
+  UpdateEpicSchema,
   UpdateImpedimentSchema,
   UpdateStorySchema,
 } from "../schemas/scrum.ts";
@@ -19,14 +21,17 @@ import {
   AddVocabularyResultSchema,
   LogImpedimentResultSchema,
   PlanSprintResultSchema,
+  UpdateEpicResultSchema,
   UpdateImpedimentResponseSchema,
 } from "../schemas/scrum-outputs.ts";
 import {
   handleAddVocabulary,
+  handleCreateEpic,
   handleCreateStory,
   handleLogImpediment,
   handlePlanSprint,
   handleSetField,
+  handleUpdateEpic,
   handleUpdateImpediment,
   handleUpdateStory,
 } from "./handlers/write.ts";
@@ -37,7 +42,9 @@ import {
 
 export const SCRUM_WRITE_TOOL_NAMES = [
   "scrum_add_vocabulary",
+  "scrum_create_epic",
   "scrum_create_story",
+  "scrum_update_epic",
   "scrum_update_story",
   "scrum_set_field",
   "scrum_log_impediment",
@@ -216,6 +223,60 @@ export const registerScrumWriteTools = (
   );
 
   server.registerTool(
+    "scrum_create_epic",
+    {
+      title: "Create Epic",
+      description: `Create a new epic on the project board.
+
+        Args:
+          name         string (required) - concise one-line title for the epic
+          description  string (optional) - markdown description of the epic scope
+
+        Returns: EpicRef — an { id, number } reference you can immediately pass
+        to scrum_create_story(epic:) or scrum_update_story(epic:) to assign
+        stories to the new epic. The epic also appears in the next scrum_orient
+        listing automatically.
+
+        Epics are created in the open state. Use scrum_update_epic to close them.`,
+      inputSchema: CreateEpicSchema.shape,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
+    },
+    (params: z.infer<typeof CreateEpicSchema>) =>
+      handleCreateEpic(backend, scrumConfig, sessionCache, params),
+  );
+
+  server.registerTool(
+    "scrum_update_epic",
+    {
+      title: "Update Epic",
+      description: `Update an epic's name, description, or closure status (open/done).
+
+        Args:
+          ref  { id: string } - epic to update. Pass EpicRef.id from scrum_find_items(type=epic).ref.id.
+          name          string (optional) - new name. Omit to leave unchanged.
+          description   string (optional) - new markdown description. Omit to leave unchanged.
+          status        "open" | "done" (optional) - closure state. Omit to leave unchanged.
+
+        Returns: EpicListing with the refreshed state so agents see the post-mutation values.`,
+      inputSchema: UpdateEpicSchema.shape,
+      outputSchema: UpdateEpicResultSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    (params: z.infer<typeof UpdateEpicSchema>) =>
+      handleUpdateEpic(backend, scrumConfig, sessionCache, params),
+  );
+
+  server.registerTool(
     "scrum_plan_sprint",
     {
       title: "Plan Sprint",
@@ -307,10 +368,12 @@ export const registerScrumWriteTools = (
 // Re-export handlers for contract tests
 export {
   handleAddVocabulary,
+  handleCreateEpic,
   handleCreateStory,
   handleLogImpediment,
   handlePlanSprint,
   handleSetField,
+  handleUpdateEpic,
   handleUpdateImpediment,
   handleUpdateStory,
   resolveP0PriorityDisplay,

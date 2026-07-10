@@ -60,10 +60,9 @@
 				"mcp-searxng"
 			],
 			"env": {
-				"SEARXNG_URL": "http://searxng:8080"
+				"SEARXNG_URL": "https://search.hoonlabs.xyz"
 			},
 			"alwaysAllow": [
-				"searxng_web_search",
 				"web_url_read"
 			],
 			"disabled": false
@@ -74,8 +73,10 @@
 			"alwaysAllow": [
 				"fetch_github_mcp_server_docs",
 				"search_github_mcp_server_docs",
-				"search_github_mcp_server_code"
-			]
+				"search_github_mcp_server_code",
+				"fetch_generic_url_content"
+			],
+			"disabled": true
 		},
 		"mcp-ts-sdk": {
 			"type": "streamable-http",
@@ -85,7 +86,8 @@
 				"search_typescript_sdk_docs",
 				"search_typescript_sdk_code",
 				"fetch_generic_url_content"
-			]
+			],
+			"disabled": true
 		},
 		"mcp-specs": {
 			"type": "streamable-http",
@@ -94,7 +96,18 @@
 				"fetch_repo_docs",
 				"search_repo_docs",
 				"fetch_generic_url_content"
-			]
+			],
+			"disabled": true
+		},
+		"github": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@modelcontextprotocol/server-github"
+			],
+			"env": {
+				"GITHUB_PERSONAL_ACCESS_TOKEN": "${env:GITHUB_TOKEN}"
+			}
 		}
 	}
 }

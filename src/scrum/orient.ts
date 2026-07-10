@@ -89,7 +89,7 @@ export const orientUseCase = async (
 
   // Map to EpicSummary for the response
   const epicsSummary: EpicSummary[] = activeEpics.map((epic) => ({
-    ref: { id: epic.ref.id },
+    ref: epic.ref,
     name: epic.name,
     description: epic.description,
     status: epic.status,

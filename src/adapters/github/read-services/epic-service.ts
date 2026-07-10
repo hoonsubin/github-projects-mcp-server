@@ -91,7 +91,7 @@ export class EpicService {
 
 const toEpicListing = (m: MilestoneNode): EpicListing => {
   return {
-    ref: { id: m.id },
+    ref: { id: m.id, number: m.number },
     name: m.title,
     description: m.description || null,
     priority: null,

@@ -77,6 +77,16 @@ export type CapabilityMap = {
    * EMULATED = keys are stable within a session but may shift after transfers.
    * UNAVAILABLE = every resolution must round-trip to the API. */
   readonly stableItemKeys: CapabilityStatus;
+
+  /** Can read/write epic (milestone) descriptions.
+   * EMULATED = description stored in a body/label proxy.
+   * UNAVAILABLE = epics are name-only — description field silently ignored. */
+  readonly epicDescriptions: CapabilityStatus;
+
+  /** Can track epic open/closed state.
+   * EMULATED = state tracked via label toggle.
+   * UNAVAILABLE = epics have no lifecycle — close/reopen not supported. */
+  readonly epicStatusTracking: CapabilityStatus;
 };
 
 // ── PlatformCapabilities ──────────────────────────────────────────────────────
@@ -151,5 +161,7 @@ export const GITHUB_CAPABILITIES: PlatformCapabilities = {
     dependencies: CapabilityStatus.NATIVE,
     fileReader: CapabilityStatus.NATIVE,
     stableItemKeys: CapabilityStatus.NATIVE,
+    epicDescriptions: CapabilityStatus.NATIVE,
+    epicStatusTracking: CapabilityStatus.NATIVE,
   },
 };

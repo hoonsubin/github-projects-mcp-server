@@ -44,6 +44,8 @@ export const CAPTURED_CAPABILITIES: PlatformCapabilities = {
     dependencies: CapabilityStatus.EMULATED,
     fileReader: CapabilityStatus.UNAVAILABLE,
     stableItemKeys: CapabilityStatus.EMULATED,
+    epicDescriptions: CapabilityStatus.UNAVAILABLE,
+    epicStatusTracking: CapabilityStatus.UNAVAILABLE,
   },
 };
 
