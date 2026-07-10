@@ -17,6 +17,7 @@ import { FieldValueMutator } from "./write-services/field-value-mutator.ts";
 import { VocabularyManager } from "./write-services/vocabulary-manager.ts";
 import { StoryQueryService } from "./read-services/story-query-service.ts";
 import { StoryMutationService } from "./write-services/story-mutation-service.ts";
+import { EpicMutationService } from "./write-services/epic-mutation-service.ts";
 import { ImpedimentService } from "./read-services/impediment-service.ts";
 import { EpicService } from "./read-services/epic-service.ts";
 import { ConfigReloader } from "./infra/config-reloader.ts";
@@ -37,6 +38,7 @@ import { resolveProjectItemIdByIssueNumber } from "./query-strategies/resolve-is
 import type { GitHubClient } from "./infra/http-client.ts";
 import type { GitHubBackendConfig } from "./types.ts";
 import type {
+  CreateEpicInput,
   CreateResult,
   CreateStoryInput,
   ImpedimentListing,
@@ -56,6 +58,7 @@ import { type BackendCallResult, catchBackend } from "../../services/error-enric
 import type {
   EntityRef,
   EpicListing,
+  EpicRef,
   ImpedimentRef,
   ImpedimentStatus,
   IterationEntry,
@@ -80,6 +83,7 @@ export interface GitHubBackendDependencies {
   readonly vocabularyManager: VocabularyManager;
   readonly storyQueryService: StoryQueryService;
   readonly storyMutationService: StoryMutationService;
+  readonly epicMutationService: EpicMutationService;
   readonly impedimentService: ImpedimentService;
   readonly epicService: EpicService;
   readonly config: GitHubBootState;
@@ -387,5 +391,9 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
     resolutionNotes?: string,
   ): Promise<ImpedimentListing> {
     return this.deps.impedimentService.updateImpediment(ref, status, resolutionNotes);
+  }
+
+  override createEpic(input: CreateEpicInput): Promise<EpicRef> {
+    return this.deps.epicMutationService.createMilestone(input);
   }
 }

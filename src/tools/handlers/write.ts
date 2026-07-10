@@ -2,12 +2,19 @@
 // src/tools/handlers/write.ts - Extracted scrum_* write tool handlers
 // =============================================================================
 
-import type { CreateStoryInput, ProjectBackend, StoryUpdates } from "../../scrum/ports.ts";
+import type {
+  CreateEpicInput,
+  CreateStoryInput,
+  ProjectBackend,
+  StoryUpdates,
+} from "../../scrum/ports.ts";
 import type { SprintRef, Story, StoryRef } from "../../domain/types.ts";
 import type { ScrumConfig } from "../../domain/config.ts";
+import { createEpicUseCase } from "../../scrum/create-epic.ts";
 import { updateImpedimentUseCase } from "../../scrum/update-impediment.ts";
 import {
   AddVocabularySchema,
+  CreateEpicSchema,
   CreateStorySchema,
   LogImpedimentSchema,
   PlanSprintSchema,
@@ -436,6 +443,26 @@ export const handleUpdateImpediment = async (
       params.resolution_notes,
     );
     return toMcpTextResult(result);
+  } catch (err) {
+    return toToolErrorResult(err);
+  }
+};
+
+export const handleCreateEpic = async (
+  backend: ProjectBackend,
+  _scrumConfig: ScrumConfig,
+  sessionCache: SessionCache,
+  params: z.infer<typeof CreateEpicSchema>,
+): Promise<McpTextResult> => {
+  const input: CreateEpicInput = {
+    name: params.name,
+    ...(params.description !== undefined ? { description: params.description } : {}),
+  };
+
+  try {
+    const epicRef = await createEpicUseCase(backend, input);
+    sessionCache.invalidateOrient();
+    return toMcpTextResult({ ref: { id: epicRef.id, number: epicRef.number } });
   } catch (err) {
     return toToolErrorResult(err);
   }

@@ -461,6 +461,20 @@ export const LogImpedimentSchema = z
   })
   .strict();
 
+// scrum_create_epic - create a new epic (GitHub: milestone) via REST API
+export const CreateEpicSchema = z
+  .object({
+    name: z
+      .string()
+      .min(1, "Epic name is required.")
+      .describe("Epic name. Keep concise — one line describing the initiative."),
+    description: z
+      .string()
+      .optional()
+      .describe("Optional markdown description of the epic scope."),
+  })
+  .strict();
+
 // scrum_update_impediment - update impediment status and resolution notes
 export const UpdateImpedimentSchema = z
   .object({

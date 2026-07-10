@@ -24,6 +24,7 @@ import {
 import { assertHandlerSchema } from "../support/handler-assertions.ts";
 import {
   handleAddVocabulary,
+  handleCreateEpic,
   handleCreateStory,
   handleLogImpediment,
   handlePlanSprint,
@@ -227,4 +228,52 @@ Deno.test("scrum_update_impediment - happy path schema", async () => {
     UpdateImpedimentResponseSchema,
     "scrum_update_impediment",
   );
+});
+
+Deno.test("scrum_create_epic - happy path returns EpicRef", async () => {
+  const boot = await committedScrumConfigPromise;
+  const backend = await committedFakeBackendPromise;
+  const result = await handleCreateEpic(
+    backend,
+    boot.scrumConfig,
+    testSessionCache(),
+    { name: "Integration Epic", description: "Scope of the integration epic" },
+  );
+
+  const payload = JSON.parse(result.content[0].text);
+  assertEquals(typeof payload.ref.id, "string");
+  assertEquals(typeof payload.ref.number, "number");
+});
+
+Deno.test("scrum_create_epic - name is required (Zod)", async () => {
+  const { CreateEpicSchema } = await import("../../schemas/scrum.ts");
+  let caught = false;
+  try {
+    CreateEpicSchema.parse({ description: "Missing name" });
+  } catch (_err) {
+    caught = true;
+  }
+  assertEquals(caught, true);
+});
+
+Deno.test("scrum_create_epic - empty name rejected (Zod)", async () => {
+  const { CreateEpicSchema } = await import("../../schemas/scrum.ts");
+  let caught = false;
+  try {
+    CreateEpicSchema.parse({ name: "" });
+  } catch (_err) {
+    caught = true;
+  }
+  assertEquals(caught, true);
+});
+
+Deno.test("scrum_create_epic - unknown fields rejected by .strict()", async () => {
+  const { CreateEpicSchema } = await import("../../schemas/scrum.ts");
+  let caught = false;
+  try {
+    CreateEpicSchema.parse({ name: "Valid", unknownField: "bad" });
+  } catch (_err) {
+    caught = true;
+  }
+  assertEquals(caught, true);
 });

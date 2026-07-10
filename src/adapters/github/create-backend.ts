@@ -21,6 +21,7 @@ import { FieldValueMutator } from "./write-services/field-value-mutator.ts";
 import { ImpedimentService } from "./read-services/impediment-service.ts";
 import { LabelResolver } from "./write-services/label-resolver.ts";
 import { SprintDataService } from "./read-services/sprint-data-service.ts";
+import { EpicMutationService } from "./write-services/epic-mutation-service.ts";
 import { StoryMutationService } from "./write-services/story-mutation-service.ts";
 import { StoryQueryService } from "./read-services/story-query-service.ts";
 import { UserMilestoneResolver } from "./write-services/user-milestone-resolver.ts";
@@ -160,6 +161,8 @@ export const createGitHubBackend = (
 
   const sprintDataService = new SprintDataService(ctx, boardScan);
 
+  const epicMutationService = new EpicMutationService(ctx);
+
   const fileReader = new GitHubFileReader(owner, primaryRepo, resolvedToken);
 
   const deps: GitHubBackendDependencies = {
@@ -170,6 +173,7 @@ export const createGitHubBackend = (
     vocabularyManager,
     storyQueryService,
     storyMutationService,
+    epicMutationService,
     impedimentService,
     epicService,
     config: bootState,

@@ -9,6 +9,7 @@ import { CapabilityStatus, type PlatformCapabilities } from "../../adapters/capa
 import {
   type BacklogItemListing,
   type EpicListing,
+  type EpicRef,
   type ImpedimentRef,
   type ImpedimentStatus,
   type ItemType,
@@ -19,6 +20,7 @@ import {
   toIssueKey,
 } from "../../domain/types.ts";
 import type {
+  CreateEpicInput,
   CreateResult,
   CreateStoryInput,
   ImpedimentListing,
@@ -379,6 +381,11 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
   createStory(input: CreateStoryInput): Promise<StoryRef> {
     this.log("createStory", input);
     return Promise.resolve({ id: "PVTI_fake_new" });
+  }
+
+  override createEpic(input: CreateEpicInput): Promise<EpicRef> {
+    this.log("createEpic", input);
+    return Promise.resolve({ id: "MI_fake_new_epic", number: 99 });
   }
 
   override createImpediment(
