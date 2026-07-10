@@ -4,7 +4,7 @@
 
 | Attribute      | Value                                                                                             |
 | -------------- | ------------------------------------------------------------------------------------------------- |
-| **Status**     | Ready                                                                                             |
+| **Status**     | Reviewed (2026-07-10) — see §1a for codebase review notes                                         |
 | **Type**       | User Story                                                                                        |
 | **SP**         | 3                                                                                                 |
 | **Blocked by** | [#297](https://github.com/hoonsubin/github-projects-mcp-server/issues/297) — Epic CRUD Foundation |
@@ -26,7 +26,18 @@ scrum_update_epic(ref: EpicRef, name?: string, description?: string, status?: "o
 
 Following the **impediment pattern** (`scrum_log_impediment` + `scrum_update_impediment`), this is a dedicated tool rather than extending `scrum_set_field` (which is designed for Story board fields — mixing EpicRef into it would violate type safety and the "board field" mental model).
 
-Returning `EpicListing` (not just `WriteAck`) is intentional: after changing an epic's status, the agent needs the current `story_count` and `open_item_count` to assess completion. The REST response doesn't include counts, so a follow-up GraphQL query is needed (see §2.5.2).
+Returning `EpicListing` (not just `WriteAck`) is intentional: after changing an epic's status, the agent needs the current `story_count` and `open_item_count` to assess completion. The REST PATCH response includes `open_issues`/`closed_issues` integers, so we can rebuild `EpicListing` without a second GraphQL round-trip.
+
+### Codebase Review Notes (2026-07-10)
+
+Verified against the current codebase:
+
+- [`ports.ts`](src/scrum/ports.ts:410-415) — `EpicUpdates` already declared (by #297), `ProjectWriter.updateEpic()` at line 446 returns `EpicListing`.
+- [`abstract-backend.ts`](src/adapters/abstract-backend.ts:226-234) — Default `updateEpic()` throws `UnsupportedCapabilityError` (capability-gated).
+- [`epic-mutation-service.ts`](src/adapters/github/write-services/epic-mutation-service.ts) — `EpicMutationService` already wired via [`create-backend.ts:164`](src/adapters/github/create-backend.ts:164). Only `createMilestone()` exists; update methods to be added.
+- [`backend.ts`](src/adapters/github/backend.ts:396-398) — `createEpic` override delegates to `epicMutationService.createMilestone()`. `updateEpic` override to be added.
+- [`epic-service.ts:92-102`](src/adapters/github/read-services/epic-service.ts:92) — `toEpicListing()` for GraphQL `MilestoneNode` (uppercase `"OPEN"`). REST version will use lowercase `"open"`.
+- [`MilestoneResponse`](src/adapters/github/write-services/epic-mutation-service.ts:13-25) — `id` = internal DB ID, `number` = sequential milestone number. **Critical:** `toEpicListing()` must map `number: m.number`, NOT `m.id`.
 
 ---
 
@@ -34,47 +45,59 @@ Returning `EpicListing` (not just `WriteAck`) is intentional: after changing an 
 
 ### 2.1 New Schema — `UpdateEpicSchema`
 
-**File:** `src/schemas/scrum.ts` (add after `CreateEpicSchema`)
+**File:** `src/schemas/scrum.ts` (add after `CreateEpicSchema` at line 476)
+
+Reuses the existing [`EpicRefSchema`](src/schemas/scrum.ts:77) — `{ id, number? }` — which `scrum_orient`, `scrum_find_items`, and `scrum_create_epic` all return. No need for a dual-shape union; the handler normalizes `ref` to `EpicRef` transparently.
 
 ```typescript
-export const UpdateEpicSchema = z.object({
-  ref: z
-    .union([
-      z.object({
-        id: z.string().describe(
-          "Epic project item ID from scrum_orient or scrum_find_items(type=epic).",
-        ),
-        number: z.number().int().positive().optional().describe(
-          "Milestone number for REST write endpoints. Returned by scrum_orient. " +
-            "Required if your backend uses REST (GitHub).",
-        ),
-      }),
-      z.object({
-        number: z.number().int().positive().describe("Milestone number for direct REST lookup."),
-        id: z.string().optional().describe("Node ID — inferred if omitted."),
-      }),
-    ])
-    .describe("Reference to the epic to update."),
-  name: z
-    .string()
-    .min(1)
-    .optional()
-    .describe("New epic name. Omit to leave unchanged."),
-  description: z
-    .string()
-    .optional()
-    .describe("New markdown description. Omit to leave unchanged. Pass empty string to clear."),
-  status: z
-    .enum(["open", "done"])
-    .optional()
-    .describe('"open" or "done". Maps to platform state: GitHub → MilestoneState OPEN/CLOSED.'),
-});
+// scrum_update_epic - update epic name, description, or open/closed status
+export const UpdateEpicSchema = z
+  .object({
+    ref: EpicRefSchema.describe(
+      "Reference to the epic to update. " +
+        "Supply the EpicRef.id from scrum_orient, scrum_find_items(type=epic), " +
+        "or scrum_create_epic result. Include the number for REST-based backends (GitHub).",
+    ),
+    name: z
+      .string()
+      .min(1)
+      .optional()
+      .describe("New epic name. Omit to leave unchanged."),
+    description: z
+      .string()
+      .optional()
+      .describe("New markdown description. Omit to leave unchanged. Pass empty string to clear."),
+    status: z
+      .enum(["open", "done"])
+      .optional()
+      .describe('"open" or "done". Maps to platform state: GitHub → MilestoneState OPEN/CLOSED.'),
+  })
+  .strict();
 ```
 
-- `ref` accepts `{ id, number? }` (from `scrum_orient`/`scrum_find_items`) or `{ number, id? }` (if the agent has the number from a previous `create` response).
+- `ref` uses the existing `EpicRefSchema` — `{ id, number? }`. Simpler than a dual-shape union; the handler casts `params.ref` to `EpicRef`.
 - At least one of `name`, `description`, `status` must be provided — enforced in the handler, not Zod (keeping schema flexible for potential future fields).
 - `status` enum is strict: only `"open"` and `"done"`. No intermediate states.
 - `name` uses `.min(1)` to prevent accidental empty-string clears.
+
+### 2.1b New Output Schema — `UpdateEpicResultSchema`
+
+**File:** `src/schemas/scrum-outputs.ts` (add after `UpdateImpedimentResponseSchema` at line 318)
+
+```typescript
+// scrum_update_epic output — EpicListing shape
+export const UpdateEpicResultSchema = z.object({
+  ref: EpicRefSchema,
+  name: z.string(),
+  description: z.string().nullable(),
+  priority: z.string().nullable(),
+  status: z.enum(["open", "in_progress", "done"]).nullable(),
+  story_count: z.number(),
+  open_item_count: z.number(),
+}).strict();
+```
+
+Registered as `outputSchema` on the tool registration. Uses the same `EpicRefSchema` import from `../schemas/scrum.ts`.
 
 ### 2.2 New Use-Case — `update-epic.ts`
 
@@ -105,7 +128,18 @@ export const updateEpicUseCase = async (
 
 ### 2.3 New Write Handler — `handleUpdateEpic`
 
-**File:** `src/tools/handlers/write.ts` (add after `handleCreateEpic`)
+**File:** `src/tools/handlers/write.ts` (add after `handleCreateEpic` at line 469)
+
+Imports needed (add to existing import block):
+
+```typescript
+import { UpdateEpicSchema } from "../../schemas/scrum.ts"; // add to line ~24
+import type { EpicUpdates } from "../../scrum/ports.ts"; // add to line ~5-10
+import { updateEpicUseCase } from "../../scrum/update-epic.ts"; // add to line ~13-14
+import type { EpicRef } from "../../domain/types.ts"; // add to line ~11
+```
+
+Handler implementation:
 
 ```typescript
 export const handleUpdateEpic = async (
@@ -121,9 +155,7 @@ export const handleUpdateEpic = async (
     );
   }
 
-  const ref: EpicRef = "id" in params.ref && params.ref.id
-    ? params.ref as EpicRef
-    : { id: "", ...params.ref };
+  const ref = params.ref as EpicRef;
 
   const updates: EpicUpdates = {
     ...(name !== undefined ? { name } : {}),
@@ -141,9 +173,11 @@ export const handleUpdateEpic = async (
 };
 ```
 
+- Uses existing `EpicRefSchema` — `params.ref` is cast directly to `EpicRef`. The schema ensures `{ id, number? }` shape.
 - Validates "at least one field" before delegating — satisfies the implicit constraint that calling with no updates is a no-op (rejected upfront).
 - `sessionCache.invalidateOrient()` ensures the next `scrum_orient` reflects changes without manual refresh (AC 4).
 - `toToolErrorResult` converts `UnsupportedCapabilityError` and `AdapterError` to structured text — satisfies AC 5 (capability-unavailable) and AC 6 (not-found).
+- `_scrumConfig` omitted — follows `handleUpdateImpediment` pattern (doesn't need scrumConfig for its logic).
 
 ### 2.4 Tool Registration
 
@@ -188,6 +222,7 @@ server.registerTool(
         Closing is reversible — pass status:"open" to reopen a closed epic.
         Status is backend-specific: GitHub maps to MilestoneState OPEN/CLOSED.`,
     inputSchema: UpdateEpicSchema.shape,
+    outputSchema: UpdateEpicResultSchema.shape,
     annotations: {
       readOnlyHint: false,
       destructiveHint: false,
@@ -199,8 +234,26 @@ server.registerTool(
 );
 ```
 
+- `outputSchema: UpdateEpicResultSchema.shape` — required per [AGENTS.md](tasks/REFACTORING.md) tool output schema convention.
 - `idempotentHint: true` — updating an epic to the same name/status is a safe no-op.
 - `sessionCache` passed to handler for cache invalidation.
+
+**2.4.4 Re-export handler** (add after `handleCreateEpic` in re-exports at line ~339):
+
+```typescript
+export {
+  handleAddVocabulary,
+  handleCreateEpic,
+  handleCreateStory,
+  handleLogImpediment,
+  handlePlanSprint,
+  handleSetField,
+  handleUpdateEpic, // ← NEW
+  handleUpdateImpediment,
+  handleUpdateStory,
+  resolveP0PriorityDisplay,
+} from "./handlers/write.ts";
+```
 
 ### 2.5 GitHub Adapter — `EpicMutationService.updateMilestone()`
 
@@ -241,26 +294,27 @@ server.registerTool(
 - Status mapping: `"done"` → `"closed"`, `"open"` → `"open"` (GitHub `MilestoneState`).
 - Returns `MilestoneResponse` (same type as create) for the follow-up query.
 
-#### 2.5.2 Rebuild `EpicListing` from REST Response + GraphQL Query
+#### 2.5.2 Rebuild `EpicListing` from REST Response
 
-The REST `PATCH` response includes `open_issues`/`closed_issues` from GitHub's milestone object, but we need `EpicListing` domain format. The `MilestoneResponse` is sufficient:
+The REST `PATCH` response includes `open_issues`/`closed_issues` integers — no follow-up GraphQL call needed. The `MilestoneResponse` maps directly:
 
 ```typescript
 private toEpicListing(m: MilestoneResponse): EpicListing {
   return {
-    ref: { id: m.node_id, number: m.id },
+    ref: { id: m.node_id, number: m.number },  // ← m.number is the sequential milestone number
     name: m.title,
     description: m.description || null,
     priority: null,
-    status: m.state === "open" ? "open" : "done",
+    status: m.state === "open" ? "open" : "done",  // REST uses lowercase "open"/"closed"
     story_count: m.open_issues + m.closed_issues,
     open_item_count: m.open_issues,
   };
 }
 ```
 
-- The REST response includes `open_issues` and `closed_issues` integers — no need for a follow-up GraphQL call.
-- This mirrors the existing `toEpicListing()` in [`epic-service.ts:92-102`](src/adapters/github/read-services/epic-service.ts:92), but operates on the REST shape rather than the GraphQL `MilestoneNode`.
+⚠️ **Critical:** Use `m.number` (sequential milestone number), NOT `m.id` (internal DB ID). The [`MilestoneResponse`](src/adapters/github/write-services/epic-mutation-service.ts:14-15) interface documents: `id` = internal database ID, `number` = sequential milestone number. The existing [`createMilestone()`](src/adapters/github/write-services/epic-mutation-service.ts:55) correctly uses `data.number`.
+
+**Comparison with read path:** The existing [`toEpicListing()` in `epic-service.ts:92-102`](src/adapters/github/read-services/epic-service.ts:92) operates on GraphQL `MilestoneNode` (uppercase `"OPEN"`), while this REST version uses lowercase `"open"`. Both are correct for their respective data sources.
 
 #### 2.5.3 Full Service Method
 
@@ -301,16 +355,43 @@ For epics referenced by `{ id }` only (no `number`), the check in §2.5.1 throws
 
 ## 3. File Change Summary
 
-| # | File                                                                                                                         | Lines   | Change                                                                               |
-| - | ---------------------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------ |
-| 1 | [`src/schemas/scrum.ts`](src/schemas/scrum.ts)                                                                               | Add     | `UpdateEpicSchema` Zod schema                                                        |
-| 2 | [`src/scrum/update-epic.ts`](src/scrum/update-epic.ts)                                                                       | **New** | `updateEpicUseCase` thin wrapper                                                     |
-| 3 | [`src/tools/handlers/write.ts`](src/tools/handlers/write.ts)                                                                 | Add     | `handleUpdateEpic` handler                                                           |
-| 4 | [`src/tools/scrum-write.ts`](src/tools/scrum-write.ts:38)                                                                    | Modify  | Add `"scrum_update_epic"` to `SCRUM_WRITE_TOOL_NAMES`                                |
-| 5 | [`src/tools/scrum-write.ts`](src/tools/scrum-write.ts)                                                                       | Add     | `server.registerTool("scrum_update_epic", ...)`                                      |
-| 6 | [`src/adapters/github/write-services/epic-mutation-service.ts`](src/adapters/github/write-services/epic-mutation-service.ts) | Modify  | Add `updateMilestone()`, `updateMilestoneListing()`, `toEpicListing()`               |
-| 7 | [`src/adapters/github/backend.ts`](src/adapters/github/backend.ts)                                                           | Modify  | Override `updateEpic` → delegate to `epicMutationService`                            |
-| 8 | [`src/adapters/github/factory.ts`](src/adapters/github/factory.ts)                                                           | Modify  | Already wired by #298 — no additional factory changes needed if built on top of #298 |
+| #  | File                                                                                                                         | Lines          | Change                                                             |
+| -- | ---------------------------------------------------------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------ |
+| 1  | [`src/schemas/scrum.ts`](src/schemas/scrum.ts)                                                                               | Add after L476 | `UpdateEpicSchema` (reuses `EpicRefSchema`)                        |
+| 2  | [`src/schemas/scrum-outputs.ts`](src/schemas/scrum-outputs.ts)                                                               | Add after L318 | `UpdateEpicResultSchema` (`EpicListing` shape)                     |
+| 3  | [`src/scrum/update-epic.ts`](src/scrum/update-epic.ts)                                                                       | **New**        | `updateEpicUseCase` thin wrapper                                   |
+| 4  | [`src/tools/handlers/write.ts`](src/tools/handlers/write.ts)                                                                 | Add after L469 | `handleUpdateEpic` handler + imports                               |
+| 5  | [`src/tools/scrum-write.ts`](src/tools/scrum-write.ts:40-49)                                                                 | Modify         | Add `"scrum_update_epic"` to `SCRUM_WRITE_TOOL_NAMES`              |
+| 6  | [`src/tools/scrum-write.ts`](src/tools/scrum-write.ts)                                                                       | Add after L247 | `server.registerTool("scrum_update_epic", ...)`                    |
+| 7  | [`src/tools/scrum-write.ts`](src/tools/scrum-write.ts:339-349)                                                               | Modify         | Re-export `handleUpdateEpic`                                       |
+| 8  | [`src/adapters/github/write-services/epic-mutation-service.ts`](src/adapters/github/write-services/epic-mutation-service.ts) | Add after L56  | `updateMilestone()`, `updateMilestoneListing()`, `toEpicListing()` |
+| 9  | [`src/adapters/github/backend.ts`](src/adapters/github/backend.ts)                                                           | Add after L398 | Override `updateEpic` → delegate to `epicMutationService`          |
+| 10 | [`src/adapters/github/factory.ts`](src/adapters/github/factory.ts)                                                           | No change      | Already wired — `epicMutationService` created at L164              |
+
+## 3a. Test Layer
+
+| #  | File                                                               | Lines   | Change                                                      |
+| -- | ------------------------------------------------------------------ | ------- | ----------------------------------------------------------- |
+| T1 | `src/test/support/fake-backend.ts`                                 | Modify  | Add `updateEpic` stub (in-memory apply)                     |
+| T2 | `src/test/support/captured-backend.ts`                             | Modify  | Add `updateEpic` stub (throws `UnsupportedCapabilityError`) |
+| T3 | `src/test/tools/scrum-write.contract.test.ts`                      | Modify  | Add `scrum_update_epic` contract tests (4 tests)            |
+| T4 | `src/adapters/github/write-services/epic-mutation-service.test.ts` | **New** | Unit tests for update methods                               |
+
+### Contract Test Cases
+
+1. **Update name → schema-valid EpicListing** — verifies `handleUpdateEpic` passes `assertHandlerSchema` with `UpdateEpicResultSchema`
+2. **Close epic → schema-valid EpicListing** — `status: "done"` produces valid output
+3. **No update fields → error** — rejects empty updates
+4. **Unsupported capability → error** — `CapturedDataBackend` throws `UnsupportedCapabilityError`
+
+### EpicMutationService Unit Test Cases
+
+Follow the pattern in [`story-mutation-service.test.ts`](src/adapters/github/write-services/story-mutation-service.test.ts):
+
+- `updateMilestone()` with valid ref → PATCH call verified via spy
+- `updateMilestone()` with missing `ref.number` → throws
+- `updateMilestoneListing()` → returns `EpicListing` with correct fields
+- `toEpicListing()` — `MilestoneResponse` with `id: 99, number: 3` → `EpicListing.ref.number: 3` (NOT `99`)
 
 ---
 

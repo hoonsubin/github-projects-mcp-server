@@ -5,12 +5,14 @@
 import type {
   CreateEpicInput,
   CreateStoryInput,
+  EpicUpdates,
   ProjectBackend,
   StoryUpdates,
 } from "../../scrum/ports.ts";
-import type { SprintRef, Story, StoryRef } from "../../domain/types.ts";
+import type { EpicRef, SprintRef, Story, StoryRef } from "../../domain/types.ts";
 import type { ScrumConfig } from "../../domain/config.ts";
 import { createEpicUseCase } from "../../scrum/create-epic.ts";
+import { updateEpicUseCase } from "../../scrum/update-epic.ts";
 import { updateImpedimentUseCase } from "../../scrum/update-impediment.ts";
 import {
   AddVocabularySchema,
@@ -19,6 +21,7 @@ import {
   LogImpedimentSchema,
   PlanSprintSchema,
   SetFieldSchema,
+  UpdateEpicSchema,
   UpdateImpedimentSchema,
   UpdateStorySchema,
 } from "../../schemas/scrum.ts";
@@ -443,6 +446,27 @@ export const handleUpdateImpediment = async (
       params.resolution_notes,
     );
     return toMcpTextResult(result);
+  } catch (err) {
+    return toToolErrorResult(err);
+  }
+};
+
+export const handleUpdateEpic = async (
+  backend: ProjectBackend,
+  _scrumConfig: ScrumConfig,
+  sessionCache: SessionCache,
+  params: z.infer<typeof UpdateEpicSchema>,
+): Promise<McpTextResult> => {
+  const ref: EpicRef = params.ref;
+  const updates: EpicUpdates = pickDefined(
+    { name: params.name, description: params.description, status: params.status },
+    ["name", "description", "status"],
+  ) as unknown as EpicUpdates;
+
+  try {
+    const listing = await updateEpicUseCase(backend, ref, updates);
+    sessionCache.invalidateOrient();
+    return toMcpTextResult(listing);
   } catch (err) {
     return toToolErrorResult(err);
   }

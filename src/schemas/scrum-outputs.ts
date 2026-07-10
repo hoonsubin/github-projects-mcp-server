@@ -317,6 +317,17 @@ export const UpdateStoryResponseSchema = z.union([WriteAckSchema, StorySchema]);
 
 export const UpdateImpedimentResponseSchema = ImpedimentListingSchema;
 
+// scrum_update_epic - full EpicListing after mutation
+export const UpdateEpicResultSchema = z.object({
+  ref: EpicRefSchema,
+  name: z.string(),
+  description: z.string().nullable(),
+  priority: z.string().nullable(),
+  status: z.enum(["open", "in_progress", "done"]).nullable(),
+  story_count: z.number().int().nonnegative(),
+  open_item_count: z.number().int().nonnegative(),
+}).strict();
+
 // scrum_get_sprint_data output schemas
 
 const SprintInfoSchema = z.object({

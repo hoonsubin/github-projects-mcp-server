@@ -41,6 +41,7 @@ import type {
   CreateEpicInput,
   CreateResult,
   CreateStoryInput,
+  EpicUpdates,
   ImpedimentListing,
   ItemSearchResultRaw,
   PlatformState,
@@ -395,5 +396,9 @@ export class GitHubProjectBackend extends AbstractProjectBackend {
 
   override createEpic(input: CreateEpicInput): Promise<EpicRef> {
     return this.deps.epicMutationService.createMilestone(input);
+  }
+
+  override updateEpic(ref: EpicRef, updates: EpicUpdates): Promise<EpicListing> {
+    return this.deps.epicMutationService.updateMilestone(ref, updates);
   }
 }

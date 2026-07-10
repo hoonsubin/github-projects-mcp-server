@@ -12,6 +12,7 @@ import {
   LogImpedimentSchema,
   PlanSprintSchema,
   SetFieldSchema,
+  UpdateEpicSchema,
   UpdateImpedimentSchema,
   UpdateStorySchema,
 } from "../schemas/scrum.ts";
@@ -20,6 +21,7 @@ import {
   AddVocabularyResultSchema,
   LogImpedimentResultSchema,
   PlanSprintResultSchema,
+  UpdateEpicResultSchema,
   UpdateImpedimentResponseSchema,
 } from "../schemas/scrum-outputs.ts";
 import {
@@ -29,6 +31,7 @@ import {
   handleLogImpediment,
   handlePlanSprint,
   handleSetField,
+  handleUpdateEpic,
   handleUpdateImpediment,
   handleUpdateStory,
 } from "./handlers/write.ts";
@@ -41,6 +44,7 @@ export const SCRUM_WRITE_TOOL_NAMES = [
   "scrum_add_vocabulary",
   "scrum_create_epic",
   "scrum_create_story",
+  "scrum_update_epic",
   "scrum_update_story",
   "scrum_set_field",
   "scrum_log_impediment",
@@ -247,6 +251,32 @@ export const registerScrumWriteTools = (
   );
 
   server.registerTool(
+    "scrum_update_epic",
+    {
+      title: "Update Epic",
+      description: `Update an epic's name, description, or closure status (open/done).
+
+        Args:
+          ref  { id: string } - epic to update. Pass EpicRef.id from scrum_find_items(type=epic).ref.id.
+          name          string (optional) - new name. Omit to leave unchanged.
+          description   string (optional) - new markdown description. Omit to leave unchanged.
+          status        "open" | "done" (optional) - closure state. Omit to leave unchanged.
+
+        Returns: EpicListing with the refreshed state so agents see the post-mutation values.`,
+      inputSchema: UpdateEpicSchema.shape,
+      outputSchema: UpdateEpicResultSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    (params: z.infer<typeof UpdateEpicSchema>) =>
+      handleUpdateEpic(backend, scrumConfig, sessionCache, params),
+  );
+
+  server.registerTool(
     "scrum_plan_sprint",
     {
       title: "Plan Sprint",
@@ -343,6 +373,7 @@ export {
   handleLogImpediment,
   handlePlanSprint,
   handleSetField,
+  handleUpdateEpic,
   handleUpdateImpediment,
   handleUpdateStory,
   resolveP0PriorityDisplay,

@@ -475,6 +475,31 @@ export const CreateEpicSchema = z
   })
   .strict();
 
+// scrum_update_epic - update an epic's name, description, or status (open / done)
+export const UpdateEpicSchema = z
+  .object({
+    ref: EpicRefSchema.describe(
+      "Epic to update. Pass the EpicRef.id from scrum_find_items (type=epic).ref.id.",
+    ),
+    name: z
+      .string()
+      .min(1, "Epic name must not be empty.")
+      .optional()
+      .describe("New name for the epic. Omit to leave unchanged."),
+    description: z
+      .string()
+      .optional()
+      .describe("New markdown description for the epic. Omit to leave unchanged."),
+    status: z
+      .enum(["open", "done"])
+      .optional()
+      .describe(
+        'Closure state. "open" = active, "done" = closed. ' +
+          "Omit to leave unchanged.",
+      ),
+  })
+  .strict();
+
 // scrum_update_impediment - update impediment status and resolution notes
 export const UpdateImpedimentSchema = z
   .object({

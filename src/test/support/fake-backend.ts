@@ -23,6 +23,7 @@ import type {
   CreateEpicInput,
   CreateResult,
   CreateStoryInput,
+  EpicUpdates,
   ImpedimentListing,
   ItemSearchResultRaw,
   PlatformState,
@@ -386,6 +387,22 @@ export class ConfigShapedFakeBackend extends AbstractProjectBackend {
   override createEpic(input: CreateEpicInput): Promise<EpicRef> {
     this.log("createEpic", input);
     return Promise.resolve({ id: "MI_fake_new_epic", number: 99 });
+  }
+
+  override updateEpic(
+    ref: EpicRef,
+    updates: EpicUpdates,
+  ): Promise<EpicListing> {
+    this.log("updateEpic", ref, updates);
+    return Promise.resolve({
+      ref: { id: ref.id, number: ref.number ?? 99 },
+      name: updates.name ?? "Config-shaped Epic",
+      description: updates.description ?? "Default fake description",
+      priority: null,
+      status: updates.status ?? "open",
+      story_count: 3,
+      open_item_count: 1,
+    });
   }
 
   override createImpediment(

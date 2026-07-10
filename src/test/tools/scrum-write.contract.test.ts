@@ -18,6 +18,7 @@ import {
   PlanSprintResultSchema,
   SetFieldResponseSchema,
   StorySchema,
+  UpdateEpicResultSchema,
   UpdateImpedimentResponseSchema,
   UpdateStoryResponseSchema,
 } from "../../schemas/scrum-outputs.ts";
@@ -29,6 +30,7 @@ import {
   handleLogImpediment,
   handlePlanSprint,
   handleSetField,
+  handleUpdateEpic,
   handleUpdateImpediment,
   handleUpdateStory,
   resolveP0PriorityDisplay,
@@ -250,6 +252,96 @@ Deno.test("scrum_create_epic - name is required (Zod)", async () => {
   let caught = false;
   try {
     CreateEpicSchema.parse({ description: "Missing name" });
+  } catch (_err) {
+    caught = true;
+  }
+  assertEquals(caught, true);
+});
+
+Deno.test("scrum_update_epic - happy path returns EpicListing", async () => {
+  const boot = await committedScrumConfigPromise;
+  const backend = await committedFakeBackendPromise;
+  const result = await handleUpdateEpic(
+    backend,
+    boot.scrumConfig,
+    testSessionCache(),
+    { ref: { id: "MI_fake_1", number: 1 }, name: "Renamed Epic", status: "done" },
+  );
+
+  assertHandlerSchema(result, UpdateEpicResultSchema, "scrum_update_epic");
+  const payload = JSON.parse(result.content[0].text);
+  assertEquals(payload.ref.id, "MI_fake_1");
+  assertEquals(payload.name, "Renamed Epic");
+  assertEquals(payload.status, "done");
+});
+
+Deno.test("scrum_update_epic - partial update (name only)", async () => {
+  const boot = await committedScrumConfigPromise;
+  const backend = await committedFakeBackendPromise;
+  const result = await handleUpdateEpic(
+    backend,
+    boot.scrumConfig,
+    testSessionCache(),
+    { ref: { id: "MI_fake_1" }, name: "Name-Only Update" },
+  );
+
+  const payload = JSON.parse(result.content[0].text);
+  assertEquals(payload.name, "Name-Only Update");
+  assertEquals(payload.status, "open"); // unchanged by fake backend
+});
+
+Deno.test("scrum_update_epic - status open → done", async () => {
+  const boot = await committedScrumConfigPromise;
+  const backend = await committedFakeBackendPromise;
+  const result = await handleUpdateEpic(
+    backend,
+    boot.scrumConfig,
+    testSessionCache(),
+    { ref: { id: "MI_fake_1" }, status: "done" },
+  );
+
+  const payload = JSON.parse(result.content[0].text);
+  assertEquals(payload.status, "done");
+});
+
+Deno.test("scrum_update_epic - ref is required (Zod)", async () => {
+  const { UpdateEpicSchema } = await import("../../schemas/scrum.ts");
+  let caught = false;
+  try {
+    UpdateEpicSchema.parse({ name: "No Ref" });
+  } catch (_err) {
+    caught = true;
+  }
+  assertEquals(caught, true);
+});
+
+Deno.test("scrum_update_epic - empty name rejected (Zod)", async () => {
+  const { UpdateEpicSchema } = await import("../../schemas/scrum.ts");
+  let caught = false;
+  try {
+    UpdateEpicSchema.parse({ ref: { id: "MI_fake_1" }, name: "" });
+  } catch (_err) {
+    caught = true;
+  }
+  assertEquals(caught, true);
+});
+
+Deno.test("scrum_update_epic - invalid status rejected (Zod)", async () => {
+  const { UpdateEpicSchema } = await import("../../schemas/scrum.ts");
+  let caught = false;
+  try {
+    UpdateEpicSchema.parse({ ref: { id: "MI_fake_1" }, status: "in_progress" });
+  } catch (_err) {
+    caught = true;
+  }
+  assertEquals(caught, true);
+});
+
+Deno.test("scrum_update_epic - unknown fields rejected by .strict()", async () => {
+  const { UpdateEpicSchema } = await import("../../schemas/scrum.ts");
+  let caught = false;
+  try {
+    UpdateEpicSchema.parse({ ref: { id: "MI_fake_1" }, unknownField: "bad" });
   } catch (_err) {
     caught = true;
   }
